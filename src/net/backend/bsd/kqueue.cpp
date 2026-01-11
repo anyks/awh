@@ -1769,7 +1769,7 @@ namespace io {
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
 								log->debug(
-									"An socket for a Unix event cannot be created because it has an invalid initialization type",
+									"A socket for a Unix event cannot be created because it has an invalid initialization type",
 									__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 								);
 							/**
@@ -1777,7 +1777,7 @@ namespace io {
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								log->print("An socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+								log->print("A socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 							#endif
 						}
 					}
@@ -2438,7 +2438,7 @@ namespace io {
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
 								log->debug(
-									"An socket for a IP event cannot be created because it has an invalid initialization type",
+									"A socket for an IP event cannot be created because it has an invalid initialization type",
 									__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
 								);
 							/**
@@ -2446,7 +2446,7 @@ namespace io {
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								log->print("An socket for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+								log->print("A socket for an IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 							#endif
 						}
 					}
@@ -2459,7 +2459,7 @@ namespace io {
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						log->debug(
-							"Socket cannot be created because family it belongs to is not defined",
+							"A socket cannot be created, because family it belongs to is not defined",
 							__PRETTY_FUNCTION__,std::make_tuple(node, node->id), log_t::flag_t::WARNING
 						);
 					/**
@@ -2467,7 +2467,7 @@ namespace io {
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						log->print("Socket cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
+						log->print("A socket cannot be created, because family it belongs to is not defined", log_t::flag_t::WARNING);
 					#endif
 				}
 			}
@@ -4274,7 +4274,7 @@ namespace io {
 												 */
 												for(;;){
 													// Выполняем чтение данных из PIPE-сокета
-													bytes = ::read(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE);
+													bytes = ::read(ipc->transfer.fd, buffer, 0x1000);
 													// Если мы получили ошибку
 													if(bytes < 0){
 														// Если нам нужно повторить попытку позже
@@ -4349,7 +4349,7 @@ namespace io {
 											// Если событие является блокирующим
 											} else {
 												// Выполняем чтение данных из PIPE-сокета
-												const ssize_t bytes = ::read(ipc->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE);
+												const ssize_t bytes = ::read(ipc->transfer.fd, buffer, 0x1000);
 												// Если мы получили ошибку
 												if(bytes < 0){
 													// Если установлена функция обратного вызова
@@ -4418,7 +4418,7 @@ namespace io {
 												// Вызываем функцию обратного вызова об ошибке отказа
 												ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = "You need to use the pipe event family for inter-program communication";
+											const string error = "You need to use PIPE event family for inter-program communication";
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -6899,7 +6899,7 @@ namespace io {
 													// Вызываем функцию обратного вызова об ошибке отказа
 													ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = "You need to use the pipe event family for inter-program communication";
+												const string error = "You need to use PIPE event family for inter-program communication";
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -10690,7 +10690,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -10794,7 +10794,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -10903,7 +10903,7 @@ namespace sctp {
 										// Вызываем функцию обратного вызова об ошибке отказа
 										peer->callbacks.status(peer->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = "A status is only possible for the STREAM or SEQPACKET socket type";
+									const string error = "A status is only possible for STREAM or SEQPACKET socket type";
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -10933,7 +10933,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -10982,7 +10982,7 @@ namespace sctp {
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = "A status is only possible for the STREAM or SEQPACKET socket type";
+									const string error = "A status is only possible for STREAM or SEQPACKET socket type";
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -11012,7 +11012,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11096,7 +11096,7 @@ namespace sctp {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A initial message is only possible for the SEQPACKET socket type";
+								const string error = "A initial message is only possible for SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -11125,7 +11125,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A initial message is only possible for the SCTP protocol";
+							const string error = "A initial message is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11165,7 +11165,7 @@ namespace sctp {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "A initial message is only possible for the SEQPACKET socket type";
+								const string error = "A initial message is only possible for SEQPACKET socket type";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -11194,7 +11194,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A initial message is only possible for the SCTP protocol";
+							const string error = "A initial message is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11332,7 +11332,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11370,7 +11370,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11474,7 +11474,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11516,7 +11516,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11558,7 +11558,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11665,7 +11665,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11707,7 +11707,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11749,7 +11749,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11833,7 +11833,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11871,7 +11871,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -11966,7 +11966,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12015,7 +12015,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12100,7 +12100,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12138,7 +12138,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12226,7 +12226,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12264,7 +12264,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12302,7 +12302,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12387,7 +12387,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								peer->callbacks.status(peer->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12425,7 +12425,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -12463,7 +12463,7 @@ namespace sctp {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for the SCTP protocol";
+							const string error = "A status is only possible for SCTP protocol";
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -14506,7 +14506,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Вызываем функцию обратного вызова об ошибке отказа
 																		client->callbacks.status(client->id, event::status_t::FAILURE);
 																	// Устанавливаем текст ошибки
-																	const string error = "To work with a raw socket and the TCP protocol, you must activate the manual header generation mode";
+																	const string error = "To work with a raw socket and TCP protocol, you must activate manual header generation mode";
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
@@ -15016,7 +15016,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
 																		// Вызываем функцию обратного вызова об ошибке отказа
 																		client->callbacks.status(client->id, event::status_t::FAILURE);
 																	// Устанавливаем текст ошибки
-																	const string error = "To work with a raw socket and the TCP protocol, you must activate the manual header generation mode";
+																	const string error = "To work with a raw socket and TCP protocol, you must activate manual header generation mode";
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
@@ -25900,7 +25900,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											user->callbacks.status(user->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(user->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -25931,7 +25931,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											dir->callbacks.status(dir->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(dir->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -25962,7 +25962,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											fs->callbacks.status(fs->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(fs->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -25995,7 +25995,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											timer->callbacks.status(timer->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(timer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -26026,7 +26026,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -26057,7 +26057,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											peer->callbacks.status(peer->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -26088,7 +26088,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											origin->callbacks.status(origin->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(origin->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -26119,7 +26119,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Connection is only allowed from the client node";
+										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -26648,7 +26648,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									user->callbacks.status(user->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(user->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26679,7 +26679,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									dir->callbacks.status(dir->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26710,7 +26710,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									fs->callbacks.status(fs->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26743,7 +26743,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									timer->callbacks.status(timer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26774,7 +26774,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(ipc->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26805,7 +26805,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									peer->callbacks.status(peer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26836,7 +26836,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									origin->callbacks.status(origin->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -26867,7 +26867,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Listen is only allowed from the server node";
+								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -27623,7 +27623,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова об ошибке отказа
 													ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = "You need to use the pipe event family for inter-program communication";
+												const string error = "You need to use PIPE event family for inter-program communication";
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -27883,7 +27883,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -28479,7 +28479,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												peer->callbacks.status(peer->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -28837,7 +28837,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												origin->callbacks.status(origin->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(origin->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -29080,7 +29080,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												origin->callbacks.status(origin->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(origin->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -29721,7 +29721,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -30068,7 +30068,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -30445,7 +30445,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												client->callbacks.status(client->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -30717,7 +30717,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -30983,7 +30983,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -31295,7 +31295,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -31518,7 +31518,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but the send buffer can only accept %zu bytes", size, bufferSize);
+											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -33346,7 +33346,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("It is not possible to set the maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, std::make_tuple(
+						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, std::make_tuple(
 							id,
 							static_cast <uint8_t> (family),
 							static_cast <uint8_t> (hops)
@@ -33356,7 +33356,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("It is not possible to set the maximum number of network hops a packet can travel through for non-network nodes", log_t::flag_t::CRITICAL);
+						this->_log->print("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", log_t::flag_t::CRITICAL);
 					#endif
 				}
 			}
