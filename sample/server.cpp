@@ -242,7 +242,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
-				tls.on(ctl, [&tls, &io, &log](const tls_t::id_t id) noexcept -> void {
+				tls.on(ctl, [&tls, &io, &log](const tls_t::id_t id, const tls_t::state_t state) noexcept -> void {
 					/**
 					 * Обрабатываем входящие состояния DTLS
 					 */
