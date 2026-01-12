@@ -86,13 +86,13 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Устанавливаем размер буфера на запись сокета
 	ASSERT_GT(this->_eth->bufferSize(sock, awh::net::socket_event_t::WRITE, sndbuf * 2), 0);
 	// Блокируем сигнал SIGILL
-	ASSERT_TRUE(this->_eth->nosigill());
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGILL));
 	/**
 	 * Для операционной системы FreeBSD и Linux
 	 */
 	#if __FreeBSD__ || __Linux__
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_TRUE(this->_eth->sctpEventsSubscribe(sock, {
+		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock, {
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
 			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -108,62 +108,36 @@ TEST_F(EthFixture, EthSuiteTest){
 		// Устанавливаем количество входящих потоков SCTP
 		initmsg.istreams = 5;
 		// Инициализируем рукопожатие SCTP для сокета
-		ASSERT_TRUE(this->_eth->sctpInitMessages(sock, initmsg));
+		ASSERT_TRUE(this->_eth->sctp.initMessages(sock, initmsg));
 		// Объект для извлечения статуса SCTP сокета
 		awh::net::sctp::status_t status;
 		// Получаем статус SCTP сокета
-		ASSERT_TRUE(this->_eth->sctpStatus(sock, status));
-	/**
-	 * Для остальных операционных систем
-	 */
-	#else
-		// Активируем получение SCTP-событий для сокета
-		ASSERT_FALSE(this->_eth->sctpEventsSubscribe(sock, {
-			awh::net::sctp::event_type_t::ASSOC_CHANGE,
-			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-			awh::net::sctp::event_type_t::REMOTE_ERROR,
-			awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
-		}));
-		// Текст инициализационных сообщений SCTP
-		awh::net::sctp::initmsg_t initmsg;
-		// Устанавливаем количество попыток подключения SCTP
-		initmsg.attempts = 4;
-		// Устанавливаем количество исходящих потоков SCTP
-		initmsg.ostreams = 5;
-		// Устанавливаем количество входящих потоков SCTP
-		initmsg.istreams = 5;
-		// Инициализируем рукопожатие SCTP для сокета
-		ASSERT_FALSE(this->_eth->sctpInitMessages(sock, initmsg));
-		// Объект для извлечения статуса SCTP сокета
-		awh::net::sctp::status_t status;
-		// Получаем статус SCTP сокета
-		ASSERT_FALSE(this->_eth->sctpStatus(sock, status));
+		ASSERT_TRUE(this->_eth->sctp.status(sock, status));
 	#endif
 	// Получаем код ошибки сокета
 	ASSERT_EQ(0, this->_eth->error(sock));
 	// Включаем режим cork для TCP-сокета
-	ASSERT_FALSE(this->_eth->cork(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORK));
 	// Включаем или отключаем режим отображения IPv4 => IPv6
-	ASSERT_FALSE(this->_eth->ipv6only(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->setoption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
 	// Устанавливаем повторное использование адреса сокета
-	ASSERT_TRUE(this->_eth->reuseaddr(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_ADDR));
 	// Устанавливаем повторное использование порта сокета
-	ASSERT_TRUE(this->_eth->reuseport(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_PORT));
 	// Игнорируем отключение сигнала записи в убитый сокет
-	ASSERT_TRUE(this->_eth->nosigpipe(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGPIPE));
 	// Разрешаем широковещательный адрес
-	ASSERT_TRUE(this->_eth->broadcast(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::BROADCAST));
 	// Отключаем алгоритм Нейгла
-	ASSERT_FALSE(this->_eth->nodelay(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем блокирующий сокет
-	ASSERT_TRUE(this->_eth->noblocking(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем режим автоматического закрытия файлового дескриптора при вызове exec
-	ASSERT_TRUE(this->_eth->closeonexec(sock, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::CLOSE_ON_EXEC));
 	// Устанавливаем постоянное подключение на сокет
 	ASSERT_FALSE(this->_eth->keepalive(sock, 30, 60, 10));
 	// Включаем заголовки в сокете
-	ASSERT_FALSE(this->_eth->hdrinclude(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::HDRINCL));
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров
@@ -173,7 +147,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Устанавливаем интерфейс мультикаст группы по имени
 	ASSERT_TRUE(this->_eth->multicastIface(sock, awh::event::family_t::IPV4, source.iface));
 	// Устанавливаем режим обратной петли для multicast пакетов
-	ASSERT_TRUE(this->_eth->multicastLoopback(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	ASSERT_TRUE(this->_eth->setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::MULTICAST_LOOPBACK));
 	// Устанавливаем максимальное количество хопов, через которые может пройти пакет
 	ASSERT_FALSE(this->_eth->hops(sock, awh::event::family_t::IPV4, awh::event::delivery_mode_t::UNICAST, awh::event::hops_t::NETWORK));
 	// Вычисляем контрольную сумму транспортного уровня с некорректными данными

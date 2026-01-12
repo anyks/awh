@@ -119,7 +119,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			 */
 			#if __FreeBSD__
 				// Извлекаем информационные метаданные SCTP сообщения
-				const awh::net::sctp::minfo_t & minfo = this->_io->sctpMessageInfo(eid1);
+				const awh::net::sctp::minfo_t & minfo = this->_io->sctp.messageInfo(eid1);
 				// Выводим информацию о сообщении SCTP-сокета
 				std::cout << " SCTP Message Info: " << std::endl;
 				std::cout << "  - Stream Number: " << minfo.num << std::endl;
@@ -128,9 +128,9 @@ TEST_F(IoFixture, IoSuiteTest){
 				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
 				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Устанавливаем информационные метаданные SCTP сообщения
-				this->_io->sctpMessageInfo(eid1, minfo);
+				this->_io->sctp.messageInfo(eid1, minfo);
 				// Извлекаем статус SCTP событий SCTP
-				const awh::net::sctp::status_t & status = this->_io->sctpStatus(eid1);
+				const awh::net::sctp::status_t & status = this->_io->sctp.status(eid1);
 				// Выводим статус SCTP-сокета
 				std::cout << " SCTP Status: " << std::endl;
 				std::cout << "  - ID: " << status.id << std::endl;
@@ -151,7 +151,7 @@ TEST_F(IoFixture, IoSuiteTest){
 				// Устанавливаем количество входящих потоков SCTP
 				initmsg.istreams = 5;
 				// Инициализируем сообщения SCTP
-				this->_io->sctpInitMessages(eid1, initmsg);
+				this->_io->sctp.initMessages(eid1, initmsg);
 				// Типы SCTP событий для подписки
 				awh::net::sctp::event_types_t types = {
 					awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -161,159 +161,61 @@ TEST_F(IoFixture, IoSuiteTest){
 					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
 				};
 				// Выполняем подписку на SCTP события
-				this->_io->sctpEventsSubscribe(eid1, types);
+				this->_io->sctp.eventsSubscribe(eid1, types);
 
 				// Проверяем что типы SCTP событий совпадают с установленными ранее
-				ASSERT_EQ(types, this->_io->sctpEventsSubscribed(eid1));
+				ASSERT_EQ(types, this->_io->sctp.eventsSubscribed(eid1));
 
 				// Устанавливаем таймаут INIT SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
 				// Проверяем что таймаут INIT SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::INIT));
 
 				// Устанавливаем таймаут DATA SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
 				// Проверяем что таймаут DATA SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::DATA));
 
 				// Устанавливаем таймаут SACK SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
 				// Проверяем что таймаут SACK SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SACK));
 
 				// Устанавливаем таймаут COOKIE SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
 				// Проверяем что таймаут COOKIE SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::COOKIE));
 
 				// Устанавливаем таймаут SHUTDOWN SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
 				// Проверяем что таймаут SHUTDOWN SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
 
 				// Устанавливаем таймаут HEARTBEAT SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Проверяем что таймаут HEARTBEAT SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
 
 				// Устанавливаем таймаут SHUTDOWNACK SCTP события
-				ASSERT_TRUE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
+				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
 				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
+				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
 
 				// Устанавливаем ключ аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctpAuthenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
+				ASSERT_TRUE(this->_io->sctp.authenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
 				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctpAuthenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
+				ASSERT_TRUE(this->_io->sctp.authenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
 				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctpAuthenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+				ASSERT_TRUE(this->_io->sctp.authenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 				// Устанавливаем чанки аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctpAuthenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+				ASSERT_TRUE(this->_io->sctp.authenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
 
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctpAuthenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
+				ASSERT_TRUE(this->_io->sctp.authenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
 				// Проверяем что чанки аутентификации SCTP-сокета получены
 				ASSERT_FALSE(chunks.empty());
-				// Перебираем все извлечённые чанки
-				for(auto & chunk : chunks)
-					// Выводим информацию о чанках аутентификации SCTP-сокета
-					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
-			/**
-			 * Для других операционных систем
-			 */
-			#else
-				// Извлекаем информационные метаданные SCTP сообщения
-				const awh::net::sctp::minfo_t & minfo = this->_io->sctpMessageInfo(eid1);
-				// Выводим информацию о сообщении SCTP-сокета
-				std::cout << " SCTP Message Info: " << std::endl;
-				std::cout << "  - Stream Number: " << minfo.num << std::endl;
-				std::cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << std::endl;
-				std::cout << "  - Context: " << minfo.ctx << std::endl;
-				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
-				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
-				// Устанавливаем информационные метаданные SCTP сообщения
-				this->_io->sctpMessageInfo(eid1, minfo);
-				// Извлекаем статус SCTP событий SCTP
-				const awh::net::sctp::status_t & status = this->_io->sctpStatus(eid1);
-				// Выводим статус SCTP-сокета
-				std::cout << " SCTP Status: " << std::endl;
-				std::cout << "  - ID: " << status.id << std::endl;
-				std::cout << "  - State: " << (u_short) status.state << std::endl;
-				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
-				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
-				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
-				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
-				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
-				std::cout << "  - Pending Data: " << status.penddata << std::endl;
-
-				// Текст инициализационных сообщений SCTP
-				awh::net::sctp::initmsg_t initmsg;
-				// Устанавливаем количество попыток подключения SCTP
-				initmsg.attempts = 4;
-				// Устанавливаем количество исходящих потоков SCTP
-				initmsg.ostreams = 5;
-				// Устанавливаем количество входящих потоков SCTP
-				initmsg.istreams = 5;
-				// Инициализируем сообщения SCTP
-				this->_io->sctpInitMessages(eid1, initmsg);
-				// Типы SCTP событий для подписки
-				awh::net::sctp::event_types_t types = {
-					awh::net::sctp::event_type_t::ASSOC_CHANGE,
-					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-					awh::net::sctp::event_type_t::REMOTE_ERROR,
-					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
-				};
-				// Выполняем подписку на SCTP события
-				this->_io->sctpEventsSubscribe(eid1, types);
-				// Проверяем что типы SCTP событий совпадают с установленными ранее
-				ASSERT_EQ(awh::net::sctp::event_types_t{}, this->_io->sctpEventsSubscribed(eid1));
-				// Устанавливаем таймаут INIT SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
-				// Проверяем что таймаут INIT SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::INIT));
-				// Устанавливаем таймаут DATA SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
-				// Проверяем что таймаут DATA SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::DATA));
-				// Устанавливаем таймаут SACK SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
-				// Проверяем что таймаут SACK SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SACK));
-				// Устанавливаем таймаут COOKIE SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
-				// Проверяем что таймаут COOKIE SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::COOKIE));
-				// Устанавливаем таймаут SHUTDOWN SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
-				// Проверяем что таймаут SHUTDOWN SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
-				// Устанавливаем таймаут HEARTBEAT SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
-				// Проверяем что таймаут HEARTBEAT SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
-				// Устанавливаем таймаут SHUTDOWNACK SCTP события
-				ASSERT_FALSE(this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
-				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
-				ASSERT_NE(3000, this->_io->sctpTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
-			
-				// Устанавливаем ключ аутентификации SCTP-сокета
-				ASSERT_FALSE(this->_io->sctpAuthenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
-				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-				ASSERT_FALSE(this->_io->sctpAuthenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
-				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-				ASSERT_FALSE(this->_io->sctpAuthenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
-				// Устанавливаем чанки аутентификации SCTP-сокета
-				ASSERT_FALSE(this->_io->sctpAuthenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
-			
-				// Извлекаем чанки аутентификации SCTP-сокета
-				std::vector <awh::net::sctp::auth_chunk_t> chunks;
-				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_FALSE(this->_io->sctpAuthenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
-				// Проверяем что чанки аутентификации SCTP-сокета получены
-				ASSERT_TRUE(chunks.empty());
 				// Перебираем все извлечённые чанки
 				for(auto & chunk : chunks)
 					// Выводим информацию о чанках аутентификации SCTP-сокета
@@ -627,7 +529,7 @@ TEST_F(IoFixture, IoTCPTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
@@ -770,7 +672,7 @@ TEST_F(IoFixture, IoTCPTest){
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -1226,7 +1128,7 @@ TEST_F(IoFixture, IoUDPTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
@@ -1942,7 +1844,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
@@ -2654,8 +2556,8 @@ TEST_F(IoFixture, IoUDSTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->options(cid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
-	ASSERT_TRUE(this->_io->options(sid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+	ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->options(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем адрес сервера назначения
 	ASSERT_TRUE(this->_io->target(cid, "/tmp/awh.sock"));
 	// Устанавливаем адрес сервера назначения
@@ -2800,7 +2702,7 @@ TEST_F(IoFixture, IoUDSTest){
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, sid, cid, this->_io->address(cid, awh::event::address_t::UDS).c_str());
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на чтение из события
@@ -3235,8 +3137,8 @@ TEST_F(IoFixture, IoUDPUDSTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->options(cid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
-	ASSERT_TRUE(this->_io->options(sid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+	ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->options(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем адрес сервера назначения
 	ASSERT_TRUE(this->_io->target(cid, "/tmp/awh.sock"));
 	// Устанавливаем адрес сервера назначения
@@ -3958,7 +3860,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 */
 	{
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем функцию обратного вызова на событие таймера
@@ -4394,7 +4296,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 */
 	{
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY | awh::event::options::BROADCAST));
+		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::BROADCAST));
 		// Создаём объект работы с Ethernet
 		awh::eth_t eth(this->_fmk.get(), this->_log.get());
 		// Временный объект для извлечения сетевого интерфейса
@@ -4691,7 +4593,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::TCPNODELAY));
+		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
@@ -6281,7 +6183,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Устанавливаем TTL для мультикастового события
 		ASSERT_TRUE(this->_io->hops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK));
+		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
@@ -6743,7 +6645,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Устанавливаем количество хопов события
 		ASSERT_TRUE(this->_io->hops(events[0], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK));
+		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->target(events[0], "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
@@ -7031,7 +6933,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Устанавливаем TTL для мультикастового события
 		ASSERT_TRUE(this->_io->hops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC | awh::event::options::MULTICAST_LOOPBACK));
+		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Выполняем фиксацию настроек события сервера
@@ -7468,7 +7370,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Устанавливаем мультикастовый режим события
 		ASSERT_TRUE(this->_io->delivery(events[0], awh::event::delivery_mode_t::MULTICAST));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR | awh::event::options::REUSEPORT | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0", port));
 		// Выполняем фиксацию настроек события клиента

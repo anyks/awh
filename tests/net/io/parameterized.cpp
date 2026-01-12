@@ -169,7 +169,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->options(eid, awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::REUSEADDR));
+	ASSERT_TRUE(this->_io->options(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR));
 	// Устанавливаем IP-адрес события
 	ASSERT_TRUE(this->_io->address(eid, awh::event::address_t::IPV4, this->_parameter.source));
 	// Устанавливаем адрес сервера назначения
@@ -558,9 +558,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие дочернего процесса для записи
 					ASSERT_TRUE(this->_io->destroy(cfds[1]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(cfds[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+					ASSERT_TRUE(this->_io->options(cfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(mfds[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+					ASSERT_TRUE(this->_io->options(mfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					this->_io->on(cfds[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
@@ -792,9 +792,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие дочернего процесса для чтения
 					ASSERT_TRUE(this->_io->destroy(cfds[0]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(mfds[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+					ASSERT_TRUE(this->_io->options(mfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(cfds[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+					ASSERT_TRUE(this->_io->options(cfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					this->_io->on(mfds[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
@@ -1054,7 +1054,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие родительского процесса
 					ASSERT_TRUE(this->_io->destroy(events[0]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+					ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
 					this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
@@ -1283,7 +1283,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие дочернего процесса
 					ASSERT_TRUE(this->_io->destroy(events[1]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NOSIGILL | awh::event::options::NOSIGPIPE | awh::event::options::NOIOBLOCK | awh::event::options::CLOSEONEXEC));
+					ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
 					this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
