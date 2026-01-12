@@ -28,6 +28,15 @@ void IoFixture::SetUp(){
 	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект асинхронного движка ввода-вывода
 	this->_io = std::make_unique <awh::io_t> (this->_fmk.get(), this->_log.get());
+	// Создаём объект транспортного уровня безопасности
+	this->_tls = std::make_unique <awh::tls_t> (this->_fmk.get(), this->_log.get());
+	/**
+	 * Для операционной системы Linux или FreeBSD
+	 */
+	#if __linux__ || __FreeBSD__
+		// Объект управления SCTP протоколом
+		this->_sctp = std::make_unique <awh::sctp_t> (this->_fmk.get(), this->_log.get());
+	#endif
 }
 
 /**

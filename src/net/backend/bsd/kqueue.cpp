@@ -424,7 +424,7 @@ namespace io {
 		 * @brief Структура функций обратного вызова SCTP
 		 *
 		 */
-		typedef struct CallbackSCTP {
+		typedef struct CallbackStreamControlTransmissionProtocol {
 			// Функция обратного вызова для получения информационных собщений SCTP
 			net::sctp::callback::info_t info;
 			// Функция обратного вызова для получения событий SCTP
@@ -440,7 +440,7 @@ namespace io {
 		 * @brief Структура SCTP-событий
 		 *
 		 */
-		typedef struct EndpointSCTP {
+		typedef struct EndpointStreamControlTransmissionProtocol {
 			// Идентификатор SCTP-события
 			sctp_assoc_t id;
 			// Флаги SCTP-событий
@@ -787,10 +787,10 @@ namespace {
 };
 
 /**
- * Инкапсулируем статические объекты в пространство имён временных переменных
+ * Инкапсулируем статические типы данных в пространство имён
  */
-namespace local {
-	/**
+namespace {
+    /**
 	 * Подписываемся на пространство имён AWH
 	 */
 	using namespace awh;
@@ -799,7 +799,7 @@ namespace local {
 	 * @brief Структура охранника узла события
 	 *
 	 */
-	typedef class Guard {
+	class GuardTransportLayerNode {
 		private:
 			// Объект узла события
 			net::node_t * _node;
@@ -808,12 +808,12 @@ namespace local {
 			 * @brief Запрещаем копирование объекта
 			 *
 			 */
-			Guard(const Guard &) = delete;
+			GuardTransportLayerNode(const GuardTransportLayerNode &) = delete;
 			/**
 			 * @brief Запрещаем присваивание объекта
 			 *
 			 */
-			Guard & operator = (const Guard &) = delete;
+			GuardTransportLayerNode & operator = (const GuardTransportLayerNode &) = delete;
 		public:
 			/**
 			 * @brief Метод проверки статуса узла события как мусорного
@@ -833,7 +833,7 @@ namespace local {
 			 *
 			 * @param node объект узла события
 			 */
-			explicit Guard(net::node_t * node) noexcept : _node(node) {
+			explicit GuardTransportLayerNode(net::node_t * node) noexcept : _node(node) {
 				// Увеличиваем счётчик ссылок узла
 				this->_node->refs.fetch_add(1, std::memory_order_relaxed);
 			}
@@ -841,7 +841,7 @@ namespace local {
 			 * @brief Деструктор
 			 *
 			 */
-			~Guard() noexcept {
+			~GuardTransportLayerNode() noexcept {
 				// Уменьшаем счётчик ссылок узла
 				this->_node->refs.fetch_sub(1, std::memory_order_release);
 				// Если счётчик ссылок узла равен нулю и статус узла установлен как мусорный
@@ -853,7 +853,23 @@ namespace local {
 					::__awh_nodes__.erase(this->_node->id);
 				}
 			}
-	} guard_t;
+	};
+};
+
+/**
+ * Инкапсулируем статические объекты в пространство имён временных переменных
+ */
+namespace local {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Создаём новый тип данных принадлежащий локальному защитнику
+	 *
+	 */
+	using guard_t = GuardTransportLayerNode;
 
 	/**
 	 * Мьютекс для синхронизации потоков

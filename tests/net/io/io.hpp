@@ -20,6 +20,7 @@
  */
 #include "../../main.hpp"
 #include "../../../include/net/io.hpp"
+#include "../../../include/net/tls.hpp"
 #include "../../../include/net/addr.hpp"
 
 /**
@@ -34,6 +35,15 @@ class IoFixture : public testing::Test {
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
+		// Объект транспортного уровня безопасности
+		std::unique_ptr <awh::tls_t> _tls;
+		/**
+		 * Для операционной системы Linux или FreeBSD
+		 */
+		#if __linux__ || __FreeBSD__
+			// Объект управления SCTP протоколом
+			std::unique_ptr <awh::sctp_t> _sctp;
+		#endif
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

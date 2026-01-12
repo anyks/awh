@@ -270,6 +270,8 @@ namespace {
 			layer_t layer;
 			// Объект состояния
 			uint8_t state;
+			// Счётчик ссылок на событие
+			atomic_uint16_t refs;
 			// Тип узла события
 			event::node_t node;
 			// Тип протокола события
@@ -289,7 +291,7 @@ namespace {
 			 *
 			 */
 			explicit Member(const layer_t layer) noexcept :
-			 layer(layer), state(0),
+			 layer(layer), state(0), refs(0),
 			 node(event::node_t::NONE),
 			 proto(event::protocol_t::NONE) {}
 			/**
@@ -306,6 +308,14 @@ namespace {
 	void Member::erase(members_t & members) noexcept {
 		// Выполняем блокировку потоков
 		const locker_t <> lock(::__awh_ssl_members_mtx__);
+		// Получаем идентификатор контекста TLS
+		const tls_t::id_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get()));
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		auto i = ::__awh_ssl_ids__.find(id);
+		// Если идентификатор контекста TLS найден
+		if(i != ::__awh_ssl_ids__.end())
+			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
+			::__awh_ssl_ids__.erase(i);
 		// Удаляем уровень защищённых сокетов из контейнера
 		members.erase(this->iterator);
 	}
@@ -382,21 +392,102 @@ namespace {
  */
 namespace state {
 	/**
+	 * Флаг проверки на мусорные данные подлежащие удалению
+	 */
+	static constexpr uint8_t GARBAGE_MODE = 0x01;
+	/**
 	 * Флаг выполненного рукопожатия TLS
 	 */
-	static constexpr uint8_t HANDSHAKE_MODE = 0x01;
+	static constexpr uint8_t HANDSHAKE_MODE = 0x02;
 	/**
 	 * Флаг проверки режима безсостояния TLS
 	 */
-	static constexpr uint8_t STATELESS_MODE = 0x02;
+	static constexpr uint8_t STATELESS_MODE = 0x04;
 	/**
 	 * Флаг мультисертификатов
 	 */
-	static constexpr uint8_t MULTICERT_MODE = 0x04;
+	static constexpr uint8_t MULTICERT_MODE = 0x08;
 	/**
 	 * Флаг проверки имени хоста сервера
 	 */
-	static constexpr uint8_t CERTIFICATE_VERIFY = 0x08;
+	static constexpr uint8_t CERTIFICATE_VERIFY = 0x10;
+};
+
+/**
+ * Инкапсулируем статические типы данных в пространство имён
+ */
+namespace {
+    /**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Структура охранника участника обмена защищёнными данными
+	 *
+	 */
+	class GuardTransportLayerSecurity {
+		private:
+			// Объект участника обмена защищёнными данными
+			::member_t * _member;
+		public:
+			/**
+			 * @brief Запрещаем копирование объекта
+			 *
+			 */
+			GuardTransportLayerSecurity(const GuardTransportLayerSecurity &) = delete;
+			/**
+			 * @brief Запрещаем присваивание объекта
+			 *
+			 */
+			GuardTransportLayerSecurity & operator = (const GuardTransportLayerSecurity &) = delete;
+		public:
+			/**
+			 * @brief Метод проверки статуса участника обмена как мусорного
+			 *
+			 * @return результат проверки
+			 */
+			bool isGarbage() const noexcept {
+				// Проверяем статус участника обмена
+				return (
+					(this->_member->state & ::state::GARBAGE_MODE) &&
+					(this->_member->refs.load(std::memory_order_acquire) == 1)
+				);
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param member объект участника обмена защищёнными данными
+			 */
+			explicit GuardTransportLayerSecurity(::member_t * member) noexcept : _member(member) {
+				// Увеличиваем счётчик ссылок участника обмена
+				this->_member->refs.fetch_add(1, std::memory_order_relaxed);
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~GuardTransportLayerSecurity() noexcept {
+				// Уменьшаем счётчик ссылок участника обмена
+				this->_member->refs.fetch_sub(1, std::memory_order_release);
+				// Если счётчик ссылок участника обмена равен нулю и статус участника обмена установлен как мусорный
+				if((this->_member->state & ::state::GARBAGE_MODE) && (this->_member->refs.load(std::memory_order_acquire) == 0))
+					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
+					this->_member->erase(::__awh_ssl_members__);
+			}
+	};
+};
+
+/**
+ * Инкапсулируем статические объекты в пространство имён временных переменных
+ */
+namespace local {
+	/**
+	 * @brief Создаём новый тип данных принадлежащий локальному защитнику
+	 *
+	 */
+	using guard_t = GuardTransportLayerSecurity;
 };
 
 /**
@@ -425,6 +516,8 @@ namespace ssl {
 			case static_cast <uint8_t> (layer_t::CTL): {
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				/**
 				 * Выполняем перехват ошибок
 				 */
@@ -503,6 +596,8 @@ namespace ssl {
 		if(type == SSL3_RT_HANDSHAKE){
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+			// Создаём охранника участника обмена защищёнными данными
+			::local::guard_t guard(member);
 			/**
 			 * Обрабатываем тип сообщения рукопожатия SSL
 			 */
@@ -1114,6 +1209,8 @@ namespace ssl {
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Выполняем установку буфера данных
 				(* data) = member->alpn.buffer.data();
 				// Выполняем установку размер буфера данных протокола
@@ -1142,6 +1239,8 @@ namespace ssl {
 				uint8_t size = 0, index = 0;
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Выполняем перебор всех поддерживаемых протоколов
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
@@ -1185,6 +1284,8 @@ namespace ssl {
 				uint8_t size = 0, index = 0;
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Выполняем перебор всех поддерживаемых протоколов
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
@@ -1302,6 +1403,8 @@ namespace cookie {
 	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		// Создаём охранника участника обмена защищёнными данными
+		::local::guard_t guard(member);
 		// Если cookie еще не проинициализированы
 		if(!member->cookie.initialized){
 			// Выполняем произвольно генерацию байт в буфере cookie
@@ -1442,6 +1545,8 @@ namespace cookie {
 	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		// Создаём охранника участника обмена защищёнными данными
+		::local::guard_t guard(member);
 		// Если cookie не проинициализированы, значит cookie не валидные
 		if(!member->cookie.initialized)
 			// Выходим из функции
@@ -1648,6 +1753,8 @@ namespace verify {
 		const char * sni = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		// Создаём охранника участника обмена защищёнными данными
+		::local::guard_t guard(member);
 		// Если SNI получен
 		if(sni != nullptr){
 			// Если установлен режим работы с несколькими сертификатами TLS
@@ -1898,6 +2005,8 @@ namespace verify {
 		if((store != nullptr) && (ctx != nullptr)){
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::cts_t *> (ctx);
+			// Создаём охранника участника обмена защищёнными данными
+			::local::guard_t guard(member);
 			// Если проверка сертификата не требуется
 			if(!(member->state & state::CERTIFICATE_VERIFY)){
 				/**
@@ -2122,6 +2231,8 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -2155,6 +2266,8 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Объект SSL сертификата
@@ -2355,6 +2468,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если версия OpenSSL не соответствует указанной при сборке
@@ -2538,6 +2653,8 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если версия OpenSSL не соответствует указанной при сборке
@@ -2826,6 +2943,8 @@ string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -2905,6 +3024,8 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -2938,6 +3059,8 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
@@ -3030,6 +3153,8 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если объект CRL-файла сертификата создан
@@ -3116,6 +3241,8 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если объект CRL-файла сертификата создан
@@ -3244,6 +3371,8 @@ string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noex
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -3277,6 +3406,8 @@ string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noex
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Объект SSL сертификата
@@ -3362,6 +3493,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -3395,6 +3528,8 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Шаг 1: Получить сертификат
@@ -3625,6 +3760,8 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если режим проверки хоста суревра установлен
@@ -3661,6 +3798,8 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если режим проверки хоста суревра установлен
@@ -3735,6 +3874,8 @@ awh::TransportLayerSecurity::mode_t awh::TransportLayerSecurity::mode(const id_t
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Если установлен режим работы с несколькими сертификатами TLS
 					if(member->state & state::MULTICERT_MODE)
 						// Возвращаем режим работы с несколькими сертификатами TLS
@@ -3746,6 +3887,8 @@ awh::TransportLayerSecurity::mode_t awh::TransportLayerSecurity::mode(const id_t
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Если установлен режим работы с несколькими сертификатами TLS
 					if(member->state & state::MULTICERT_MODE)
 						// Возвращаем режим работы с несколькими сертификатами TLS
@@ -3797,6 +3940,8 @@ void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcep
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
@@ -3833,6 +3978,8 @@ void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcep
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
@@ -3943,6 +4090,8 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если узел является сервером
@@ -3971,6 +4120,8 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если узел является клиентом
@@ -4066,6 +4217,8 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если функция обратного вызова состояния установлена
@@ -4099,6 +4252,8 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем парсинг I-адреса
@@ -4228,10 +4383,10 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 		auto i = ::__awh_ssl_ids__.find(id);
 		// Если идентификатор контекста TLS найден
 		if((result = (i != ::__awh_ssl_ids__.end()))){
-			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
-			::__awh_ssl_ids__.erase(i);
 			// Выполняем извлечение участника обмена защищёнными данными
 			::member_t * member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Создаём охранника участника обмена защищёнными данными
+			::local::guard_t guard(member);
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4240,6 +4395,8 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Выполняем блокировку потоков
+					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если узел является сервером
 					if(member->node == event::node_t::SERVER){
 						// Если название хоста уже установлено
@@ -4258,19 +4415,23 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
 						member->callback.state(id, tls_t::state_t::DESTROYED);
+					// Устанавливаем режим удаления участника обмена защищёнными данными
+					member->state |= ::state::GARBAGE_MODE;
 				} break;
 				// Если уровень является транспортной передачей данных
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Выполняем блокировку потоков
+					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
 						member->callback.state(id, tls_t::state_t::DESTROYED);
+					// Устанавливаем режим удаления участника обмена защищёнными данными
+					member->state |= ::state::GARBAGE_MODE;
 				} break;
 			}
-			// Удаляем контекст TLS из контейнера участников обмена защищёнными данными
-			member->erase(::__awh_ssl_members__);
 		}
 	/**
 	 * Если возникает ошибка
@@ -4316,6 +4477,8 @@ bool awh::TransportLayerSecurity::shutdown(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -4393,6 +4556,8 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 			case static_cast <uint8_t> (layer_t::CTS): {
 				// Выполняем извлечение объекта шаблона контекста безопасности
 				auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Выполняем блокировку потоков
 				const locker_t <recursive_mutex> lock(member->mtx);
 				// Если функция обратного вызова состояния установлена
@@ -4426,6 +4591,8 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 			case static_cast <uint8_t> (layer_t::CTL): {
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Если рукопожатие ещё не выполнено
 				if(!(result = (member->state & state::HANDSHAKE_MODE))){
 					// Выполняем блокировку потоков
@@ -4473,10 +4640,8 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 									// Вызываем функцию обратного вызова на уничтожение контекста TLS
 									member->callback.state(id, tls_t::state_t::DESTROYED);
 								}
-								// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
-								::__awh_ssl_ids__.erase(id);
-								// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-								member->erase(::__awh_ssl_members__);
+								// Устанавливаем режим удаления участника обмена защищёнными данными
+								member->state |= ::state::GARBAGE_MODE;
 							// Если ошибка связана с необходимостью повторного чтения или записи
 							} else {
 								// Количество прочитанных данных
@@ -4588,6 +4753,8 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -4621,6 +4788,8 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Выполняем повторную передачу данных для DTLS/QUIC
@@ -5880,6 +6049,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -5913,6 +6084,8 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Если рукопожатие выполнено успешно
 					if(member->state & state::HANDSHAKE_MODE){
 						// Выполняем блокировку потоков
@@ -6056,6 +6229,8 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
@@ -6089,6 +6264,8 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Выполняем запись данных в BIO буфер чтения
@@ -6293,6 +6470,8 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 						case static_cast <uint8_t> (layer_t::CTS): {
 							// Выполняем извлечение объекта шаблона контекста безопасности
 							auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
 							// Выполняем блокировку потоков
 							const locker_t <recursive_mutex> lock(member->mtx);
 							// Устанавливаем все основные алгоритмы шифрования
@@ -6329,6 +6508,8 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 						case static_cast <uint8_t> (layer_t::CTL): {
 							// Выполняем извлечение объекта транспортного уровня передачи
 							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
 							// Выполняем блокировку потоков
 							const locker_t <recursive_mutex> lock(member->mtx);
 							// Устанавливаем все основные алгоритмы шифрования
@@ -6455,6 +6636,8 @@ void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & al
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
@@ -6489,6 +6672,8 @@ void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & al
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
@@ -6562,6 +6747,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
@@ -6674,6 +6861,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
@@ -6791,6 +6980,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
@@ -6917,6 +7108,8 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
@@ -7083,6 +7276,8 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если CRL-файл сертификата уже создан
@@ -7193,6 +7388,8 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если CRL-файл сертификата уже создан
@@ -7345,6 +7542,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
@@ -7454,6 +7653,8 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
@@ -7605,6 +7806,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
@@ -7761,6 +7964,8 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Создаём охранника участника обмена защищёнными данными
+						::local::guard_t guard(member);
 						// Выполняем блокировку потоков
 						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
@@ -7955,6 +8160,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, read_callback_t callback) no
 			if((result = (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTL))){
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Выполняем блокировку потоков
 				const locker_t <recursive_mutex> lock(member->mtx);
 				// Устанавливаем функцию обратного вызова получения данных
@@ -8002,6 +8209,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, write_callback_t callback) n
 			if((result = (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTL))){
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
 				// Выполняем блокировку потоков
 				const locker_t <recursive_mutex> lock(member->mtx);
 				// Устанавливаем функцию обратного вызова передачи данных
@@ -8053,6 +8262,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова получения ошибок
@@ -8062,6 +8273,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова получения ошибок
@@ -8114,6 +8327,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, state_callback_t callback) n
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова изменения состояния
@@ -8123,6 +8338,8 @@ bool awh::TransportLayerSecurity::on(const id_t id, state_callback_t callback) n
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова изменения состояния
