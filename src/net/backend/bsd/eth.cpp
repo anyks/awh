@@ -1243,7 +1243,7 @@ void awh::Ethernet::netboost() const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем инициализацию объекта работы с операционноы системы
+		// Выполняем инициализацию объекта работы с операционной системы
 		os_t os(this->_log);
 		// Выполняем инициализацию объекта работы с файловыми дескрипторами
 		fds_t fds(this->_log);
@@ -1349,7 +1349,7 @@ void awh::Ethernet::netboost() const noexcept {
 					// Увеличиваем размер шага автонастройки
 					os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
 					os.sysctl("net.inet.tcp.recvbuf_inc", 16384);
-					// Активируем нормальное нормальное TCP Reno
+					// Активируем нормальное TCP Reno
 					os.sysctl("net.inet.tcp.inflight.enable", 0);
 					// Активируем на хостах тестирования/измерений
 					os.sysctl("net.inet.tcp.hostcache.expire", 1);
@@ -4056,8 +4056,31 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 							struct ipv6_mreq mreq;
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
-							// Устанавливаем адрес сетевого интерфейса
-							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(mreq.ipv6mr_interface));
+							// Устанавливаем индекс интерфейса по умолчанию
+							mreq.ipv6mr_interface = 0;
+							// Получаем список сетевых интерфейсов
+							struct ifaddrs * ptr = nullptr;
+							// Выполняем получение списка сетевых интерфейсов
+							if(::getifaddrs(&ptr) == 0){
+								// Перебираем все сетевые интерфейсы
+								for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+									// Если не IPv6 адреса
+									if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
+										// Переходим к следующему интерфейсу
+										continue;
+									// Получаем указатель на структуру IPv6
+									struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+									// Если адреса совпадают
+									if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(in6_addr)) == 0){
+										// Получаем индекс интерфейса
+										mreq.ipv6mr_interface = ::if_nametoindex(ifa->ifa_name);
+										// Завершаем поиск
+										break;
+									}
+								}
+								// Освобождаем память списка сетевых интерфейсов
+								::freeifaddrs(ptr);
+							}
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -4114,8 +4137,31 @@ bool awh::Ethernet::membership(const net::socket_t sock, const net::socket_mode_
 							struct ipv6_mreq mreq;
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
-							// Устанавливаем адрес сетевого интерфейса
-							::memcpy(&mreq.ipv6mr_interface, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(mreq.ipv6mr_interface));
+							// Удаляем multicиндекс интерфейса по умолчанию
+							mreq.ipv6mr_interface = 0;
+							// Получаем список сетевых интерфейсов
+							struct ifaddrs * ptr = nullptr;
+							// Выполняем получение списка сетевых интерфейсов
+							if(::getifaddrs(&ptr) == 0){
+								// Перебираем все сетевые интерфейсы
+								for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+									// Если не IPv6 адреса
+									if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
+										// Переходим к следующему интерфейсу
+										continue;
+									// Получаем указатель на структуру IPv6
+									struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+									// Если адреса совпадают
+									if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(in6_addr)) == 0){
+										// Получаем индекс интерфейса
+										mreq.ipv6mr_interface = ::if_nametoindex(ifa->ifa_name);
+										// Завершаем поиск
+										break;
+									}
+								}
+								// Освобождаем память списка сетевых интерфейсов
+								::freeifaddrs(ptr);
+							}
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))))){
 								/**
