@@ -9622,11 +9622,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим информацию о DTLS соединении
 						std::cout << this->_tls->peerInfo(id) << std::endl;
 						// Выполняем повторную передачу данных TLS
-						if(this->_tls->retransmit(id))
-							// Выводим сообщение об успешной повторной передаче данных TLS
-							this->_log->print("Успешно выполнена повторная передача данных TLS: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, id);
-						// Выводим сообщение об ошибке повторной передачи данных TLS
-						else this->_log->print("Ошибка повторной передачи данных TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+						ASSERT_TRUE(this->_tls->retransmit(id));
 					} break;
 				}
 			});
@@ -12678,6 +12674,2178 @@ TEST_F(IoFixture, IoDTLSTest){
 						this->_log->print("Отправлено: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, message.size());
 					// Если данные не отправлены
 					else this->_log->print("Ошибка отправки: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+				}
+			}));
+			// Устанавливаем функцию обратного вызова на общее событие
+			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+				/**
+				 * Обрабатываем действие события
+				 */
+				switch(static_cast <uint8_t> (action)){
+					// Если действие является чтением
+					case static_cast <uint8_t> (awh::event::action_t::READ):
+						// Выводим сообщение о чтении события
+						this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является записью
+					case static_cast <uint8_t> (awh::event::action_t::WRITE):
+						// Выводим сообщение о записи события
+						this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является подключением
+					case static_cast <uint8_t> (awh::event::action_t::CONNECT):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отключением
+					case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
+						// Выводим сообщение об отключении события
+						this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переподключением
+					case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является закрытием
+					case static_cast <uint8_t> (awh::event::action_t::CLOSE):
+						// Выводим сообщение о закрытии события
+						this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением
+					case static_cast <uint8_t> (awh::event::action_t::CHANGE):
+						// Выводим сообщение об изменении события
+						this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является удалением
+					case static_cast <uint8_t> (awh::event::action_t::DELETE):
+						// Выводим сообщение об удалении события
+						this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переименованием
+					case static_cast <uint8_t> (awh::event::action_t::RENAME):
+						// Выводим сообщение о переименовании события
+						this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением атрибутов
+					case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
+						// Выводим сообщение об изменении атрибутов события
+						this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отзывом доступа
+					case static_cast <uint8_t> (awh::event::action_t::REVOKE):
+						// Выводим сообщение об отзыве доступа события
+						this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением счётчика жёстких ссылок
+					case static_cast <uint8_t> (awh::event::action_t::HDLINK):
+						// Выводим сообщение о изменении счётчика жёстких ссылок события
+						this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем таймаут события на чтение
+			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			// Устанавливаем таймаут события на запись
+			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			// Устанавливаем таймаут события на подключение
+			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			// Выполняем фиксацию настроек события клиента
+			ASSERT_TRUE(this->_io->commit(events[0]));
+			// Выполняем подключение к серверу
+			ASSERT_TRUE(this->_io->connect(events[0], true));
+			// Запускаем событие клиента
+			ASSERT_TRUE(this->_io->launch(events[0]));
+		}
+		/**
+		 * Запускаем опрос событий
+		 */
+		while(!stop && this->_io->poll());
+		// Уничтожаем все события после получения ответа
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Тест проверки работы протокола SCTP SEQPACKET DTLS
+	 *
+	 */
+	TEST_F(IoFixture, IoSCTPSeqPacketDTLSTest){
+		// Флаг остановки теста
+		bool stop = false;
+		// Выполняем генерацию порта
+		const uint16_t port = ::port();
+		// Добавляем новое событие клиента и сервера SCTP SEQPACKET
+		const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::SEQPACKET, awh::event::protocol_t::SCTP));
+		/**
+		 * Проверяем, что оба идентификатора события созданы успешно
+		 */
+		for(uint8_t i = 0; i < 2; i++){
+			// Проверяем, что идентификатор события больше нуля
+			ASSERT_GT(events[i], 0);
+			// Устанавливаем порт события
+			ASSERT_TRUE(this->_io->port(events[i], port));
+			// Проверяем что порт получен
+			ASSERT_EQ(port, this->_io->port(events[i]));
+		}
+		// Инициализируем асинхронный движок ввода-вывода
+		ASSERT_TRUE(this->_io->initialize());
+		/**
+		 * Серверное событие
+		 */
+		{
+			// Устанавливаем опции событий
+			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			// Регистрируем объект транспортного уровня безопасности
+			awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::SCTP);
+			// Проверяем, что идентификатор транспортного уровня больше нуля
+			ASSERT_GT(cts, 0);
+			// Устанавливаем ALPN протоколы TLS
+			this->_tls->alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+			// Устанавливаем файл центра сертификации DTLS
+			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
+			// Включаем проверку имени хоста DTLS
+			this->_tls->validateHostname(cts, false);
+			// Устанавливаем клиентский сертификат DTLS
+			this->_tls->certificate(cts, "../sh/certificates/server/cert.pem");
+			// Устанавливаем приватный ключ DTLS
+			this->_tls->privateKey(cts, "../sh/certificates/server/key.pem");
+			// Регистрируем функцию обратного вызова на получение ошибок DTLS
+			this->_tls->on(cts, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
+				/**
+				 * Обрабатываем входящие ошибки DTLS
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если получено предупреждение DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
+					break;
+					// Если получена критическая ошибка DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
+					break;
+				}
+			});
+			// Выполняем подписку на SCTP события
+			this->_sctp->eventsSubscribe(events[1], {
+				awh::net::sctp::event_type_t::ASSOC_CHANGE,
+				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+				awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+				awh::net::sctp::event_type_t::REMOTE_ERROR
+			});
+			// Устанавливаем адрес сервера назначения
+			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			// Устанавливаем функцию обратного вызова на событие таймера
+			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (status)){
+					// Если статус принятия
+					case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
+						// Выводим сообщение о принятии события
+						this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус уничтожения
+					case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
+						// Выводим сообщение об уничтожении события
+						this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус инициализации
+					case static_cast <uint8_t> (awh::event::status_t::INITIAL):
+						// Выводим сообщение об инициализации события
+						this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус запуска события
+					case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
+						// Выводим сообщение о запуске события
+						this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус паузы события
+					case static_cast <uint8_t> (awh::event::status_t::PAUSED):
+						// Выводим сообщение о паузе события
+						this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус возобновления события
+					case static_cast <uint8_t> (awh::event::status_t::RESUMED):
+						// Выводим сообщение о возобновлении события
+						this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус успешного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
+						// Выводим сообщение о успешном выполнении события
+						this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус неудачного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::FAILURE):
+						// Выводим сообщение о неудачном выполнении события
+						this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					break;
+					// Если статус выполнения события в ожидании
+					case static_cast <uint8_t> (awh::event::status_t::PENDING):
+						// Выводим сообщение о выполнении события в ожидании
+						this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус подключения события
+					case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус отмены события
+					case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
+						// Выводим сообщение об отмене события
+						this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус переподключения события
+					case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус прослушивания события
+					case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+						// Выводим сообщение о прослушивании события
+						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на ошибку события
+			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если ошибка неизвестного события
+					case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
+						// Выводим сообщение об ошибке неизвестного события
+						this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недопустимой операции
+					case static_cast <uint8_t> (awh::event::error_t::INVALID):
+						// Выводим сообщение об ошибке недопустимой операции
+						this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа запрещёния
+					case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
+						// Выводим сообщение об ошибке доступа запрещёния
+						this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка уже существующего объекта
+					case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
+						// Выводим сообщение об ошибке уже существующего объекта
+						this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа к сокету
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_SOCKET):
+						// Выводим сообщение об ошибке доступа к сокету
+						this->_log->print("Ошибка доступа к сокету события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка некорректного адреса
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
+						// Выводим сообщение об ошибке некорректного адреса
+						this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка ошибки подключения
+					case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
+						// Выводим сообщение об ошибке подключения
+						this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недостаточно ресурсов
+					case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
+						// Выводим сообщение об ошибке недостаточно ресурсов
+						this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка события
+					case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если объект не найден
+					case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на принятие события
+			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+				// Получаем информацию о сообщении SCTP-сокета
+				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
+				// Выводим информацию о сообщении SCTP-сокета
+				cout << " SCTP Message Info1: " << endl;
+				cout << "  - Stream Number: " << minfo.num << endl;
+				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
+				cout << "  - Context: " << minfo.ctx << endl;
+				cout << "  - Time to Live: " << minfo.ttl << endl;
+				cout << "  - Flags: " << minfo.flags.size() << endl;
+				// Получаем статус SCTP-сокета
+				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
+				// Выводим статус SCTP-сокета
+				cout << " SCTP Status: " << endl;
+				cout << "  - ID: " << status.id << endl;
+				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
+				cout << "  - Outbound Streams: " << status.ostreams << endl;
+				cout << "  - Inbound Streams: " << status.istreams << endl;
+				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
+				cout << "  - Rate Window: " << status.ratewind << endl;
+				cout << "  - Unpack Data: " << status.unackdata << endl;
+				cout << "  - Pending Data: " << status.penddata << endl;
+				// Выводим сообщение о принятии события
+				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
+				// Создаём идентификатор транспортного уровня DTLS
+				awh::tls_t::id_t ctl = this->_tls->transport(cts);
+				// Проверяем, что идентификатор транспортного уровня больше нуля
+				ASSERT_GT(ctl, 0);
+				// Устанавливаем клиента DTLS для события
+				this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+				// Регистрируем функцию обратного вызова на получение ошибок DTLS
+				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
+					/**
+					 * Обрабатываем входящие ошибки DTLS
+					 */
+					switch(static_cast <uint8_t> (error)){
+						// Если получено предупреждение DTLS
+						case static_cast <uint8_t> (std::tls_t::error_t::WARNING):
+							// Выводим сообщение о предупреждающей ошибке DTLS
+							this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
+						break;
+						// Если получена критическая ошибка DTLS
+						case static_cast <uint8_t> (std::tls_t::error_t::CRITICAL):
+							// Выводим сообщение о предупреждающей ошибке DTLS
+							this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
+						break;
+					}
+				});
+				// Регистрируем функцию обратного вызова на запись данных DTLS
+				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
+					/**
+					 * Обрабатываем тип события DTLS
+					 */
+					switch(static_cast <uint8_t> (event)){
+						// Если событие шифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION):
+							// Выводим сообщение о записи зашифрованных данных DTLS
+							this->_log->print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+						break;
+						// Если событие дешифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION):
+							// Выводим сообщение о записи дешифрованных данных DTLS
+							this->_log->print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+						break;
+					}
+				});
+				// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
+				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
+					/**
+					 * Обрабатываем входящие состояния DTLS
+					 */
+					switch(static_cast <uint8_t> (state)){
+						// Если состояние ошибки транспортного уровня
+						case static_cast <uint8_t> (awh::tls_t::state_t::FAILED):
+							// Выводим сообщение об ошибке транспортного уровня TLS
+							this->_log->print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+						break;
+						// Если состояние уничтожения объекта транспортного уровня
+						case static_cast <uint8_t> (awh::tls_t::state_t::DESTROYED):
+							// Выводим сообщение об успешном удалении контекста TLS
+							this->_log->print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, id);
+						break;
+						// Если состояние рукопожатия успешно завершено
+						case static_cast <uint8_t> (awh::tls_t::state_t::HANDSHAKED): {
+							// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+							std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
+							std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate: " << this->_tls->certificateInfo(id) << std::endl << std::endl;
+							std::cout << "CRL Info: " << this->_tls->certificateRevocationListInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate Validation: " << (this->_tls->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+							// Выводим данные сертификата DTLS
+							std::cout << "Certificate data:\n" << this->_tls->certificateExtract(id) << std::endl << std::endl;
+							// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+							this->_log->print("Рукопожатие DTLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log_t::flag_t::INFO, id, this->_tls->alpn(id));
+							// Выводим информацию о DTLS соединении
+							std::cout << this->_tls->peerInfo(id) << std::endl;
+							// Выполняем повторную передачу данных TLS
+							ASSERT_TRUE(this->_tls->retransmit(id));
+						} break;
+					}
+				});
+				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
+				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+					// Выводим информацию о сообщении SCTP-сокета
+					this->_log->print(
+						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
+						awh::log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
+					);
+				}));
+				// Устанавливаем функцию обратного вызова на создание события
+				this->_sctp->on(cid, [this](const awh::event::id_t eid, awh::net::sctp_event_t event) noexcept -> void {
+					// Выводим сообщение с идентификатором событий SCTP
+					std::cout << " SCTP EVENT ID: " << event->id << std::endl;
+					/**
+					 * Определяем тип события SCTP
+					 */
+					switch(static_cast <uint8_t> (event->type)){
+						// Если требуется уведомление о каждом входящем DATA-пакете
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::DATA_IO):
+							// Выводим сообщение о событии DATA IO
+							std::cout << "  - DATA IO EVENT " << std::endl;
+						break;
+						// Если ошибка удалённого узла
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::REMOTE_ERROR):
+							// Выводим сообщение о событии REMOTE ERROR
+							std::cout << "  - REMOTE ERROR EVENT " << std::endl;
+						break;
+						// Если изменение ассоциации
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::ASSOC_CHANGE):
+							// Выводим сообщение о событии ASSOC CHANGE
+							std::cout << "  - ASSOC CHANGE EVENT " << std::endl;
+						break;
+						// Если событие завершения работы
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::SHUTDOWN_EVENT):
+							// Выводим сообщение о событии SHUTDOWN EVENT
+							std::cout << "  - SHUTDOWN EVENT " << std::endl;
+						break;
+						// Если событие "отправитель сухой"
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::SENDER_DRY_EVENT):
+							// Выводим сообщение о событии SENDER DRY EVENT
+							std::cout << "  - SENDER DRY EVENT " << std::endl;
+						break;
+						// Если изменение адреса однорангового узла
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::PEER_ADDR_CHANGE):
+							// Выводим сообщение о событии PEER ADDR CHANGE
+							std::cout << "  - PEER ADDR CHANGE EVENT " << std::endl;
+						break;
+						// Если событие ошибки отправки
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::SEND_FAILED_EVENT):
+							// Выводим сообщение о событии SEND FAILED EVENT
+							std::cout << "  - SEND FAILED EVENT " << std::endl;
+						break;
+						// Если событие сброса потока
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::STREAM_RESET_EVENT):
+							// Выводим сообщение о событии STREAM RESET EVENT
+							std::cout << "  - STREAM RESET EVENT " << std::endl;
+						break;
+						// Если событие аутентификации
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::AUTHENTICATION_EVENT):
+							// Выводим сообщение о событии AUTHENTICATION EVENT
+							std::cout << "  - AUTHENTICATION EVENT " << std::endl;
+						break;
+						// Если событие адаптационное указание
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::ADAPTATION_INDICATION):
+							// Выводим сообщение о событии ADAPTATION INDICATION
+							std::cout << "  - ADAPTATION INDICATION EVENT " << std::endl;
+						break;
+						// Если событие частичной доставки
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+							// Выводим сообщение о событии PARTIAL DELIVERY EVENT
+							std::cout << "  - PARTIAL DELIVERY EVENT " << std::endl;
+						break;
+					}
+				});
+				// Устананавливаем опции события
+				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				// Регистрируем функцию обратного вызова на чтение данных DTLS
+				this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+					/**
+					 * Обрабатываем тип события DTLS
+					 */
+					switch(static_cast <uint8_t> (event)){
+						// Если событие шифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION): {
+							// Отправляем данные обратно клиенту
+							if(this->_io->send(cid, reinterpret_cast <const char *> (buffer), size))
+								// Если данные успешно отправлены
+								this->_log->print("Отправлено зашифрованных данных: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
+							// Если данные не отправлены
+							else this->_log->print("Ошибка отправки зашифрованных данных: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
+						} break;
+						// Если событие дешифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION): {
+							// Получаем ответ сервера в расшифрованном виде
+							const std::string response(reinterpret_cast <const char *> (buffer), size);
+							// Выводим сообщение полученных данных с сервера
+							this->_log->print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log_t::flag_t::INFO, id, size, response.c_str());
+							// Если данные успешно зашифрованы DTLS
+							if(this->_tls->encrypt(id, response.c_str(), response.size()))
+								// Выводим сообщение об успешном шифровании данных DTLS
+								this->_log->print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, id, response.size());
+							// Если данные не отправлены
+							else this->_log->print("Ошибка шифрования: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+						} break;
+					}
+				});
+				// Выводим сообщение об успешной установке опций события
+				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
+				// Устанавливаем функцию обратного вызова на запись в событие
+				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					// Выводим сообщение о переподключении события
+					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+				}));
+				// Устанавливаем функцию обратного вызова на чтение из события
+				this->_io->on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					// Если данные успешно дешифрованы DTLS
+					if(this->_tls->decrypt(ctl, data, size)){
+						// Выводим сообщение об успешном дешифровании данных DTLS
+						this->_log->print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, ctl, size);
+					// Если данные не отправлены
+					} else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					// Если рукопожатие DTLS успешно
+					if(this->_tls->handshake(ctl))
+						// Выводим сообщение о начале рукопожатия DTLS
+						this->_log->print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, ctl);
+					// Если рукопожатие DTLS не выполнено
+					else this->_log->print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
+				});
+				// Устанавливаем функцию обратного вызова на общее событие
+				this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (awh::event::action_t::READ):
+							// Выводим сообщение о чтении события
+							this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является записью
+						case static_cast <uint8_t> (awh::event::action_t::WRITE):
+							// Выводим сообщение о записи события
+							this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является подключением
+						case static_cast <uint8_t> (awh::event::action_t::CONNECT):
+							// Выводим сообщение о подключении события
+							this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является отключением
+						case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
+							// Выводим сообщение об отключении события
+							this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является переподключением
+						case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
+							// Выводим сообщение о переподключении события
+							this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является закрытием
+						case static_cast <uint8_t> (awh::event::action_t::CLOSE):
+							// Выводим сообщение о закрытии события
+							this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением
+						case static_cast <uint8_t> (awh::event::action_t::CHANGE):
+							// Выводим сообщение об изменении события
+							this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (awh::event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является переименованием
+						case static_cast <uint8_t> (awh::event::action_t::RENAME):
+							// Выводим сообщение о переименовании события
+							this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением атрибутов
+						case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
+							// Выводим сообщение об изменении атрибутов события
+							this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является отзывом доступа
+						case static_cast <uint8_t> (awh::event::action_t::REVOKE):
+							// Выводим сообщение об отзыве доступа события
+							this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением счётчика жёстких ссылок
+						case static_cast <uint8_t> (awh::event::action_t::HDLINK):
+							// Выводим сообщение о изменении счётчика жёстких ссылок события
+							this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+					}
+				});
+			}));
+			// Устанавливаем функцию обратного вызова на общее событие
+			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+				/**
+				 * Обрабатываем действие события
+				 */
+				switch(static_cast <uint8_t> (action)){
+					// Если действие является чтением
+					case static_cast <uint8_t> (awh::event::action_t::READ):
+						// Выводим сообщение о чтении события
+						this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является записью
+					case static_cast <uint8_t> (awh::event::action_t::WRITE):
+						// Выводим сообщение о записи события
+						this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является подключением
+					case static_cast <uint8_t> (awh::event::action_t::CONNECT):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отключением
+					case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
+						// Выводим сообщение об отключении события
+						this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переподключением
+					case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является закрытием
+					case static_cast <uint8_t> (awh::event::action_t::CLOSE):
+						// Выводим сообщение о закрытии события
+						this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением
+					case static_cast <uint8_t> (awh::event::action_t::CHANGE):
+						// Выводим сообщение об изменении события
+						this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является удалением
+					case static_cast <uint8_t> (awh::event::action_t::DELETE):
+						// Выводим сообщение об удалении события
+						this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переименованием
+					case static_cast <uint8_t> (awh::event::action_t::RENAME):
+						// Выводим сообщение о переименовании события
+						this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением атрибутов
+					case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
+						// Выводим сообщение об изменении атрибутов события
+						this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отзывом доступа
+					case static_cast <uint8_t> (awh::event::action_t::REVOKE):
+						// Выводим сообщение об отзыве доступа события
+						this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением счётчика жёстких ссылок
+					case static_cast <uint8_t> (awh::event::action_t::HDLINK):
+						// Выводим сообщение о изменении счётчика жёстких ссылок события
+						this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем таймаут события на чтение
+			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			// Устанавливаем таймаут события на запись
+			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			// Выполняем фиксацию настроек события сервера
+			ASSERT_TRUE(this->_io->commit(events[1]));
+			// Текст инициализационных сообщений SCTP
+			awh::net::sctp::initmsg_t initmsg;
+			// Устанавливаем количество попыток подключения SCTP
+			initmsg.attempts = 4;
+			// Устанавливаем количество исходящих потоков SCTP
+			initmsg.ostreams = 5;
+			// Устанавливаем количество входящих потоков SCTP
+			initmsg.istreams = 5;
+			// Инициализируем сообщения SCTP
+			this->_sctp->initMessages(events[1], initmsg);
+			// Выполняем прослушивание сервера
+			ASSERT_TRUE(this->_io->listen(events[1], 100));
+			// Запускаем событие сервера
+			ASSERT_TRUE(this->_io->launch(events[1]));
+		}
+		/**
+		 * Клиентское событие
+		 */
+		{
+			// Устанавливаем опции событий
+			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			// Выполняем подписку на SCTP события
+			this->_sctp->eventsSubscribe(events[0], {
+				awh::net::sctp::event_type_t::ASSOC_CHANGE,
+				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+				awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+				awh::net::sctp::event_type_t::REMOTE_ERROR
+			});
+			// Регистрируем объект транспортного уровня безопасности
+			awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::CLIENT, awh::event::protocol_t::SCTP);
+			// Проверяем, что идентификатор транспортного уровня больше нуля
+			ASSERT_GT(cts, 0);
+			// Устанавливаем ALPN протоколы TLS
+			this->_tls->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+			// Устанавливаем файл центра сертификации DTLS
+			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
+			// Включаем проверку имени хоста DTLS
+			this->_tls->validateHostname(cts, false);
+			// Устанавливаем имя хоста DTLS
+			this->_tls->hostname(cts, "server.anyks.com");
+			// Устанавливаем клиентский сертификат DTLS
+			this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
+			// Устанавливаем приватный ключ DTLS
+			this->_tls->privateKey(cts, "../sh/certificates/client/key.pem");
+			// Создаём идентификатор транспортного уровня DTLS
+			awh::tls_t::id_t ctl = this->_tls->transport(cts);
+			// Проверяем, что идентификатор транспортного уровня больше нуля
+			ASSERT_GT(ctl, 0);
+			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
+			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
+				/**
+				 * Обрабатываем входящие состояния DTLS
+				 */
+				switch(static_cast <uint8_t> (state)){
+					// Если состояние ошибки транспортного уровня
+					case static_cast <uint8_t> (awh::tls_t::state_t::FAILED):
+						// Выводим сообщение об ошибке транспортного уровня TLS
+						this->_log->print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+					break;
+					// Если состояние уничтожения объекта транспортного уровня
+					case static_cast <uint8_t> (awh::tls_t::state_t::DESTROYED):
+						// Выводим сообщение об успешном удалении контекста TLS
+						this->_log->print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, id);
+					break;
+					// Если состояние рукопожатия успешно завершено
+					case static_cast <uint8_t> (awh::tls_t::state_t::HANDSHAKED): {
+						// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+						std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
+						std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << this->_tls->certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << this->_tls->certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (this->_tls->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						// Выводим данные сертификата DTLS
+						std::cout << "Certificate data:\n" << this->_tls->certificateExtract(id) << std::endl << std::endl;
+						// Выводим информацию о DTLS соединении
+						std::cout << this->_tls->peerInfo(id) << std::endl;
+						// Текст запроса к серверу
+						const std::string request =
+							"GET / HTTP/1.1\r\n"
+							"Host: www.google.com\r\n"
+							"Connection: close\r\n"
+							"User-Agent: iouring-openssl-sample/1.0\r\n"
+							"\r\n";
+						// Если данные успешно зашифрованы DTLS
+						if(this->_tls->encrypt(id, request.c_str(), request.size()))
+							// Выводим сообщение об успешном шифровании данных DTLS
+							this->_log->print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, id, request.size());
+						// Если данные не отправлены
+						else this->_log->print("Ошибка шифрования: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+					} break;
+				}
+			});
+			// Регистрируем функцию обратного вызова на получение ошибок DTLS
+			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
+				/**
+				 * Обрабатываем входящие ошибки DTLS
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если получено предупреждение DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
+					break;
+					// Если получена критическая ошибка DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
+					break;
+				}
+			});
+			// Регистрируем функцию обратного вызова на запись данных DTLS
+			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
+				/**
+				 * Обрабатываем тип события DTLS
+				 */
+				switch(static_cast <uint8_t> (event)){
+					// Если событие шифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION):
+						// Выводим сообщение о записи зашифрованных данных DTLS
+						this->_log->print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+					break;
+					// Если событие дешифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION):
+						// Выводим сообщение о записи дешифрованных данных DTLS
+						this->_log->print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+					break;
+				}
+			});
+			// Регистрируем функцию обратного вызова на чтение данных DTLS
+			this->_tls->on(ctl, [&stop, eid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+				/**
+				 * Обрабатываем тип события DTLS
+				 */
+				switch(static_cast <uint8_t> (event)){
+					// Если событие шифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION): {
+						// Отправляем данные обратно клиенту
+						if(this->_io->send(eid, reinterpret_cast <const char *> (buffer), size))
+							// Если данные успешно отправлены
+							this->_log->print("Отправлено зашифрованных данных: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+						// Если данные не отправлены
+						else this->_log->print("Ошибка отправки зашифрованных данных: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					} break;
+					// Если событие дешифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION): {
+						// Получаем ответ сервера в расшифрованном виде
+						const std::string response(reinterpret_cast <const char *> (buffer), size);
+						// Выводим сообщение полученных данных с сервера
+						this->_log->print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log_t::flag_t::INFO, id, size, response.c_str());
+						// Останавливаем тест
+						stop = true;
+					} break;
+				}
+			});
+			// Устанавливаем IP-адрес события
+			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			// Устанавливаем адрес сервера назначения
+			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			// Устанавливаем функцию обратного вызова на возрождение события
+			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
+				// Выводим сообщение об возрождении события
+				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+				// Выполняем подписку на SCTP события
+				this->_sctp->eventsSubscribe(eid, {
+					awh::net::sctp::event_type_t::ASSOC_CHANGE,
+					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+					awh::net::sctp::event_type_t::REMOTE_ERROR
+				});
+			});
+			// Устанавливаем функцию обратного вызова на событие таймера
+			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (status)){
+					// Если статус принятия
+					case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
+						// Выводим сообщение о принятии события
+						this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус уничтожения
+					case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
+						// Выводим сообщение об уничтожении события
+						this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус инициализации
+					case static_cast <uint8_t> (awh::event::status_t::INITIAL):
+						// Выводим сообщение об инициализации события
+						this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус запуска события
+					case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
+						// Выводим сообщение о запуске события
+						this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус паузы события
+					case static_cast <uint8_t> (awh::event::status_t::PAUSED):
+						// Выводим сообщение о паузе события
+						this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус возобновления события
+					case static_cast <uint8_t> (awh::event::status_t::RESUMED):
+						// Выводим сообщение о возобновлении события
+						this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус успешного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
+						// Выводим сообщение о успешном выполнении события
+						this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус неудачного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::FAILURE):
+						// Выводим сообщение о неудачном выполнении события
+						this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					break;
+					// Если статус выполнения события в ожидании
+					case static_cast <uint8_t> (awh::event::status_t::PENDING):
+						// Выводим сообщение о выполнении события в ожидании
+						this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус подключения события
+					case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус отмены события
+					case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
+						// Выводим сообщение об отмене события
+						this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус переподключения события
+					case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус прослушивания события
+					case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+						// Выводим сообщение о прослушивании события
+						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на запись в событие
+			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				// Выводим сообщение о переподключении события
+				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+			}));
+			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
+			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				// Выводим информацию о сообщении SCTP-сокета
+				this->_log->print(
+					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
+					awh::log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
+				);
+			}));
+			// Устанавливаем функцию обратного вызова на создание события
+			this->_sctp->on(events[0], [this](const awh::event::id_t eid, awh::net::sctp_event_t event) noexcept -> void {
+				// Выводим сообщение с идентификатором событий SCTP
+				std::cout << " SCTP EVENT ID: " << event->id << std::endl;
+				/**
+				 * Определяем тип события SCTP
+				 */
+				switch(static_cast <uint8_t> (event->type)){
+					// Если требуется уведомление о каждом входящем DATA-пакете
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::DATA_IO):
+						// Выводим сообщение о событии DATA IO
+						std::cout << "  - DATA IO EVENT " << std::endl;
+					break;
+					// Если ошибка удалённого узла
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::REMOTE_ERROR):
+						// Выводим сообщение о событии REMOTE ERROR
+						std::cout << "  - REMOTE ERROR EVENT " << std::endl;
+					break;
+					// Если изменение ассоциации
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::ASSOC_CHANGE):
+						// Выводим сообщение о событии ASSOC CHANGE
+						std::cout << "  - ASSOC CHANGE EVENT " << std::endl;
+					break;
+					// Если событие завершения работы
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::SHUTDOWN_EVENT):
+						// Выводим сообщение о событии SHUTDOWN EVENT
+						std::cout << "  - SHUTDOWN EVENT " << std::endl;
+					break;
+					// Если событие "отправитель сухой"
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::SENDER_DRY_EVENT):
+						// Выводим сообщение о событии SENDER DRY EVENT
+						std::cout << "  - SENDER DRY EVENT " << std::endl;
+					break;
+					// Если изменение адреса однорангового узла
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::PEER_ADDR_CHANGE):
+						// Выводим сообщение о событии PEER ADDR CHANGE
+						std::cout << "  - PEER ADDR CHANGE EVENT " << std::endl;
+					break;
+					// Если событие ошибки отправки
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::SEND_FAILED_EVENT):
+						// Выводим сообщение о событии SEND FAILED EVENT
+						std::cout << "  - SEND FAILED EVENT " << std::endl;
+					break;
+					// Если событие сброса потока
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::STREAM_RESET_EVENT):
+						// Выводим сообщение о событии STREAM RESET EVENT
+						std::cout << "  - STREAM RESET EVENT " << std::endl;
+					break;
+					// Если событие аутентификации
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::AUTHENTICATION_EVENT):
+						// Выводим сообщение о событии AUTHENTICATION EVENT
+						std::cout << "  - AUTHENTICATION EVENT " << std::endl;
+					break;
+					// Если событие адаптационное указание
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::ADAPTATION_INDICATION):
+						// Выводим сообщение о событии ADAPTATION INDICATION
+						std::cout << "  - ADAPTATION INDICATION EVENT " << std::endl;
+					break;
+					// Если событие частичной доставки
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+						// Выводим сообщение о событии PARTIAL DELIVERY EVENT
+						std::cout << "  - PARTIAL DELIVERY EVENT " << std::endl;
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Получаем информацию о сообщении SCTP-сокета
+				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
+				// Выводим информацию о сообщении SCTP-сокета
+				cout << " SCTP Message Info2: " << endl;
+				cout << "  - Stream Number: " << minfo.num << endl;
+				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
+				cout << "  - Context: " << minfo.ctx << endl;
+				cout << "  - Time to Live: " << minfo.ttl << endl;
+				cout << "  - Flags: " << minfo.flags.size() << endl;
+				// Получаем статус SCTP-сокета
+				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
+				// Выводим статус SCTP-сокета
+				cout << " SCTP Status: " << endl;
+				cout << "  - ID: " << status.id << endl;
+				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
+				cout << "  - Outbound Streams: " << status.ostreams << endl;
+				cout << "  - Inbound Streams: " << status.istreams << endl;
+				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
+				cout << "  - Rate Window: " << status.ratewind << endl;
+				cout << "  - Unpack Data: " << status.unackdata << endl;
+				cout << "  - Pending Data: " << status.penddata << endl;
+				// Если данные успешно дешифрованы DTLS
+				if(this->_tls->decrypt(ctl, data, size))
+					// Выводим сообщение об успешном дешифровании данных DTLS
+					this->_log->print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, ctl, size);
+				// Если данные не отправлены
+				else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+			});
+			// Устанавливаем функцию обратного вызова на ошибку события
+			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если ошибка неизвестного события
+					case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
+						// Выводим сообщение об ошибке неизвестного события
+						this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недопустимой операции
+					case static_cast <uint8_t> (awh::event::error_t::INVALID):
+						// Выводим сообщение об ошибке недопустимой операции
+						this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа запрещёния
+					case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
+						// Выводим сообщение об ошибке доступа запрещёния
+						this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка уже существующего объекта
+					case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
+						// Выводим сообщение об ошибке уже существующего объекта
+						this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа к сокету
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_SOCKET):
+						// Выводим сообщение об ошибке доступа к сокету
+						this->_log->print("Ошибка доступа к сокету события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка некорректного адреса
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
+						// Выводим сообщение об ошибке некорректного адреса
+						this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка ошибки подключения
+					case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
+						// Выводим сообщение об ошибке подключения
+						this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недостаточно ресурсов
+					case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
+						// Выводим сообщение об ошибке недостаточно ресурсов
+						this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка события
+					case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если объект не найден
+					case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
+			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+				// Выводим сообщение о принятии события
+				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
+				// Если подключение успешно
+				if(ok){
+					// Если рукопожатие DTLS успешно
+					if(this->_tls->handshake(ctl))
+						// Выводим сообщение о начале рукопожатия DTLS
+						this->_log->print("Начинаем процесс рукопожатия: ID=%u", awh::log_t::flag_t::INFO, ctl);
+					// Если рукопожатие DTLS не выполнено
+					else this->_log->print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
+				}
+			}));
+			// Устанавливаем функцию обратного вызова на общее событие
+			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+				/**
+				 * Обрабатываем действие события
+				 */
+				switch(static_cast <uint8_t> (action)){
+					// Если действие является чтением
+					case static_cast <uint8_t> (awh::event::action_t::READ):
+						// Выводим сообщение о чтении события
+						this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является записью
+					case static_cast <uint8_t> (awh::event::action_t::WRITE):
+						// Выводим сообщение о записи события
+						this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является подключением
+					case static_cast <uint8_t> (awh::event::action_t::CONNECT):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отключением
+					case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
+						// Выводим сообщение об отключении события
+						this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переподключением
+					case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является закрытием
+					case static_cast <uint8_t> (awh::event::action_t::CLOSE):
+						// Выводим сообщение о закрытии события
+						this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением
+					case static_cast <uint8_t> (awh::event::action_t::CHANGE):
+						// Выводим сообщение об изменении события
+						this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является удалением
+					case static_cast <uint8_t> (awh::event::action_t::DELETE):
+						// Выводим сообщение об удалении события
+						this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переименованием
+					case static_cast <uint8_t> (awh::event::action_t::RENAME):
+						// Выводим сообщение о переименовании события
+						this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением атрибутов
+					case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
+						// Выводим сообщение об изменении атрибутов события
+						this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отзывом доступа
+					case static_cast <uint8_t> (awh::event::action_t::REVOKE):
+						// Выводим сообщение об отзыве доступа события
+						this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением счётчика жёстких ссылок
+					case static_cast <uint8_t> (awh::event::action_t::HDLINK):
+						// Выводим сообщение о изменении счётчика жёстких ссылок события
+						this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем таймаут события на чтение
+			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			// Устанавливаем таймаут события на запись
+			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			// Устанавливаем таймаут события на подключение
+			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			// Выполняем фиксацию настроек события клиента
+			ASSERT_TRUE(this->_io->commit(events[0]));
+			// Выполняем подключение к серверу
+			ASSERT_TRUE(this->_io->connect(events[0], true));
+			// Запускаем событие клиента
+			ASSERT_TRUE(this->_io->launch(events[0]));
+		}
+		/**
+		 * Запускаем опрос событий
+		 */
+		while(!stop && this->_io->poll());
+		// Уничтожаем все события после получения ответа
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Тест проверки работы протокола SCTP STREAM TLS
+	 *
+	 */
+	TEST_F(IoFixture, IoSCTPStreamTLSTest){
+		// Флаг остановки теста
+		bool stop = false;
+		// Выполняем генерацию порта
+		const uint16_t port = ::port();
+		// Добавляем новое событие клиента и сервера SCTP STREAM
+		const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP));
+		/**
+		 * Проверяем, что оба идентификатора события созданы успешно
+		 */
+		for(uint8_t i = 0; i < 2; i++){
+			// Проверяем, что идентификатор события больше нуля
+			ASSERT_GT(events[i], 0);
+			// Устанавливаем порт события
+			ASSERT_TRUE(this->_io->port(events[i], port));
+			// Проверяем что порт получен
+			ASSERT_EQ(port, this->_io->port(events[i]));
+		}
+		// Инициализируем асинхронный движок ввода-вывода
+		ASSERT_TRUE(this->_io->initialize());
+		/**
+		 * Серверное событие
+		 */
+		{
+			// Устанавливаем опции событий
+			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			// Регистрируем объект транспортного уровня безопасности
+			awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+			// Проверяем, что идентификатор транспортного уровня больше нуля
+			ASSERT_GT(cts, 0);
+			// Устанавливаем ALPN протоколы TLS
+			this->_tls->alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+			// Устанавливаем файл центра сертификации DTLS
+			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
+			// Включаем проверку имени хоста DTLS
+			this->_tls->validateHostname(cts, false);
+			// Устанавливаем клиентский сертификат DTLS
+			this->_tls->certificate(cts, "../sh/certificates/server/cert.pem");
+			// Устанавливаем приватный ключ DTLS
+			this->_tls->privateKey(cts, "../sh/certificates/server/key.pem");
+			// Регистрируем функцию обратного вызова на получение ошибок DTLS
+			this->_tls->on(cts, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
+				/**
+				 * Обрабатываем входящие ошибки DTLS
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если получено предупреждение DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
+					break;
+					// Если получена критическая ошибка DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
+					break;
+				}
+			});
+			// Выполняем подписку на SCTP события
+			this->_sctp->eventsSubscribe(events[1], {
+				awh::net::sctp::event_type_t::ASSOC_CHANGE,
+				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+				awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+				awh::net::sctp::event_type_t::REMOTE_ERROR
+			});
+			// Устанавливаем адрес сервера назначения
+			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			// Устанавливаем функцию обратного вызова на событие таймера
+			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (status)){
+					// Если статус принятия
+					case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
+						// Выводим сообщение о принятии события
+						this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус уничтожения
+					case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
+						// Выводим сообщение об уничтожении события
+						this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус инициализации
+					case static_cast <uint8_t> (awh::event::status_t::INITIAL):
+						// Выводим сообщение об инициализации события
+						this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус запуска события
+					case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
+						// Выводим сообщение о запуске события
+						this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус паузы события
+					case static_cast <uint8_t> (awh::event::status_t::PAUSED):
+						// Выводим сообщение о паузе события
+						this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус возобновления события
+					case static_cast <uint8_t> (awh::event::status_t::RESUMED):
+						// Выводим сообщение о возобновлении события
+						this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус успешного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
+						// Выводим сообщение о успешном выполнении события
+						this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус неудачного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::FAILURE):
+						// Выводим сообщение о неудачном выполнении события
+						this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					break;
+					// Если статус выполнения события в ожидании
+					case static_cast <uint8_t> (awh::event::status_t::PENDING):
+						// Выводим сообщение о выполнении события в ожидании
+						this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус подключения события
+					case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус отмены события
+					case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
+						// Выводим сообщение об отмене события
+						this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус переподключения события
+					case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус прослушивания события
+					case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+						// Выводим сообщение о прослушивании события
+						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на ошибку события
+			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если ошибка неизвестного события
+					case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
+						// Выводим сообщение об ошибке неизвестного события
+						this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недопустимой операции
+					case static_cast <uint8_t> (awh::event::error_t::INVALID):
+						// Выводим сообщение об ошибке недопустимой операции
+						this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа запрещёния
+					case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
+						// Выводим сообщение об ошибке доступа запрещёния
+						this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка уже существующего объекта
+					case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
+						// Выводим сообщение об ошибке уже существующего объекта
+						this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа к сокету
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_SOCKET):
+						// Выводим сообщение об ошибке доступа к сокету
+						this->_log->print("Ошибка доступа к сокету события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка некорректного адреса
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
+						// Выводим сообщение об ошибке некорректного адреса
+						this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка ошибки подключения
+					case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
+						// Выводим сообщение об ошибке подключения
+						this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недостаточно ресурсов
+					case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
+						// Выводим сообщение об ошибке недостаточно ресурсов
+						this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка события
+					case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если объект не найден
+					case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на принятие события
+			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+				// Получаем информацию о сообщении SCTP-сокета
+				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
+				// Выводим информацию о сообщении SCTP-сокета
+				cout << " SCTP Message Info1: " << endl;
+				cout << "  - Stream Number: " << minfo.num << endl;
+				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
+				cout << "  - Context: " << minfo.ctx << endl;
+				cout << "  - Time to Live: " << minfo.ttl << endl;
+				cout << "  - Flags: " << minfo.flags.size() << endl;
+				// Получаем статус SCTP-сокета
+				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
+				// Выводим статус SCTP-сокета
+				cout << " SCTP Status: " << endl;
+				cout << "  - ID: " << status.id << endl;
+				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
+				cout << "  - Outbound Streams: " << status.ostreams << endl;
+				cout << "  - Inbound Streams: " << status.istreams << endl;
+				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
+				cout << "  - Rate Window: " << status.ratewind << endl;
+				cout << "  - Unpack Data: " << status.unackdata << endl;
+				cout << "  - Pending Data: " << status.penddata << endl;
+				// Выводим сообщение о принятии события
+				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
+				// Создаём идентификатор транспортного уровня DTLS
+				awh::tls_t::id_t ctl = this->_tls->transport(cts);
+				// Проверяем, что идентификатор транспортного уровня больше нуля
+				ASSERT_GT(ctl, 0);
+				// Устанавливаем клиента DTLS для события
+				this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+				// Регистрируем функцию обратного вызова на получение ошибок DTLS
+				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
+					/**
+					 * Обрабатываем входящие ошибки DTLS
+					 */
+					switch(static_cast <uint8_t> (error)){
+						// Если получено предупреждение DTLS
+						case static_cast <uint8_t> (std::tls_t::error_t::WARNING):
+							// Выводим сообщение о предупреждающей ошибке DTLS
+							this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
+						break;
+						// Если получена критическая ошибка DTLS
+						case static_cast <uint8_t> (std::tls_t::error_t::CRITICAL):
+							// Выводим сообщение о предупреждающей ошибке DTLS
+							this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
+						break;
+					}
+				});
+				// Регистрируем функцию обратного вызова на запись данных DTLS
+				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
+					/**
+					 * Обрабатываем тип события DTLS
+					 */
+					switch(static_cast <uint8_t> (event)){
+						// Если событие шифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION):
+							// Выводим сообщение о записи зашифрованных данных DTLS
+							this->_log->print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+						break;
+						// Если событие дешифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION):
+							// Выводим сообщение о записи дешифрованных данных DTLS
+							this->_log->print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+						break;
+					}
+				});
+				// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
+				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
+					/**
+					 * Обрабатываем входящие состояния DTLS
+					 */
+					switch(static_cast <uint8_t> (state)){
+						// Если состояние ошибки транспортного уровня
+						case static_cast <uint8_t> (awh::tls_t::state_t::FAILED):
+							// Выводим сообщение об ошибке транспортного уровня TLS
+							this->_log->print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+						break;
+						// Если состояние уничтожения объекта транспортного уровня
+						case static_cast <uint8_t> (awh::tls_t::state_t::DESTROYED):
+							// Выводим сообщение об успешном удалении контекста TLS
+							this->_log->print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, id);
+						break;
+						// Если состояние рукопожатия успешно завершено
+						case static_cast <uint8_t> (awh::tls_t::state_t::HANDSHAKED): {
+							// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+							std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
+							std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate: " << this->_tls->certificateInfo(id) << std::endl << std::endl;
+							std::cout << "CRL Info: " << this->_tls->certificateRevocationListInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate Validation: " << (this->_tls->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+							// Выводим данные сертификата TLS
+							std::cout << "Certificate data:\n" << this->_tls->certificateExtract(id) << std::endl << std::endl;
+							// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+							this->_log->print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log_t::flag_t::INFO, id, this->_tls->alpn(id));
+						} break;
+					}
+				});
+				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
+				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+					// Выводим информацию о сообщении SCTP-сокета
+					this->_log->print(
+						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
+						awh::log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
+					);
+				}));
+				// Устанавливаем функцию обратного вызова на создание события
+				this->_sctp->on(cid, [this](const awh::event::id_t eid, awh::net::sctp_event_t event) noexcept -> void {
+					// Выводим сообщение с идентификатором событий SCTP
+					std::cout << " SCTP EVENT ID: " << event->id << std::endl;
+					/**
+					 * Определяем тип события SCTP
+					 */
+					switch(static_cast <uint8_t> (event->type)){
+						// Если требуется уведомление о каждом входящем DATA-пакете
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::DATA_IO):
+							// Выводим сообщение о событии DATA IO
+							std::cout << "  - DATA IO EVENT " << std::endl;
+						break;
+						// Если ошибка удалённого узла
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::REMOTE_ERROR):
+							// Выводим сообщение о событии REMOTE ERROR
+							std::cout << "  - REMOTE ERROR EVENT " << std::endl;
+						break;
+						// Если изменение ассоциации
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::ASSOC_CHANGE):
+							// Выводим сообщение о событии ASSOC CHANGE
+							std::cout << "  - ASSOC CHANGE EVENT " << std::endl;
+						break;
+						// Если событие завершения работы
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::SHUTDOWN_EVENT):
+							// Выводим сообщение о событии SHUTDOWN EVENT
+							std::cout << "  - SHUTDOWN EVENT " << std::endl;
+						break;
+						// Если событие "отправитель сухой"
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::SENDER_DRY_EVENT):
+							// Выводим сообщение о событии SENDER DRY EVENT
+							std::cout << "  - SENDER DRY EVENT " << std::endl;
+						break;
+						// Если изменение адреса однорангового узла
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::PEER_ADDR_CHANGE):
+							// Выводим сообщение о событии PEER ADDR CHANGE
+							std::cout << "  - PEER ADDR CHANGE EVENT " << std::endl;
+						break;
+						// Если событие ошибки отправки
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::SEND_FAILED_EVENT):
+							// Выводим сообщение о событии SEND FAILED EVENT
+							std::cout << "  - SEND FAILED EVENT " << std::endl;
+						break;
+						// Если событие сброса потока
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::STREAM_RESET_EVENT):
+							// Выводим сообщение о событии STREAM RESET EVENT
+							std::cout << "  - STREAM RESET EVENT " << std::endl;
+						break;
+						// Если событие аутентификации
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::AUTHENTICATION_EVENT):
+							// Выводим сообщение о событии AUTHENTICATION EVENT
+							std::cout << "  - AUTHENTICATION EVENT " << std::endl;
+						break;
+						// Если событие адаптационное указание
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::ADAPTATION_INDICATION):
+							// Выводим сообщение о событии ADAPTATION INDICATION
+							std::cout << "  - ADAPTATION INDICATION EVENT " << std::endl;
+						break;
+						// Если событие частичной доставки
+						case static_cast <uint8_t> (awh::net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+							// Выводим сообщение о событии PARTIAL DELIVERY EVENT
+							std::cout << "  - PARTIAL DELIVERY EVENT " << std::endl;
+						break;
+					}
+				});
+				// Устананавливаем опции события
+				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				// Регистрируем функцию обратного вызова на чтение данных DTLS
+				this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+					/**
+					 * Обрабатываем тип события DTLS
+					 */
+					switch(static_cast <uint8_t> (event)){
+						// Если событие шифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION): {
+							// Отправляем данные обратно клиенту
+							if(this->_io->send(cid, reinterpret_cast <const char *> (buffer), size))
+								// Если данные успешно отправлены
+								this->_log->print("Отправлено зашифрованных данных: ID=%u, %zu байт", awh::log_t::flag_t::INFO, cid, size);
+							// Если данные не отправлены
+							else this->_log->print("Ошибка отправки зашифрованных данных: ID=%u", awh::log_t::flag_t::CRITICAL, cid);
+						} break;
+						// Если событие дешифрования данных DTLS
+						case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION): {
+							// Получаем ответ сервера в расшифрованном виде
+							const std::string response(reinterpret_cast <const char *> (buffer), size);
+							// Выводим сообщение полученных данных с сервера
+							this->_log->print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log_t::flag_t::INFO, id, size, response.c_str());
+							// Если данные успешно зашифрованы DTLS
+							if(this->_tls->encrypt(id, response.c_str(), response.size()))
+								// Выводим сообщение об успешном шифровании данных DTLS
+								this->_log->print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, id, response.size());
+							// Если данные не отправлены
+							else this->_log->print("Ошибка шифрования: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+						} break;
+					}
+				});
+				// Выводим сообщение об успешной установке опций события
+				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
+				// Устанавливаем функцию обратного вызова на запись в событие
+				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					// Выводим сообщение о переподключении события
+					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+				}));
+				// Устанавливаем функцию обратного вызова на чтение из события
+				this->_io->on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					// Если данные успешно дешифрованы TLS
+					if(this->_tls->decrypt(ctl, data, size)){
+						// Выводим сообщение об успешном дешифровании данных TLS
+						this->_log->print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, ctl, size);
+					// Если данные не отправлены
+					} else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+				});
+				// Устанавливаем функцию обратного вызова на общее событие
+				this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					/**
+					 * Обрабатываем действие события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (awh::event::action_t::READ):
+							// Выводим сообщение о чтении события
+							this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является записью
+						case static_cast <uint8_t> (awh::event::action_t::WRITE):
+							// Выводим сообщение о записи события
+							this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является подключением
+						case static_cast <uint8_t> (awh::event::action_t::CONNECT):
+							// Выводим сообщение о подключении события
+							this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является отключением
+						case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
+							// Выводим сообщение об отключении события
+							this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является переподключением
+						case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
+							// Выводим сообщение о переподключении события
+							this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является закрытием
+						case static_cast <uint8_t> (awh::event::action_t::CLOSE):
+							// Выводим сообщение о закрытии события
+							this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением
+						case static_cast <uint8_t> (awh::event::action_t::CHANGE):
+							// Выводим сообщение об изменении события
+							this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является удалением
+						case static_cast <uint8_t> (awh::event::action_t::DELETE):
+							// Выводим сообщение об удалении события
+							this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является переименованием
+						case static_cast <uint8_t> (awh::event::action_t::RENAME):
+							// Выводим сообщение о переименовании события
+							this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением атрибутов
+						case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
+							// Выводим сообщение об изменении атрибутов события
+							this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является отзывом доступа
+						case static_cast <uint8_t> (awh::event::action_t::REVOKE):
+							// Выводим сообщение об отзыве доступа события
+							this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+						// Если действие является изменением счётчика жёстких ссылок
+						case static_cast <uint8_t> (awh::event::action_t::HDLINK):
+							// Выводим сообщение о изменении счётчика жёстких ссылок события
+							this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+						break;
+					}
+				});
+				// Если рукопожатие TLS успешно
+				if(this->_tls->handshake(ctl))
+					// Выводим сообщение о начале рукопожатия TLS
+					this->_log->print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, ctl);
+				// Если рукопожатие TLS не выполнено
+				else this->_log->print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
+			}));
+			// Устанавливаем функцию обратного вызова на общее событие
+			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+				/**
+				 * Обрабатываем действие события
+				 */
+				switch(static_cast <uint8_t> (action)){
+					// Если действие является чтением
+					case static_cast <uint8_t> (awh::event::action_t::READ):
+						// Выводим сообщение о чтении события
+						this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является записью
+					case static_cast <uint8_t> (awh::event::action_t::WRITE):
+						// Выводим сообщение о записи события
+						this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является подключением
+					case static_cast <uint8_t> (awh::event::action_t::CONNECT):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отключением
+					case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
+						// Выводим сообщение об отключении события
+						this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переподключением
+					case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является закрытием
+					case static_cast <uint8_t> (awh::event::action_t::CLOSE):
+						// Выводим сообщение о закрытии события
+						this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением
+					case static_cast <uint8_t> (awh::event::action_t::CHANGE):
+						// Выводим сообщение об изменении события
+						this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является удалением
+					case static_cast <uint8_t> (awh::event::action_t::DELETE):
+						// Выводим сообщение об удалении события
+						this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является переименованием
+					case static_cast <uint8_t> (awh::event::action_t::RENAME):
+						// Выводим сообщение о переименовании события
+						this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением атрибутов
+					case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
+						// Выводим сообщение об изменении атрибутов события
+						this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является отзывом доступа
+					case static_cast <uint8_t> (awh::event::action_t::REVOKE):
+						// Выводим сообщение об отзыве доступа события
+						this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если действие является изменением счётчика жёстких ссылок
+					case static_cast <uint8_t> (awh::event::action_t::HDLINK):
+						// Выводим сообщение о изменении счётчика жёстких ссылок события
+						this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем таймаут события на чтение
+			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			// Устанавливаем таймаут события на запись
+			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			// Выполняем фиксацию настроек события сервера
+			ASSERT_TRUE(this->_io->commit(events[1]));
+			// Выполняем прослушивание сервера
+			ASSERT_TRUE(this->_io->listen(events[1], 100));
+			// Запускаем событие сервера
+			ASSERT_TRUE(this->_io->launch(events[1]));
+		}
+		/**
+		 * Клиентское событие
+		 */
+		{
+			// Устанавливаем опции событий
+			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			// Выполняем подписку на SCTP события
+			this->_sctp->eventsSubscribe(events[0], {
+				awh::net::sctp::event_type_t::ASSOC_CHANGE,
+				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+				awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+				awh::net::sctp::event_type_t::REMOTE_ERROR
+			});
+			// Регистрируем объект транспортного уровня безопасности
+			awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
+			// Проверяем, что идентификатор транспортного уровня больше нуля
+			ASSERT_GT(cts, 0);
+			// Устанавливаем ALPN протоколы TLS
+			this->_tls->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+			// Устанавливаем файл центра сертификации DTLS
+			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
+			// Включаем проверку имени хоста DTLS
+			this->_tls->validateHostname(cts, false);
+			// Устанавливаем имя хоста DTLS
+			this->_tls->hostname(cts, "server.anyks.com");
+			// Устанавливаем клиентский сертификат TLS
+			this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
+			// Устанавливаем приватный ключ TLS
+			this->_tls->privateKey(cts, "../sh/certificates/client/key.pem");
+			// Создаём идентификатор транспортного уровня TLS
+			awh::tls_t::id_t ctl = this->_tls->transport(cts);
+			// Проверяем, что идентификатор транспортного уровня больше нуля
+			ASSERT_GT(ctl, 0);
+			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
+			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
+				/**
+				 * Обрабатываем входящие состояния TLS
+				 */
+				switch(static_cast <uint8_t> (state)){
+					// Если состояние ошибки транспортного уровня
+					case static_cast <uint8_t> (awh::tls_t::state_t::FAILED):
+						// Выводим сообщение об ошибке транспортного уровня TLS
+						this->_log->print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+					break;
+					// Если состояние уничтожения объекта транспортного уровня
+					case static_cast <uint8_t> (awh::tls_t::state_t::DESTROYED):
+						// Выводим сообщение об успешном удалении контекста TLS
+						this->_log->print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, id);
+					break;
+					// Если состояние рукопожатия успешно завершено
+					case static_cast <uint8_t> (awh::tls_t::state_t::HANDSHAKED): {
+						// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+						std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
+						std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << this->_tls->certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << this->_tls->certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (this->_tls->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						// Выводим данные сертификата DTLS
+						std::cout << "Certificate data:\n" << this->_tls->certificateExtract(id) << std::endl << std::endl;
+						// Выводим информацию о DTLS соединении
+						std::cout << this->_tls->peerInfo(id) << std::endl;
+						// Текст запроса к серверу
+						const std::string request =
+							"GET / HTTP/1.1\r\n"
+							"Host: www.google.com\r\n"
+							"Connection: close\r\n"
+							"User-Agent: iouring-openssl-sample/1.0\r\n"
+							"\r\n";
+						// Если данные успешно зашифрованы DTLS
+						if(this->_tls->encrypt(id, request.c_str(), request.size()))
+							// Выводим сообщение об успешном шифровании данных DTLS
+							this->_log->print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, id, request.size());
+						// Если данные не отправлены
+						else this->_log->print("Ошибка шифрования: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, id);
+					} break;
+				}
+			});
+			// Регистрируем функцию обратного вызова на получение ошибок DTLS
+			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
+				/**
+				 * Обрабатываем входящие ошибки DTLS
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если получено предупреждение DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
+					break;
+					// Если получена критическая ошибка DTLS
+					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
+						// Выводим сообщение о предупреждающей ошибке DTLS
+						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
+					break;
+				}
+			});
+			// Регистрируем функцию обратного вызова на запись данных DTLS
+			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
+				/**
+				 * Обрабатываем тип события DTLS
+				 */
+				switch(static_cast <uint8_t> (event)){
+					// Если событие шифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION):
+						// Выводим сообщение о записи зашифрованных данных DTLS
+						this->_log->print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+					break;
+					// Если событие дешифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION):
+						// Выводим сообщение о записи дешифрованных данных DTLS
+						this->_log->print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log_t::flag_t::INFO, id, size);
+					break;
+				}
+			});
+			// Регистрируем функцию обратного вызова на чтение данных DTLS
+			this->_tls->on(ctl, [&stop, eid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+				/**
+				 * Обрабатываем тип события DTLS
+				 */
+				switch(static_cast <uint8_t> (event)){
+					// Если событие шифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION): {
+						// Отправляем данные обратно клиенту
+						if(this->_io->send(eid, reinterpret_cast <const char *> (buffer), size))
+							// Если данные успешно отправлены
+							this->_log->print("Отправлено зашифрованных данных: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+						// Если данные не отправлены
+						else this->_log->print("Ошибка отправки зашифрованных данных: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					} break;
+					// Если событие дешифрования данных DTLS
+					case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION): {
+						// Получаем ответ сервера в расшифрованном виде
+						const std::string response(reinterpret_cast <const char *> (buffer), size);
+						// Выводим сообщение полученных данных с сервера
+						this->_log->print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log_t::flag_t::INFO, id, size, response.c_str());
+						// Останавливаем тест
+						stop = true;
+					} break;
+				}
+			});
+			// Устанавливаем IP-адрес события
+			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			// Устанавливаем адрес сервера назначения
+			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			// Устанавливаем функцию обратного вызова на возрождение события
+			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
+				// Выводим сообщение об возрождении события
+				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+				// Выполняем подписку на SCTP события
+				this->_sctp->eventsSubscribe(eid, {
+					awh::net::sctp::event_type_t::ASSOC_CHANGE,
+					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+					awh::net::sctp::event_type_t::REMOTE_ERROR
+				});
+			});
+			// Устанавливаем функцию обратного вызова на событие таймера
+			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (status)){
+					// Если статус принятия
+					case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
+						// Выводим сообщение о принятии события
+						this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус уничтожения
+					case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
+						// Выводим сообщение об уничтожении события
+						this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус инициализации
+					case static_cast <uint8_t> (awh::event::status_t::INITIAL):
+						// Выводим сообщение об инициализации события
+						this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус запуска события
+					case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
+						// Выводим сообщение о запуске события
+						this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус паузы события
+					case static_cast <uint8_t> (awh::event::status_t::PAUSED):
+						// Выводим сообщение о паузе события
+						this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус возобновления события
+					case static_cast <uint8_t> (awh::event::status_t::RESUMED):
+						// Выводим сообщение о возобновлении события
+						this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус успешного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
+						// Выводим сообщение о успешном выполнении события
+						this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус неудачного выполнения события
+					case static_cast <uint8_t> (awh::event::status_t::FAILURE):
+						// Выводим сообщение о неудачном выполнении события
+						this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+					break;
+					// Если статус выполнения события в ожидании
+					case static_cast <uint8_t> (awh::event::status_t::PENDING):
+						// Выводим сообщение о выполнении события в ожидании
+						this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус подключения события
+					case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
+						// Выводим сообщение о подключении события
+						this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус отмены события
+					case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
+						// Выводим сообщение об отмене события
+						this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус переподключения события
+					case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
+						// Выводим сообщение о переподключении события
+						this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+					// Если статус прослушивания события
+					case static_cast <uint8_t> (awh::event::status_t::LISTENING):
+						// Выводим сообщение о прослушивании события
+						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на запись в событие
+			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				// Выводим сообщение о переподключении события
+				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+			}));
+			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
+			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				// Выводим информацию о сообщении SCTP-сокета
+				this->_log->print(
+					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
+					awh::log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
+				);
+			}));
+			// Устанавливаем функцию обратного вызова на создание события
+			this->_sctp->on(events[0], [this](const awh::event::id_t eid, awh::net::sctp_event_t event) noexcept -> void {
+				// Выводим сообщение с идентификатором событий SCTP
+				std::cout << " SCTP EVENT ID: " << event->id << std::endl;
+				/**
+				 * Определяем тип события SCTP
+				 */
+				switch(static_cast <uint8_t> (event->type)){
+					// Если требуется уведомление о каждом входящем DATA-пакете
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::DATA_IO):
+						// Выводим сообщение о событии DATA IO
+						std::cout << "  - DATA IO EVENT " << std::endl;
+					break;
+					// Если ошибка удалённого узла
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::REMOTE_ERROR):
+						// Выводим сообщение о событии REMOTE ERROR
+						std::cout << "  - REMOTE ERROR EVENT " << std::endl;
+					break;
+					// Если изменение ассоциации
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::ASSOC_CHANGE):
+						// Выводим сообщение о событии ASSOC CHANGE
+						std::cout << "  - ASSOC CHANGE EVENT " << std::endl;
+					break;
+					// Если событие завершения работы
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::SHUTDOWN_EVENT):
+						// Выводим сообщение о событии SHUTDOWN EVENT
+						std::cout << "  - SHUTDOWN EVENT " << std::endl;
+					break;
+					// Если событие "отправитель сухой"
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::SENDER_DRY_EVENT):
+						// Выводим сообщение о событии SENDER DRY EVENT
+						std::cout << "  - SENDER DRY EVENT " << std::endl;
+					break;
+					// Если изменение адреса однорангового узла
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::PEER_ADDR_CHANGE):
+						// Выводим сообщение о событии PEER ADDR CHANGE
+						std::cout << "  - PEER ADDR CHANGE EVENT " << std::endl;
+					break;
+					// Если событие ошибки отправки
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::SEND_FAILED_EVENT):
+						// Выводим сообщение о событии SEND FAILED EVENT
+						std::cout << "  - SEND FAILED EVENT " << std::endl;
+					break;
+					// Если событие сброса потока
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::STREAM_RESET_EVENT):
+						// Выводим сообщение о событии STREAM RESET EVENT
+						std::cout << "  - STREAM RESET EVENT " << std::endl;
+					break;
+					// Если событие аутентификации
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::AUTHENTICATION_EVENT):
+						// Выводим сообщение о событии AUTHENTICATION EVENT
+						std::cout << "  - AUTHENTICATION EVENT " << std::endl;
+					break;
+					// Если событие адаптационное указание
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::ADAPTATION_INDICATION):
+						// Выводим сообщение о событии ADAPTATION INDICATION
+						std::cout << "  - ADAPTATION INDICATION EVENT " << std::endl;
+					break;
+					// Если событие частичной доставки
+					case static_cast <uint8_t> (awh::net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+						// Выводим сообщение о событии PARTIAL DELIVERY EVENT
+						std::cout << "  - PARTIAL DELIVERY EVENT " << std::endl;
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Получаем информацию о сообщении SCTP-сокета
+				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
+				// Выводим информацию о сообщении SCTP-сокета
+				cout << " SCTP Message Info2: " << endl;
+				cout << "  - Stream Number: " << minfo.num << endl;
+				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
+				cout << "  - Context: " << minfo.ctx << endl;
+				cout << "  - Time to Live: " << minfo.ttl << endl;
+				cout << "  - Flags: " << minfo.flags.size() << endl;
+				// Получаем статус SCTP-сокета
+				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
+				// Выводим статус SCTP-сокета
+				cout << " SCTP Status: " << endl;
+				cout << "  - ID: " << status.id << endl;
+				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
+				cout << "  - Outbound Streams: " << status.ostreams << endl;
+				cout << "  - Inbound Streams: " << status.istreams << endl;
+				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
+				cout << "  - Rate Window: " << status.ratewind << endl;
+				cout << "  - Unpack Data: " << status.unackdata << endl;
+				cout << "  - Pending Data: " << status.penddata << endl;
+				// Если данные успешно дешифрованы DTLS
+				if(this->_tls->decrypt(ctl, data, size))
+					// Выводим сообщение об успешном дешифровании данных DTLS
+					this->_log->print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, ctl, size);
+				// Если данные не отправлены
+				else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+			});
+			// Устанавливаем функцию обратного вызова на ошибку события
+			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+				/**
+				 * Обрабатываем статус события
+				 */
+				switch(static_cast <uint8_t> (error)){
+					// Если ошибка неизвестного события
+					case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
+						// Выводим сообщение об ошибке неизвестного события
+						this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недопустимой операции
+					case static_cast <uint8_t> (awh::event::error_t::INVALID):
+						// Выводим сообщение об ошибке недопустимой операции
+						this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа запрещёния
+					case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
+						// Выводим сообщение об ошибке доступа запрещёния
+						this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка уже существующего объекта
+					case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
+						// Выводим сообщение об ошибке уже существующего объекта
+						this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка доступа к сокету
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_SOCKET):
+						// Выводим сообщение об ошибке доступа к сокету
+						this->_log->print("Ошибка доступа к сокету события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка некорректного адреса
+					case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
+						// Выводим сообщение об ошибке некорректного адреса
+						this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка ошибки подключения
+					case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
+						// Выводим сообщение об ошибке подключения
+						this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка недостаточно ресурсов
+					case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
+						// Выводим сообщение об ошибке недостаточно ресурсов
+						this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если ошибка события
+					case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+					// Если объект не найден
+					case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
+						// Выводим сообщение об ошибке события
+						this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+					break;
+				}
+			});
+			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
+			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+				// Выводим сообщение о принятии события
+				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
+				// Если подключение успешно
+				if(ok){
+					// Если рукопожатие DTLS успешно
+					if(this->_tls->handshake(ctl))
+						// Выводим сообщение о начале рукопожатия DTLS
+						this->_log->print("Начинаем процесс рукопожатия: ID=%u", awh::log_t::flag_t::INFO, ctl);
+					// Если рукопожатие DTLS не выполнено
+					else this->_log->print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
 				}
 			}));
 			// Устанавливаем функцию обратного вызова на общее событие
