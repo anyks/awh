@@ -12080,6 +12080,8 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
 				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
+				// Извлекаем чанки аутентификации SCTP-сокета
+				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
 				ASSERT_TRUE(this->_sctp->authenticateChunks(cid, awh::event::origin_t::REMOTE, chunks));
 				// Перебираем все извлечённые чанки
@@ -12587,6 +12589,8 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
 				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
+				// Извлекаем чанки аутентификации SCTP-сокета
+				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
 				ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::REMOTE, chunks));
 				// Перебираем все извлечённые чанки
