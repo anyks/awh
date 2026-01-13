@@ -433,7 +433,7 @@ namespace io {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit CallbackSCTP() noexcept :
+			explicit CallbackStreamControlTransmissionProtocol() noexcept :
 			 info(nullptr), events(nullptr) {}
 		} sctp_callback_t;
 		/**
@@ -455,7 +455,7 @@ namespace io {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit EndpointSCTP() noexcept :
+			explicit EndpointStreamControlTransmissionProtocol() noexcept :
 			 id(0), flags(0), info{0} {}
 		} sctp_endpoint_t;
 	#endif
