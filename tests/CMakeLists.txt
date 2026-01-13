@@ -1,5 +1,4 @@
-# Принудительно указываем пути для FreeBSD
-set(GTEST_ROOT /usr/local)
+
 
 find_path(GTEST_INCLUDE_DIR gtest/gtest.h
     PATHS ${GTEST_ROOT}/include
@@ -29,6 +28,8 @@ endif()
 if(NOT GTEST_LIBRARY)
     message(FATAL_ERROR "GTest library not found in /usr/local/lib")
 endif()
+
+
 
 # Unit test settings
 find_package(GTest)

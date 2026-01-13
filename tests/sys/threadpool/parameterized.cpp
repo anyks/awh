@@ -60,7 +60,7 @@ TEST_P(ThreadPoolParameterizedFixture, ThreadPoolTest){
 		// Добавляем задачу в пул потоков
 		this->_thr->push([&count2, this](const uint32_t num) noexcept -> void {
 			// Выполняем блокировку уникальным мютексом
-			const awh::locker_t lock(this->_mtx);
+			const awh::locker_t <std::mutex> lock(this->_mtx);
 			// Увеличиваем второй счётчик
 			count2 += num;
 		}, item);
