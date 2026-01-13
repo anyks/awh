@@ -12594,7 +12594,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					// Выводим информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Выводим heartbeat timeout SCTP-сокета
-				ASSERT_EQ(3000, this->_sctp->timeout(eid, net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_EQ(3000, this->_sctp->timeout(eid, awh::net::sctp::timeout_t::HEARTBEAT));
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события
@@ -13005,12 +13005,12 @@ TEST_F(IoFixture, IoDTLSTest){
 					 */
 					switch(static_cast <uint8_t> (error)){
 						// Если получено предупреждение DTLS
-						case static_cast <uint8_t> (std::tls_t::error_t::WARNING):
+						case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
 							// Выводим сообщение о предупреждающей ошибке DTLS
 							this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
 						break;
 						// Если получена критическая ошибка DTLS
-						case static_cast <uint8_t> (std::tls_t::error_t::CRITICAL):
+						case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
 							// Выводим сообщение о предупреждающей ошибке DTLS
 							this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
 						break;
@@ -14098,12 +14098,12 @@ TEST_F(IoFixture, IoDTLSTest){
 					 */
 					switch(static_cast <uint8_t> (error)){
 						// Если получено предупреждение DTLS
-						case static_cast <uint8_t> (std::tls_t::error_t::WARNING):
+						case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
 							// Выводим сообщение о предупреждающей ошибке DTLS
 							this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
 						break;
 						// Если получена критическая ошибка DTLS
-						case static_cast <uint8_t> (std::tls_t::error_t::CRITICAL):
+						case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
 							// Выводим сообщение о предупреждающей ошибке DTLS
 							this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
 						break;
