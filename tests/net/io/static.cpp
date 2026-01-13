@@ -14065,7 +14065,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
