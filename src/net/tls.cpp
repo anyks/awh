@@ -308,10 +308,8 @@ namespace {
 	void Member::erase(members_t & members) noexcept {
 		// Выполняем блокировку потоков
 		const locker_t <> lock(::__awh_ssl_members_mtx__);
-		// Получаем идентификатор контекста TLS
-		const tls_t::id_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get()));
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
+		auto i = ::__awh_ssl_ids__.find(static_cast <tls_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())));
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end())
 			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
@@ -432,6 +430,20 @@ namespace {
 			::member_t * _member;
 		public:
 			/**
+			 * @brief Метод проверки статуса участника обмена как мусорного
+			 *
+			 * @return результат проверки
+			 */
+			bool isGarbage() const noexcept;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param member объект участника обмена защищёнными данными
+			 */
+			explicit GuardTransportLayerSecurity(::member_t * member) noexcept;
+		public:
+			/**
 			 * @brief Запрещаем копирование объекта
 			 *
 			 */
@@ -443,40 +455,46 @@ namespace {
 			GuardTransportLayerSecurity & operator = (const GuardTransportLayerSecurity &) = delete;
 		public:
 			/**
-			 * @brief Метод проверки статуса участника обмена как мусорного
-			 *
-			 * @return результат проверки
-			 */
-			bool isGarbage() const noexcept {
-				// Проверяем статус участника обмена
-				return (
-					(this->_member->state & ::state::GARBAGE_MODE) &&
-					(this->_member->refs.load(std::memory_order_acquire) == 1)
-				);
-			}
-		public:
-			/**
-			 * @brief Конструктор
-			 *
-			 * @param member объект участника обмена защищёнными данными
-			 */
-			explicit GuardTransportLayerSecurity(::member_t * member) noexcept : _member(member) {
-				// Увеличиваем счётчик ссылок участника обмена
-				this->_member->refs.fetch_add(1, std::memory_order_relaxed);
-			}
-			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~GuardTransportLayerSecurity() noexcept {
-				// Уменьшаем счётчик ссылок участника обмена
-				this->_member->refs.fetch_sub(1, std::memory_order_release);
-				// Если счётчик ссылок участника обмена равен нулю и статус участника обмена установлен как мусорный
-				if((this->_member->state & ::state::GARBAGE_MODE) && (this->_member->refs.load(std::memory_order_acquire) == 0))
-					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					this->_member->erase(::__awh_ssl_members__);
-			}
+			~GuardTransportLayerSecurity() noexcept;
 	};
+
+	/**
+	 * @brief Метод проверки статуса участника обмена как мусорного
+	 *
+	 * @return результат проверки
+	 */
+	bool GuardTransportLayerSecurity::isGarbage() const noexcept {
+		// Проверяем статус участника обмена
+		return (
+			(this->_member->state & ::state::GARBAGE_MODE) &&
+			(this->_member->refs.load(std::memory_order_acquire) == 1)
+		);
+	}
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param member объект участника обмена защищёнными данными
+	 */
+	GuardTransportLayerSecurity::GuardTransportLayerSecurity(::member_t * member) noexcept : _member(member) {
+		// Увеличиваем счётчик ссылок участника обмена
+		this->_member->refs.fetch_add(1, std::memory_order_relaxed);
+	}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	GuardTransportLayerSecurity::~GuardTransportLayerSecurity() noexcept {
+		// Уменьшаем счётчик ссылок участника обмена
+		this->_member->refs.fetch_sub(1, std::memory_order_release);
+		// Если счётчик ссылок участника обмена равен нулю и статус участника обмена установлен как мусорный
+		if((this->_member->state & ::state::GARBAGE_MODE) &&
+		   (this->_member->refs.load(std::memory_order_acquire) == 0))
+			// Удаляем контекст TLS из контейнера уровней защищённых сокетов
+			this->_member->erase(::__awh_ssl_members__);
+	}
 };
 
 /**
@@ -1410,7 +1428,7 @@ namespace cookie {
 			// Выполняем произвольно генерацию байт в буфере cookie
 			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
 				// Выполняем получение идентификатора контекста TLS
-				const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+				const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 				// Если функция обратного вызова состояния установлена
 				if(member->callback.state != nullptr)
 					// Вызываем функцию обратного вызова состояния
@@ -1452,7 +1470,7 @@ namespace cookie {
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
-			const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+			const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
@@ -1560,7 +1578,7 @@ namespace cookie {
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
-			const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+			const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
@@ -1783,7 +1801,7 @@ namespace verify {
 		// Если SNI не получен
 		} else {
 			// Выполняем получение идентификатора контекста TLS
-			const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+			const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
@@ -2032,7 +2050,7 @@ namespace verify {
 					// Если данные сертификата не получены
 					if(x509 == nullptr){
 						// Выполняем получение идентификатора контекста TLS
-						const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+						const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
@@ -2068,7 +2086,7 @@ namespace verify {
 						// Если имя эмитента не получено
 						if(name == nullptr){
 							// Выполняем получение идентификатора контекста TLS
-							const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+							const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -2157,7 +2175,7 @@ namespace verify {
 									default: ::snprintf(result, 4, "%s", "WTF");
 								}
 								// Выполняем получение идентификатора контекста TLS
-								const uint64_t id = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (member));
+								const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
 								// Получаем объект фреймворка
 								awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[4]));
 								// Если функция обратного вызова состояния установлена
@@ -4889,7 +4907,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
 						// Выполняем получение идентификатора контекста TLS
-						result = static_cast <uint64_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
+						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
 						member->ssl = ::SSL_new(cts->ctx);
 						// Если объект не создан
@@ -5074,7 +5092,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
 						// Выполняем получение идентификатора контекста TLS
-						result = static_cast <uint64_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
+						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
 						member->ssl = ::SSL_new(cts->ctx);
 						// Если объект не создан
@@ -5285,7 +5303,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::context(const eve
 		// Устанавливаем режим проверки сертификата
 		member->state |= state::CERTIFICATE_VERIFY;
 		// Выполняем получение идентификатора контекста TLS
-		result = static_cast <uint64_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
+		result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 		/**
 		 * Определяем узел события к которому относится контекст TLS
 		 */

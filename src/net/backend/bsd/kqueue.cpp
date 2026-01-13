@@ -805,6 +805,20 @@ namespace {
 			net::node_t * _node;
 		public:
 			/**
+			 * @brief Метод проверки статуса узла события как мусорного
+			 *
+			 * @return результат проверки
+			 */
+			bool isGarbage() const noexcept;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param node объект узла события
+			 */
+			explicit GuardTransportLayerNode(net::node_t * node) noexcept;
+		public:
+			/**
 			 * @brief Запрещаем копирование объекта
 			 *
 			 */
@@ -816,44 +830,49 @@ namespace {
 			GuardTransportLayerNode & operator = (const GuardTransportLayerNode &) = delete;
 		public:
 			/**
-			 * @brief Метод проверки статуса узла события как мусорного
-			 *
-			 * @return результат проверки
-			 */
-			bool isGarbage() const noexcept {
-				// Проверяем статус узла события
-				return (
-					(this->_node->refs.load(std::memory_order_acquire) == 1) &&
-					(this->_node->state.status.load(std::memory_order_acquire) == event::status_t::GARBAGE)
-				);
-			}
-		public:
-			/**
-			 * @brief Конструктор
-			 *
-			 * @param node объект узла события
-			 */
-			explicit GuardTransportLayerNode(net::node_t * node) noexcept : _node(node) {
-				// Увеличиваем счётчик ссылок узла
-				this->_node->refs.fetch_add(1, std::memory_order_relaxed);
-			}
-			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~GuardTransportLayerNode() noexcept {
-				// Уменьшаем счётчик ссылок узла
-				this->_node->refs.fetch_sub(1, std::memory_order_release);
-				// Если счётчик ссылок узла равен нулю и статус узла установлен как мусорный
-				if((this->_node->refs.load(std::memory_order_acquire) == 0) &&
-				   (this->_node->state.status.load(std::memory_order_acquire) == event::status_t::GARBAGE)){
-					// Выполняем блокировку потоков
-					const locker_t <> lock(::__awh_mtx__);
-					// Производим удаление узла
-					::__awh_nodes__.erase(this->_node->id);
-				}
-			}
+			~GuardTransportLayerNode() noexcept;
 	};
+
+	/**
+	 * @brief Метод проверки статуса узла события как мусорного
+	 *
+	 * @return результат проверки
+	 */
+	bool GuardTransportLayerNode::isGarbage() const noexcept {
+		// Проверяем статус узла события
+		return (
+			(this->_node->refs.load(std::memory_order_acquire) == 1) &&
+			(this->_node->state.status.load(std::memory_order_acquire) == event::status_t::GARBAGE)
+		);
+	}
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param node объект узла события
+	 */
+	GuardTransportLayerNode::GuardTransportLayerNode(net::node_t * node) noexcept : _node(node) {
+		// Увеличиваем счётчик ссылок узла
+		this->_node->refs.fetch_add(1, std::memory_order_relaxed);
+	}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	GuardTransportLayerNode::~GuardTransportLayerNode() noexcept {
+		// Уменьшаем счётчик ссылок узла
+		this->_node->refs.fetch_sub(1, std::memory_order_release);
+		// Если счётчик ссылок узла равен нулю и статус узла установлен как мусорный
+		if((this->_node->refs.load(std::memory_order_acquire) == 0) &&
+		   (this->_node->state.status.load(std::memory_order_acquire) == event::status_t::GARBAGE)){
+			// Выполняем блокировку потоков
+			const locker_t <> lock(::__awh_mtx__);
+			// Производим удаление узла
+			::__awh_nodes__.erase(this->_node->id);
+		}
+	}
 };
 
 /**
