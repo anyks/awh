@@ -1,3 +1,35 @@
+# Принудительно указываем пути для FreeBSD
+set(GTEST_ROOT /usr/local)
+
+find_path(GTEST_INCLUDE_DIR gtest/gtest.h
+    PATHS ${GTEST_ROOT}/include
+    NO_DEFAULT_PATH
+)
+
+find_library(GTEST_LIBRARY gtest
+    PATHS ${GTEST_ROOT}/lib
+    NO_DEFAULT_PATH
+)
+
+find_library(GTEST_MAIN_LIBRARY gtest_main
+    PATHS ${GTEST_ROOT}/lib
+    NO_DEFAULT_PATH
+)
+
+# Устанавливаем переменные, как будто find_package(GTest) сработал
+set(GTEST_FOUND TRUE)
+set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIR})
+set(GTEST_LIBRARIES ${GTEST_LIBRARY})
+set(GTEST_MAIN_LIBRARIES ${GTEST_MAIN_LIBRARY})
+
+# Проверка
+if(NOT GTEST_INCLUDE_DIR)
+    message(FATAL_ERROR "GTest headers not found in /usr/local/include")
+endif()
+if(NOT GTEST_LIBRARY)
+    message(FATAL_ERROR "GTest library not found in /usr/local/lib")
+endif()
+
 # Unit test settings
 find_package(GTest)
 
