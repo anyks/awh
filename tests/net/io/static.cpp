@@ -10409,24 +10409,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info1: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info1: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -10857,24 +10857,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info2: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info2: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события
@@ -11220,24 +11220,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info1: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info1: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -11678,24 +11678,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info2: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info2: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события
@@ -11919,7 +11919,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Перебираем все извлечённые чанки
 			for(auto & chunk : chunks)
 				// Выводим информацию о чанках аутентификации SCTP-сокета
-				cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
+				std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 			// Устанавливаем таймаут heartbeat SCTP-сокета
 			ASSERT_TRUE(this->_sctp->timeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 			// Выводим heartbeat timeout SCTP-сокета
@@ -12062,30 +12062,30 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info1: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info1: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
 				ASSERT_TRUE(this->_sctp->authenticateChunks(cid, awh::event::origin_t::REMOTE, chunks));
 				// Перебираем все извлечённые чанки
 				for(auto & chunk : chunks)
 					// Выводим информацию о чанках аутентификации SCTP-сокета
-					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
+					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
 				ASSERT_TRUE(this->_sctp->timeout(cid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Выводим heartbeat timeout SCTP-сокета
@@ -12375,7 +12375,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Перебираем все извлечённые чанки
 			for(auto & chunk : chunks)
 				// Выводим информацию о чанках аутентификации SCTP-сокета
-				cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
+				std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 			// Устанавливаем таймаут heartbeat SCTP-сокета
 			ASSERT_TRUE(this->_sctp->timeout(events[0], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 			// Устанавливаем IP-адрес события
@@ -12409,7 +12409,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Перебираем все извлечённые чанки
 				for(auto & chunk : chunks)
 					// Выводим информацию о чанках аутентификации SCTP-сокета
-					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
+					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
 				ASSERT_TRUE(this->_sctp->timeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 			});
@@ -12569,30 +12569,30 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info2: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info2: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
 				ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::REMOTE, chunks));
 				// Перебираем все извлечённые чанки
 				for(auto & chunk : chunks)
 					// Выводим информацию о чанках аутентификации SCTP-сокета
-					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
+					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Выводим heartbeat timeout SCTP-сокета
 				ASSERT_EQ(3000, this->_sctp->timeout(eid, net::sctp::timeout_t::HEARTBEAT));
 				// Текст входящего сообщения
@@ -12972,24 +12972,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info1: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info1: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Создаём идентификатор транспортного уровня DTLS
@@ -13672,24 +13672,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info2: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info2: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Если данные успешно дешифрованы DTLS
 				if(this->_tls->decrypt(ctl, data, size))
 					// Выводим сообщение об успешном дешифровании данных DTLS
@@ -14065,24 +14065,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info1: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info1: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(cid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Создаём идентификатор транспортного уровня DTLS
@@ -14751,24 +14751,24 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid);
 				// Выводим информацию о сообщении SCTP-сокета
-				cout << " SCTP Message Info2: " << endl;
-				cout << "  - Stream Number: " << minfo.num << endl;
-				cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << endl;
-				cout << "  - Context: " << minfo.ctx << endl;
-				cout << "  - Time to Live: " << minfo.ttl << endl;
-				cout << "  - Flags: " << minfo.flags.size() << endl;
+				std::cout << " SCTP Message Info2: " << std::endl;
+				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Получаем статус SCTP-сокета
 				const awh::net::sctp::status_t & status = this->_sctp->status(eid);
 				// Выводим статус SCTP-сокета
-				cout << " SCTP Status: " << endl;
-				cout << "  - ID: " << status.id << endl;
-				cout << "  - State: " << static_cast <u_short> (status.state) << endl;
-				cout << "  - Outbound Streams: " << status.ostreams << endl;
-				cout << "  - Inbound Streams: " << status.istreams << endl;
-				cout << "  - Fragmentation Point: " << status.fragpoint << endl;
-				cout << "  - Rate Window: " << status.ratewind << endl;
-				cout << "  - Unpack Data: " << status.unackdata << endl;
-				cout << "  - Pending Data: " << status.penddata << endl;
+				std::cout << " SCTP Status: " << std::endl;
+				std::cout << "  - ID: " << status.id << std::endl;
+				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Если данные успешно дешифрованы DTLS
 				if(this->_tls->decrypt(ctl, data, size))
 					// Выводим сообщение об успешном дешифровании данных DTLS
