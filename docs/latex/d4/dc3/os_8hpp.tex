@@ -1,0 +1,76 @@
+\doxysection{include/\+sys/\+os.hpp File Reference}
+\hypertarget{os_8hpp}{}\label{os_8hpp}\index{include/sys/os.hpp@{include/sys/os.hpp}}
+{\ttfamily \+\#include $<$vector$>$}\newline
+{\ttfamily \+\#include $<$string$>$}\newline
+{\ttfamily \+\#include $<$cstdint$>$}\newline
+{\ttfamily \+\#include $<$unistd.\+h$>$}\newline
+{\ttfamily \+\#include $<$codecvt$>$}\newline
+{\ttfamily \+\#include $<$sys/\+types.\+h$>$}\newline
+{\ttfamily \+\#include "{}log.\+hpp"{}}\newline
+{\ttfamily \+\#include "{}global.\+hpp"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \doxymbox{\hyperlink{classawh_1_1_o_s}{awh::\+\+OS}}
+\begin{DoxyCompactList}\small\item\em Класс работы с операционной системой \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \doxymbox{\hyperlink{namespaceawh}{awh}}
+\begin{DoxyCompactList}\small\item\em основное пространство имён \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\+\#define \doxymbox{\hyperlink{os_8hpp_a09ecca53f2cd1b8d1c566bedb245e141}{UNICODE}}
+\item 
+\+\#define \doxymbox{\hyperlink{os_8hpp_ae4cd73dba711f1713558978c1d46bb11}{AWH\+\_\+\+ERROR}}()
+\item 
+\+\#define \doxymbox{\hyperlink{os_8hpp_ae57f5e8776f9cb1883ae45a03d5b0b10}{AWH\+\_\+\+FS\+\_\+\+SEPARATOR}}~"{}/\+"{}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{namespaceawh_a50419712bd910adcfac4b883a16f33d3}\label{namespaceawh_a50419712bd910adcfac4b883a16f33d3} 
+typedef class \doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\+\_\+\+SHARED\+\_\+\+EXPORT}} \doxymbox{\hyperlink{classawh_1_1_o_s}{awh::\+\+OS}} {\bfseries awh::\+os\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Класс работы с операционной системой \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyDate}{Date}
+:\+ 2025-\/10-\/25 @license:\+ GPL-\/3.\+0
+\end{DoxyDate}
+@telegram:\+ @forman \begin{DoxyAuthor}{Author}
+:\+ Yuriy Lobarev @phone:\+ +7 (910) 983-\/95-\/90 @email:\+ \href{mailto:forman@anyks.com}{\texttt{forman@anyks.\+com}} @site:\+ \href{https://anyks.com}{\texttt{https:\+/\+/\+anyks.\+com}}
+\end{DoxyAuthor}
+\begin{DoxyCopyright}{Copyright}
+:\+ Copyright © 2025 
+\end{DoxyCopyright}
+
+
+\label{doc-define-members}
+\Hypertarget{os_8hpp_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{os_8hpp_ae4cd73dba711f1713558978c1d46bb11}\index{os.hpp@{os.hpp}!AWH\_ERROR@{AWH\_ERROR}}
+\index{AWH\_ERROR@{AWH\_ERROR}!os.hpp@{os.hpp}}
+\doxysubsubsection{\texorpdfstring{AWH\_ERROR}{AWH\_ERROR}}
+{\footnotesize\ttfamily \label{os_8hpp_ae4cd73dba711f1713558978c1d46bb11} 
+\+\#define AWH\+\_\+\+ERROR(\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(errno)}
+
+\end{DoxyCode}
+Для операционной системы MS Windows Подключаем основные заголовочные файлы Заменяем переменную AWH ERROR \Hypertarget{os_8hpp_ae57f5e8776f9cb1883ae45a03d5b0b10}\index{os.hpp@{os.hpp}!AWH\_FS\_SEPARATOR@{AWH\_FS\_SEPARATOR}}
+\index{AWH\_FS\_SEPARATOR@{AWH\_FS\_SEPARATOR}!os.hpp@{os.hpp}}
+\doxysubsubsection{\texorpdfstring{AWH\_FS\_SEPARATOR}{AWH\_FS\_SEPARATOR}}
+{\footnotesize\ttfamily \label{os_8hpp_ae57f5e8776f9cb1883ae45a03d5b0b10} 
+\+\#define AWH\+\_\+\+FS\+\_\+\+SEPARATOR~"{}/\+"{}}
+
+Файловый разделитель UNIX-\/подобных систем \Hypertarget{os_8hpp_a09ecca53f2cd1b8d1c566bedb245e141}\index{os.hpp@{os.hpp}!UNICODE@{UNICODE}}
+\index{UNICODE@{UNICODE}!os.hpp@{os.hpp}}
+\doxysubsubsection{\texorpdfstring{UNICODE}{UNICODE}}
+{\footnotesize\ttfamily \label{os_8hpp_a09ecca53f2cd1b8d1c566bedb245e141} 
+\+\#define UNICODE}
+
+Стандартные модули Активируем поддержку юникода 

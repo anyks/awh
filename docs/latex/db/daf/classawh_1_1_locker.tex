@@ -1,0 +1,63 @@
+\doxysection{awh::\+Locker\texorpdfstring{$<$}{<} Mutex\+Type \texorpdfstring{$>$}{>} Class Template Reference}
+\hypertarget{classawh_1_1_locker}{}\label{classawh_1_1_locker}\index{awh::Locker$<$ MutexType $>$@{awh::Locker$<$ MutexType $>$}}
+
+
+Шаблон формата данных состояния блокировок  
+
+
+
+
+{\ttfamily \+\#include $<$locker.\+hpp$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classawh_1_1_locker_a02c6b7a2802b013eddbd8ed094fd4b51}\label{classawh_1_1_locker_a02c6b7a2802b013eddbd8ed094fd4b51} 
+\doxymbox{\hyperlink{classawh_1_1_locker_af9a34f4cd9c7b5058210b607dcb5af2b}{Locker}} \& {\bfseries operator=} (const \doxymbox{\hyperlink{classawh_1_1_locker_af9a34f4cd9c7b5058210b607dcb5af2b}{Locker}} \&)=delete
+\begin{DoxyCompactList}\small\item\em Оператор копирования \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_locker_af9a34f4cd9c7b5058210b607dcb5af2b}\label{classawh_1_1_locker_af9a34f4cd9c7b5058210b607dcb5af2b} 
+{\bfseries Locker} (const Locker \&)=delete
+\begin{DoxyCompactList}\small\item\em Конструктор копирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_locker_a4b81612ebcaa12d7c86e244497a35f7c}{Locker}} (\doxymbox{\hyperlink{classawh_1_1_lock_state}{Lock\+State}}$<$ Mutex\+Type $>$ \&state) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_locker_aa4b82c30f426b95d37b095665a542cf8}\label{classawh_1_1_locker_aa4b82c30f426b95d37b095665a542cf8} 
+{\bfseries \texorpdfstring{$\sim$}{\string~}\+Locker} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename Mutex\+Type = std::\+mutex$>$\newline
+class awh::\+\+Locker$<$ Mutex\+Type $>$}
+Шаблон формата данных состояния блокировок 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em Mutex\+Type} & тип данных состояния блокировок\\
+\hline
+\end{DoxyTemplParams}
+Класс локера 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_locker_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_locker_a4b81612ebcaa12d7c86e244497a35f7c}\index{awh::Locker$<$ MutexType $>$@{awh::Locker$<$ MutexType $>$}!Locker@{Locker}}
+\index{Locker@{Locker}!awh::Locker$<$ MutexType $>$@{awh::Locker$<$ MutexType $>$}}
+\doxysubsubsection{\texorpdfstring{Locker()}{Locker()}}
+{\footnotesize\ttfamily \label{classawh_1_1_locker_a4b81612ebcaa12d7c86e244497a35f7c} 
+template$<$typename Mutex\+Type = std::\+mutex$>$ \\
+\doxymbox{\hyperlink{classawh_1_1_locker}{awh::\+\+Locker}}$<$ Mutex\+Type $>$::\+\+Locker (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{classawh_1_1_lock_state}{Lock\+State}}$<$ Mutex\+Type $>$ \&}]{state}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em state} & объект состояния блокировок \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+sys/\+\doxymbox{\hyperlink{locker_8hpp}{locker.\+hpp}}\end{DoxyCompactItemize}

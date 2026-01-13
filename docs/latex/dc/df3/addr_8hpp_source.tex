@@ -1,0 +1,189 @@
+\doxysection{addr.\+hpp}
+\hypertarget{addr_8hpp_source}{}\label{addr_8hpp_source}\index{include/net/addr.hpp@{include/net/addr.hpp}}
+\doxymbox{\hyperlink{addr_8hpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifndef\ \_\_AWH\_NET\_ADDR\_\_}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ \_\_AWH\_NET\_ADDR\_\_}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#include\ <memory>}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#include\ <unordered\_map>}}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#include\ "{}\doxymbox{\hyperlink{os_8hpp}{../sys/os.hpp}}"{}}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#include\ "{}\doxymbox{\hyperlink{log_8hpp}{../sys/log.hpp}}"{}}}
+\DoxyCodeLine{00034\ }
+\DoxyCodeLine{00039\ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh}{awh}}\ \{}
+\DoxyCodeLine{00043\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \{}
+\DoxyCodeLine{00049\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00053\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a65ff719843b71cc202d26de249cb9367}{own\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ =\ 0x00,\ \textcolor{comment}{//\ Адрес\ не\ установлен}}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LAN\ \ =\ 0x01,\ \textcolor{comment}{//\ Адрес\ является\ локальным}}
+\DoxyCodeLine{00056\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WAN\ \ =\ 0x02,\ \textcolor{comment}{//\ Адрес\ является\ глобальным}}
+\DoxyCodeLine{00057\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SYS\ \ =\ 0x03\ \ \textcolor{comment}{//\ Адрес\ является\ зарезервированным}}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00063\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Адрес\ не\ установлен}}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HOST\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Адрес\ хоста}}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NETWORK\ =\ 0x02\ \ \textcolor{comment}{//\ Адрес\ сети}}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Порядок\ следования\ байт\ не\ установлен}}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BIG\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Порядок\ байт\ от\ старшего\ к\ младшему}}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LITTLE\ =\ 0x02\ \ \textcolor{comment}{//\ Порядок\ байт\ от\ младшего\ к\ старшему}}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a4a9367a09afb5ebfe548c16b9c19103f}{format\_size\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Размер\ формата\ не\ установлен}}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LONG\ \ \ =\ 0x01,\ \textcolor{comment}{//\ Полный\ формат\ IP-\/адреса\ [0000:0000:0000:0000:0000:0000:ae21:ad12\ /\ 192.168.000.001]}}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHORT\ \ =\ 0x02,\ \textcolor{comment}{//\ Короткий\ формат\ IP-\/адреса\ [::ae21:ad12\ /\ 192.168.0.1]}}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MIDDLE\ =\ 0x03\ \ \textcolor{comment}{//\ Средний\ формат\ IP-\/адреса\ [0:0:0:0:0:0:ae21:ad12\ /\ 192.168.0.1]}}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a11c482f24d2f294f2ac756308799f56c}{format\_flag\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Флаг\ не\ установлен}}
+\DoxyCodeLine{00089\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HEX\ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Шестнадцатеричный\ формат}}
+\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ OCTAL\ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Восьмеричный\ формат}}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DECIMAL\ \ \ =\ 0x03,\ \textcolor{comment}{//\ Десятичный\ формат}}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HEX\_IPV4\ \ =\ 0x04,\ \textcolor{comment}{//\ Шестнадцатеричный\ формат\ IPv4}}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HEX\_IPV6\ \ =\ 0x05\ \ \textcolor{comment}{//\ Шестнадцатеричный\ формат\ IPv6}}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ =\ 0x00,\ \textcolor{comment}{//\ Не\ определено}}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FS\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Адрес\ в\ файловой\ системе}}
+\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MAC\ \ \ =\ 0x02,\ \textcolor{comment}{//\ Аппаратный\ адрес\ сетевого\ интерфейса}}
+\DoxyCodeLine{00102\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ URL\ \ \ =\ 0x03,\ \textcolor{comment}{//\ URL-\/адрес}}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ IPV4\ \ =\ 0x04,\ \textcolor{comment}{//\ Адрес\ подключения\ IPv4}}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ IPV6\ \ =\ 0x05,\ \textcolor{comment}{//\ Адрес\ подключения\ IPv6}}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FQDN\ \ =\ 0x06,\ \textcolor{comment}{//\ Доменная\ зона}}
+\DoxyCodeLine{00106\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NETV4\ =\ 0x07,\ \textcolor{comment}{//\ Адрес/Маска\ сети}}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NETV6\ =\ 0x08\ \ \textcolor{comment}{//\ Адрес/Маска\ сети}}
+\DoxyCodeLine{00108\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00109\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }LocalNet\ \{}
+\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ reserved;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Адрес\ является\ зарезервированным}}
+\DoxyCodeLine{00116\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ prefix;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Префикс\ сети}}
+\DoxyCodeLine{00117\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::unique\_ptr\ <NetworkAddress>\ end;\ \ \ \textcolor{comment}{//\ Конечный\ диапазон\ адреса}}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::unique\_ptr\ <NetworkAddress>\ begin;\ \textcolor{comment}{//\ Начальный\ IP-\/адрес}}
+\DoxyCodeLine{00125\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LocalNet(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ fmk,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ log)\ noexcept\ :}
+\DoxyCodeLine{00126\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ reserved(\textcolor{keyword}{false}),\ prefix(0),}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ end(std::make\_unique\ <NetworkAddress>\ (fmk,\ log)),}
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ begin(std::make\_unique\ <NetworkAddress>\ (fmk,\ log))\ \{\}}
+\DoxyCodeLine{00129\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ localNet\_t;}
+\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Тип\ обрабатываемого\ адреса}}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{type\_t}}\ \_type;}
+\DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Зона\ IPv6\ адреса}}
+\DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_zone;}
+\DoxyCodeLine{00136\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00137\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Бинарный\ буфер\ данных}}
+\DoxyCodeLine{00138\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <uint8\_t>\ \_buffer;}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ локальных\ адресов}}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \ \ \ \ std::unordered\_multimap\ <type\_t,\ localNet\_t>\ \_localsNet;}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ фреймворка}}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ \_fmk;}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ для\ работы\ с\ логами}}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ \_log;}
+\DoxyCodeLine{00147\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ initLocalNet()\ noexcept;}
+\DoxyCodeLine{00153\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00158\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_aba84763c2c541d940c562eefb1319aed}{clear}}()\ noexcept;}
+\DoxyCodeLine{00159\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a26d8cfc1d98f39e6cc10e51a9a37f435}{broadcastIPv6ToIPv4}}()\ const\ noexcept;}
+\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \ \ \ \ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_network_address_a81d6f282829072f4477ec2a1d7c18210}{zone}}()\ const\ noexcept;}
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a81d6f282829072f4477ec2a1d7c18210}{zone}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_network_address_a81d6f282829072f4477ec2a1d7c18210}{zone}})\ noexcept;}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00185\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}}()\ const\ noexcept;}
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ noexcept;}
+\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a821cc7eb233b5483d58087321b48092a}{host}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_network_address_a821cc7eb233b5483d58087321b48092a}{host}})\ const\ noexcept;}
+\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \ \ \ \ std::array\ <uint8\_t,\ 6>\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8dda13927578dbbf28c53314ef808151}{mac}}()\ const\ noexcept;}
+\DoxyCodeLine{00212\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8dda13927578dbbf28c53314ef808151}{mac}}(const\ std::array\ <uint8\_t,\ 6>\ \&\ addr)\ noexcept;}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00220\ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ \doxymbox{\hyperlink{classawh_1_1_network_address_abff8add2a41b4a6769c6a7f8a459687c}{v4}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}\ endian\ =\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}::LITTLE)\ const\ noexcept;}
+\DoxyCodeLine{00227\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_abff8add2a41b4a6769c6a7f8a459687c}{v4}}(const\ uint32\_t\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}\ endian\ =\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}::LITTLE)\ noexcept;}
+\DoxyCodeLine{00228\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00235\ \ \ \ \ \ \ \ \ \ \ \ \ std::array\ <uint8\_t,\ 16>\ \doxymbox{\hyperlink{classawh_1_1_network_address_a4dced0a9908f08c888fa15761bcf50e6}{v6}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}\ endian\ =\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}::LITTLE)\ const\ noexcept;}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a4dced0a9908f08c888fa15761bcf50e6}{v6}}(const\ std::array\ <uint8\_t,\ 16>\ \&\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}\ endian\ =\ \doxymbox{\hyperlink{classawh_1_1_network_address_a32865101250fe05f0da162bf1b03e548}{endian\_t}}::LITTLE)\ noexcept;}
+\DoxyCodeLine{00243\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_ac57959e43f4840547f6e408e7a2153a9}{check}}(const\ string\_view\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00259\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_adebfdd497d5e9c8bee12d3d083f39859}{impose}}(const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr)\ noexcept;}
+\DoxyCodeLine{00267\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_adebfdd497d5e9c8bee12d3d083f39859}{impose}}(const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ noexcept;}
+\DoxyCodeLine{00268\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00275\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_adebfdd497d5e9c8bee12d3d083f39859}{impose}}(const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr)\ noexcept;}
+\DoxyCodeLine{00283\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_network_address_adebfdd497d5e9c8bee12d3d083f39859}{impose}}(const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ noexcept;}
+\DoxyCodeLine{00284\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00291\ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ \doxymbox{\hyperlink{classawh_1_1_network_address_a1dc86063bf3ac1910f5804eb0b26985c}{mask2Prefix}}(const\ \textcolor{keywordtype}{string}\ \&\ mask)\ const\ noexcept;}
+\DoxyCodeLine{00299\ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ \doxymbox{\hyperlink{classawh_1_1_network_address_a1dc86063bf3ac1910f5804eb0b26985c}{mask2Prefix}}(const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00300\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00307\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_network_address_ace2726ffb92a8a5b666798e8d20b06d2}{prefix2Mask}}(const\ uint8\_t\ prefix)\ const\ noexcept;}
+\DoxyCodeLine{00315\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_network_address_ace2726ffb92a8a5b666798e8d20b06d2}{prefix2Mask}}(const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00316\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ begin,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ end,\ const\ \textcolor{keywordtype}{string}\ \&\ mask)\ const\ noexcept;}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ begin,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ end,\ const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00345\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ begin,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ end,\ const\ uint8\_t\ prefix)\ const\ noexcept;}
+\DoxyCodeLine{00355\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ begin,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ end,\ const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00356\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00365\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \textcolor{keywordtype}{string}\ \&\ begin,\ const\ \textcolor{keywordtype}{string}\ \&\ end,\ const\ \textcolor{keywordtype}{string}\ \&\ mask)\ const\ noexcept;}
+\DoxyCodeLine{00375\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \textcolor{keywordtype}{string}\ \&\ begin,\ const\ \textcolor{keywordtype}{string}\ \&\ end,\ const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00376\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00385\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \textcolor{keywordtype}{string}\ \&\ begin,\ const\ \textcolor{keywordtype}{string}\ \&\ end,\ const\ uint8\_t\ prefix)\ const\ noexcept;}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8afa1dfe7ba9cbc242869dd23ee00985}{range}}(const\ \textcolor{keywordtype}{string}\ \&\ begin,\ const\ \textcolor{keywordtype}{string}\ \&\ end,\ const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00403\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a43f4f8976c4919c938444ae9e7126ace}{mapping}}(const\ \textcolor{keywordtype}{string}\ \&\ network)\ const\ noexcept;}
+\DoxyCodeLine{00411\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a43f4f8976c4919c938444ae9e7126ace}{mapping}}(const\ \textcolor{keywordtype}{string}\ \&\ network,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00412\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00421\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a43f4f8976c4919c938444ae9e7126ace}{mapping}}(const\ \textcolor{keywordtype}{string}\ \&\ network,\ const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00431\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a43f4f8976c4919c938444ae9e7126ace}{mapping}}(const\ \textcolor{keywordtype}{string}\ \&\ network,\ const\ \textcolor{keywordtype}{string}\ \&\ mask,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00432\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00441\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a43f4f8976c4919c938444ae9e7126ace}{mapping}}(const\ \textcolor{keywordtype}{string}\ \&\ network,\ const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00451\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a43f4f8976c4919c938444ae9e7126ace}{mapping}}(const\ \textcolor{keywordtype}{string}\ \&\ network,\ const\ uint8\_t\ prefix,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_ad7c15d7843ce31863e879ffbd8a8960e}{addr\_t}}\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ const\ noexcept;}
+\DoxyCodeLine{00452\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00458\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a65ff719843b71cc202d26de249cb9367}{own\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a390424f89c6a92a2dec7567d9ee0115f}{own}}()\ const\ noexcept;}
+\DoxyCodeLine{00459\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a99798cd473d871c46773bda5fe7c8ce2}{arpa}}()\ const\ noexcept;}
+\DoxyCodeLine{00472\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a99798cd473d871c46773bda5fe7c8ce2}{arpa}}(const\ \textcolor{keywordtype}{string}\ \&\ addr)\ noexcept;}
+\DoxyCodeLine{00473\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00480\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_aa8b0da8cc71d7c3d03fd0b118c44b4f4}{parse}}(const\ \textcolor{keywordtype}{string}\ \&\ addr)\ noexcept;}
+\DoxyCodeLine{00488\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_network_address_aa8b0da8cc71d7c3d03fd0b118c44b4f4}{parse}}(const\ \textcolor{keywordtype}{string}\ \&\ addr,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ noexcept;}
+\DoxyCodeLine{00489\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00498\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_network_address_ae474d0430fcca59d65c6b1d61907067c}{print}}(const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a4a9367a09afb5ebfe548c16b9c19103f}{format\_size\_t}}\ size\ =\ \doxymbox{\hyperlink{classawh_1_1_network_address_a4a9367a09afb5ebfe548c16b9c19103f}{format\_size\_t}}::NONE,\ const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a11c482f24d2f294f2ac756308799f56c}{format\_flag\_t}}\ flag\ =\ \doxymbox{\hyperlink{classawh_1_1_network_address_a11c482f24d2f294f2ac756308799f56c}{format\_flag\_t}}::NONE,\ const\ \textcolor{keywordtype}{char}\ delim\ =\ -\/1)\ const\ noexcept;}
+\DoxyCodeLine{00499\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00505\ \ \ \ \ \ \ \ \ \ \ \ \ operator\ \textcolor{keywordtype}{string}()\ const\ noexcept;}
+\DoxyCodeLine{00506\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00513\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ <\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00520\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ >\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00527\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ <=\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00534\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ >=\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00541\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ !=\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00548\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ ==\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ const\ noexcept;}
+\DoxyCodeLine{00549\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00556\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ operator\ =\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ addr)\ noexcept;}
+\DoxyCodeLine{00563\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ operator\ =\ (const\ \textcolor{keywordtype}{string}\ \&\ ip)\ noexcept;}
+\DoxyCodeLine{00570\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ operator\ =\ (const\ \doxymbox{\hyperlink{classawh_1_1_network_address_a336a9a685410b2f1ae2ed61e2c5bc518}{type\_t}}\ \doxymbox{\hyperlink{classawh_1_1_network_address_a8eb4518a4e223e51ca2045098d687154}{type}})\ noexcept;}
+\DoxyCodeLine{00577\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ operator\ =\ (const\ uint32\_t\ addr)\ noexcept;}
+\DoxyCodeLine{00584\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ operator\ =\ (const\ std::array\ <uint8\_t,\ 6>\ \&\ addr)\ noexcept;}
+\DoxyCodeLine{00591\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}\ \&\ operator\ =\ (const\ std::array\ <uint8\_t,\ 16>\ \&\ addr)\ noexcept;}
+\DoxyCodeLine{00592\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00599\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}(const\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ fmk,\ const\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ log)\ noexcept;}
+\DoxyCodeLine{00600\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00605\ \ \ \ \ \ \ \ \ \ \ \ \ \string~\doxymbox{\hyperlink{classawh_1_1_network_address_a2d21b799910cec88ab8f563b5a213e60}{NetworkAddress}}()\ noexcept\ \{\}}
+\DoxyCodeLine{00606\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a1789dea91682dedf16208cc8da393eca}{net\_addr\_t}};}
+\DoxyCodeLine{00613\ \ \ \ \ \doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ istream\ \&\ \doxymbox{\hyperlink{namespaceawh_aa42b59843d9a99cd6a4f7823c11be93d}{operator\ >>\ }}(istream\ \&\ is,\ \doxymbox{\hyperlink{namespaceawh_a1789dea91682dedf16208cc8da393eca}{net\_addr\_t}}\ \&\ addr)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00620\ \ \ \ \ \doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ ostream\ \&\ \doxymbox{\hyperlink{namespaceawh_a8e154428be34b5426d5530fed51b4e8f}{operator\ <<\ }}(ostream\ \&\ os,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a1789dea91682dedf16208cc8da393eca}{net\_addr\_t}}\ \&\ addr)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00621\ \};}
+\DoxyCodeLine{00622\ }
+\DoxyCodeLine{00623\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_NET\_ADDR\_\_}}
+
+\end{DoxyCode}

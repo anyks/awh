@@ -1,0 +1,1352 @@
+\doxysection{awh::\+Engine Class Reference}
+\hypertarget{classawh_1_1_engine}{}\label{classawh_1_1_engine}\index{awh::Engine@{awh::Engine}}
+
+
+Тип сетевого асинхронного движка  
+
+
+
+
+{\ttfamily \+\#include $<$engine.\+hpp$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_adb2a624c3189e84defa809773b063c56}{commit}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод фиксации настроек события \end{DoxyCompactList}\item 
+virtual uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a41d1ac53a79f105c664f4902cb9a8ba2}{port}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения порта события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a3e35dee41a0775fbce41541e76859832}{port}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const uint16\+\_\+t port) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки порта события \end{DoxyCompactList}\item 
+virtual string \doxymbox{\hyperlink{classawh_1_1_engine_aa42a64c5b5aee63abf5438081638800a}{iface}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения сетевого интерфейса события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a85fe6127927efabcfcbd76ce27c62eaa}{iface}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const string \&name) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки сетевого интерфейса события \end{DoxyCompactList}\item 
+virtual string \doxymbox{\hyperlink{classawh_1_1_engine_a70ae39dc2668251725edd60056922893}{target}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения хоста целевой машины \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a8d31b7ce1a2d276c77b36a33567e818e}{target}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const string \&target) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки хоста целевой машины \end{DoxyCompactList}\item 
+virtual string \doxymbox{\hyperlink{classawh_1_1_engine_a18f57ad4a7da1aae9b9ad9adabd7fa80}{address}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::\+address\+\_\+t}} address) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения адреса события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_aaefe2587e8948b142931e46974b5f662}{address}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::\+address\+\_\+t}} address, const string \&value) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки адреса события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a7a3829e51eb9c5f9a1f46652d12cfd38}{membership}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}} mode, const string \&group, const string \&source, const uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a41d1ac53a79f105c664f4902cb9a8ba2}{port}}=0) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод активации/\+деактивации мультикаст группы cобытия \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a24f0db269f2c7b911b9db7f263f83112}{destroy}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод удаления события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_a912f747975fb50d0dcc97788f98bd024}{event}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::\+node\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ab2a14fd41400a3ef1ce4909f3c83a6ca}{node}}, const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}}, const \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::\+type\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b}{type}}, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::\+protocol\+\_\+t}} protocol) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод создания нового события \end{DoxyCompactList}\item 
+virtual std::\+array$<$ \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}, 2 $>$ \doxymbox{\hyperlink{classawh_1_1_engine_ad0b5e4fcdd0797afa93480584e7f7318}{events}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}}, const \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::\+type\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b}{type}}, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::\+protocol\+\_\+t}} protocol) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения пары событий для сокета \end{DoxyCompactList}\item 
+virtual size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a59fd342886f0ddf89221fc416df686f2}{seek}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394}{event::\+seek\+\_\+t}} seek) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения смещения в файле события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a6e25adbbd509bad9c84c329b0f3976bd}{seek}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394}{event::\+seek\+\_\+t}} seek, const size\+\_\+t offset) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки смещения в файле события \end{DoxyCompactList}\item 
+virtual uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a6cb41597547ac6351379b3562b9cf05b}{options}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения опций события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a1b59a572cbc89388251039985c1ca10a}{options}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const uint16\+\_\+t options) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки опций события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a6a768b66dc1ba5c80ea73c94a3b3491c}{option}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const uint16\+\_\+t option, const bool mode) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки опции события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a748fdc6820059173186685bede4a8756}{splice}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} eid, const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} dest) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод перемещения данных между событиями \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a0df8b932ab9de4070977b0a3b99b982a}{launch}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод запуска события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a74fa86b2c181152629203e744682c9a8}{disconnect}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод отключения события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a95d4e42060793b6592ad3125b83d3bda}{connect}} (const vector$<$ \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} $>$ \&ids) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод мультиподключения события к удалённым хостам \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_aa4ff2c3230e3268bf64d33711eaf5b25}{listen}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const uint16\+\_\+t max) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод перевода события в режим прослушивания входящих соединений \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a398578960d2142025974c225f2216879}{recv}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод приёма данных события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_ac2cd0ee4df309c141cd9bc001b4e7a5d}{send}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const char \texorpdfstring{$\ast$}{*}data, const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}}) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод отправки данных события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_ae604c3a3b1b1e2bc1c85cec80d288e3f}{backlog}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const uint16\+\_\+t depth, const bool adaptive=false) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки глубины очереди принятия входящих соединений события \end{DoxyCompactList}\item 
+virtual size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_aec823c8ae35d66814e24f27f08b634c6}{buffer\+Size}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}}) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения размера буфера события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a4460504a0d88b1be845176bf3e0de4b9}{buffer\+Size}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}}, const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}}) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки размера буфера события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::\+delivery\+\_\+mode\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_a566bb467858072bf3e745daa397b9b64}{delivery}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения режима трансляции пакетов для события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_ae48da99afcda88d2d8c60ca7511c944e}{delivery}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::\+delivery\+\_\+mode\+\_\+t}} delivery) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки режима трансляции пакетов для события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::\+hops\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_a5f24138573170474af34265585d91e70}{hops}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения максимального количества хопов, через которые может пройти пакет \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_ac35251ef4cd819984bcc4c9973c39bdd}{hops}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}}, const \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::\+hops\+\_\+t}} hops) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки максимального количества хопов, через которые может пройти пакет \end{DoxyCompactList}\item 
+virtual uint32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a2884fd003c8924c5a99c89d15c3ed35d}{timeout}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}}) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения таймаута события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_a6cfa1add39a8df57599c7e05167530ad}{timeout}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}}, const uint32\+\_\+t timeout) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки таймаута события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}} action) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения действия события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a80f5a26a578f9030ce0027eb2f697f96}{action}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}} action, const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}} mode) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки действия события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a9589431eccdf84d6695cae449e7a1089}{keep\+Alive}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const int32\+\_\+t cnt, const int32\+\_\+t idle, const int32\+\_\+t intvl) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки параметров keep-\/alive для события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_aac1652ffe4ecb79161b9c39bc9b17c45}{pause}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод приостановки события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a77f47b4034e0f44f0da7a33ae2782a71}{resume}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод возобновления события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_af9925f1dc42d2212b08e9342c52cd278}{is\+Alive}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод проверки состояния события \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_engine_aa5dee87a8a26f337da78dd125256fe28}\label{classawh_1_1_engine_aa5dee87a8a26f337da78dd125256fe28} 
+virtual void {\bfseries clear} () noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод очистки основного движка фреймворка \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_abb6ec7baaa5e51aea10b5a4b06d031ba}{kick}} () noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод принудительного срабатывания события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_ae730395e376cb129d7dcd54c6a54f962}{initialize}} () noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод инициализации основного движка фреймворка \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_acbe7635e5120a03bf23389031b030474}{reinitialize}} () noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод реинициализации основного движка фреймворка \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_ad2bfd7090191c32dc08f5f84d5451946}{deinitialize}} () noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод деинициализации основного движка фреймворка \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_afd2d6e1920d22c4109b97ee1f16afc2e}{is\+Initialized}} () const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод проверки состояния инициализации основного движка фреймворка \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_ac0c2c51da5defa038f3204c6ad72c8e5}{thread\+Safety}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}} mode) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки безопасности работы потоков \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_ab0f65df92a4d51a19a3260eec02f14d4}{thread\+Pool}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}} mode, const uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}}) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод установки параметров пула потоков \end{DoxyCompactList}\item 
+virtual size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a9da23a08eb118ee0b2d74a0cfcb7ab07}{events\+Count}} () const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения количества событий в основном движке фреймворка \end{DoxyCompactList}\item 
+virtual size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения размера отслеживаемого файла \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::\+type\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b}{type}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения типа события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::\+node\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_ab2a14fd41400a3ef1ce4909f3c83a6ca}{node}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения типа узла события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения семейства события \end{DoxyCompactList}\item 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_acedc070d29fbf353ba6af4831101223a}{event::\+status\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_engine_a09a4ba1508097a803bd2a44c8fd65335}{status}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод получения статуса события \end{DoxyCompactList}\item 
+virtual bool \doxymbox{\hyperlink{classawh_1_1_engine_a10eb9741b444edd1948aeb3847172f6d}{poll}} (const int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_engine_a2884fd003c8924c5a99c89d15c3ed35d}{timeout}}=-\/1) noexcept=0
+\begin{DoxyCompactList}\small\item\em Метод опроса событий \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_ac8a155a80260c626704dd8ccead2604a}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ad6b6884d9bde3eaed7871fcd37614e5e}{event::\+callback::\+read\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на чтение события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_a2a8330d1df5f7183212ef287c0162d99}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a4d2d55975957134969903834ec6952cc}{event::\+callback::\+write\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на запись события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_a6b7afdb780158e980b088788b0688301}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event::\+callback::\+event\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на получение общего события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_aa717625439dd5e65fea7282ec7c821e9}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a047cb0797c59300d87ca7baa6b397a46}{event::\+callback::\+error\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на ошибку события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_a8c5fc4be6f90e7acecd43710c302f848}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a2a42237d261893c2936610b161e896a6}{event::\+callback::\+status\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на изменение статуса события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_ac87a6817904971b1592b5d2a18929c56}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ab24ef6e03f921e2a1e1412e7577981a6}{event::\+callback::\+change\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на изменение события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_ad24d06a1710cc989726718622aa4cb07}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a83912ccbaacd1439883ef47c63170937}{event::\+callback::\+accept\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на принятие события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_a5bc9e7a4ce87ef2f20e610f1f3307f00}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ae3d4108e157caeac845242d5d797214a}{event::\+callback::\+connect\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на подключение события \end{DoxyCompactList}\item 
+virtual void \doxymbox{\hyperlink{classawh_1_1_engine_a69f4264901f7e72b0949b8c6c68ac841}{on}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a8d824a351cde64f8fd12d48d47ff7aca}{event::\+callback::\+rebirth\+\_\+t}} \&cb) noexcept=0
+\begin{DoxyCompactList}\small\item\em Методы установки функции обратного вызова на возрождение события \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_engine_a7e137ec5d5ccc0d0ef73eaa8be871f95}{Engine}} (const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_engine_ac4ca81175e858e6ebb717348b6a84a62}\label{classawh_1_1_engine_ac4ca81175e858e6ebb717348b6a84a62} 
+virtual {\bfseries \texorpdfstring{$\sim$}{\string~}\+Engine} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Тип сетевого асинхронного движка 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_engine_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_engine_a7e137ec5d5ccc0d0ef73eaa8be871f95}\index{awh::Engine@{awh::Engine}!Engine@{Engine}}
+\index{Engine@{Engine}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{Engine()}{Engine()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a7e137ec5d5ccc0d0ef73eaa8be871f95} 
+awh::\+\+Engine::\+\+Engine (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fmk} & объект фреймворка \\
+\hline
+{\em log} & объект работы с логами \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_engine_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}\index{awh::Engine@{awh::Engine}!action@{action}}
+\index{action@{action}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{action()}{action()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}} awh::\+\+Engine::\+action (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}}}]{action}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения действия события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} & тип действия события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+режим действия события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a80f5a26a578f9030ce0027eb2f697f96}\index{awh::Engine@{awh::Engine}!action@{action}}
+\index{action@{action}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{action()}{action()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a80f5a26a578f9030ce0027eb2f697f96} 
+virtual bool awh::\+\+Engine::\+action (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}}}]{action}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}}}]{mode}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки действия события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} & тип действия события \\
+\hline
+{\em mode} & режим установки действия события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a18f57ad4a7da1aae9b9ad9adabd7fa80}\index{awh::Engine@{awh::Engine}!address@{address}}
+\index{address@{address}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{address()}{address()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a18f57ad4a7da1aae9b9ad9adabd7fa80} 
+virtual string awh::\+\+Engine::\+address (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::\+address\+\_\+t}}}]{address}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения адреса события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a18f57ad4a7da1aae9b9ad9adabd7fa80}{address}} & тип адреса события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+значение адреса события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_aaefe2587e8948b142931e46974b5f662}\index{awh::Engine@{awh::Engine}!address@{address}}
+\index{address@{address}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{address()}{address()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aaefe2587e8948b142931e46974b5f662} 
+virtual bool awh::\+\+Engine::\+address (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::\+address\+\_\+t}}}]{address}{, }\item[{const string \&}]{value}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки адреса события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a18f57ad4a7da1aae9b9ad9adabd7fa80}{address}} & тип адреса события \\
+\hline
+{\em value} & значение адреса события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ae604c3a3b1b1e2bc1c85cec80d288e3f}\index{awh::Engine@{awh::Engine}!backlog@{backlog}}
+\index{backlog@{backlog}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{backlog()}{backlog()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ae604c3a3b1b1e2bc1c85cec80d288e3f} 
+virtual void awh::\+\+Engine::\+backlog (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const uint16\+\_\+t}]{depth}{, }\item[{const bool}]{adaptive}{ = {\ttfamily false}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки глубины очереди принятия входящих соединений события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em depth} & глубина очереди принятия входящих соединений \\
+\hline
+{\em adaptive} & флаг адаптивной глубины очереди принятия входящих соединений \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_aec823c8ae35d66814e24f27f08b634c6}\index{awh::Engine@{awh::Engine}!bufferSize@{bufferSize}}
+\index{bufferSize@{bufferSize}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{bufferSize()}{bufferSize()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aec823c8ae35d66814e24f27f08b634c6} 
+virtual size\+\_\+t awh::\+\+Engine::\+buffer\+Size (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}}}]{action}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения размера буфера события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} & тип действия события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+размер буфера события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a4460504a0d88b1be845176bf3e0de4b9}\index{awh::Engine@{awh::Engine}!bufferSize@{bufferSize}}
+\index{bufferSize@{bufferSize}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{bufferSize()}{bufferSize()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a4460504a0d88b1be845176bf3e0de4b9} 
+virtual bool awh::\+\+Engine::\+buffer\+Size (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}}}]{action}{, }\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки размера буфера события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} & тип действия события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}} & размер буфера события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_adb2a624c3189e84defa809773b063c56}\index{awh::Engine@{awh::Engine}!commit@{commit}}
+\index{commit@{commit}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{commit()}{commit()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_adb2a624c3189e84defa809773b063c56} 
+virtual bool awh::\+\+Engine::\+commit (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод фиксации настроек события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения фиксации 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a95d4e42060793b6592ad3125b83d3bda}\index{awh::Engine@{awh::Engine}!connect@{connect}}
+\index{connect@{connect}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{connect()}{connect()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a95d4e42060793b6592ad3125b83d3bda} 
+virtual bool awh::\+\+Engine::\+connect (\begin{DoxyParamCaption}\item[{const vector$<$ \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} $>$ \&}]{ids}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод мультиподключения события к удалённым хостам 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ids} & список идентификаторов событий для подключения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения подключения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ad2bfd7090191c32dc08f5f84d5451946}\index{awh::Engine@{awh::Engine}!deinitialize@{deinitialize}}
+\index{deinitialize@{deinitialize}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{deinitialize()}{deinitialize()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ad2bfd7090191c32dc08f5f84d5451946} 
+virtual bool awh::\+\+Engine::\+deinitialize (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод деинициализации основного движка фреймворка 
+
+\begin{DoxyReturn}{Returns}
+результат выполнения деинициализации 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a566bb467858072bf3e745daa397b9b64}\index{awh::Engine@{awh::Engine}!delivery@{delivery}}
+\index{delivery@{delivery}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{delivery()}{delivery()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a566bb467858072bf3e745daa397b9b64} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::\+delivery\+\_\+mode\+\_\+t}} awh::\+\+Engine::\+delivery (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения режима трансляции пакетов для события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+режим трансляции пакетов (unicast, multicast, broadcast) 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ae48da99afcda88d2d8c60ca7511c944e}\index{awh::Engine@{awh::Engine}!delivery@{delivery}}
+\index{delivery@{delivery}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{delivery()}{delivery()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ae48da99afcda88d2d8c60ca7511c944e} 
+virtual bool awh::\+\+Engine::\+delivery (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::\+delivery\+\_\+mode\+\_\+t}}}]{delivery}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки режима трансляции пакетов для события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a566bb467858072bf3e745daa397b9b64}{delivery}} & режим трансляции пакетов (unicast, multicast, broadcast) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a24f0db269f2c7b911b9db7f263f83112}\index{awh::Engine@{awh::Engine}!destroy@{destroy}}
+\index{destroy@{destroy}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{destroy()}{destroy()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a24f0db269f2c7b911b9db7f263f83112} 
+virtual bool awh::\+\+Engine::\+destroy (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод удаления события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения удаления 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a74fa86b2c181152629203e744682c9a8}\index{awh::Engine@{awh::Engine}!disconnect@{disconnect}}
+\index{disconnect@{disconnect}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{disconnect()}{disconnect()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a74fa86b2c181152629203e744682c9a8} 
+virtual bool awh::\+\+Engine::\+disconnect (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод отключения события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения отключения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a912f747975fb50d0dcc97788f98bd024}\index{awh::Engine@{awh::Engine}!event@{event}}
+\index{event@{event}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{event()}{event()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a912f747975fb50d0dcc97788f98bd024} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} awh::\+\+Engine::\+event (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::\+node\+\_\+t}}}]{node}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::\+type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::\+protocol\+\_\+t}}}]{protocol}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод создания нового события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_engine_ab2a14fd41400a3ef1ce4909f3c83a6ca}{node}} & узел события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}} & семейство сокета \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b}{type}} & тип сокета \\
+\hline
+{\em protocol} & протокол сокета \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+идентификатор созданного события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ad0b5e4fcdd0797afa93480584e7f7318}\index{awh::Engine@{awh::Engine}!events@{events}}
+\index{events@{events}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{events()}{events()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ad0b5e4fcdd0797afa93480584e7f7318} 
+virtual std::\+array$<$ \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}, 2 $>$ awh::\+\+Engine::\+events (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::\+type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::\+protocol\+\_\+t}}}]{protocol}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения пары событий для сокета 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}} & семейство сокета \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b}{type}} & тип сокета \\
+\hline
+{\em protocol} & протокол сокета \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+пара идентификаторов созданных событий 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a9da23a08eb118ee0b2d74a0cfcb7ab07}\index{awh::Engine@{awh::Engine}!eventsCount@{eventsCount}}
+\index{eventsCount@{eventsCount}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{eventsCount()}{eventsCount()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a9da23a08eb118ee0b2d74a0cfcb7ab07} 
+virtual size\+\_\+t awh::\+\+Engine::\+events\+Count (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения количества событий в основном движке фреймворка 
+
+\begin{DoxyReturn}{Returns}
+количество событий 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}\index{awh::Engine@{awh::Engine}!family@{family}}
+\index{family@{family}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{family()}{family()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} awh::\+\+Engine::\+family (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения семейства события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+семейство события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a5f24138573170474af34265585d91e70}\index{awh::Engine@{awh::Engine}!hops@{hops}}
+\index{hops@{hops}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{hops()}{hops()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a5f24138573170474af34265585d91e70} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::\+hops\+\_\+t}} awh::\+\+Engine::\+hops (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения максимального количества хопов, через которые может пройти пакет 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+максимальное количество хопов 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ac35251ef4cd819984bcc4c9973c39bdd}\index{awh::Engine@{awh::Engine}!hops@{hops}}
+\index{hops@{hops}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{hops()}{hops()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ac35251ef4cd819984bcc4c9973c39bdd} 
+virtual bool awh::\+\+Engine::\+hops (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::\+hops\+\_\+t}}}]{hops}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки максимального количества хопов, через которые может пройти пакет 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aa1afeddbb1e84a8bd1688d387136fcde}{family}} & семейство протоколов (IPv4 или IPv6) \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a5f24138573170474af34265585d91e70}{hops}} & максимальное количество хопов \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_aa42a64c5b5aee63abf5438081638800a}\index{awh::Engine@{awh::Engine}!iface@{iface}}
+\index{iface@{iface}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{iface()}{iface()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aa42a64c5b5aee63abf5438081638800a} 
+virtual string awh::\+\+Engine::\+iface (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения сетевого интерфейса события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+сетевой интерфейс события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a85fe6127927efabcfcbd76ce27c62eaa}\index{awh::Engine@{awh::Engine}!iface@{iface}}
+\index{iface@{iface}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{iface()}{iface()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a85fe6127927efabcfcbd76ce27c62eaa} 
+virtual bool awh::\+\+Engine::\+iface (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const string \&}]{name}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки сетевого интерфейса события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em name} & имя сетевого интерфейса для установки \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ae730395e376cb129d7dcd54c6a54f962}\index{awh::Engine@{awh::Engine}!initialize@{initialize}}
+\index{initialize@{initialize}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{initialize()}{initialize()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ae730395e376cb129d7dcd54c6a54f962} 
+virtual bool awh::\+\+Engine::\+initialize (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод инициализации основного движка фреймворка 
+
+\begin{DoxyReturn}{Returns}
+результат выполнения инициализации 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_af9925f1dc42d2212b08e9342c52cd278}\index{awh::Engine@{awh::Engine}!isAlive@{isAlive}}
+\index{isAlive@{isAlive}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{isAlive()}{isAlive()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_af9925f1dc42d2212b08e9342c52cd278} 
+virtual bool awh::\+\+Engine::\+is\+Alive (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод проверки состояния события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+состояние события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_afd2d6e1920d22c4109b97ee1f16afc2e}\index{awh::Engine@{awh::Engine}!isInitialized@{isInitialized}}
+\index{isInitialized@{isInitialized}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{isInitialized()}{isInitialized()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_afd2d6e1920d22c4109b97ee1f16afc2e} 
+virtual bool awh::\+\+Engine::\+is\+Initialized (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод проверки состояния инициализации основного движка фреймворка 
+
+\begin{DoxyReturn}{Returns}
+состояние инициализации 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a9589431eccdf84d6695cae449e7a1089}\index{awh::Engine@{awh::Engine}!keepAlive@{keepAlive}}
+\index{keepAlive@{keepAlive}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{keepAlive()}{keepAlive()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a9589431eccdf84d6695cae449e7a1089} 
+virtual bool awh::\+\+Engine::\+keep\+Alive (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const int32\+\_\+t}]{cnt}{, }\item[{const int32\+\_\+t}]{idle}{, }\item[{const int32\+\_\+t}]{intvl}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки параметров keep-\/alive для события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cnt} & количество пакетов keep-\/alive \\
+\hline
+{\em idle} & время простоя перед отправкой первого пакета keep-\/alive в секундах \\
+\hline
+{\em intvl} & интервал между пакетами keep-\/alive в секундах \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_abb6ec7baaa5e51aea10b5a4b06d031ba}\index{awh::Engine@{awh::Engine}!kick@{kick}}
+\index{kick@{kick}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{kick()}{kick()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_abb6ec7baaa5e51aea10b5a4b06d031ba} 
+virtual bool awh::\+\+Engine::\+kick (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод принудительного срабатывания события 
+
+\begin{DoxyReturn}{Returns}
+результат выполнения операции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a0df8b932ab9de4070977b0a3b99b982a}\index{awh::Engine@{awh::Engine}!launch@{launch}}
+\index{launch@{launch}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{launch()}{launch()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a0df8b932ab9de4070977b0a3b99b982a} 
+virtual bool awh::\+\+Engine::\+launch (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод запуска события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения запуска 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_aa4ff2c3230e3268bf64d33711eaf5b25}\index{awh::Engine@{awh::Engine}!listen@{listen}}
+\index{listen@{listen}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{listen()}{listen()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aa4ff2c3230e3268bf64d33711eaf5b25} 
+virtual bool awh::\+\+Engine::\+listen (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const uint16\+\_\+t}]{max}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод перевода события в режим прослушивания входящих соединений 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em max} & максимальное количество входящих соединений \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения перевода в режим прослушивания 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a7a3829e51eb9c5f9a1f46652d12cfd38}\index{awh::Engine@{awh::Engine}!membership@{membership}}
+\index{membership@{membership}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{membership()}{membership()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a7a3829e51eb9c5f9a1f46652d12cfd38} 
+virtual bool awh::\+\+Engine::\+membership (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}}}]{mode}{, }\item[{const string \&}]{group}{, }\item[{const string \&}]{source}{, }\item[{const uint16\+\_\+t}]{port}{ = {\ttfamily 0}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод активации/\+деактивации мультикаст группы cобытия 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em mode} & режим активации/\+деактивации \\
+\hline
+{\em group} & мультикаст-\/группа для активации/\+деактивации \\
+\hline
+{\em source} & адрес сетевого интерфейса с которого выполняется подписка \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a41d1ac53a79f105c664f4902cb9a8ba2}{port}} & порт мультикаст-\/группы с которого выполняется подписка \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ab2a14fd41400a3ef1ce4909f3c83a6ca}\index{awh::Engine@{awh::Engine}!node@{node}}
+\index{node@{node}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{node()}{node()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ab2a14fd41400a3ef1ce4909f3c83a6ca} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::\+node\+\_\+t}} awh::\+\+Engine::\+node (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения типа узла события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+тип узла события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ad24d06a1710cc989726718622aa4cb07}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [1/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ad24d06a1710cc989726718622aa4cb07} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a83912ccbaacd1439883ef47c63170937}{event::\+callback::\+accept\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на принятие события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_ac87a6817904971b1592b5d2a18929c56}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [2/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ac87a6817904971b1592b5d2a18929c56} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ab24ef6e03f921e2a1e1412e7577981a6}{event::\+callback::\+change\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на изменение события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a5bc9e7a4ce87ef2f20e610f1f3307f00}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [3/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a5bc9e7a4ce87ef2f20e610f1f3307f00} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ae3d4108e157caeac845242d5d797214a}{event::\+callback::\+connect\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на подключение события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_aa717625439dd5e65fea7282ec7c821e9}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [4/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aa717625439dd5e65fea7282ec7c821e9} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a047cb0797c59300d87ca7baa6b397a46}{event::\+callback::\+error\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на ошибку события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a6b7afdb780158e980b088788b0688301}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [5/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a6b7afdb780158e980b088788b0688301} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event::\+callback::\+event\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на получение общего события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_ac8a155a80260c626704dd8ccead2604a}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [6/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ac8a155a80260c626704dd8ccead2604a} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ad6b6884d9bde3eaed7871fcd37614e5e}{event::\+callback::\+read\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на чтение события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a69f4264901f7e72b0949b8c6c68ac841}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [7/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a69f4264901f7e72b0949b8c6c68ac841} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a8d824a351cde64f8fd12d48d47ff7aca}{event::\+callback::\+rebirth\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на возрождение события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a8c5fc4be6f90e7acecd43710c302f848}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [8/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a8c5fc4be6f90e7acecd43710c302f848} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a2a42237d261893c2936610b161e896a6}{event::\+callback::\+status\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на изменение статуса события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a2a8330d1df5f7183212ef287c0162d99}\index{awh::Engine@{awh::Engine}!on@{on}}
+\index{on@{on}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{on()}{on()}\hspace{0.1cm}{\footnotesize\ttfamily [9/9]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a2a8330d1df5f7183212ef287c0162d99} 
+virtual void awh::\+\+Engine::\+on (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a4d2d55975957134969903834ec6952cc}{event::\+callback::\+write\+\_\+t}} \&}]{cb}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Методы установки функции обратного вызова на запись события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em cb} & функция обратного вызова \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a6a768b66dc1ba5c80ea73c94a3b3491c}\index{awh::Engine@{awh::Engine}!option@{option}}
+\index{option@{option}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{option()}{option()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a6a768b66dc1ba5c80ea73c94a3b3491c} 
+virtual bool awh::\+\+Engine::\+option (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const uint16\+\_\+t}]{option}{, }\item[{const bool}]{mode}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки опции события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a6a768b66dc1ba5c80ea73c94a3b3491c}{option}} & опция события для установки \\
+\hline
+{\em mode} & режим установки опции события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a6cb41597547ac6351379b3562b9cf05b}\index{awh::Engine@{awh::Engine}!options@{options}}
+\index{options@{options}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{options()}{options()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a6cb41597547ac6351379b3562b9cf05b} 
+virtual uint16\+\_\+t awh::\+\+Engine::\+options (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения опций события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+опции события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a1b59a572cbc89388251039985c1ca10a}\index{awh::Engine@{awh::Engine}!options@{options}}
+\index{options@{options}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{options()}{options()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a1b59a572cbc89388251039985c1ca10a} 
+virtual bool awh::\+\+Engine::\+options (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const uint16\+\_\+t}]{options}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки опций события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a6cb41597547ac6351379b3562b9cf05b}{options}} & опции события для установки \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_aac1652ffe4ecb79161b9c39bc9b17c45}\index{awh::Engine@{awh::Engine}!pause@{pause}}
+\index{pause@{pause}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{pause()}{pause()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aac1652ffe4ecb79161b9c39bc9b17c45} 
+virtual bool awh::\+\+Engine::\+pause (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод приостановки события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения приостановки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a10eb9741b444edd1948aeb3847172f6d}\index{awh::Engine@{awh::Engine}!poll@{poll}}
+\index{poll@{poll}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{poll()}{poll()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a10eb9741b444edd1948aeb3847172f6d} 
+virtual bool awh::\+\+Engine::\+poll (\begin{DoxyParamCaption}\item[{const int32\+\_\+t}]{timeout}{ = {\ttfamily -\/1}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод опроса событий 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_engine_a2884fd003c8924c5a99c89d15c3ed35d}{timeout}} & таймаут опроса в миллисекундах \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения опроса 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a41d1ac53a79f105c664f4902cb9a8ba2}\index{awh::Engine@{awh::Engine}!port@{port}}
+\index{port@{port}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{port()}{port()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a41d1ac53a79f105c664f4902cb9a8ba2} 
+virtual uint16\+\_\+t awh::\+\+Engine::\+port (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения порта события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+порт события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a3e35dee41a0775fbce41541e76859832}\index{awh::Engine@{awh::Engine}!port@{port}}
+\index{port@{port}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{port()}{port()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a3e35dee41a0775fbce41541e76859832} 
+virtual bool awh::\+\+Engine::\+port (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const uint16\+\_\+t}]{port}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки порта события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a41d1ac53a79f105c664f4902cb9a8ba2}{port}} & порт события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a398578960d2142025974c225f2216879}\index{awh::Engine@{awh::Engine}!recv@{recv}}
+\index{recv@{recv}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{recv()}{recv()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a398578960d2142025974c225f2216879} 
+virtual bool awh::\+\+Engine::\+recv (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод приёма данных события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения приёма 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_acbe7635e5120a03bf23389031b030474}\index{awh::Engine@{awh::Engine}!reinitialize@{reinitialize}}
+\index{reinitialize@{reinitialize}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{reinitialize()}{reinitialize()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_acbe7635e5120a03bf23389031b030474} 
+virtual bool awh::\+\+Engine::\+reinitialize (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод реинициализации основного движка фреймворка 
+
+\begin{DoxyReturn}{Returns}
+результат выполнения реинициализации 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a77f47b4034e0f44f0da7a33ae2782a71}\index{awh::Engine@{awh::Engine}!resume@{resume}}
+\index{resume@{resume}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{resume()}{resume()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a77f47b4034e0f44f0da7a33ae2782a71} 
+virtual bool awh::\+\+Engine::\+resume (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод возобновления события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения возобновления 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a59fd342886f0ddf89221fc416df686f2}\index{awh::Engine@{awh::Engine}!seek@{seek}}
+\index{seek@{seek}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{seek()}{seek()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a59fd342886f0ddf89221fc416df686f2} 
+virtual size\+\_\+t awh::\+\+Engine::\+seek (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394}{event::\+seek\+\_\+t}}}]{seek}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения смещения в файле события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a59fd342886f0ddf89221fc416df686f2}{seek}} & тип смещения в файле события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+смещение в файле события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a6e25adbbd509bad9c84c329b0f3976bd}\index{awh::Engine@{awh::Engine}!seek@{seek}}
+\index{seek@{seek}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{seek()}{seek()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a6e25adbbd509bad9c84c329b0f3976bd} 
+virtual bool awh::\+\+Engine::\+seek (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394}{event::\+seek\+\_\+t}}}]{seek}{, }\item[{const size\+\_\+t}]{offset}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки смещения в файле события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a59fd342886f0ddf89221fc416df686f2}{seek}} & тип смещения в файле события \\
+\hline
+{\em offset} & смещение в файле события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ac2cd0ee4df309c141cd9bc001b4e7a5d}\index{awh::Engine@{awh::Engine}!send@{send}}
+\index{send@{send}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{send()}{send()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ac2cd0ee4df309c141cd9bc001b4e7a5d} 
+virtual bool awh::\+\+Engine::\+send (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод отправки данных события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em data} & буфер данных для отправки \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}} & размер данных для отправки \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения отправки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}\index{awh::Engine@{awh::Engine}!size@{size}}
+\index{size@{size}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{size()}{size()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687} 
+virtual size\+\_\+t awh::\+\+Engine::\+size (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения размера отслеживаемого файла 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+размер файла 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a748fdc6820059173186685bede4a8756}\index{awh::Engine@{awh::Engine}!splice@{splice}}
+\index{splice@{splice}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{splice()}{splice()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a748fdc6820059173186685bede4a8756} 
+virtual bool awh::\+\+Engine::\+splice (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{eid}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{dest}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод перемещения данных между событиями 
+
+
+\begin{DoxyParams}{Parameters}
+{\em eid} & идентификатор события-\/источника \\
+\hline
+{\em dest} & идентификатор события-\/приёмника \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения перемещения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a09a4ba1508097a803bd2a44c8fd65335}\index{awh::Engine@{awh::Engine}!status@{status}}
+\index{status@{status}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{status()}{status()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a09a4ba1508097a803bd2a44c8fd65335} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_acedc070d29fbf353ba6af4831101223a}{event::\+status\+\_\+t}} awh::\+\+Engine::\+status (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения статуса события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+статус события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a70ae39dc2668251725edd60056922893}\index{awh::Engine@{awh::Engine}!target@{target}}
+\index{target@{target}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{target()}{target()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a70ae39dc2668251725edd60056922893} 
+virtual string awh::\+\+Engine::\+target (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения хоста целевой машины 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+хост целевой машины 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a8d31b7ce1a2d276c77b36a33567e818e}\index{awh::Engine@{awh::Engine}!target@{target}}
+\index{target@{target}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{target()}{target()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a8d31b7ce1a2d276c77b36a33567e818e} 
+virtual bool awh::\+\+Engine::\+target (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const string \&}]{target}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки хоста целевой машины 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em host} & хост целевой машины \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_ab0f65df92a4d51a19a3260eec02f14d4}\index{awh::Engine@{awh::Engine}!threadPool@{threadPool}}
+\index{threadPool@{threadPool}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{threadPool()}{threadPool()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ab0f65df92a4d51a19a3260eec02f14d4} 
+virtual void awh::\+\+Engine::\+thread\+Pool (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}}}]{mode}{, }\item[{const uint16\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки параметров пула потоков 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mode} & режим работы пула потоков \\
+\hline
+{\em \doxylink{classawh_1_1_engine_aa31a249cf778d5a91321dc63230a0687}{size}} & количество потоков в пуле \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_ac0c2c51da5defa038f3204c6ad72c8e5}\index{awh::Engine@{awh::Engine}!threadSafety@{threadSafety}}
+\index{threadSafety@{threadSafety}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{threadSafety()}{threadSafety()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_ac0c2c51da5defa038f3204c6ad72c8e5} 
+virtual void awh::\+\+Engine::\+thread\+Safety (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{event::\+mode\+\_\+t}}}]{mode}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки безопасности работы потоков 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mode} & режим безопасности потоков \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_a2884fd003c8924c5a99c89d15c3ed35d}\index{awh::Engine@{awh::Engine}!timeout@{timeout}}
+\index{timeout@{timeout}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{timeout()}{timeout()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a2884fd003c8924c5a99c89d15c3ed35d} 
+virtual uint32\+\_\+t awh::\+\+Engine::\+timeout (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}}}]{action}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения таймаута события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} & тип действия события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+значение таймаута в миллисекундах 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_engine_a6cfa1add39a8df57599c7e05167530ad}\index{awh::Engine@{awh::Engine}!timeout@{timeout}}
+\index{timeout@{timeout}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{timeout()}{timeout()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_a6cfa1add39a8df57599c7e05167530ad} 
+virtual void awh::\+\+Engine::\+timeout (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{event::\+action\+\_\+t}}}]{action}{, }\item[{const uint32\+\_\+t}]{timeout}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод установки таймаута события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_ac58b3caf63727585d4a8f8c32c9748bd}{action}} & тип действия события \\
+\hline
+{\em \doxylink{classawh_1_1_engine_a2884fd003c8924c5a99c89d15c3ed35d}{timeout}} & значение таймаута в миллисекундах \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b}\index{awh::Engine@{awh::Engine}!type@{type}}
+\index{type@{type}!awh::Engine@{awh::Engine}}
+\doxysubsubsection{\texorpdfstring{type()}{type()}}
+{\footnotesize\ttfamily \label{classawh_1_1_engine_aaa8103db49eb130a3870cecb43b4d46b} 
+virtual \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::\+type\+\_\+t}} awh::\+\+Engine::\+type (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [pure virtual]}, {\ttfamily [noexcept]}}
+
+
+
+Метод получения типа события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+тип события 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+net/\+\doxymbox{\hyperlink{engine_8hpp}{engine.\+hpp}}\end{DoxyCompactItemize}

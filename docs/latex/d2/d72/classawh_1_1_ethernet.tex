@@ -1,0 +1,425 @@
+\doxysection{awh::\+Ethernet Class Reference}
+\hypertarget{classawh_1_1_ethernet}{}\label{classawh_1_1_ethernet}\index{awh::Ethernet@{awh::Ethernet}}
+
+
+Класс для работы с сетевым уровнем \doxylink{classawh_1_1_ethernet}{Ethernet}.  
+
+
+
+
+{\ttfamily \+\#include $<$eth.\+hpp$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+string \doxymbox{\hyperlink{classawh_1_1_ethernet_ad3359dbd8ec1c6030c9f9622b3b26644}{iface}} (const unique\+\_\+ptr$<$ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{net::\+addr\+\_\+t}} $>$ \&addr) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения имени сетевого интерфейса по адресу \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_ethernet_a322cc44061989505e2b132f9c89213f5}{fillsource}} (\doxymbox{\hyperlink{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}{net::\+src\+\_\+t}} \&source) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод заполнения источника сетевых адресов по имени сетевого интерфейса \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_ethernet_a245e986ea449bd6726b832c21ebcb135}{fillsource}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::\+node\+\_\+t}} node, \doxymbox{\hyperlink{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}{net::\+src\+\_\+t}} \&source) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод заполнения источника сетевых адресов \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_ethernet_ac8eee3bc039f7f52ba7cb0d501e88d9b}{fillsource}} (const unique\+\_\+ptr$<$ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{net::\+addr\+\_\+t}} $>$ \&\doxymbox{\hyperlink{namespaceawh_1_1net}{net}}, \doxymbox{\hyperlink{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}{net::\+src\+\_\+t}} \&source) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод заполнения источника сетевых адресов по заданной сети \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_a5f18164850d85b433e981ffb321d1399}{is\+In\+Subnet}} (const uint32\+\_\+t ip, const uint32\+\_\+t \doxymbox{\hyperlink{namespaceawh_1_1net}{net}}, const uint8\+\_\+t prefix) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки принадлежности IP-\/адреса подсети \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_a9a4f6d8a02f71e41d721656c7d60132f}{ipv6\+Prefix\+Equal}} (const uint8\+\_\+t \texorpdfstring{$\ast$}{*}a, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}b, const uint8\+\_\+t length) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод сравнения двух IPv6-\/адресов по префиксу (в битах). \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_ethernet_a227052ca31c3c2fac6d5f6460304ac37}{error}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения кода ошибки \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_a91f3c5ebef29040fff2153b163564575}{timeout}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{net::\+socket\+\_\+event\+\_\+t}} \doxymbox{\hyperlink{namespaceawh_1_1event}{event}}, const uint32\+\_\+t msec) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки таймаута сокета \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_ethernet_a0991b054f63497344bcd0c30923b74eb}{buffer\+Size}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{net::\+socket\+\_\+event\+\_\+t}} \doxymbox{\hyperlink{namespaceawh_1_1event}{event}}) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения размера буфера \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_ethernet_a02d8f14c51bd9ac3dd7bc9091d95dba9}{buffer\+Size}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{net::\+socket\+\_\+event\+\_\+t}} \doxymbox{\hyperlink{namespaceawh_1_1event}{event}}, const int32\+\_\+t size) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки размеров буфера \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_a93df5a0fec754ce90fa122ec50e9425c}{multicast\+Iface}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} family, const string \&name) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки сетевого интерфейса для multicast пакетов \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_ad8a4c953033759651c1e83e5dc0a8017}{keepalive}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const int32\+\_\+t cnt, const int32\+\_\+t idle, const int32\+\_\+t intvl) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод устанавливает постоянное подключение на сокет \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_ac7cb8aa91624b44fc6bd9b487f7a7128}{setoption}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} family, const \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{net::\+socket\+\_\+mode\+\_\+t}} mode, const uint16\+\_\+t option) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки опций сокета \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_ae440816d507b9e722aeb1e3a6a3e234a}{hops}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} family, const \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::\+delivery\+\_\+mode\+\_\+t}} delivery, const \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::\+hops\+\_\+t}} hops) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки максимального количества хопов, через которые может пройти пакет \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_ethernet_aecfe51a9d8e76443822c03d7a2aee015}{membership}} (const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}} sock, const \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{net::\+socket\+\_\+mode\+\_\+t}} mode, const \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{net::\+addr\+\_\+net\+\_\+t}} \texorpdfstring{$\ast$}{*}group, const \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{net::\+addr\+\_\+net\+\_\+t}} \texorpdfstring{$\ast$}{*}source) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод активации/\+деактивации мультикаст группы события \end{DoxyCompactList}\item 
+uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_ethernet_a27976b59e8772d881a89877834e895a9}{checksum}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}} family, const \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::\+protocol\+\_\+t}} protocol, const void \texorpdfstring{$\ast$}{*}src, const void \texorpdfstring{$\ast$}{*}dst, const void \texorpdfstring{$\ast$}{*}transport, const size\+\_\+t length) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод вычисления контрольной суммы транспортного уровня \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_ethernet_ad1f27410cbe6fb5284c97c5d42f3be2b}{Ethernet}} (const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_ethernet_a4a1f2368c572d438251eb5f863651316}\label{classawh_1_1_ethernet_a4a1f2368c572d438251eb5f863651316} 
+{\bfseries \texorpdfstring{$\sim$}{\string~}\+Ethernet} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Класс для работы с сетевым уровнем \doxylink{classawh_1_1_ethernet}{Ethernet}. 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_ethernet_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_ethernet_ad1f27410cbe6fb5284c97c5d42f3be2b}\index{awh::Ethernet@{awh::Ethernet}!Ethernet@{Ethernet}}
+\index{Ethernet@{Ethernet}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{Ethernet()}{Ethernet()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_ad1f27410cbe6fb5284c97c5d42f3be2b} 
+awh::\+\+Ethernet::\+\+Ethernet (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fmk} & объект фреймворка \\
+\hline
+{\em log} & объект работы с логами \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_ethernet_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_ethernet_a0991b054f63497344bcd0c30923b74eb}\index{awh::Ethernet@{awh::Ethernet}!bufferSize@{bufferSize}}
+\index{bufferSize@{bufferSize}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{bufferSize()}{bufferSize()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a0991b054f63497344bcd0c30923b74eb} 
+int32\+\_\+t awh::\+\+Ethernet::\+buffer\+Size (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{net::\+socket\+\_\+event\+\_\+t}}}]{event}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения размера буфера 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em \doxylink{namespaceawh_1_1event}{event}} & событие сокета \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+размер буфера сокета 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a02d8f14c51bd9ac3dd7bc9091d95dba9}\index{awh::Ethernet@{awh::Ethernet}!bufferSize@{bufferSize}}
+\index{bufferSize@{bufferSize}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{bufferSize()}{bufferSize()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a02d8f14c51bd9ac3dd7bc9091d95dba9} 
+int32\+\_\+t awh::\+\+Ethernet::\+buffer\+Size (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{net::\+socket\+\_\+event\+\_\+t}}}]{event}{, }\item[{const int32\+\_\+t}]{size}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки размеров буфера 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em \doxylink{namespaceawh_1_1event}{event}} & событие сокета \\
+\hline
+{\em size} & размер буфера сокета \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+установленный размер буфера сокета 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a27976b59e8772d881a89877834e895a9}\index{awh::Ethernet@{awh::Ethernet}!checksum@{checksum}}
+\index{checksum@{checksum}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{checksum()}{checksum()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a27976b59e8772d881a89877834e895a9} 
+uint16\+\_\+t awh::\+\+Ethernet::\+checksum (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::\+protocol\+\_\+t}}}]{protocol}{, }\item[{const void \texorpdfstring{$\ast$}{*}}]{src}{, }\item[{const void \texorpdfstring{$\ast$}{*}}]{dst}{, }\item[{const void \texorpdfstring{$\ast$}{*}}]{transport}{, }\item[{const size\+\_\+t}]{length}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод вычисления контрольной суммы транспортного уровня 
+
+
+\begin{DoxyParams}{Parameters}
+{\em family} & семейство протоколов (IPv4 или IPv6) \\
+\hline
+{\em protocol} & протокол транспортного уровня \\
+\hline
+{\em src} & указатель на источник данных \\
+\hline
+{\em dst} & указатель на приёмник данных \\
+\hline
+{\em transport} & указатель на данные транспортного уровня \\
+\hline
+{\em length} & длина данных транспортного уровня \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+вычисленная контрольная сумма 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a227052ca31c3c2fac6d5f6460304ac37}\index{awh::Ethernet@{awh::Ethernet}!error@{error}}
+\index{error@{error}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{error()}{error()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a227052ca31c3c2fac6d5f6460304ac37} 
+int32\+\_\+t awh::\+\+Ethernet::\+error (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения кода ошибки 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+код ошибки на сокете если присутствует 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a245e986ea449bd6726b832c21ebcb135}\index{awh::Ethernet@{awh::Ethernet}!fillsource@{fillsource}}
+\index{fillsource@{fillsource}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{fillsource()}{fillsource()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a245e986ea449bd6726b832c21ebcb135} 
+void awh::\+\+Ethernet::\+fillsource (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::\+node\+\_\+t}}}]{node}{, }\item[{\doxymbox{\hyperlink{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}{net::\+src\+\_\+t}} \&}]{source}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод заполнения источника сетевых адресов 
+
+
+\begin{DoxyParams}{Parameters}
+{\em node} & тип узла события \\
+\hline
+{\em source} & объект источника сетевых адресов \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_ethernet_ac8eee3bc039f7f52ba7cb0d501e88d9b}\index{awh::Ethernet@{awh::Ethernet}!fillsource@{fillsource}}
+\index{fillsource@{fillsource}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{fillsource()}{fillsource()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_ac8eee3bc039f7f52ba7cb0d501e88d9b} 
+void awh::\+\+Ethernet::\+fillsource (\begin{DoxyParamCaption}\item[{const unique\+\_\+ptr$<$ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{net::\+addr\+\_\+t}} $>$ \&}]{net}{, }\item[{\doxymbox{\hyperlink{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}{net::\+src\+\_\+t}} \&}]{source}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод заполнения источника сетевых адресов по заданной сети 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{namespaceawh_1_1net}{net}} & сетевой адрес подсети в хостовом порядке \\
+\hline
+{\em source} & объект источника сетевых адресов \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_ethernet_a322cc44061989505e2b132f9c89213f5}\index{awh::Ethernet@{awh::Ethernet}!fillsource@{fillsource}}
+\index{fillsource@{fillsource}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{fillsource()}{fillsource()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a322cc44061989505e2b132f9c89213f5} 
+void awh::\+\+Ethernet::\+fillsource (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}{net::\+src\+\_\+t}} \&}]{source}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод заполнения источника сетевых адресов по имени сетевого интерфейса 
+
+
+\begin{DoxyParams}{Parameters}
+{\em source} & объект источника сетевых адресов \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_ethernet_ae440816d507b9e722aeb1e3a6a3e234a}\index{awh::Ethernet@{awh::Ethernet}!hops@{hops}}
+\index{hops@{hops}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{hops()}{hops()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_ae440816d507b9e722aeb1e3a6a3e234a} 
+bool awh::\+\+Ethernet::\+hops (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::\+delivery\+\_\+mode\+\_\+t}}}]{delivery}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::\+hops\+\_\+t}}}]{hops}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки максимального количества хопов, через которые может пройти пакет 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em family} & семейство протоколов (IPv4 или IPv6) \\
+\hline
+{\em delivery} & режим трансляции пакетов (unicast, multicast, broadcast) \\
+\hline
+{\em \doxylink{classawh_1_1_ethernet_ae440816d507b9e722aeb1e3a6a3e234a}{hops}} & максимальное количество хопов \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_ad3359dbd8ec1c6030c9f9622b3b26644}\index{awh::Ethernet@{awh::Ethernet}!iface@{iface}}
+\index{iface@{iface}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{iface()}{iface()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_ad3359dbd8ec1c6030c9f9622b3b26644} 
+string awh::\+\+Ethernet::\+iface (\begin{DoxyParamCaption}\item[{const unique\+\_\+ptr$<$ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{net::\+addr\+\_\+t}} $>$ \&}]{addr}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения имени сетевого интерфейса по адресу 
+
+
+\begin{DoxyParams}{Parameters}
+{\em addr} & адрес сетевого подключения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+имя сетевого интерфейса 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a9a4f6d8a02f71e41d721656c7d60132f}\index{awh::Ethernet@{awh::Ethernet}!ipv6PrefixEqual@{ipv6PrefixEqual}}
+\index{ipv6PrefixEqual@{ipv6PrefixEqual}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{ipv6PrefixEqual()}{ipv6PrefixEqual()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a9a4f6d8a02f71e41d721656c7d60132f} 
+bool awh::\+\+Ethernet::\+ipv6\+Prefix\+Equal (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{a}{, }\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{b}{, }\item[{const uint8\+\_\+t}]{length}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод сравнения двух IPv6-\/адресов по префиксу (в битах). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & Первый IPv6-\/адрес \\
+\hline
+{\em b} & Второй IPv6-\/адрес \\
+\hline
+{\em length} & Длина префикса в битах \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Результат сравнения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a5f18164850d85b433e981ffb321d1399}\index{awh::Ethernet@{awh::Ethernet}!isInSubnet@{isInSubnet}}
+\index{isInSubnet@{isInSubnet}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{isInSubnet()}{isInSubnet()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a5f18164850d85b433e981ffb321d1399} 
+bool awh::\+\+Ethernet::\+is\+In\+Subnet (\begin{DoxyParamCaption}\item[{const uint32\+\_\+t}]{ip}{, }\item[{const uint32\+\_\+t}]{net}{, }\item[{const uint8\+\_\+t}]{prefix}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки принадлежности IP-\/адреса подсети 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ip} & проверяемый IP-\/адрес в хостовом порядке \\
+\hline
+{\em \doxylink{namespaceawh_1_1net}{net}} & сетевой адрес подсети в хостовом порядке \\
+\hline
+{\em prefix} & префикс подсети \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_ad8a4c953033759651c1e83e5dc0a8017}\index{awh::Ethernet@{awh::Ethernet}!keepalive@{keepalive}}
+\index{keepalive@{keepalive}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{keepalive()}{keepalive()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_ad8a4c953033759651c1e83e5dc0a8017} 
+bool awh::\+\+Ethernet::\+keepalive (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const int32\+\_\+t}]{cnt}{, }\item[{const int32\+\_\+t}]{idle}{, }\item[{const int32\+\_\+t}]{intvl}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод устанавливает постоянное подключение на сокет 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em cnt} & максимальное количество попыток \\
+\hline
+{\em idle} & время через которое происходит проверка подключения \\
+\hline
+{\em intvl} & время между попытками \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_aecfe51a9d8e76443822c03d7a2aee015}\index{awh::Ethernet@{awh::Ethernet}!membership@{membership}}
+\index{membership@{membership}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{membership()}{membership()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_aecfe51a9d8e76443822c03d7a2aee015} 
+bool awh::\+\+Ethernet::\+membership (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{net::\+socket\+\_\+mode\+\_\+t}}}]{mode}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{net::\+addr\+\_\+net\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{group}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{net::\+addr\+\_\+net\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{source}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод активации/\+деактивации мультикаст группы события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em mode} & режим активации/\+деактивации \\
+\hline
+{\em group} & мультикаст-\/группа для активации/\+деактивации \\
+\hline
+{\em source} & адрес сетевого интерфейса с которого выполняется подписка \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a93df5a0fec754ce90fa122ec50e9425c}\index{awh::Ethernet@{awh::Ethernet}!multicastIface@{multicastIface}}
+\index{multicastIface@{multicastIface}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{multicastIface()}{multicastIface()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a93df5a0fec754ce90fa122ec50e9425c} 
+bool awh::\+\+Ethernet::\+multicast\+Iface (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const string \&}]{name}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки сетевого интерфейса для multicast пакетов 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em family} & семейство протоколов (IPv4 или IPv6) \\
+\hline
+{\em name} & имя сетевого интерфейса \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_ac7cb8aa91624b44fc6bd9b487f7a7128}\index{awh::Ethernet@{awh::Ethernet}!setoption@{setoption}}
+\index{setoption@{setoption}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{setoption()}{setoption()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_ac7cb8aa91624b44fc6bd9b487f7a7128} 
+bool awh::\+\+Ethernet::\+setoption (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::\+family\+\_\+t}}}]{family}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{net::\+socket\+\_\+mode\+\_\+t}}}]{mode}{, }\item[{const uint16\+\_\+t}]{option}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки опций сокета 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em family} & семейство протоколов (IPv4 или IPv6) \\
+\hline
+{\em mode} & режим активации или деактивации \\
+\hline
+{\em option} & опция сокета \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_ethernet_a91f3c5ebef29040fff2153b163564575}\index{awh::Ethernet@{awh::Ethernet}!timeout@{timeout}}
+\index{timeout@{timeout}!awh::Ethernet@{awh::Ethernet}}
+\doxysubsubsection{\texorpdfstring{timeout()}{timeout()}}
+{\footnotesize\ttfamily \label{classawh_1_1_ethernet_a91f3c5ebef29040fff2153b163564575} 
+bool awh::\+\+Ethernet::\+timeout (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{net::\+socket\+\_\+t}}}]{sock}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{net::\+socket\+\_\+event\+\_\+t}}}]{event}{, }\item[{const uint32\+\_\+t}]{msec}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки таймаута сокета 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sock} & сетевой сокет \\
+\hline
+{\em \doxylink{namespaceawh_1_1event}{event}} & событие сокета \\
+\hline
+{\em msec} & время таймаута в миллисекундах \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат установки таймаута 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+net/\+\doxymbox{\hyperlink{eth_8hpp}{eth.\+hpp}}\end{DoxyCompactItemize}

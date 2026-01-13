@@ -1,0 +1,197 @@
+\doxysection{awh::\+net Namespace Reference}
+\hypertarget{namespaceawh_1_1net}{}\label{namespaceawh_1_1net}\index{awh::net@{awh::net}}
+
+
+Пространство имён для работы с сетью  
+
+
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address}{Address}}
+\begin{DoxyCompactList}\small\item\em Структура адреса \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address_m_a_c}{Address\+MAC}}
+\begin{DoxyCompactList}\small\item\em Структура MAC-\/адреса \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network}{Address\+Network}}
+\begin{DoxyCompactList}\small\item\em Структура сетевого адреса \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv4}{Address\+Network\+IPv4}}
+\begin{DoxyCompactList}\small\item\em Структура IPv4 сетевого адреса \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv6}{Address\+Network\+IPv6}}
+\begin{DoxyCompactList}\small\item\em Структура IPv6 сетевого адреса \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address_filesystem}{Address\+Filesystem}}
+\begin{DoxyCompactList}\small\item\em Структура адреса файловой системы \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_source}{Source}}
+\begin{DoxyCompactList}\small\item\em Структура сетевых адресов текущей машины \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes}{Attributes}}
+\begin{DoxyCompactList}\small\item\em Структура атрибутов подключения \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_net}{Attributes\+Net}}
+\begin{DoxyCompactList}\small\item\em Структура IP-\/адреса подключения \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_u_d_s}{Attributes\+UDS}}
+\begin{DoxyCompactList}\small\item\em Структура UDS-\/адреса подключения \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_backlog}{Backlog}}
+\begin{DoxyCompactList}\small\item\em Структура очереди ожидания подключения \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_state}{State}}
+\begin{DoxyCompactList}\small\item\em Структура состояния события \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_callbacks}{Callbacks}}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов события \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_callbacks}{File\+System\+Callbacks}}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов файловой системы \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_server_callbacks}{Server\+Callbacks}}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов сервера \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_client_callbacks}{Client\+Callbacks}}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов клиента \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_peer_callbacks}{Peer\+Callbacks}}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов подключённого клиента \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_node}{Node}}
+\begin{DoxyCompactList}\small\item\em Структура узла события \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_timer}{Timer}}
+\begin{DoxyCompactList}\small\item\em Структура таймера \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_user}{User}}
+\begin{DoxyCompactList}\small\item\em Структура пользовательского события \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system}{File\+System}}
+\begin{DoxyCompactList}\small\item\em Структура файловой системы \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_inter_process_communication}{Inter\+Process\+Communication}}
+\begin{DoxyCompactList}\small\item\em Структура межпроцессного взаимодействия \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_peer}{Peer}}
+\begin{DoxyCompactList}\small\item\em Структура подключённого клиента \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_client}{Client}}
+\begin{DoxyCompactList}\small\item\em Структура клиента \end{DoxyCompactList}\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_server}{Server}}
+\begin{DoxyCompactList}\small\item\em Структура сервера \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+using \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{socket\+\_\+t}} = int32\+\_\+t
+\begin{DoxyCompactList}\small\item\em Тип сокета \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}\label{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef} 
+typedef struct \doxymbox{\hyperlink{structawh_1_1net_1_1_address}{awh::\+net::\+\+Address}} {\bfseries addr\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура адреса \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a7d71508e5c8b99d711506325ee495cc6}\label{namespaceawh_1_1net_a7d71508e5c8b99d711506325ee495cc6} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_address_m_a_c}{awh::\+net::\+\+Address\+MAC}} {\bfseries addr\+\_\+mac\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура MAC-\/адреса \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}\label{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network}{awh::\+net::\+\+Address\+Network}} {\bfseries addr\+\_\+net\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура сетевого адреса \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a379c32a49bfc8797a2db2bac136a55e2}\label{namespaceawh_1_1net_a379c32a49bfc8797a2db2bac136a55e2} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv4}{awh::\+net::\+\+Address\+Network\+IPv4}} {\bfseries addr\+\_\+net\+\_\+ipv4\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура IPv4 сетевого адреса \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a460556e2038e0ebb363eca1bf3e99de5}\label{namespaceawh_1_1net_a460556e2038e0ebb363eca1bf3e99de5} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv6}{awh::\+net::\+\+Address\+Network\+IPv6}} {\bfseries addr\+\_\+net\+\_\+ipv6\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура IPv6 сетевого адреса \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_adb4b62f243d48c9f57881c6f99c6c692}\label{namespaceawh_1_1net_adb4b62f243d48c9f57881c6f99c6c692} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_address_filesystem}{awh::\+net::\+\+Address\+Filesystem}} {\bfseries addr\+\_\+fs\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура адреса файловой системы \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431}\label{namespaceawh_1_1net_af43ae65d66d1d6dd9195abb85e064431} 
+typedef struct \doxymbox{\hyperlink{structawh_1_1net_1_1_source}{awh::\+net::\+\+Source}} {\bfseries src\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура сетевых адресов текущей машины \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a217b5744c24711a302dd080a03908046}\label{namespaceawh_1_1net_a217b5744c24711a302dd080a03908046} 
+typedef struct \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes}{awh::\+net::\+\+Attributes}} {\bfseries attr\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура атрибутов подключения \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_acbc644664eae7b951d9f5e9ea994e385}\label{namespaceawh_1_1net_acbc644664eae7b951d9f5e9ea994e385} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_net}{awh::\+net::\+\+Attributes\+Net}} {\bfseries attr\+\_\+net\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура IP-\/адреса подключения \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a58841a2d8713eb8f7ee4c7973f66342f}\label{namespaceawh_1_1net_a58841a2d8713eb8f7ee4c7973f66342f} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_u_d_s}{awh::\+net::\+\+Attributes\+UDS}} {\bfseries attr\+\_\+uds\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура UDS-\/адреса подключения \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588}\label{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588} 
+typedef struct \doxymbox{\hyperlink{structawh_1_1net_1_1_callbacks}{awh::\+net::\+\+Callbacks}} {\bfseries callbacks\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов события \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_af08ec879be43cc3365e21b72768ef8e3}\label{namespaceawh_1_1net_af08ec879be43cc3365e21b72768ef8e3} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_callbacks}{awh::\+net::\+\+File\+System\+Callbacks}} {\bfseries fs\+\_\+callbacks\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов файловой системы \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a74a88c82f86e084bcb795708e7599daf}\label{namespaceawh_1_1net_a74a88c82f86e084bcb795708e7599daf} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_server_callbacks}{awh::\+net::\+\+Server\+Callbacks}} {\bfseries server\+\_\+callbacks\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов сервера \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a16d59ca9d4124ada05d04716227a06e8}\label{namespaceawh_1_1net_a16d59ca9d4124ada05d04716227a06e8} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_client_callbacks}{awh::\+net::\+\+Client\+Callbacks}} {\bfseries client\+\_\+callbacks\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов клиента \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_acfe9eb006477e54441f8f3c9429937fc}\label{namespaceawh_1_1net_acfe9eb006477e54441f8f3c9429937fc} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_peer_callbacks}{awh::\+net::\+\+Peer\+Callbacks}} {\bfseries peer\+\_\+callbacks\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура обратных вызовов подключённого клиента \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}\label{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624} 
+typedef struct \doxymbox{\hyperlink{structawh_1_1net_1_1_node}{awh::\+net::\+\+Node}} {\bfseries node\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура узла события \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_ae7b38ec686dc6245848375679a467231}\label{namespaceawh_1_1net_ae7b38ec686dc6245848375679a467231} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_timer}{awh::\+net::\+\+Timer}} {\bfseries timer\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура таймера \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_ad1dd1de38f3c21309efff72a52989078}\label{namespaceawh_1_1net_ad1dd1de38f3c21309efff72a52989078} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_user}{awh::\+net::\+\+User}} {\bfseries user\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура пользовательского события \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_addc544b2aeccf8a128fe93b7ee0d5ef1}\label{namespaceawh_1_1net_addc544b2aeccf8a128fe93b7ee0d5ef1} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system}{awh::\+net::\+\+File\+System}} {\bfseries fs\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура файловой системы \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_ad503632ad1b689c2288d06bcdec273ba}\label{namespaceawh_1_1net_ad503632ad1b689c2288d06bcdec273ba} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_inter_process_communication}{awh::\+net::\+\+Inter\+Process\+Communication}} {\bfseries ipc\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура межпроцессного взаимодействия \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_af44f5b62576f4814d745889498219173}\label{namespaceawh_1_1net_af44f5b62576f4814d745889498219173} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_peer}{awh::\+net::\+\+Peer}} {\bfseries peer\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура подключённого клиента \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a4008b78a33b8adcea5a73d477ceaeb11}\label{namespaceawh_1_1net_a4008b78a33b8adcea5a73d477ceaeb11} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_client}{awh::\+net::\+\+Client}} {\bfseries client\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура клиента \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1net_a7f4eb6e08d231bd5bf6b451beaaca47b}\label{namespaceawh_1_1net_a7f4eb6e08d231bd5bf6b451beaaca47b} 
+typedef \doxymbox{\hyperlink{structawh_1_1net_1_1_server}{awh::\+net::\+\+Server}} {\bfseries server\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Структура сервера \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{socket\+\_\+mode\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{socket\+\_\+event\+\_\+t}} :\+ uint8\+\_\+t 
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_backlog}{awh::\+net::\+\+Backlog}} \doxymbox{\hyperlink{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958}{\+\_\+\+\_\+attribute\+\_\+\+\_\+}} ((packed)) backlog\+\_\+t
+\begin{DoxyCompactList}\small\item\em Структура очереди ожидания подключения \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Пространство имён для работы с сетью 
+
+\label{doc-typedef-members}
+\Hypertarget{namespaceawh_1_1net_doc-typedef-members}
+\doxysubsection{Typedef Documentation}
+\Hypertarget{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}\index{awh::net@{awh::net}!socket\_t@{socket\_t}}
+\index{socket\_t@{socket\_t}!awh::net@{awh::net}}
+\doxysubsubsection{\texorpdfstring{socket\_t}{socket\_t}}
+{\footnotesize\ttfamily \label{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b} 
+using \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{awh::\+net::\+socket\+\_\+t}} = int32\+\_\+t}
+
+
+
+Тип сокета 
+
+Для операционной системы MS Windows  
+
+\label{doc-enum-members}
+\Hypertarget{namespaceawh_1_1net_doc-enum-members}
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}\index{awh::net@{awh::net}!socket\_event\_t@{socket\_event\_t}}
+\index{socket\_event\_t@{socket\_event\_t}!awh::net@{awh::net}}
+\doxysubsubsection{\texorpdfstring{socket\_event\_t}{socket\_event\_t}}
+{\footnotesize\ttfamily \label{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{awh::\+net::\+socket\+\_\+event\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+События сокета \Hypertarget{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}\index{awh::net@{awh::net}!socket\_mode\_t@{socket\_mode\_t}}
+\index{socket\_mode\_t@{socket\_mode\_t}!awh::net@{awh::net}}
+\doxysubsubsection{\texorpdfstring{socket\_mode\_t}{socket\_mode\_t}}
+{\footnotesize\ttfamily \label{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{awh::\+net::\+socket\+\_\+mode\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Режимы установки типа сокета 
+
+\label{doc-func-members}
+\Hypertarget{namespaceawh_1_1net_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958}\index{awh::net@{awh::net}!\_\_attribute\_\_@{\_\_attribute\_\_}}
+\index{\_\_attribute\_\_@{\_\_attribute\_\_}!awh::net@{awh::net}}
+\doxysubsubsection{\texorpdfstring{\_\_attribute\_\_()}{\_\_attribute\_\_()}}
+{\footnotesize\ttfamily \label{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958} 
+struct \doxymbox{\hyperlink{structawh_1_1net_1_1_state}{awh::\+net::\+\+State}} awh::\+net::\+\+\_\+\+\_\+attribute\+\_\+\+\_\+ (\begin{DoxyParamCaption}\item[{(packed)}]{}{}\end{DoxyParamCaption})}
+
+
+
+Структура очереди ожидания подключения 
+
+Структура состояния события 

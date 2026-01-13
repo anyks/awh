@@ -1,0 +1,34 @@
+\doxysection{fds.\+hpp}
+\hypertarget{fds_8hpp_source}{}\label{fds_8hpp_source}\index{include/net/fds.hpp@{include/net/fds.hpp}}
+\doxymbox{\hyperlink{fds_8hpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifndef\ \_\_AWH\_EVENT\_FDS\_BASE\_\_}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ \_\_AWH\_EVENT\_FDS\_BASE\_\_}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#include\ <unistd.h>}}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#include\ "{}\doxymbox{\hyperlink{log_8hpp}{../sys/log.hpp}}"{}}}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00033\ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh}{awh}}\ \{}
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ \doxymbox{\hyperlink{classawh_1_1_f_d_s_a2085ac45418a51af302e524cc351cb8c}{FDS}}\ \{}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ работы\ с\ логами}}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ \_log;}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00053\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_f_d_s_ace0c34715ed8886c38b89a571b679561}{help}}(\textcolor{keyword}{const}\ uint32\_t\ actual,\ \textcolor{keyword}{const}\ uint32\_t\ desired)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_f_d_s_ae5cb0b7ac5b65dbe8e7b9ad869245008}{limit}}(\textcolor{keyword}{const}\ uint32\_t\ \doxymbox{\hyperlink{classawh_1_1_f_d_s_ae5cb0b7ac5b65dbe8e7b9ad869245008}{limit}})\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \ \ \ \ std::pair\ <uint32\_t,\ uint32\_t>\ \doxymbox{\hyperlink{classawh_1_1_f_d_s_a4a43e39f80c71b1ef1eea70903315961}{limit}}()\ const\ noexcept;}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_f_d_s_a2085ac45418a51af302e524cc351cb8c}{FDS}}(const\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ log)\ noexcept\ :\ \_log(log)\ \{\}}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_f_d_s_aa5133b76a00667bf665320e5c51733b6}{\string~FDS}}()\ noexcept\ \{\}}
+\DoxyCodeLine{00080\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_ac2e91b3fc4c626813ef889174d8b5d31}{fds\_t}};}
+\DoxyCodeLine{00081\ \};}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_EVENT\_FDS\_BASE\_\_}}
+
+\end{DoxyCode}

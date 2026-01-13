@@ -1,0 +1,136 @@
+\doxysection{awh::\+IO::\+Control\+List Class Reference}
+\hypertarget{classawh_1_1_i_o_1_1_control_list}{}\label{classawh_1_1_i_o_1_1_control_list}\index{awh::IO::ControlList@{awh::IO::ControlList}}
+
+
+Структура управления списками контроля доступа  
+
+
+
+
+{\ttfamily \+\#include $<$io.\+hpp$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \doxymbox{\hyperlink{classawh_1_1_i_o_1_1_control_list_ad6aa81f2052354c8ef77d9b4853c9bf2}{clear}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) noexcept
+\begin{DoxyCompactList}\small\item\em Метод очистки белого списка события \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_i_o_1_1_control_list_ade366744b0faae3bee43a63118f226d0}{add}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const string \&value) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления адреса в белый список события \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_i_o_1_1_control_list_a49ca2ed2925b50c5fe0f274caa9c83b5}{remove}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id, const string \&value) noexcept
+\begin{DoxyCompactList}\small\item\em Метод удаления адреса из белого списка события \end{DoxyCompactList}\item 
+const std::\+unordered\+\_\+map$<$ string, \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::\+address\+\_\+t}} $>$ \& \doxymbox{\hyperlink{classawh_1_1_i_o_1_1_control_list_adb4937075899373e9f40f2a1bdfab257}{get}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}} id) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения белого списка события \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_i_o_1_1_control_list_a9e6b324f1d500045aa7d3b4c12ae7dfa}{Control\+List}} (const \doxymbox{\hyperlink{namespaceawh_1_1event_a8b64db5ab06bfafdc17e1b79db726a23}{event::\+control\+\_\+list\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_i_o_a19b85a19f06c33e08d9c57f813f9ed77}{type}}, const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_a1203dda2891ac6ff04c30ac283e84e35}\label{classawh_1_1_i_o_1_1_control_list_a1203dda2891ac6ff04c30ac283e84e35} 
+virtual {\bfseries \texorpdfstring{$\sim$}{\string~}\+Control\+List} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Структура управления списками контроля доступа 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_a9e6b324f1d500045aa7d3b4c12ae7dfa}\index{awh::IO::ControlList@{awh::IO::ControlList}!ControlList@{ControlList}}
+\index{ControlList@{ControlList}!awh::IO::ControlList@{awh::IO::ControlList}}
+\doxysubsubsection{\texorpdfstring{ControlList()}{ControlList()}}
+{\footnotesize\ttfamily \label{classawh_1_1_i_o_1_1_control_list_a9e6b324f1d500045aa7d3b4c12ae7dfa} 
+awh::\+\+IO::\+\+Control\+List::\+\+Control\+List (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a8b64db5ab06bfafdc17e1b79db726a23}{event::\+control\+\_\+list\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_i_o_a19b85a19f06c33e08d9c57f813f9ed77}{type}} & тип списка контрольного списка \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_ade366744b0faae3bee43a63118f226d0}\index{awh::IO::ControlList@{awh::IO::ControlList}!add@{add}}
+\index{add@{add}!awh::IO::ControlList@{awh::IO::ControlList}}
+\doxysubsubsection{\texorpdfstring{add()}{add()}}
+{\footnotesize\ttfamily \label{classawh_1_1_i_o_1_1_control_list_ade366744b0faae3bee43a63118f226d0} 
+bool awh::\+\+IO::\+\+Control\+List::\+add (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const string \&}]{value}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления адреса в белый список события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em value} & значение адреса события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения установки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_ad6aa81f2052354c8ef77d9b4853c9bf2}\index{awh::IO::ControlList@{awh::IO::ControlList}!clear@{clear}}
+\index{clear@{clear}!awh::IO::ControlList@{awh::IO::ControlList}}
+\doxysubsubsection{\texorpdfstring{clear()}{clear()}}
+{\footnotesize\ttfamily \label{classawh_1_1_i_o_1_1_control_list_ad6aa81f2052354c8ef77d9b4853c9bf2} 
+bool awh::\+\+IO::\+\+Control\+List::\+clear (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод очистки белого списка события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения очистки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_adb4937075899373e9f40f2a1bdfab257}\index{awh::IO::ControlList@{awh::IO::ControlList}!get@{get}}
+\index{get@{get}!awh::IO::ControlList@{awh::IO::ControlList}}
+\doxysubsubsection{\texorpdfstring{get()}{get()}}
+{\footnotesize\ttfamily \label{classawh_1_1_i_o_1_1_control_list_adb4937075899373e9f40f2a1bdfab257} 
+const std::\+unordered\+\_\+map$<$ string, \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::\+address\+\_\+t}} $>$ \& awh::\+\+IO::\+\+Control\+List::\+get (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения белого списка события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+белый список события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_i_o_1_1_control_list_a49ca2ed2925b50c5fe0f274caa9c83b5}\index{awh::IO::ControlList@{awh::IO::ControlList}!remove@{remove}}
+\index{remove@{remove}!awh::IO::ControlList@{awh::IO::ControlList}}
+\doxysubsubsection{\texorpdfstring{remove()}{remove()}}
+{\footnotesize\ttfamily \label{classawh_1_1_i_o_1_1_control_list_a49ca2ed2925b50c5fe0f274caa9c83b5} 
+bool awh::\+\+IO::\+\+Control\+List::\+remove (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::\+id\+\_\+t}}}]{id}{, }\item[{const string \&}]{value}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод удаления адреса из белого списка события 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор события \\
+\hline
+{\em value} & адрес для удаления из белого списка \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат выполнения удаления 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+net/\+\doxymbox{\hyperlink{io_8hpp}{io.\+hpp}}\end{DoxyCompactItemize}

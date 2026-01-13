@@ -1,0 +1,46 @@
+\doxysection{include/\+net/\+addr.hpp File Reference}
+\hypertarget{addr_8hpp}{}\label{addr_8hpp}\index{include/net/addr.hpp@{include/net/addr.hpp}}
+{\ttfamily \+\#include $<$array$>$}\newline
+{\ttfamily \+\#include $<$string$>$}\newline
+{\ttfamily \+\#include $<$vector$>$}\newline
+{\ttfamily \+\#include $<$memory$>$}\newline
+{\ttfamily \+\#include $<$cstdint$>$}\newline
+{\ttfamily \+\#include $<$iostream$>$}\newline
+{\ttfamily \+\#include $<$unordered\+\_\+map$>$}\newline
+{\ttfamily \+\#include "{}../\+sys/\+os.\+hpp"{}}\newline
+{\ttfamily \+\#include "{}../\+sys/\+log.\+hpp"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \doxymbox{\hyperlink{classawh_1_1_network_address}{awh::\+\+Network\+Address}}
+\begin{DoxyCompactList}\small\item\em Класс для работы с сетевыми адресами \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \doxymbox{\hyperlink{namespaceawh}{awh}}
+\begin{DoxyCompactList}\small\item\em основное пространство имён \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{namespaceawh_a1789dea91682dedf16208cc8da393eca}\label{namespaceawh_a1789dea91682dedf16208cc8da393eca} 
+typedef class \doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\+\_\+\+SHARED\+\_\+\+EXPORT}} \doxymbox{\hyperlink{classawh_1_1_network_address}{awh::\+\+Network\+Address}} {\bfseries awh::\+net\+\_\+addr\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Класс для работы с сетевыми адресами \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\+\_\+\+SHARED\+\_\+\+EXPORT}} istream \& \doxymbox{\hyperlink{namespaceawh_aa42b59843d9a99cd6a4f7823c11be93d}{awh::\+operator$>$$>$}} (istream \&is, \doxymbox{\hyperlink{namespaceawh_a1789dea91682dedf16208cc8da393eca}{net\+\_\+addr\+\_\+t}} \&addr) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор \+[\texorpdfstring{$>$}{>}\texorpdfstring{$>$}{>}]\+ чтения из потока IP-\/адреса \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\+\_\+\+SHARED\+\_\+\+EXPORT}} ostream \& \doxymbox{\hyperlink{namespaceawh_a8e154428be34b5426d5530fed51b4e8f}{awh::\+operator$<$$<$}} (ostream \&os, const \doxymbox{\hyperlink{namespaceawh_a1789dea91682dedf16208cc8da393eca}{net\+\_\+addr\+\_\+t}} \&addr) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор \+[\texorpdfstring{$<$}{<}\texorpdfstring{$<$}{<}]\+ вывода в поток IP-\/адреса \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyDate}{Date}
+:\+ 2025-\/10-\/31 @license:\+ GPL-\/3.\+0
+\end{DoxyDate}
+@telegram:\+ @forman \begin{DoxyAuthor}{Author}
+:\+ Yuriy Lobarev @phone:\+ +7 (910) 983-\/95-\/90 @email:\+ \href{mailto:forman@anyks.com}{\texttt{forman@anyks.\+com}} @site:\+ \href{https://anyks.com}{\texttt{https:\+/\+/\+anyks.\+com}}
+\end{DoxyAuthor}
+\begin{DoxyCopyright}{Copyright}
+:\+ Copyright © 2025 
+\end{DoxyCopyright}

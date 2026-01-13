@@ -1,0 +1,75 @@
+\doxysection{notifier.\+hpp}
+\hypertarget{notifier_8hpp_source}{}\label{notifier_8hpp_source}\index{include/net/backend/sun/notifier.hpp@{include/net/backend/sun/notifier.hpp}}
+\doxymbox{\hyperlink{notifier_8hpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifndef\ \_\_AWH\_EVENT\_NOTIFIER\_\_}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ \_\_AWH\_EVENT\_NOTIFIER\_\_}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#if\ !\_WIN32\ \&\&\ !\_WIN64}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\ \ \ \ \#define\ SOCKET\ int32\_t}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\ \ \ \ \#define\ INVALID\_SOCKET\ -\/1}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{comment}{//\ Если\ не\ определён\ макрос\ WIN32\_LEAN\_AND\_MEAN}}
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\ \ \ \ \#ifndef\ WIN32\_LEAN\_AND\_MEAN}}
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Минимизируем\ включение\ редко\ используемых\ компонентов\ Windows\ headers}}
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#define\ WIN32\_LEAN\_AND\_MEAN}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00035\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#include\ <winsock2.h>}}
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#include\ <ws2tcpip.h>}}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Основные\ сокеты\ уведомителя}}
+\DoxyCodeLine{00039\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#pragma\ comment(lib,\ "{}ws2\_32.lib"{})}}
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\ \ \ \ \#endif}}
+\DoxyCodeLine{00041\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00046\ \textcolor{preprocessor}{\#if\ \_\_APPLE\_\_\ ||\ \_\_MACH\_\_\ ||\ \_\_FreeBSD\_\_\ ||\ \_\_NetBSD\_\_\ ||\ \_\_linux\_\_}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\ \ \ \ \#include\ <queue>}}
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\ \ \ \ \#include\ <mutex>}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\#include\ "{}../sys/fmk.hpp"{}}}
+\DoxyCodeLine{00063\ \textcolor{preprocessor}{\#include\ "{}../sys/log.hpp"{}}}
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#include\ "{}../sys/locker.hpp"{}}}
+\DoxyCodeLine{00065\ }
+\DoxyCodeLine{00070\ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh}{awh}}\ \{}
+\DoxyCodeLine{00074\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{00079\ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ \doxymbox{\hyperlink{classawh_1_1_notifier_a223add1befe17353046f96ae491e182a}{Notifier}}\ \{}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00084\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \#if\ \_WIN32\ ||\ \_WIN64\ ||\ \_\_OpenBSD\_\_\ ||\ \_\_sun\_\_}}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Основные\ сокеты\ уведомителя}}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{notifier_8hpp_aff55fe551a9992a54ec54621c524d0a4}{SOCKET}}\ \_socks[2];}
+\DoxyCodeLine{00090\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \#elif\ \_\_APPLE\_\_\ ||\ \_\_MACH\_\_\ ||\ \_\_FreeBSD\_\_\ ||\ \_\_NetBSD\_\_\ ||\ \_\_linux\_\_}}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Основной\ сокет\ уведомителя}}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{notifier_8hpp_aff55fe551a9992a54ec54621c524d0a4}{SOCKET}}\ \_sock;}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ передаваемых\ событий}}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::queue\ <uint32\_t>\ \_events;}
+\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ для\ блокировки\ потока}}
+\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lock\_state\_t\ <std::mutex>\ \_mtx;}
+\DoxyCodeLine{00099\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ фреймворка}}
+\DoxyCodeLine{00102\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ \_fmk;}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ работы\ с\ логами}}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ \_log;}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00110\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_notifier_a490ed1bfdc5e7388374c0bab18eaf742}{reset}}()\ noexcept;}
+\DoxyCodeLine{00111\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00117\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{notifier_8hpp_aff55fe551a9992a54ec54621c524d0a4}{SOCKET}}\ \doxymbox{\hyperlink{classawh_1_1_notifier_acc2bebae85ee22676bbf31919d3584bc}{init}}()\ noexcept;}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00124\ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ \doxymbox{\hyperlink{classawh_1_1_notifier_a7c9a2f672401a2983f869b59bf4ea573}{event}}()\ noexcept;}
+\DoxyCodeLine{00125\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_notifier_afbdd9c0088de42d4c3a13a029109931c}{notify}}(const\ uint32\_t\ \textcolor{keywordtype}{id})\ noexcept;}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_notifier_a223add1befe17353046f96ae491e182a}{Notifier}}(const\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ fmk,\ const\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ log)\ noexcept;}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ \ \ \ \ \string~\doxymbox{\hyperlink{classawh_1_1_notifier_a223add1befe17353046f96ae491e182a}{Notifier}}()\ noexcept;}
+\DoxyCodeLine{00145\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a40980a889dfb1a92e6f571c19c10f8d9}{notifier\_t}};}
+\DoxyCodeLine{00146\ \};}
+\DoxyCodeLine{00147\ }
+\DoxyCodeLine{00148\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_EVENT\_NOTIFIER\_\_}}
+
+\end{DoxyCode}

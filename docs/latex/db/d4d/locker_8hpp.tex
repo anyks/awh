@@ -1,0 +1,38 @@
+\doxysection{include/\+sys/\+locker.hpp File Reference}
+\hypertarget{locker_8hpp}{}\label{locker_8hpp}\index{include/sys/locker.hpp@{include/sys/locker.hpp}}
+{\ttfamily \+\#include $<$mutex$>$}\newline
+{\ttfamily \+\#include $<$memory$>$}\newline
+{\ttfamily \+\#include $<$atomic$>$}\newline
+{\ttfamily \+\#include $<$cinttypes$>$}\newline
+{\ttfamily \+\#include $<$unistd.\+h$>$}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \doxymbox{\hyperlink{classawh_1_1_lock_state}{awh::\+\+Lock\+State$<$ Mutex\+Type $>$}}
+\begin{DoxyCompactList}\small\item\em Шаблон формата данных состояния блокировок \end{DoxyCompactList}\item 
+class \doxymbox{\hyperlink{classawh_1_1_locker}{awh::\+\+Locker$<$ Mutex\+Type $>$}}
+\begin{DoxyCompactList}\small\item\em Шаблон формата данных состояния блокировок \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \doxymbox{\hyperlink{namespaceawh}{awh}}
+\begin{DoxyCompactList}\small\item\em основное пространство имён \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename Mutex\+Type = std::\+mutex$>$ }\\using \doxymbox{\hyperlink{namespaceawh_a7954e20373075cb31022e190cfb427aa}{awh::\+lock\+\_\+state\+\_\+t}} = \doxymbox{\hyperlink{classawh_1_1_lock_state}{Lock\+State}} $<$Mutex\+Type$>$
+\begin{DoxyCompactList}\small\item\em Шаблон формата данных состояния блокировок \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename Mutex\+Type = std::\+mutex$>$ }\\using \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{awh::\+locker\+\_\+t}} = \doxymbox{\hyperlink{classawh_1_1_locker}{Locker}} $<$Mutex\+Type$>$
+\begin{DoxyCompactList}\small\item\em Шаблон формата данных локера \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyDate}{Date}
+:\+ 2025-\/10-\/25 @license:\+ GPL-\/3.\+0
+\end{DoxyDate}
+@telegram:\+ @forman \begin{DoxyAuthor}{Author}
+:\+ Yuriy Lobarev @phone:\+ +7 (910) 983-\/95-\/90 @email:\+ \href{mailto:forman@anyks.com}{\texttt{forman@anyks.\+com}} @site:\+ \href{https://anyks.com}{\texttt{https:\+/\+/\+anyks.\+com}}
+\end{DoxyAuthor}
+\begin{DoxyCopyright}{Copyright}
+:\+ Copyright © 2025 
+\end{DoxyCopyright}

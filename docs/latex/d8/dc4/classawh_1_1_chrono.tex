@@ -1,0 +1,1193 @@
+\doxysection{awh::\+Chrono Class Reference}
+\hypertarget{classawh_1_1_chrono}{}\label{classawh_1_1_chrono}\index{awh::Chrono@{awh::Chrono}}
+
+
+Структура модуля \doxylink{classawh_1_1_chrono}{Chrono}.  
+
+
+
+
+{\ttfamily \+\#include $<$chrono.\+hpp$>$}
+
+\doxysubsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}} :\+ uint8\+\_\+t 
+\item 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} :\+ uint8\+\_\+t 
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classawh_1_1_chrono_a477172e5f17851b641dad41aafa84076}\label{classawh_1_1_chrono_a477172e5f17851b641dad41aafa84076} 
+void {\bfseries clear} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод очистки всех локальных данных \end{DoxyCompactList}\item 
+std::\+pair$<$ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}, double $>$ \doxymbox{\hyperlink{classawh_1_1_chrono_a603b7669c12b1dd41a75a2524137c5f1}{abbreviation}} (const uint64\+\_\+t date) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод перевода времени в аббревиатуру \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a939c4b8c5cb0433f2ceb768d79f1610f}{end}} (const uint64\+\_\+t date, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения конца позиции указанной даты \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_ab6c025df34093543f4bad81eb84ad369}{end}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения конца позиции текущей даты \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_af670d7483330c7ebca062da1ccb72be8}{begin}} (const uint64\+\_\+t date, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения начала позиции указанной даты \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a481c681fa85dbd00427d7dae3796f2b3}{begin}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения начала позиции текущей даты \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}} (const uint64\+\_\+t date, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} value, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\+\_\+t}} actual) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод актуализации прошедшего и оставшегося времени \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a3e2e574795ebb3c2a80306d8688cbd61}{actual}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} value, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\+\_\+t}} actual, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод актуализации прошедшего и оставшегося времени \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}} (const uint64\+\_\+t date, const uint64\+\_\+t value, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\+\_\+t}} offset) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод смещения на указанное количество единиц времени \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_af871dcaa1ca4d68088423386c3952699}{offset}} (const uint64\+\_\+t value, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\+\_\+t}} offset, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод смещения текущей даты на указанное количество единиц времени \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0}{seconds}} (const double seconds) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения текстового значения времени \end{DoxyCompactList}\item 
+double \doxymbox{\hyperlink{classawh_1_1_chrono_a64caa45c18dd1c1715fbb1f40771f238}{seconds}} (const string \&value) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения размера в секундах из строки \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_chrono_a1ac735332b7035227e51f81e8c3d3095}{h12}} (const uint64\+\_\+t date) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод извлечения статуса 12-\/и часового формата времени \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_chrono_aee7f72fc3abc71d6b74018536bc8ac5b}{h12}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод извлечения текущего статуса 12-\/и часового формата времени \end{DoxyCompactList}\item 
+uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}{year}} (const uint64\+\_\+t date) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод извлечения значения года \end{DoxyCompactList}\item 
+uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a334e3ea7c916258c26784cc4f5b55b5b}{year}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получение текущего значения года \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_chrono_a06096002d7c28931fc373a8c71c515ea}{dst}} (const uint64\+\_\+t date) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки принадлежит ли дата к лету \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_chrono_af76cea3185da71cbfe674b28689b8b2a}{dst}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки стоит ли на дворе лето \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_chrono_a2f6b9f4aef97d7750e9257e32e10441d}{leap}} (const uint16\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}{year}}) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки является ли год високосным \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_chrono_ae55bdd30280187cd0d74fb532f727cad}{leap}} (const uint64\+\_\+t date) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки является ли год високосным \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_chrono_ae8d3af98e4e11ab2df1d81bfb848994d}{leap}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки является ли текущий год високосным \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{classawh_1_1_chrono_ac7bcaa4d33bbb66ab17cb950be183e2f}{set}} (const T date, const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}} unit) noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон метода установки данных даты и времени \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \doxymbox{\hyperlink{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}{get}} (const uint64\+\_\+t date, const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}} unit) const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон метода извлечения данных даты и времени \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \doxymbox{\hyperlink{classawh_1_1_chrono_a1875eff8d3f8e7538594f2e13c915371}{get}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}} unit) const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон метода извлечения данных даты и времени \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \doxymbox{\hyperlink{classawh_1_1_chrono_a9a859cd9c520d391101b832b4e435010}{get}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}} unit, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage) const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон метода извлечения данных даты и времени \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_chrono_a8a3ad3bcdc3dec02807b2df87ee61c77}{set\+Time\+Zone}} (const int32\+\_\+t zone) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки временной зоны \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_chrono_a8ddbe97073a24962c926ac5a79139f45}{set\+Time\+Zone}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} zone) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки временной зоны \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_chrono_a31824cd768477daa27d507487776158e}{set\+Time\+Zone}} (const string \&zone) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки временной зоны \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_chrono_abbe1c4107d15ffb19d83260ffd2f0571}{match\+Time\+Zone}} (const string \&zone) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод выполнения матчинга временной зоны \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} \doxymbox{\hyperlink{classawh_1_1_chrono_af910ee7a9889d8c740132e3c0e9129b6}{match\+Time\+Zone}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод выполнения матчинга временной зоны \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352}{get\+Time\+Zone}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} zone) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод перевода временной зоны в смещение \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a0c7302845b93c98a044feeb9f2a1e572}{get\+Time\+Zone}} (const string \&zone) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод перевода временной зоны в смещение \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_ac60f32bae85573c079697b49fe1733d8}{get\+Time\+Zone}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} std, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} sum) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод определения текущей временной зоны относительно летнего времени \end{DoxyCompactList}\item 
+int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_af86284d99d376339d51e7d78b23b300a}{get\+Time\+Zone}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения установленной временной зоны \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_chrono_ab959badd10c4ac8d87df55ce30ebae91}\label{classawh_1_1_chrono_ab959badd10c4ac8d87df55ce30ebae91} 
+void {\bfseries clear\+Time\+Zones} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод очистки списка временных зон \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_chrono_a4003117fe081e24f41a280d6588fbb5f}{add\+Time\+Zone}} (const string \&name, const int32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления собственной временной зоны \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_chrono_ad7ba73c9fe2332e3b6b028ece98b5e19}{set\+Time\+Zones}} (const std::\+unordered\+\_\+map$<$ string, int32\+\_\+t $>$ \&zones) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки своего списка временных зон \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_chrono_a83c48b1cc4b865412b539096351399b1}{timestamp}} (const uint64\+\_\+t date, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки штампа времени в указанных единицах измерения \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_a429c2f4df6b065a6a29f025ebbcef092}{timestamp}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}} type, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения штампа времени в указанных единицах измерения \end{DoxyCompactList}\item 
+uint64\+\_\+t \doxymbox{\hyperlink{classawh_1_1_chrono_ad1c84aabb5c12b6befabda59c45cefb1}{parse}} (const string \&date, const string \&\doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) noexcept
+\begin{DoxyCompactList}\small\item\em Метод парсинга строки даты и времени в Unix\+Timestamp. \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} (const int32\+\_\+t zone) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод форматирования временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a4be25808d8975adaa2dfa256881663dc}{format}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} zone) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод форматирования временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_ab7dbb071449c4d649f962ca55dfd9b6a}{format}} (const uint64\+\_\+t date, const string \&format) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования Unix\+Timestamp без учёта временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a85582cb983c5832aaba4efb147f8e32f}{format}} (const uint64\+\_\+t date, const int32\+\_\+t zone, const string \&format) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования Unix\+Timestamp с учётом временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a107ed8e0333cafe7aa4ee91aa5b035ea}{format}} (const uint64\+\_\+t date, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} zone, const string \&format) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования Unix\+Timestamp с учётом временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_ab765cce7a079fee1e03f45f5ceee1f7d}{format}} (const uint64\+\_\+t date, const string \&zone, const string \&format) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования Unix\+Timestamp с учётом временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a4226b6d25d176f5e070b21b01204bddc}{format}} (const string \&format, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования текущей даты без учёта временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a7c92cb19c463e864ef61f2b7f59410db}{format}} (const int32\+\_\+t zone, const string \&format, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования текущей даты с учётом временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_ad78c5a9a2b960a3d9f1c214447c5e857}{format}} (const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} zone, const string \&format, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования текущей даты с учётом временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a67c3b17faad8cea4c314ced0079caf5b}{format}} (const string \&zone, const string \&format, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод формирования текущей даты с учётом временной зоны \end{DoxyCompactList}\item 
+string \doxymbox{\hyperlink{classawh_1_1_chrono_a97cdbe0b561394f1638bd719b03ddaa0}{strip}} (const string \&date, const string \&format1, const string \&format2, const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}} storage=storage\+\_\+t::\+\+GLOBAL) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод преобразования даты из оного формата в другой \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ac5f25b0bc0f4a5fe72ac616bab283e4e}{Chrono}} (const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{classawh_1_1_log}{Log}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_chrono_ad8a381fc8ebdaf98fc9ab4ccc91467c0}\label{classawh_1_1_chrono_ad8a381fc8ebdaf98fc9ab4ccc91467c0} 
+{\bfseries \texorpdfstring{$\sim$}{\string~}\+Chrono} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Структура модуля \doxylink{classawh_1_1_chrono}{Chrono}. 
+
+\label{doc-enum-members}
+\Hypertarget{classawh_1_1_chrono_doc-enum-members}
+\doxysubsection{Member Enumeration Documentation}
+\Hypertarget{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}\index{awh::Chrono@{awh::Chrono}!actual\_t@{actual\_t}}
+\index{actual\_t@{actual\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{actual\_t}{actual\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{awh::\+\+Chrono::\+actual\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Параметры актуального состояния даты \Hypertarget{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}\index{awh::Chrono@{awh::Chrono}!h12\_t@{h12\_t}}
+\index{h12\_t@{h12\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{h12\_t}{h12\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{awh::\+\+Chrono::\+h12\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+12-\/и часовой формат времени \Hypertarget{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}\index{awh::Chrono@{awh::Chrono}!offset\_t@{offset\_t}}
+\index{offset\_t@{offset\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{offset\_t}{offset\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{awh::\+\+Chrono::\+offset\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Параметры смещения \Hypertarget{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}\index{awh::Chrono@{awh::Chrono}!storage\_t@{storage\_t}}
+\index{storage\_t@{storage\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{storage\_t}{storage\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{awh::\+\+Chrono::\+storage\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Тип хранимой даты \Hypertarget{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}\index{awh::Chrono@{awh::Chrono}!type\_t@{type\_t}}
+\index{type\_t@{type\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{type\_t}{type\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{awh::\+\+Chrono::\+type\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Тип штампа времени \Hypertarget{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}\index{awh::Chrono@{awh::Chrono}!unit\_t@{unit\_t}}
+\index{unit\_t@{unit\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{unit\_t}{unit\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{awh::\+\+Chrono::\+unit\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Тип элементов даты \Hypertarget{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}\index{awh::Chrono@{awh::Chrono}!zone\_t@{zone\_t}}
+\index{zone\_t@{zone\_t}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{zone\_t}{zone\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654} 
+enum class \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{awh::\+\+Chrono::\+zone\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
+
+Временная зона @site \href{https://24timezones.com/mirovoe_vremia3.php}{\texttt{https:\+/\+/\+24timezones.\+com/\+mirovoe\+\_\+vremia3.\+php}} 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_chrono_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_chrono_ac5f25b0bc0f4a5fe72ac616bab283e4e}\index{awh::Chrono@{awh::Chrono}!Chrono@{Chrono}}
+\index{Chrono@{Chrono}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{Chrono()}{Chrono()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ac5f25b0bc0f4a5fe72ac616bab283e4e} 
+awh::\+\+Chrono::\+\+Chrono (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_log}{Log}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fmk} & объект фреймворка \\
+\hline
+{\em log} & объект для работы с логами \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_chrono_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_chrono_a603b7669c12b1dd41a75a2524137c5f1}\index{awh::Chrono@{awh::Chrono}!abbreviation@{abbreviation}}
+\index{abbreviation@{abbreviation}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{abbreviation()}{abbreviation()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a603b7669c12b1dd41a75a2524137c5f1} 
+std::\+pair$<$ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}, double $>$ awh::\+\+Chrono::\+abbreviation (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод перевода времени в аббревиатуру 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата в Unix\+Timestamp \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+сформированная аббревиатура даты 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a3e2e574795ebb3c2a80306d8688cbd61}\index{awh::Chrono@{awh::Chrono}!actual@{actual}}
+\index{actual@{actual}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{actual()}{actual()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a3e2e574795ebb3c2a80306d8688cbd61} 
+uint64\+\_\+t awh::\+\+Chrono::\+actual (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{value}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\+\_\+t}}}]{actual}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод актуализации прошедшего и оставшегося времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em value} & тип определяемых единиц измерений времени \\
+\hline
+{\em type} & тип единиц измерений даты \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}} & направление актуализации \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат вычисления 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}\index{awh::Chrono@{awh::Chrono}!actual@{actual}}
+\index{actual@{actual}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{actual()}{actual()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0} 
+uint64\+\_\+t awh::\+\+Chrono::\+actual (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{value}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\+\_\+t}}}]{actual}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод актуализации прошедшего и оставшегося времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата относительно которой производятся расчёты \\
+\hline
+{\em value} & тип определяемых единиц измерений времени \\
+\hline
+{\em type} & тип единиц измерений даты \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}} & направление актуализации \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат вычисления 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a4003117fe081e24f41a280d6588fbb5f}\index{awh::Chrono@{awh::Chrono}!addTimeZone@{addTimeZone}}
+\index{addTimeZone@{addTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{addTimeZone()}{addTimeZone()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a4003117fe081e24f41a280d6588fbb5f} 
+void awh::\+\+Chrono::\+add\+Time\+Zone (\begin{DoxyParamCaption}\item[{const string \&}]{name}{, }\item[{const int32\+\_\+t}]{offset}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления собственной временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em name} & название временной зоны \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}} & смещение времени в секундах \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_a481c681fa85dbd00427d7dae3796f2b3}\index{awh::Chrono@{awh::Chrono}!begin@{begin}}
+\index{begin@{begin}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{begin()}{begin()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a481c681fa85dbd00427d7dae3796f2b3} 
+uint64\+\_\+t awh::\+\+Chrono::\+begin (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения начала позиции текущей даты 
+
+
+\begin{DoxyParams}{Parameters}
+{\em type} & тип единиц измерений даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+начало текущей даты в формате Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_af670d7483330c7ebca062da1ccb72be8}\index{awh::Chrono@{awh::Chrono}!begin@{begin}}
+\index{begin@{begin}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{begin()}{begin()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_af670d7483330c7ebca062da1ccb72be8} 
+uint64\+\_\+t awh::\+\+Chrono::\+begin (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения начала позиции указанной даты 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для которой необходимо получить позицию \\
+\hline
+{\em type} & тип единиц измерений даты \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+начало указанной даты в формате Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_af76cea3185da71cbfe674b28689b8b2a}\index{awh::Chrono@{awh::Chrono}!dst@{dst}}
+\index{dst@{dst}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{dst()}{dst()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_af76cea3185da71cbfe674b28689b8b2a} 
+bool awh::\+\+Chrono::\+dst (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки стоит ли на дворе лето 
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a06096002d7c28931fc373a8c71c515ea}\index{awh::Chrono@{awh::Chrono}!dst@{dst}}
+\index{dst@{dst}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{dst()}{dst()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a06096002d7c28931fc373a8c71c515ea} 
+bool awh::\+\+Chrono::\+dst (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки принадлежит ли дата к лету 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для проверки \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ab6c025df34093543f4bad81eb84ad369}\index{awh::Chrono@{awh::Chrono}!end@{end}}
+\index{end@{end}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{end()}{end()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab6c025df34093543f4bad81eb84ad369} 
+uint64\+\_\+t awh::\+\+Chrono::\+end (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения конца позиции текущей даты 
+
+
+\begin{DoxyParams}{Parameters}
+{\em type} & тип единиц измерений даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+конец текущей даты в формате Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a939c4b8c5cb0433f2ceb768d79f1610f}\index{awh::Chrono@{awh::Chrono}!end@{end}}
+\index{end@{end}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{end()}{end()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a939c4b8c5cb0433f2ceb768d79f1610f} 
+uint64\+\_\+t awh::\+\+Chrono::\+end (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения конца позиции указанной даты 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для которой необходимо получить позицию \\
+\hline
+{\em type} & тип единиц измерений даты \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+конец указанной даты в формате Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [1/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const int32\+\_\+t}]{zone}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод форматирования временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона (в секундах) в которой нужно получить результат \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строковое обозначение временной зоны 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a7c92cb19c463e864ef61f2b7f59410db}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [2/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a7c92cb19c463e864ef61f2b7f59410db} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const int32\+\_\+t}]{zone}{, }\item[{const string \&}]{format}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования текущей даты с учётом временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона в которой нужно получить дату (в секундах) \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a4226b6d25d176f5e070b21b01204bddc}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [3/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a4226b6d25d176f5e070b21b01204bddc} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const string \&}]{format}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования текущей даты без учёта временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a67c3b17faad8cea4c314ced0079caf5b}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [4/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a67c3b17faad8cea4c314ced0079caf5b} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const string \&}]{zone}{, }\item[{const string \&}]{format}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования текущей даты с учётом временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона в которой нужно получить дату \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a85582cb983c5832aaba4efb147f8e32f}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [5/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a85582cb983c5832aaba4efb147f8e32f} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const int32\+\_\+t}]{zone}{, }\item[{const string \&}]{format}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования Unix\+Timestamp с учётом временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата в Unix\+Timestamp \\
+\hline
+{\em zone} & временная зона в которой нужно получить дату (в секундах) \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ab7dbb071449c4d649f962ca55dfd9b6a}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [6/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab7dbb071449c4d649f962ca55dfd9b6a} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const string \&}]{format}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования Unix\+Timestamp без учёта временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата в Unix\+Timestamp \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ab765cce7a079fee1e03f45f5ceee1f7d}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [7/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab765cce7a079fee1e03f45f5ceee1f7d} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const string \&}]{zone}{, }\item[{const string \&}]{format}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования Unix\+Timestamp с учётом временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата в Unix\+Timestamp \\
+\hline
+{\em zone} & временная зона в которой нужно получить дату \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a107ed8e0333cafe7aa4ee91aa5b035ea}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [8/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a107ed8e0333cafe7aa4ee91aa5b035ea} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{zone}{, }\item[{const string \&}]{format}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования Unix\+Timestamp с учётом временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата в Unix\+Timestamp \\
+\hline
+{\em zone} & временная зона в которой нужно получить дату \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a4be25808d8975adaa2dfa256881663dc}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [9/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a4be25808d8975adaa2dfa256881663dc} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{zone}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод форматирования временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона в которой нужно получить результат \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строковое обозначение временной зоны 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ad78c5a9a2b960a3d9f1c214447c5e857}\index{awh::Chrono@{awh::Chrono}!format@{format}}
+\index{format@{format}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{format()}{format()}\hspace{0.1cm}{\footnotesize\ttfamily [10/10]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ad78c5a9a2b960a3d9f1c214447c5e857} 
+string awh::\+\+Chrono::\+format (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{zone}{, }\item[{const string \&}]{format}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод формирования текущей даты с учётом временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона в которой нужно получить дату \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+строка содержащая дату 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}\index{awh::Chrono@{awh::Chrono}!get@{get}}
+\index{get@{get}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{get()}{get()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4} 
+template$<$typename T$>$ \\
+T awh::\+\+Chrono::\+get (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}}}]{unit}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон метода извлечения данных даты и времени 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных в котором извлекаются данные\\
+\hline
+\end{DoxyTemplParams}
+Метод извлечения данных даты и времени
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для обработки \\
+\hline
+{\em unit} & элементы данных для извлечения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+значение данных даты и времени 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a1875eff8d3f8e7538594f2e13c915371}\index{awh::Chrono@{awh::Chrono}!get@{get}}
+\index{get@{get}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{get()}{get()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a1875eff8d3f8e7538594f2e13c915371} 
+template$<$typename T$>$ \\
+T awh::\+\+Chrono::\+get (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}}}]{unit}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон метода извлечения данных даты и времени 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных в котором извлекаются данные\\
+\hline
+\end{DoxyTemplParams}
+Метод извлечения данных даты и времени
+
+
+\begin{DoxyParams}{Parameters}
+{\em unit} & элементы данных для извлечения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+значение данных даты и времени 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a9a859cd9c520d391101b832b4e435010}\index{awh::Chrono@{awh::Chrono}!get@{get}}
+\index{get@{get}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{get()}{get()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a9a859cd9c520d391101b832b4e435010} 
+template$<$typename T$>$ \\
+T awh::\+\+Chrono::\+get (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}}}]{unit}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон метода извлечения данных даты и времени 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных в котором извлекаются данные\\
+\hline
+\end{DoxyTemplParams}
+Метод извлечения данных даты и времени
+
+
+\begin{DoxyParams}{Parameters}
+{\em unit} & элементы данных для извлечения \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+значение данных даты и времени 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_af86284d99d376339d51e7d78b23b300a}\index{awh::Chrono@{awh::Chrono}!getTimeZone@{getTimeZone}}
+\index{getTimeZone@{getTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{getTimeZone()}{getTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [1/4]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_af86284d99d376339d51e7d78b23b300a} 
+int32\+\_\+t awh::\+\+Chrono::\+get\+Time\+Zone (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения установленной временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+смещение временной зоны в секундах 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a0c7302845b93c98a044feeb9f2a1e572}\index{awh::Chrono@{awh::Chrono}!getTimeZone@{getTimeZone}}
+\index{getTimeZone@{getTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{getTimeZone()}{getTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [2/4]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a0c7302845b93c98a044feeb9f2a1e572} 
+int32\+\_\+t awh::\+\+Chrono::\+get\+Time\+Zone (\begin{DoxyParamCaption}\item[{const string \&}]{zone}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод перевода временной зоны в смещение 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона для конвертации \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+смещение временной зоны в секундах 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ac60f32bae85573c079697b49fe1733d8}\index{awh::Chrono@{awh::Chrono}!getTimeZone@{getTimeZone}}
+\index{getTimeZone@{getTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{getTimeZone()}{getTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [3/4]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ac60f32bae85573c079697b49fe1733d8} 
+int32\+\_\+t awh::\+\+Chrono::\+get\+Time\+Zone (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{std}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{sum}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод определения текущей временной зоны относительно летнего времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em std} & временная зона стандартного времени \\
+\hline
+{\em sum} & временная зона летнего времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+смещение временной зоны в секундах 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352}\index{awh::Chrono@{awh::Chrono}!getTimeZone@{getTimeZone}}
+\index{getTimeZone@{getTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{getTimeZone()}{getTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [4/4]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352} 
+int32\+\_\+t awh::\+\+Chrono::\+get\+Time\+Zone (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{zone}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод перевода временной зоны в смещение 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона для конвертации \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+смещение временной зоны в секундах 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_aee7f72fc3abc71d6b74018536bc8ac5b}\index{awh::Chrono@{awh::Chrono}!h12@{h12}}
+\index{h12@{h12}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{h12()}{h12()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_aee7f72fc3abc71d6b74018536bc8ac5b} 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\+\_\+t}} awh::\+\+Chrono::\+h12 (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод извлечения текущего статуса 12-\/и часового формата времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущее установленное значение статуса 12-\/и часового формата времени 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a1ac735332b7035227e51f81e8c3d3095}\index{awh::Chrono@{awh::Chrono}!h12@{h12}}
+\index{h12@{h12}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{h12()}{h12()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a1ac735332b7035227e51f81e8c3d3095} 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\+\_\+t}} awh::\+\+Chrono::\+h12 (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод извлечения статуса 12-\/и часового формата времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для проверки \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_ae8d3af98e4e11ab2df1d81bfb848994d}\index{awh::Chrono@{awh::Chrono}!leap@{leap}}
+\index{leap@{leap}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{leap()}{leap()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ae8d3af98e4e11ab2df1d81bfb848994d} 
+bool awh::\+\+Chrono::\+leap (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки является ли текущий год високосным 
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a2f6b9f4aef97d7750e9257e32e10441d}\index{awh::Chrono@{awh::Chrono}!leap@{leap}}
+\index{leap@{leap}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{leap()}{leap()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a2f6b9f4aef97d7750e9257e32e10441d} 
+bool awh::\+\+Chrono::\+leap (\begin{DoxyParamCaption}\item[{const uint16\+\_\+t}]{year}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки является ли год високосным 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}{year}} & год для проверки \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ae55bdd30280187cd0d74fb532f727cad}\index{awh::Chrono@{awh::Chrono}!leap@{leap}}
+\index{leap@{leap}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{leap()}{leap()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ae55bdd30280187cd0d74fb532f727cad} 
+bool awh::\+\+Chrono::\+leap (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки является ли год високосным 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для проверки \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_af910ee7a9889d8c740132e3c0e9129b6}\index{awh::Chrono@{awh::Chrono}!matchTimeZone@{matchTimeZone}}
+\index{matchTimeZone@{matchTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{matchTimeZone()}{matchTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_af910ee7a9889d8c740132e3c0e9129b6} 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} awh::\+\+Chrono::\+match\+Time\+Zone (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод выполнения матчинга временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+определённая временная зона 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_abbe1c4107d15ffb19d83260ffd2f0571}\index{awh::Chrono@{awh::Chrono}!matchTimeZone@{matchTimeZone}}
+\index{matchTimeZone@{matchTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{matchTimeZone()}{matchTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_abbe1c4107d15ffb19d83260ffd2f0571} 
+\doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}} awh::\+\+Chrono::\+match\+Time\+Zone (\begin{DoxyParamCaption}\item[{const string \&}]{zone}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод выполнения матчинга временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона для конвертации \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+определённая временная зона 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}\index{awh::Chrono@{awh::Chrono}!offset@{offset}}
+\index{offset@{offset}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{offset()}{offset()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396} 
+uint64\+\_\+t awh::\+\+Chrono::\+offset (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const uint64\+\_\+t}]{value}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\+\_\+t}}}]{offset}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод смещения на указанное количество единиц времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата относительно которой производится смещение \\
+\hline
+{\em value} & значение на которое производится смещение \\
+\hline
+{\em type} & тип единиц измерений даты \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}} & направление смещения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат вычисления в формате Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_af871dcaa1ca4d68088423386c3952699}\index{awh::Chrono@{awh::Chrono}!offset@{offset}}
+\index{offset@{offset}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{offset()}{offset()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_af871dcaa1ca4d68088423386c3952699} 
+uint64\+\_\+t awh::\+\+Chrono::\+offset (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{value}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\+\_\+t}}}]{offset}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод смещения текущей даты на указанное количество единиц времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em value} & значение на которое производится смещение \\
+\hline
+{\em type} & тип единиц измерений даты \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}} & направление смещения \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат вычисления в формате Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ad1c84aabb5c12b6befabda59c45cefb1}\index{awh::Chrono@{awh::Chrono}!parse@{parse}}
+\index{parse@{parse}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{parse()}{parse()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ad1c84aabb5c12b6befabda59c45cefb1} 
+uint64\+\_\+t awh::\+\+Chrono::\+parse (\begin{DoxyParamCaption}\item[{const string \&}]{date}{, }\item[{const string \&}]{format}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод парсинга строки даты и времени в Unix\+Timestamp. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & строка даты \\
+\hline
+{\em \doxylink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}} & формат даты \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+дата в Unix\+Timestamp 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0}\index{awh::Chrono@{awh::Chrono}!seconds@{seconds}}
+\index{seconds@{seconds}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{seconds()}{seconds()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0} 
+string awh::\+\+Chrono::\+seconds (\begin{DoxyParamCaption}\item[{const double}]{seconds}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения текстового значения времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0}{seconds}} & количество секунд для конвертации \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+обозначение времени с указанием размерности 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a64caa45c18dd1c1715fbb1f40771f238}\index{awh::Chrono@{awh::Chrono}!seconds@{seconds}}
+\index{seconds@{seconds}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{seconds()}{seconds()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a64caa45c18dd1c1715fbb1f40771f238} 
+double awh::\+\+Chrono::\+seconds (\begin{DoxyParamCaption}\item[{const string \&}]{value}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения размера в секундах из строки 
+
+
+\begin{DoxyParams}{Parameters}
+{\em value} & строка обозначения размерности (s, m, h, d, w, M, y) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+размер в секундах 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_ac7bcaa4d33bbb66ab17cb950be183e2f}\index{awh::Chrono@{awh::Chrono}!set@{set}}
+\index{set@{set}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{set()}{set()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ac7bcaa4d33bbb66ab17cb950be183e2f} 
+template$<$typename T$>$ \\
+void awh::\+\+Chrono::\+set (\begin{DoxyParamCaption}\item[{const T}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\+\_\+t}}}]{unit}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон метода установки данных даты и времени 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных в котором устанавливаются данные\\
+\hline
+\end{DoxyTemplParams}
+Метод установки данных даты и времени
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для обработки \\
+\hline
+{\em unit} & элементы данных для установки \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_a8a3ad3bcdc3dec02807b2df87ee61c77}\index{awh::Chrono@{awh::Chrono}!setTimeZone@{setTimeZone}}
+\index{setTimeZone@{setTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{setTimeZone()}{setTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a8a3ad3bcdc3dec02807b2df87ee61c77} 
+void awh::\+\+Chrono::\+set\+Time\+Zone (\begin{DoxyParamCaption}\item[{const int32\+\_\+t}]{zone}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & смещение временной зоны для установки (в секундах) \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_a31824cd768477daa27d507487776158e}\index{awh::Chrono@{awh::Chrono}!setTimeZone@{setTimeZone}}
+\index{setTimeZone@{setTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{setTimeZone()}{setTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a31824cd768477daa27d507487776158e} 
+void awh::\+\+Chrono::\+set\+Time\+Zone (\begin{DoxyParamCaption}\item[{const string \&}]{zone}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона для установки \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_a8ddbe97073a24962c926ac5a79139f45}\index{awh::Chrono@{awh::Chrono}!setTimeZone@{setTimeZone}}
+\index{setTimeZone@{setTimeZone}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{setTimeZone()}{setTimeZone()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a8ddbe97073a24962c926ac5a79139f45} 
+void awh::\+\+Chrono::\+set\+Time\+Zone (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\+\_\+t}}}]{zone}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки временной зоны 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zone} & временная зона для установки \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_ad7ba73c9fe2332e3b6b028ece98b5e19}\index{awh::Chrono@{awh::Chrono}!setTimeZones@{setTimeZones}}
+\index{setTimeZones@{setTimeZones}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{setTimeZones()}{setTimeZones()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_ad7ba73c9fe2332e3b6b028ece98b5e19} 
+void awh::\+\+Chrono::\+set\+Time\+Zones (\begin{DoxyParamCaption}\item[{const std::\+unordered\+\_\+map$<$ string, int32\+\_\+t $>$ \&}]{zones}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки своего списка временных зон 
+
+
+\begin{DoxyParams}{Parameters}
+{\em zones} & список временных зон для установки \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_a97cdbe0b561394f1638bd719b03ddaa0}\index{awh::Chrono@{awh::Chrono}!strip@{strip}}
+\index{strip@{strip}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{strip()}{strip()}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a97cdbe0b561394f1638bd719b03ddaa0} 
+string awh::\+\+Chrono::\+strip (\begin{DoxyParamCaption}\item[{const string \&}]{date}{, }\item[{const string \&}]{format1}{, }\item[{const string \&}]{format2}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод преобразования даты из оного формата в другой 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & строка даты для преобразования \\
+\hline
+{\em format1} & формат даты из которой нужно получить дату \\
+\hline
+{\em format2} & формат даты в который нужно перевести дату \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат работы 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a429c2f4df6b065a6a29f025ebbcef092}\index{awh::Chrono@{awh::Chrono}!timestamp@{timestamp}}
+\index{timestamp@{timestamp}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{timestamp()}{timestamp()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a429c2f4df6b065a6a29f025ebbcef092} 
+uint64\+\_\+t awh::\+\+Chrono::\+timestamp (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения штампа времени в указанных единицах измерения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em type} & единицы измерения штампа времени \\
+\hline
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+штамп времени в указанных единицах измерения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a83c48b1cc4b865412b539096351399b1}\index{awh::Chrono@{awh::Chrono}!timestamp@{timestamp}}
+\index{timestamp@{timestamp}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{timestamp()}{timestamp()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a83c48b1cc4b865412b539096351399b1} 
+void awh::\+\+Chrono::\+timestamp (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{, }\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\+\_\+t}}}]{type}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки штампа времени в указанных единицах измерения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для установки \\
+\hline
+{\em type} & единицы измерения штампа времени \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_chrono_a334e3ea7c916258c26784cc4f5b55b5b}\index{awh::Chrono@{awh::Chrono}!year@{year}}
+\index{year@{year}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{year()}{year()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a334e3ea7c916258c26784cc4f5b55b5b} 
+uint16\+\_\+t awh::\+\+Chrono::\+year (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\+\_\+t}}}]{storage}{ = {\ttfamily storage\+\_\+t:\+:\+GLOBAL}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получение текущего значения года 
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & хранение значение времени \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущее значение года 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}\index{awh::Chrono@{awh::Chrono}!year@{year}}
+\index{year@{year}!awh::Chrono@{awh::Chrono}}
+\doxysubsubsection{\texorpdfstring{year()}{year()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7} 
+uint16\+\_\+t awh::\+\+Chrono::\+year (\begin{DoxyParamCaption}\item[{const uint64\+\_\+t}]{date}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод извлечения значения года 
+
+
+\begin{DoxyParams}{Parameters}
+{\em date} & дата для извлечения года \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+sys/\+\doxymbox{\hyperlink{chrono_8hpp}{chrono.\+hpp}}\end{DoxyCompactItemize}

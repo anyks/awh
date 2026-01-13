@@ -1,0 +1,415 @@
+\doxysection{awh::\+Queue Class Reference}
+\hypertarget{classawh_1_1_queue}{}\label{classawh_1_1_queue}\index{awh::Queue@{awh::Queue}}
+
+
+Класс бинарной очереди  
+
+
+
+
+{\ttfamily \+\#include $<$queue.\+hpp$>$}
+
+\doxysubsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef std::\+pair$<$ const void \texorpdfstring{$\ast$}{*}, size\+\_\+t $>$ \doxymbox{\hyperlink{classawh_1_1_queue_ac4e41533c99e01abdf6d2abf922dfb9f}{record\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classawh_1_1_queue_a73aeae77475f961178519e0f432ce130}\label{classawh_1_1_queue_a73aeae77475f961178519e0f432ce130} 
+void {\bfseries pop} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод удаления записи в очереди \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_queue_a45a416539ab650a3af8a8b52ae34267f}\label{classawh_1_1_queue_a45a416539ab650a3af8a8b52ae34267f} 
+void {\bfseries clear} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод очистки всех данных очереди \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_queue_ad17016ac887323d18df4ba2d6400ce27}\label{classawh_1_1_queue_ad17016ac887323d18df4ba2d6400ce27} 
+void {\bfseries reset} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод полной очистки памяти \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a8979a62b0c5a061ce916cc9cb6c32ca4}{count}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Количество добавленных элементов \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения размера добавленных данных \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_ac1a201634936f08a77621e217eefab8a}{capacity}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Метод вывода размера занимаемой памяти очередью \end{DoxyCompactList}\item 
+const void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{classawh_1_1_queue_aeb418b7670a2ec2fae0016317b1743b9}{data}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения данных указанного элемента в очереди \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_queue_aea560314a8a9ab7bd2e8d232321b2477}{commit}} (const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод фиксации прочитанного размера данных \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_queue_ac7ac5890966b1d9795082d3f0133a8a4}{empty}} (const uint32\+\_\+t timeout=0) const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки на заполненность очереди \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a854b1c4d8e0437400608499c8fd9df89}{push}} (const void \texorpdfstring{$\ast$}{*}buffer, const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления бинарного буфера данных в очередь \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a8cec2820c855c7b44b573bceb2c57ab9}{push}} (const vector$<$ \doxymbox{\hyperlink{classawh_1_1_queue_ac4e41533c99e01abdf6d2abf922dfb9f}{record\+\_\+t}} $>$ \&records, const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления бинарного буфера данных в очередь \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_queue_a6b55544cc8cbbb27c77eb5f380a60203}{set\+Max\+Memory}} (const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки максимального размера потребления памяти \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_queue_aec49a864a657bbc7aa137f58a23bff21}{set\+Max\+Records}} (const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_queue_a8979a62b0c5a061ce916cc9cb6c32ca4}{count}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки максимального количества записей очереди \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_queue_a848deba6de8b07abf6113ff5b410cc8c}{swap}} (\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&queue) noexcept
+\begin{DoxyCompactList}\small\item\em Метод обмена очередями \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_queue_a8d74362bd1bd587e14195a7dc6d0424d}{set\+Logger}} (const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки объекта логирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_afa3c3c56bb4e7089521f18349a3ae3f8}{operator size\+\_\+t}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения размера данных в очереди \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_ac55b5ba39efa0284c06d4376be8b18ab}{operator const char \texorpdfstring{$\ast$}{*}}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения бинарных данных очереди \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \& \doxymbox{\hyperlink{classawh_1_1_queue_af70650c30c86ee7460e341b482ba0920}{operator=}} (\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&\&queue) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор перемещения \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \& \doxymbox{\hyperlink{classawh_1_1_queue_aab004827d24bfedbb943b0694fa12fec}{operator=}} (const \doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&queue) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор копирования \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_queue_a66ec3ad4060482dba16f32626c5d6091}{operator==}} (const \doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&queue) const noexcept
+\begin{DoxyCompactList}\small\item\em Оператор сравнения двух очередей \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}\label{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037} 
+{\bfseries Queue} ()=default
+\begin{DoxyCompactList}\small\item\em Разрешаем пустое значение объекта \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_af4245b51c847a91680bc6355436d8cdd}{Queue}} (Queue \&\&queue) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор перемещения \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_a49dc8ff06a1826f094ff928fb4b0d0f0}{Queue}} (const Queue \&queue) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор копирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_queue_a7ae24931236921781c2205492da0b6bf}{Queue}} (const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_queue_a19b6abca27306e633a061dda68820752}\label{classawh_1_1_queue_a19b6abca27306e633a061dda68820752} 
+{\bfseries \texorpdfstring{$\sim$}{\string~}\+Queue} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Класс бинарной очереди 
+
+\label{doc-typedef-members}
+\Hypertarget{classawh_1_1_queue_doc-typedef-members}
+\doxysubsection{Member Typedef Documentation}
+\Hypertarget{classawh_1_1_queue_ac4e41533c99e01abdf6d2abf922dfb9f}\index{awh::Queue@{awh::Queue}!record\_t@{record\_t}}
+\index{record\_t@{record\_t}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{record\_t}{record\_t}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_ac4e41533c99e01abdf6d2abf922dfb9f} 
+typedef std::\+pair$<$const void \texorpdfstring{$\ast$}{*}, size\+\_\+t$>$ \doxymbox{\hyperlink{classawh_1_1_queue_ac4e41533c99e01abdf6d2abf922dfb9f}{awh::\+\+Queue::\+record\+\_\+t}}}
+
+Создаём тип данных добавляемой записи 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_queue_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_queue_af4245b51c847a91680bc6355436d8cdd}\index{awh::Queue@{awh::Queue}!Queue@{Queue}}
+\index{Queue@{Queue}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{Queue()}{Queue()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_af4245b51c847a91680bc6355436d8cdd} 
+awh::\+\+Queue::\+\+Queue (\begin{DoxyParamCaption}\item[{Queue \&\&}]{queue}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор перемещения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em queue} & очередь для перемещения \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_queue_a49dc8ff06a1826f094ff928fb4b0d0f0}\index{awh::Queue@{awh::Queue}!Queue@{Queue}}
+\index{Queue@{Queue}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{Queue()}{Queue()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a49dc8ff06a1826f094ff928fb4b0d0f0} 
+awh::\+\+Queue::\+\+Queue (\begin{DoxyParamCaption}\item[{const Queue \&}]{queue}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em queue} & очередь для копирования \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_queue_a7ae24931236921781c2205492da0b6bf}\index{awh::Queue@{awh::Queue}!Queue@{Queue}}
+\index{Queue@{Queue}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{Queue()}{Queue()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a7ae24931236921781c2205492da0b6bf} 
+awh::\+\+Queue::\+\+Queue (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fmk} & объект фреймворка \\
+\hline
+{\em log} & объект для работы с логами \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_queue_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_queue_ac1a201634936f08a77621e217eefab8a}\index{awh::Queue@{awh::Queue}!capacity@{capacity}}
+\index{capacity@{capacity}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{capacity()}{capacity()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_ac1a201634936f08a77621e217eefab8a} 
+size\+\_\+t awh::\+\+Queue::\+capacity (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод вывода размера занимаемой памяти очередью 
+
+\begin{DoxyReturn}{Returns}
+количество памяти которую занимает очередь 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_aea560314a8a9ab7bd2e8d232321b2477}\index{awh::Queue@{awh::Queue}!commit@{commit}}
+\index{commit@{commit}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{commit()}{commit()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_aea560314a8a9ab7bd2e8d232321b2477} 
+void awh::\+\+Queue::\+commit (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод фиксации прочитанного размера данных 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}} & размер данных для фиксации \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_queue_a8979a62b0c5a061ce916cc9cb6c32ca4}\index{awh::Queue@{awh::Queue}!count@{count}}
+\index{count@{count}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{count()}{count()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a8979a62b0c5a061ce916cc9cb6c32ca4} 
+size\+\_\+t awh::\+\+Queue::\+count (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Количество добавленных элементов 
+
+\begin{DoxyReturn}{Returns}
+количество добавленных элементов 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_aeb418b7670a2ec2fae0016317b1743b9}\index{awh::Queue@{awh::Queue}!data@{data}}
+\index{data@{data}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{data()}{data()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_aeb418b7670a2ec2fae0016317b1743b9} 
+const void \texorpdfstring{$\ast$}{*} awh::\+\+Queue::\+data (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения данных указанного элемента в очереди 
+
+\begin{DoxyReturn}{Returns}
+указатель на элемент очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_ac7ac5890966b1d9795082d3f0133a8a4}\index{awh::Queue@{awh::Queue}!empty@{empty}}
+\index{empty@{empty}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{empty()}{empty()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_ac7ac5890966b1d9795082d3f0133a8a4} 
+bool awh::\+\+Queue::\+empty (\begin{DoxyParamCaption}\item[{const uint32\+\_\+t}]{timeout}{ = {\ttfamily 0}}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки на заполненность очереди 
+
+
+\begin{DoxyParams}{Parameters}
+{\em timeout} & время ожидания в миллисекундах \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_ac55b5ba39efa0284c06d4376be8b18ab}\index{awh::Queue@{awh::Queue}!operator const char \texorpdfstring{$\ast$}{*}@{operator const char \texorpdfstring{$\ast$}{*}}}
+\index{operator const char \texorpdfstring{$\ast$}{*}@{operator const char \texorpdfstring{$\ast$}{*}}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{operator const char \texorpdfstring{$\ast$}{*}()}{operator const char *()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_ac55b5ba39efa0284c06d4376be8b18ab} 
+awh::\+\+Queue::\+operator const char \texorpdfstring{$\ast$}{*} (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения бинарных данных очереди 
+
+\begin{DoxyReturn}{Returns}
+бинарные данные очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_afa3c3c56bb4e7089521f18349a3ae3f8}\index{awh::Queue@{awh::Queue}!operator size\_t@{operator size\_t}}
+\index{operator size\_t@{operator size\_t}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{operator size\_t()}{operator size\_t()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_afa3c3c56bb4e7089521f18349a3ae3f8} 
+awh::\+\+Queue::\+operator size\+\_\+t (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения размера данных в очереди 
+
+\begin{DoxyReturn}{Returns}
+размер данных в очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_aab004827d24bfedbb943b0694fa12fec}\index{awh::Queue@{awh::Queue}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_aab004827d24bfedbb943b0694fa12fec} 
+\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \& awh::\+\+Queue::\+operator= (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&}]{queue}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em queue} & очередь для копирования \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_af70650c30c86ee7460e341b482ba0920}\index{awh::Queue@{awh::Queue}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_af70650c30c86ee7460e341b482ba0920} 
+\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \& awh::\+\+Queue::\+operator= (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&\&}]{queue}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор перемещения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em queue} & очередь для перемещения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_a66ec3ad4060482dba16f32626c5d6091}\index{awh::Queue@{awh::Queue}!operator==@{operator==}}
+\index{operator==@{operator==}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{operator==()}{operator==()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a66ec3ad4060482dba16f32626c5d6091} 
+bool awh::\+\+Queue::\+operator== (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&}]{queue}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор сравнения двух очередей 
+
+
+\begin{DoxyParams}{Parameters}
+{\em queue} & очередь для сравнения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат сравнения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_a8cec2820c855c7b44b573bceb2c57ab9}\index{awh::Queue@{awh::Queue}!push@{push}}
+\index{push@{push}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a8cec2820c855c7b44b573bceb2c57ab9} 
+size\+\_\+t awh::\+\+Queue::\+push (\begin{DoxyParamCaption}\item[{const vector$<$ \doxymbox{\hyperlink{classawh_1_1_queue_ac4e41533c99e01abdf6d2abf922dfb9f}{record\+\_\+t}} $>$ \&}]{records}{, }\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления бинарного буфера данных в очередь 
+
+
+\begin{DoxyParams}{Parameters}
+{\em records} & список бинарных буферов для добавления \\
+\hline
+{\em \doxylink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}} & общий размер добавляемых данных \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий размер очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_a854b1c4d8e0437400608499c8fd9df89}\index{awh::Queue@{awh::Queue}!push@{push}}
+\index{push@{push}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a854b1c4d8e0437400608499c8fd9df89} 
+size\+\_\+t awh::\+\+Queue::\+push (\begin{DoxyParamCaption}\item[{const void \texorpdfstring{$\ast$}{*}}]{buffer}{, }\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления бинарного буфера данных в очередь 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для добавления \\
+\hline
+{\em \doxylink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}} & размер бинарного буфера \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий размер очереди 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_a8d74362bd1bd587e14195a7dc6d0424d}\index{awh::Queue@{awh::Queue}!setLogger@{setLogger}}
+\index{setLogger@{setLogger}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{setLogger()}{setLogger()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a8d74362bd1bd587e14195a7dc6d0424d} 
+void awh::\+\+Queue::\+set\+Logger (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки объекта логирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em log} & объект работы с логами \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_queue_a6b55544cc8cbbb27c77eb5f380a60203}\index{awh::Queue@{awh::Queue}!setMaxMemory@{setMaxMemory}}
+\index{setMaxMemory@{setMaxMemory}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{setMaxMemory()}{setMaxMemory()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a6b55544cc8cbbb27c77eb5f380a60203} 
+void awh::\+\+Queue::\+set\+Max\+Memory (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки максимального размера потребления памяти 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}{size}} & максимальный размер потребления памяти \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_queue_aec49a864a657bbc7aa137f58a23bff21}\index{awh::Queue@{awh::Queue}!setMaxRecords@{setMaxRecords}}
+\index{setMaxRecords@{setMaxRecords}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{setMaxRecords()}{setMaxRecords()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_aec49a864a657bbc7aa137f58a23bff21} 
+void awh::\+\+Queue::\+set\+Max\+Records (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{count}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки максимального количества записей очереди 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_queue_a8979a62b0c5a061ce916cc9cb6c32ca4}{count}} & максимальное количество записей очереди \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547}\index{awh::Queue@{awh::Queue}!size@{size}}
+\index{size@{size}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{size()}{size()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a9e0b7a97a874701150cf9816ab73c547} 
+size\+\_\+t awh::\+\+Queue::\+size (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения размера добавленных данных 
+
+\begin{DoxyReturn}{Returns}
+размер добавленных данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_queue_a848deba6de8b07abf6113ff5b410cc8c}\index{awh::Queue@{awh::Queue}!swap@{swap}}
+\index{swap@{swap}!awh::Queue@{awh::Queue}}
+\doxysubsubsection{\texorpdfstring{swap()}{swap()}}
+{\footnotesize\ttfamily \label{classawh_1_1_queue_a848deba6de8b07abf6113ff5b410cc8c} 
+void awh::\+\+Queue::\+swap (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{classawh_1_1_queue_a45a993d44dda1a15593cb40d77faa037}{Queue}} \&}]{queue}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод обмена очередями 
+
+
+\begin{DoxyParams}{Parameters}
+{\em queue} & очередь для обмена \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+sys/\+\doxymbox{\hyperlink{queue_8hpp}{queue.\+hpp}}\end{DoxyCompactItemize}

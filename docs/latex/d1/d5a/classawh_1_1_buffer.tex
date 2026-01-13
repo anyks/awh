@@ -1,0 +1,828 @@
+\doxysection{awh::\+Buffer Class Reference}
+\hypertarget{classawh_1_1_buffer}{}\label{classawh_1_1_buffer}\index{awh::Buffer@{awh::Buffer}}
+
+
+Класс бинарного смартбуфера  
+
+
+
+
+{\ttfamily \+\#include $<$buffer.\+hpp$>$}
+
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \doxymbox{\hyperlink{classawh_1_1_buffer_1_1_iterator}{Iterator}}
+\begin{DoxyCompactList}\small\item\em Шаблон типа данных итератора \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classawh_1_1_buffer_a84e38fc9bd51a24b10cd1fdddbba022d}\label{classawh_1_1_buffer_a84e38fc9bd51a24b10cd1fdddbba022d} 
+void {\bfseries clear} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод очистки всех данных буфера \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_buffer_a6905ce2a9ba893f3c45eb1eef9640c71}\label{classawh_1_1_buffer_a6905ce2a9ba893f3c45eb1eef9640c71} 
+void {\bfseries reset} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод полной очистки памяти \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_a3c42509890b2996e85db3a5a1483740b}{empty}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Метод проверки на заполненность буфера \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Метод получения размера добавленных данных \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_aeb0f967f6d304b033b82e5fa5dc4d617}{capacity}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Метод вывода размера занимаемой памяти очередью \end{DoxyCompactList}\item 
+const vector$<$ char $>$ \& \doxymbox{\hyperlink{classawh_1_1_buffer_a77529adb653cfbf91d737ed2baf215a2}{raw}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Метод извлечения буфера сырых данных \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\\doxymbox{\hyperlink{classawh_1_1_buffer_1_1_iterator}{Iterator}}$<$ T $>$ \doxymbox{\hyperlink{classawh_1_1_buffer_a4564f2bc066891435f30a954558fac11}{end}} () noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода получения конечного итератора \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\\doxymbox{\hyperlink{classawh_1_1_buffer_1_1_iterator}{Iterator}}$<$ T $>$ \doxymbox{\hyperlink{classawh_1_1_buffer_a8e239f0a907e48d42a6e32b84222cd34}{begin}} () noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода получение начального итератора \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{classawh_1_1_buffer_a24e839da798d903238883cc1297a1b11}{pop}} () noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода удаления верхних записей \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_af0167620d746118ca3c1fcf10fd7a32c}{count}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода получения количества элементов в бинарном буфере \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \doxymbox{\hyperlink{classawh_1_1_buffer_aa2764547ba50ebcf2ae999555194c447}{back}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода извлечения нижнего значения в буфере \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \doxymbox{\hyperlink{classawh_1_1_buffer_ad9e926a3c8d44bc364e4dbd2dcf32c67}{front}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода извлечения верхнего значения в буфере \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \doxymbox{\hyperlink{classawh_1_1_buffer_a525ac58fcfb4b8f3ec23e6e221f2f25b}{at}} (const size\+\_\+t index) const noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода извлечения содержимого контейнера по его индексу \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{classawh_1_1_buffer_a92908615a4fcc70b2280ee12047fdc21}{set}} (const T value, const size\+\_\+t index) noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для метода установки значений в уже существующем буфере \end{DoxyCompactList}\item 
+const void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{classawh_1_1_buffer_a72fa4348952b8d2f657472490a892f5a}{data}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения данных указанного элемента в буфера \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_buffer_ab62550d762bc8d10f087387c5e0f2830}{erase}} (const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод удаления указанного количества байт \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_buffer_aa6ea506ccfb00f31cd590571ff287c4e}{reserve}} (const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод резервирования размера буфера \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\bool \doxymbox{\hyperlink{classawh_1_1_buffer_a5dc04c8d17e274bfe585797ca6533d4c}{push}} (const T value) noexcept
+\begin{DoxyCompactList}\small\item\em Шаблон для добавления числа в буфер \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_a71eb6f1c25897db8aca9e22340b5c551}{push}} (const char \texorpdfstring{$\ast$}{*}text) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления текста в буфер \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_aabb97a4d3734703f716676644e73af93}{push}} (const string \&text) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления текста в буфер \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_adc0c85dbe1f943172ede761c34e2f7b4}{push}} (\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&\&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления бинарного буфера данных в буфер \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_a7988698957e2125d78d2f7a840070a80}{push}} (const \doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления бинарного буфера данных в буфер \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_a534ca24c7a21393505d05f0fb5b3098e}{push}} (const vector$<$ char $>$ \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления бинарного буфера данных в буфер \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_aa33084cf4c5c16a235a8f6e2c7084ab6}{push}} (const void \texorpdfstring{$\ast$}{*}buffer, const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод добавления бинарного буфера данных в буфер \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_buffer_a65a149cc920b61f51b1d9c2d36519ba1}{set\+Max\+Memory}} (const size\+\_\+t \doxymbox{\hyperlink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}}) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки максимального размера потребления памяти \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_buffer_a89fee7d177ce105a29e6b8028860dcc7}{swap}} (\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Метод обмена очередями \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_buffer_a06b7e6fe9dd2d9276c51170f552f26fe}{set\+Logger}} (const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Метод установки объекта логирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a24b6b5dd70f38df872b3c4b20cd43618}{operator size\+\_\+t}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения размера данных в буфера \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a0c86f5f71dad05270b735f67e1fe0612}{operator const char \texorpdfstring{$\ast$}{*}}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения бинарных данных буфера \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a638a1be75fbfc4c08b1fb1a46e4671d4}{operator const vector$<$ char $>$ \&}} () const noexcept
+\begin{DoxyCompactList}\small\item\em Получения бинарных данных буфера \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_a4eceedd979279044a6ffe6182f18e062}{operator=}} (const char \texorpdfstring{$\ast$}{*}buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор копирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_a38bc640c2031117618cdc13e1e5b5fce}{operator=}} (string \&\&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор перемещения \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_a49178c069fd547f938df549afa375d21}{operator=}} (const string \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор копирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_a9223d4c91f0b471ddfa2a17d9cd765c5}{operator=}} (vector$<$ char $>$ \&\&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор перемещения \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_a609519ca58157f22d1e21e489d79381f}{operator=}} (const vector$<$ char $>$ \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор копирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_a9b62f8b9dc55689d5b3bbc60a51bba57}{operator=}} (\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&\&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор перемещения \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& \doxymbox{\hyperlink{classawh_1_1_buffer_ac6057f8f3b2a9a1bafba3070aa0a7553}{operator=}} (const \doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Оператор копирования \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_buffer_ab126d64a5b684ea0f1a62c2237797128}{operator==}} (const \doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&buffer) const noexcept
+\begin{DoxyCompactList}\small\item\em Оператор сравнения двух очередей \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}\label{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6} 
+{\bfseries Buffer} ()=default
+\begin{DoxyCompactList}\small\item\em Разрешаем пустое значение объекта \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_ac3a6a86e727bf36b0f54eafc7dacc5bb}{Buffer}} (Buffer \&\&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор перемещения \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_ac5fed5f69013051fde817606463ba6c2}{Buffer}} (const Buffer \&buffer) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор копирования \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a4a9a6010440e6f18b0b4d635efb540fe}{Buffer}} (const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_buffer_ab27aa92698b40006388068789a72cd5f}\label{classawh_1_1_buffer_ab27aa92698b40006388068789a72cd5f} 
+{\bfseries \texorpdfstring{$\sim$}{\string~}\+Buffer} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\view$<$ T $>$ \doxymbox{\hyperlink{classawh_1_1_buffer_aaf67bfec0f8b08c486cb5a49e05a0b5e}{as}} () \&
+\begin{DoxyCompactList}\small\item\em Шаблон типа данных обёртки буфера \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Класс бинарного смартбуфера 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_buffer_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_buffer_ac3a6a86e727bf36b0f54eafc7dacc5bb}\index{awh::Buffer@{awh::Buffer}!Buffer@{Buffer}}
+\index{Buffer@{Buffer}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{Buffer()}{Buffer()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_ac3a6a86e727bf36b0f54eafc7dacc5bb} 
+awh::\+\+Buffer::\+\+Buffer (\begin{DoxyParamCaption}\item[{Buffer \&\&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор перемещения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для перемещения \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_ac5fed5f69013051fde817606463ba6c2}\index{awh::Buffer@{awh::Buffer}!Buffer@{Buffer}}
+\index{Buffer@{Buffer}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{Buffer()}{Buffer()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_ac5fed5f69013051fde817606463ba6c2} 
+awh::\+\+Buffer::\+\+Buffer (\begin{DoxyParamCaption}\item[{const Buffer \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для копирования \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_a4a9a6010440e6f18b0b4d635efb540fe}\index{awh::Buffer@{awh::Buffer}!Buffer@{Buffer}}
+\index{Buffer@{Buffer}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{Buffer()}{Buffer()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a4a9a6010440e6f18b0b4d635efb540fe} 
+awh::\+\+Buffer::\+\+Buffer (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fmk} & объект фреймворка \\
+\hline
+{\em log} & объект для работы с логами \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_buffer_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_buffer_aaf67bfec0f8b08c486cb5a49e05a0b5e}\index{awh::Buffer@{awh::Buffer}!as@{as}}
+\index{as@{as}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{as()}{as()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_aaf67bfec0f8b08c486cb5a49e05a0b5e} 
+template$<$typename T$>$ \\
+view$<$ T $>$ awh::\+\+Buffer::\+as (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) \&\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Шаблон типа данных обёртки буфера 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип итератора\\
+\hline
+\end{DoxyTemplParams}
+Метод обёртки бинарного буфера
+
+\begin{DoxyReturn}{Returns}
+обёрнутый бинарный буфер 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a525ac58fcfb4b8f3ec23e6e221f2f25b}\index{awh::Buffer@{awh::Buffer}!at@{at}}
+\index{at@{at}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{at()}{at()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a525ac58fcfb4b8f3ec23e6e221f2f25b} 
+template$<$typename T$>$ \\
+T awh::\+\+Buffer::\+at (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{index}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода извлечения содержимого контейнера по его индексу 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для извлечения\\
+\hline
+\end{DoxyTemplParams}
+Метод извлечения содержимого контейнера по его индексу
+
+
+\begin{DoxyParams}{Parameters}
+{\em index} & индекс массива для извлечения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+данные содержащиеся в буфере 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_aa2764547ba50ebcf2ae999555194c447}\index{awh::Buffer@{awh::Buffer}!back@{back}}
+\index{back@{back}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{back()}{back()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_aa2764547ba50ebcf2ae999555194c447} 
+template$<$typename T$>$ \\
+T awh::\+\+Buffer::\+back (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода извлечения нижнего значения в буфере 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для извлечения\\
+\hline
+\end{DoxyTemplParams}
+Метод извлечения нижнего значения в буфере
+
+\begin{DoxyReturn}{Returns}
+данные содержащиеся в буфере 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a8e239f0a907e48d42a6e32b84222cd34}\index{awh::Buffer@{awh::Buffer}!begin@{begin}}
+\index{begin@{begin}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{begin()}{begin()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a8e239f0a907e48d42a6e32b84222cd34} 
+template$<$typename T$>$ \\
+\doxymbox{\hyperlink{classawh_1_1_buffer_1_1_iterator}{Iterator}}$<$ T $>$ awh::\+\+Buffer::\+begin (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода получение начального итератора 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для подсчёта\\
+\hline
+\end{DoxyTemplParams}
+Метод получение начального итератора
+
+\begin{DoxyReturn}{Returns}
+начальный итератор 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_aeb0f967f6d304b033b82e5fa5dc4d617}\index{awh::Buffer@{awh::Buffer}!capacity@{capacity}}
+\index{capacity@{capacity}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{capacity()}{capacity()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_aeb0f967f6d304b033b82e5fa5dc4d617} 
+size\+\_\+t awh::\+\+Buffer::\+capacity (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод вывода размера занимаемой памяти очередью 
+
+\begin{DoxyReturn}{Returns}
+количество памяти которую занимает буфер 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_af0167620d746118ca3c1fcf10fd7a32c}\index{awh::Buffer@{awh::Buffer}!count@{count}}
+\index{count@{count}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{count()}{count()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_af0167620d746118ca3c1fcf10fd7a32c} 
+template$<$typename T$>$ \\
+size\+\_\+t awh::\+\+Buffer::\+count (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода получения количества элементов в бинарном буфере 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для подсчёта\\
+\hline
+\end{DoxyTemplParams}
+Метод получения количества элементов в бинарном буфере
+
+\begin{DoxyReturn}{Returns}
+количество всех добавленных лементов 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a72fa4348952b8d2f657472490a892f5a}\index{awh::Buffer@{awh::Buffer}!data@{data}}
+\index{data@{data}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{data()}{data()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a72fa4348952b8d2f657472490a892f5a} 
+const void \texorpdfstring{$\ast$}{*} awh::\+\+Buffer::\+data (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения данных указанного элемента в буфера 
+
+\begin{DoxyReturn}{Returns}
+указатель на элемент буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a3c42509890b2996e85db3a5a1483740b}\index{awh::Buffer@{awh::Buffer}!empty@{empty}}
+\index{empty@{empty}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{empty()}{empty()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a3c42509890b2996e85db3a5a1483740b} 
+bool awh::\+\+Buffer::\+empty (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод проверки на заполненность буфера 
+
+\begin{DoxyReturn}{Returns}
+результат проверки 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a4564f2bc066891435f30a954558fac11}\index{awh::Buffer@{awh::Buffer}!end@{end}}
+\index{end@{end}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{end()}{end()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a4564f2bc066891435f30a954558fac11} 
+template$<$typename T$>$ \\
+\doxymbox{\hyperlink{classawh_1_1_buffer_1_1_iterator}{Iterator}}$<$ T $>$ awh::\+\+Buffer::\+end (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода получения конечного итератора 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для подсчёта\\
+\hline
+\end{DoxyTemplParams}
+Метод получения конечного итератора
+
+\begin{DoxyReturn}{Returns}
+конечный итератор 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_ab62550d762bc8d10f087387c5e0f2830}\index{awh::Buffer@{awh::Buffer}!erase@{erase}}
+\index{erase@{erase}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{erase()}{erase()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_ab62550d762bc8d10f087387c5e0f2830} 
+void awh::\+\+Buffer::\+erase (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод удаления указанного количества байт 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}} & количество байт для удаления \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_ad9e926a3c8d44bc364e4dbd2dcf32c67}\index{awh::Buffer@{awh::Buffer}!front@{front}}
+\index{front@{front}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{front()}{front()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_ad9e926a3c8d44bc364e4dbd2dcf32c67} 
+template$<$typename T$>$ \\
+T awh::\+\+Buffer::\+front (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода извлечения верхнего значения в буфере 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для извлечения\\
+\hline
+\end{DoxyTemplParams}
+Метод извлечения верхнего значения в буфере
+
+\begin{DoxyReturn}{Returns}
+данные содержащиеся в буфере 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a0c86f5f71dad05270b735f67e1fe0612}\index{awh::Buffer@{awh::Buffer}!operator const char \texorpdfstring{$\ast$}{*}@{operator const char \texorpdfstring{$\ast$}{*}}}
+\index{operator const char \texorpdfstring{$\ast$}{*}@{operator const char \texorpdfstring{$\ast$}{*}}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator const char \texorpdfstring{$\ast$}{*}()}{operator const char *()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a0c86f5f71dad05270b735f67e1fe0612} 
+awh::\+\+Buffer::\+operator const char \texorpdfstring{$\ast$}{*} (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения бинарных данных буфера 
+
+\begin{DoxyReturn}{Returns}
+бинарные данные буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a638a1be75fbfc4c08b1fb1a46e4671d4}\index{awh::Buffer@{awh::Buffer}!operator const vector$<$ char $>$ \&@{operator const vector$<$ char $>$ \&}}
+\index{operator const vector$<$ char $>$ \&@{operator const vector$<$ char $>$ \&}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator const vector$<$ char $>$ \&()}{operator const vector< char > \&()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a638a1be75fbfc4c08b1fb1a46e4671d4} 
+awh::\+\+Buffer::\+operator const vector$<$ char $>$ \& (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения бинарных данных буфера 
+
+\begin{DoxyReturn}{Returns}
+бинарные данные буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a24b6b5dd70f38df872b3c4b20cd43618}\index{awh::Buffer@{awh::Buffer}!operator size\_t@{operator size\_t}}
+\index{operator size\_t@{operator size\_t}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator size\_t()}{operator size\_t()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a24b6b5dd70f38df872b3c4b20cd43618} 
+awh::\+\+Buffer::\+operator size\+\_\+t (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Получения размера данных в буфера 
+
+\begin{DoxyReturn}{Returns}
+размер данных в буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a9b62f8b9dc55689d5b3bbc60a51bba57}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [1/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a9b62f8b9dc55689d5b3bbc60a51bba57} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&\&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор перемещения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для перемещения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_ac6057f8f3b2a9a1bafba3070aa0a7553}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [2/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_ac6057f8f3b2a9a1bafba3070aa0a7553} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для копирования \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a4eceedd979279044a6ffe6182f18e062}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [3/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a4eceedd979279044a6ffe6182f18e062} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для копирования \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a49178c069fd547f938df549afa375d21}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [4/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a49178c069fd547f938df549afa375d21} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{const string \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для копирования \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a609519ca58157f22d1e21e489d79381f}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [5/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a609519ca58157f22d1e21e489d79381f} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{const vector$<$ char $>$ \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор копирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для копирования \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a38bc640c2031117618cdc13e1e5b5fce}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [6/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a38bc640c2031117618cdc13e1e5b5fce} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{string \&\&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор перемещения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для перемещения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a9223d4c91f0b471ddfa2a17d9cd765c5}\index{awh::Buffer@{awh::Buffer}!operator=@{operator=}}
+\index{operator=@{operator=}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [7/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a9223d4c91f0b471ddfa2a17d9cd765c5} 
+\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \& awh::\+\+Buffer::\+operator= (\begin{DoxyParamCaption}\item[{vector$<$ char $>$ \&\&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор перемещения 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для перемещения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+текущий контейнер буфера 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_ab126d64a5b684ea0f1a62c2237797128}\index{awh::Buffer@{awh::Buffer}!operator==@{operator==}}
+\index{operator==@{operator==}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{operator==()}{operator==()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_ab126d64a5b684ea0f1a62c2237797128} 
+bool awh::\+\+Buffer::\+operator== (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&}]{buffer}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Оператор сравнения двух очередей 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для сравнения \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат сравнения 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a24e839da798d903238883cc1297a1b11}\index{awh::Buffer@{awh::Buffer}!pop@{pop}}
+\index{pop@{pop}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{pop()}{pop()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a24e839da798d903238883cc1297a1b11} 
+template$<$typename T$>$ \\
+void awh::\+\+Buffer::\+pop (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода удаления верхних записей 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для удаления\\
+\hline
+\end{DoxyTemplParams}
+Метод удаления записи в буфера \Hypertarget{classawh_1_1_buffer_adc0c85dbe1f943172ede761c34e2f7b4}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [1/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_adc0c85dbe1f943172ede761c34e2f7b4} 
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&\&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления бинарного буфера данных в буфер 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для добавления \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a7988698957e2125d78d2f7a840070a80}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [2/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a7988698957e2125d78d2f7a840070a80} 
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления бинарного буфера данных в буфер 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для добавления \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a71eb6f1c25897db8aca9e22340b5c551}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [3/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a71eb6f1c25897db8aca9e22340b5c551} 
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{text}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления текста в буфер 
+
+
+\begin{DoxyParams}{Parameters}
+{\em text} & текст для добавления \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_aabb97a4d3734703f716676644e73af93}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [4/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_aabb97a4d3734703f716676644e73af93} 
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{const string \&}]{text}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления текста в буфер 
+
+
+\begin{DoxyParams}{Parameters}
+{\em text} & текст для добавления \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a5dc04c8d17e274bfe585797ca6533d4c}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [5/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a5dc04c8d17e274bfe585797ca6533d4c} 
+template$<$typename T$>$ \\
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{const T}]{value}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для добавления числа в буфер 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для добавления\\
+\hline
+\end{DoxyTemplParams}
+Метод добавления числа в буфер
+
+
+\begin{DoxyParams}{Parameters}
+{\em value} & значение для добавления \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a534ca24c7a21393505d05f0fb5b3098e}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [6/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a534ca24c7a21393505d05f0fb5b3098e} 
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{const vector$<$ char $>$ \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления бинарного буфера данных в буфер 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для добавления \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_aa33084cf4c5c16a235a8f6e2c7084ab6}\index{awh::Buffer@{awh::Buffer}!push@{push}}
+\index{push@{push}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{push()}{push()}\hspace{0.1cm}{\footnotesize\ttfamily [7/7]}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_aa33084cf4c5c16a235a8f6e2c7084ab6} 
+bool awh::\+\+Buffer::\+push (\begin{DoxyParamCaption}\item[{const void \texorpdfstring{$\ast$}{*}}]{buffer}{, }\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод добавления бинарного буфера данных в буфер 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для добавления \\
+\hline
+{\em \doxylink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}} & размер бинарного буфера \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+результат добавления данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a77529adb653cfbf91d737ed2baf215a2}\index{awh::Buffer@{awh::Buffer}!raw@{raw}}
+\index{raw@{raw}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{raw()}{raw()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a77529adb653cfbf91d737ed2baf215a2} 
+const vector$<$ char $>$ \& awh::\+\+Buffer::\+raw (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод извлечения буфера сырых данных 
+
+\begin{DoxyReturn}{Returns}
+буфер сырых данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_aa6ea506ccfb00f31cd590571ff287c4e}\index{awh::Buffer@{awh::Buffer}!reserve@{reserve}}
+\index{reserve@{reserve}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{reserve()}{reserve()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_aa6ea506ccfb00f31cd590571ff287c4e} 
+void awh::\+\+Buffer::\+reserve (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод резервирования размера буфера 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}} & размер выделяемой памяти \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_a92908615a4fcc70b2280ee12047fdc21}\index{awh::Buffer@{awh::Buffer}!set@{set}}
+\index{set@{set}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{set()}{set()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a92908615a4fcc70b2280ee12047fdc21} 
+template$<$typename T$>$ \\
+void awh::\+\+Buffer::\+set (\begin{DoxyParamCaption}\item[{const T}]{value}{, }\item[{const size\+\_\+t}]{index}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Шаблон для метода установки значений в уже существующем буфере 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & тип данных для установки\\
+\hline
+\end{DoxyTemplParams}
+Метод установки значений в уже существующем буфере
+
+
+\begin{DoxyParams}{Parameters}
+{\em value} & значение для установки \\
+\hline
+{\em index} & индекс значения для установки \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_a06b7e6fe9dd2d9276c51170f552f26fe}\index{awh::Buffer@{awh::Buffer}!setLogger@{setLogger}}
+\index{setLogger@{setLogger}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{setLogger()}{setLogger()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a06b7e6fe9dd2d9276c51170f552f26fe} 
+void awh::\+\+Buffer::\+set\+Logger (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки объекта логирования 
+
+
+\begin{DoxyParams}{Parameters}
+{\em log} & объект работы с логами \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_a65a149cc920b61f51b1d9c2d36519ba1}\index{awh::Buffer@{awh::Buffer}!setMaxMemory@{setMaxMemory}}
+\index{setMaxMemory@{setMaxMemory}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{setMaxMemory()}{setMaxMemory()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a65a149cc920b61f51b1d9c2d36519ba1} 
+void awh::\+\+Buffer::\+set\+Max\+Memory (\begin{DoxyParamCaption}\item[{const size\+\_\+t}]{size}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод установки максимального размера потребления памяти 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \doxylink{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}{size}} & максимальный размер потребления памяти \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c}\index{awh::Buffer@{awh::Buffer}!size@{size}}
+\index{size@{size}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{size()}{size()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a7a874d16b6db63bb583f5a173ee0be9c} 
+size\+\_\+t awh::\+\+Buffer::\+size (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод получения размера добавленных данных 
+
+\begin{DoxyReturn}{Returns}
+размер всех добавленных данных 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_buffer_a89fee7d177ce105a29e6b8028860dcc7}\index{awh::Buffer@{awh::Buffer}!swap@{swap}}
+\index{swap@{swap}!awh::Buffer@{awh::Buffer}}
+\doxysubsubsection{\texorpdfstring{swap()}{swap()}}
+{\footnotesize\ttfamily \label{classawh_1_1_buffer_a89fee7d177ce105a29e6b8028860dcc7} 
+void awh::\+\+Buffer::\+swap (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{classawh_1_1_buffer_a6996907c0a1719aa65c20878e6ec8cf6}{Buffer}} \&}]{buffer}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод обмена очередями 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buffer} & бинарный буфер для обмена \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+sys/\+\doxymbox{\hyperlink{buffer_8hpp}{buffer.\+hpp}}\end{DoxyCompactItemize}

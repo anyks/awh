@@ -1,0 +1,382 @@
+\doxysection{screen.\+hpp}
+\hypertarget{screen_8hpp_source}{}\label{screen_8hpp_source}\index{include/sys/screen.hpp@{include/sys/screen.hpp}}
+\doxymbox{\hyperlink{screen_8hpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifndef\ \_\_AWH\_SCREEN\_\_}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ \_\_AWH\_SCREEN\_\_}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ <queue>}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#include\ <chrono>}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#include\ <thread>}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#include\ <atomic>}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#include\ <functional>}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#include\ <condition\_variable>}}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#include\ "{}\doxymbox{\hyperlink{locker_8hpp}{locker.hpp}}"{}}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00038\ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh}{awh}}\ \{}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \{}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_screen_ab0a8e6d530311acfbe784e9b6bbd8109}{state\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Состояние\ очереди\ не\ установленно}}
+\DoxyCodeLine{00060\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INCREMENT\ =\ 0x01,\ \textcolor{comment}{//\ Увеличение\ очереди}}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DECREMENT\ =\ 0x02\ \ \textcolor{comment}{//\ Уменьшение\ очереди}}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_screen_a5355c99a2f918491805f16e9bff75507}{health\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DEAD\ \ =\ 0x00,\ \textcolor{comment}{//\ Мёртвый}}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ALIVE\ =\ 0x01\ \ \textcolor{comment}{//\ Живой}}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ потока}}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \_id;}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Состояние\ здоровья}}
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a5355c99a2f918491805f16e9bff75507}{health\_t}}\ \_health;}
+\DoxyCodeLine{00076\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ остановки\ работы\ дочернего\ потока}}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \ \ \ \ std::atomic\_bool\ \_stop;}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ ожидания\ данных}}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \ \ \ \ std::mutex\ \_locker;}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ для\ блокировки\ потока}}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_a7954e20373075cb31022e190cfb427aa}{lock\_state\_t\ <std::mutex>}}\ \_mtx;}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ дочернего\ потока}}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ \ \ \ \ std::thread\ \_thr;}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Условная\ переменная,\ ожидания\ поступления\ данных}}
+\DoxyCodeLine{00089\ \ \ \ \ \ \ \ \ \ \ \ \ std::condition\_variable\ \_cv;}
+\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Очередь\ полезной\ нагрузки}}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \ \ \ \ std::queue\ <T>\ \_payload;}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Таймаут\ ожидания\ блокировки\ базы\ событий}}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \ \ \ \ std::chrono::milliseconds\ \_delay;}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}\ \textcolor{keyword}{const}\ uint64\_t\ TIMEOUT\ =\ 0x64;}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ function\ <void\ ()>\ \_trigger;}
+\DoxyCodeLine{00108\ \ \ \ \ \ \ \ \ \ \ \ \ function\ <void\ (\textcolor{keyword}{const}\ T\ \&)>\ \_callback;}
+\DoxyCodeLine{00112\ \ \ \ \ \ \ \ \ \ \ \ \ function\ <void\ (\textcolor{keyword}{const}\ \doxymbox{\hyperlink{classawh_1_1_screen_ab0a8e6d530311acfbe784e9b6bbd8109}{state\_t}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t})>\ \_state;}
+\DoxyCodeLine{00113\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ process()\ noexcept\ \{}
+\DoxyCodeLine{00119\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ не\ производится\ остановка}}
+\DoxyCodeLine{00120\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!this-\/>\_stop.load(std::memory\_order\_acquire))\{}
+\DoxyCodeLine{00124\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00125\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ функция\ обратного\ вызова\ триггера\ установлена}}
+\DoxyCodeLine{00126\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_trigger\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_trigger();}
+\DoxyCodeLine{00129\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ данные\ в\ очереди\ существуют}}
+\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!this-\/>\_payload.empty())\{}
+\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Извлекаем\ данные\ полезной\ нагрузки}}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keyword}{auto}\ \&\ payload\ =\ this-\/>\_payload.front();}
+\DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ функция\ подписки\ на\ логи\ установлена,\ выводим\ результат}}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_callback\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ лога\ всем\ подписавшимся}}
+\DoxyCodeLine{00136\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_callback(payload);}
+\DoxyCodeLine{00137\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00138\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ уникальным\ мютексом}}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Удаляем\ текущее\ задание}}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_payload.pop();}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ функция\ обратного\ вызова\ установлена}}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_state\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_state(state\_t::DECREMENT,\ this-\/>\_payload.size());}
+\DoxyCodeLine{00147\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00155\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00161\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00164\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ receiving()\ noexcept\ \{}
+\DoxyCodeLine{00177\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{while}(!this-\/>\_stop.load(std::memory\_order\_acquire))\{}
+\DoxyCodeLine{00181\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00182\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ уникальным\ мютексом}}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unique\_lock\ lock(this-\/>\_locker);}
+\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ ожидание\ на\ поступление\ новых\ заданий}}
+\DoxyCodeLine{00185\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_cv.wait\_for(lock,\ this-\/>\_delay,\ std::bind(\&Screen::check,\ \textcolor{keyword}{this}));}
+\DoxyCodeLine{00186\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ запуск\ обработки\ поступившей\ задачи}}
+\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>process();}
+\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ произведена\ остановка}}
+\DoxyCodeLine{00189\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_stop.load(std::memory\_order\_acquire))}
+\DoxyCodeLine{00190\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выходим\ из\ цикла}}
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&)\ \{}
+\DoxyCodeLine{00196\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ запуск\ обработки\ поступившей\ задачи}}
+\DoxyCodeLine{00197\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>process();}
+\DoxyCodeLine{00198\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ произведена\ остановка}}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_stop.load(std::memory\_order\_acquire))}
+\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выходим\ из\ цикла}}
+\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00203\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00204\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00211\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ check()\ noexcept\ \{}
+\DoxyCodeLine{00212\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ произведена\ остановка\ выходим}}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_stop.load(std::memory\_order\_acquire))}
+\DoxyCodeLine{00214\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выходим\ из\ функции}}
+\DoxyCodeLine{00215\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{00216\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ проверку\ на\ наличие\ полезной\ нагрузки}}
+\DoxyCodeLine{00217\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ !this-\/>\_payload.empty();}
+\DoxyCodeLine{00218\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00219\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00225\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_screen_a3d094c63c29d40d8af4e9d64b2456c09}{id}}()\ const\ noexcept\ \{}
+\DoxyCodeLine{00226\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ идентификатор\ потока}}
+\DoxyCodeLine{00227\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ this-\/>\_id;}
+\DoxyCodeLine{00228\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00229\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00235\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{classawh_1_1_screen_a2beb3d31d51d5c83782c979bfa912eb9}{size}}()\ const\ noexcept\ \{}
+\DoxyCodeLine{00236\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ размер\ очереди}}
+\DoxyCodeLine{00237\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ this-\/>\_payload.size();}
+\DoxyCodeLine{00238\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_screen_ac728ea46ea7b5f6ca7a3a8f208ccd39a}{launched}}()\ const\ noexcept\ \{}
+\DoxyCodeLine{00245\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ результат\ проверки}}
+\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ !this-\/>\_stop.load(std::memory\_order\_acquire);}
+\DoxyCodeLine{00247\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_a46a350a27164e3f11df730673fd94a86}{on}}(function\ <\textcolor{keywordtype}{void}\ ()>\ callback)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00258\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00259\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ потока}}
+\DoxyCodeLine{00260\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00261\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Устанавливаем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00262\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_trigger\ =\ callback;}
+\DoxyCodeLine{00266\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00270\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00271\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00272\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00276\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00277\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00279\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00280\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00281\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00287\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_af3ced97aaf7d279da3703c88ede54a27}{on}}(function\ <\textcolor{keywordtype}{void}\ (\textcolor{keyword}{const}\ T\ \&)>\ callback)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00291\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00292\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ потока}}
+\DoxyCodeLine{00293\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00294\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Устанавливаем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00295\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_callback\ =\ callback;}
+\DoxyCodeLine{00299\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00303\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00304\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00305\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00309\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00310\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00311\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00312\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00313\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00314\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00320\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_a7bf2f9fd3dd3de5198c4e6c2b617813e}{on}}(function\ <\textcolor{keywordtype}{void}\ (\textcolor{keyword}{const}\ \doxymbox{\hyperlink{classawh_1_1_screen_ab0a8e6d530311acfbe784e9b6bbd8109}{state\_t}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t})>\ callback)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00324\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ потока}}
+\DoxyCodeLine{00326\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Устанавливаем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00328\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_state\ =\ callback;}
+\DoxyCodeLine{00332\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00336\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00337\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00338\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00342\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00343\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00344\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00345\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00346\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00347\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00354\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_a6233503104c959f65b68bb664a133868}{timeout}}(\textcolor{keyword}{const}\ uint32\_t\ delay)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00358\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00359\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ потока}}
+\DoxyCodeLine{00360\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00361\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ установку\ задержки\ времени}}
+\DoxyCodeLine{00362\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_delay\ =\ std::chrono::milliseconds(delay);}
+\DoxyCodeLine{00366\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00370\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00371\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00372\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00376\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00377\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00378\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00379\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00380\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00381\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00388\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_a64bfa499f4ddb29874ff6231d73f9fc9}{send}}(T\ \&\&\ data)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00392\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00393\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00394\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ потока}}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ добавление\ данных\ в\ очередь}}
+\DoxyCodeLine{00397\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_payload.push(std::forward\ <T>\ (data));}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00399\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ функция\ обратного\ вызова\ установлена}}
+\DoxyCodeLine{00400\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_state\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{00401\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00402\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_state(state\_t::INCREMENT,\ this-\/>\_payload.size());}
+\DoxyCodeLine{00403\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Отправляем\ сообщение,\ что\ данные\ записаны}}
+\DoxyCodeLine{00404\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_cv.notify\_one();}
+\DoxyCodeLine{00408\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00412\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00413\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00414\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00418\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00419\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00420\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00421\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00423\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_a5839a1e78a727374691fc69035aee71b}{send}}(\textcolor{keyword}{const}\ T\ \&\ data)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00433\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00434\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00435\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ блокировку\ потока}}
+\DoxyCodeLine{00436\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a360d46a0f1b4efa3ddd8522c12b2cc65}{locker\_t\ <>}}\ lock(this-\/>\_mtx);}
+\DoxyCodeLine{00437\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ добавление\ данных\ в\ очередь}}
+\DoxyCodeLine{00438\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_payload.push(data);}
+\DoxyCodeLine{00439\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00440\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ функция\ обратного\ вызова\ установлена}}
+\DoxyCodeLine{00441\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_state\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{00442\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00443\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_state(state\_t::INCREMENT,\ this-\/>\_payload.size());}
+\DoxyCodeLine{00444\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Отправляем\ сообщение,\ что\ данные\ записаны}}
+\DoxyCodeLine{00445\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_cv.notify\_one();}
+\DoxyCodeLine{00449\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00453\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00455\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00459\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00460\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00462\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00463\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00464\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_acb7f2ecbd0a9dbcbdea7d41088212078}{stop}}()\ noexcept\ \{}
+\DoxyCodeLine{00474\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00475\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ работа\ модуля\ запущена}}
+\DoxyCodeLine{00476\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!this-\/>\_stop.load(std::memory\_order\_acquire))\{}
+\DoxyCodeLine{00477\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Устанавливаем\ флаг\ остановки\ работы\ модуля}}
+\DoxyCodeLine{00478\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_stop.store(\textcolor{keyword}{true},\ std::memory\_order\_release);}
+\DoxyCodeLine{00479\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Отправляем\ сообщение,\ что\ данные\ записаны}}
+\DoxyCodeLine{00480\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_cv.notify\_one();}
+\DoxyCodeLine{00481\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Дожидаемся\ завершения\ работы\ потока}}
+\DoxyCodeLine{00482\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_thr.join();}
+\DoxyCodeLine{00483\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ сброс\ идентификатора\ потока}}
+\DoxyCodeLine{00484\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_id\ =\ 0;}
+\DoxyCodeLine{00485\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00489\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&)\ \{}
+\DoxyCodeLine{00496\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00497\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00502\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_screen_afb97e82610bbabc24c0621493a521846}{start}}()\ noexcept\ \{}
+\DoxyCodeLine{00506\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{00507\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ работа\ модуля\ ещё\ не\ запущена}}
+\DoxyCodeLine{00508\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>\_stop.load(std::memory\_order\_acquire))\{}
+\DoxyCodeLine{00509\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Снимаем\ флаг\ остановки\ работы\ модуля}}
+\DoxyCodeLine{00510\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_stop.store(\textcolor{keyword}{false},\ std::memory\_order\_release);}
+\DoxyCodeLine{00511\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Создаём\ объект\ хэширования}}
+\DoxyCodeLine{00512\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::hash\ <std::thread::id>\ hasher;}
+\DoxyCodeLine{00513\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Создаём\ дочерний\ поток\ для\ формирования\ лога}}
+\DoxyCodeLine{00514\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_thr\ =\ std::thread(\&Screen::receiving,\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00515\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ получение\ идентификатора\ потока}}
+\DoxyCodeLine{00516\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_id\ =\ hasher(this-\/>\_thr.get\_id());}
+\DoxyCodeLine{00517\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Отсоединяемся\ от\ потока}}
+\DoxyCodeLine{00518\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\_thr.detach();}
+\DoxyCodeLine{00519\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00523\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{catch}(\textcolor{keyword}{const}\ exception\ \&\ error)\ \{}
+\DoxyCodeLine{00527\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#if\ DEBUG\_MODE}}
+\DoxyCodeLine{00528\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00529\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ Called\ function:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)nMessage:\(\backslash\)n\%s\(\backslash\)n\(\backslash\)n"{}},\ \_\_PRETTY\_FUNCTION\_\_,\ error.what());}
+\DoxyCodeLine{00533\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#else}}
+\DoxyCodeLine{00534\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ сообщение\ об\ ошибке}}
+\DoxyCodeLine{00535\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::fprintf(stderr,\ \textcolor{stringliteral}{"{}ERROR!\ \%s\(\backslash\)n\(\backslash\)n"{}},\ error.what());}
+\DoxyCodeLine{00536\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{00537\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00538\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00539\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00545\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{operator}\ bool()\ const\ noexcept\ \{}
+\DoxyCodeLine{00546\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ результат\ проверки}}
+\DoxyCodeLine{00547\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_ac728ea46ea7b5f6ca7a3a8f208ccd39a}{launched}}();}
+\DoxyCodeLine{00548\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00554\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{operator}\ size\_t()\ const\ noexcept\ \{}
+\DoxyCodeLine{00555\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ результат\ проверки}}
+\DoxyCodeLine{00556\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a2beb3d31d51d5c83782c979bfa912eb9}{size}}();}
+\DoxyCodeLine{00557\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00558\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00565\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \&\ \doxymbox{\hyperlink{classawh_1_1_screen_a11efa44ac3aa2b6956c477cd70e4b098}{operator\ =\ }}(T\ \&\&\ data)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00566\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ отправку\ данных\ в\ экран}}
+\DoxyCodeLine{00567\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a64bfa499f4ddb29874ff6231d73f9fc9}{send}}(std::forward\ <T>\ (data));}
+\DoxyCodeLine{00568\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ значение\ текущего\ объекта}}
+\DoxyCodeLine{00569\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ (*\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00570\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00577\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \&\ \doxymbox{\hyperlink{classawh_1_1_screen_a11efa44ac3aa2b6956c477cd70e4b098}{operator\ =\ }}(\textcolor{keyword}{const}\ T\ \&\ data)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00578\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ отправку\ данных\ в\ экран}}
+\DoxyCodeLine{00579\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a64bfa499f4ddb29874ff6231d73f9fc9}{send}}(data);}
+\DoxyCodeLine{00580\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ значение\ текущего\ объекта}}
+\DoxyCodeLine{00581\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ (*\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00582\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00589\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \&\ \doxymbox{\hyperlink{classawh_1_1_screen_a11efa44ac3aa2b6956c477cd70e4b098}{operator\ =\ }}(\textcolor{keyword}{const}\ uint32\_t\ delay)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00590\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ установку\ таймаута}}
+\DoxyCodeLine{00591\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a6233503104c959f65b68bb664a133868}{timeout}}(delay);}
+\DoxyCodeLine{00592\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ значение\ текущего\ объекта}}
+\DoxyCodeLine{00593\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ (*\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00594\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00601\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \&\ \doxymbox{\hyperlink{classawh_1_1_screen_a11efa44ac3aa2b6956c477cd70e4b098}{operator\ =\ }}(function\ <\textcolor{keywordtype}{void}\ ()>\ callback)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00602\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ установку\ функции\ обратного\ вызова}}
+\DoxyCodeLine{00603\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a46a350a27164e3f11df730673fd94a86}{on}}(callback);}
+\DoxyCodeLine{00604\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ значение\ текущего\ объекта}}
+\DoxyCodeLine{00605\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ (*\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00606\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00613\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \&\ \doxymbox{\hyperlink{classawh_1_1_screen_a11efa44ac3aa2b6956c477cd70e4b098}{operator\ =\ }}(function\ <\textcolor{keywordtype}{void}\ (\textcolor{keyword}{const}\ T\ \&)>\ callback)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00614\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ установку\ функции\ обратного\ вызова}}
+\DoxyCodeLine{00615\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a46a350a27164e3f11df730673fd94a86}{on}}(callback);}
+\DoxyCodeLine{00616\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ значение\ текущего\ объекта}}
+\DoxyCodeLine{00617\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ (*\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00618\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00625\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}\ \&\ \doxymbox{\hyperlink{classawh_1_1_screen_a11efa44ac3aa2b6956c477cd70e4b098}{operator\ =\ }}(function\ <\textcolor{keywordtype}{void}\ (\textcolor{keyword}{const}\ \doxymbox{\hyperlink{classawh_1_1_screen_ab0a8e6d530311acfbe784e9b6bbd8109}{state\_t}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t})>\ callback)\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00626\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ установку\ функции\ обратного\ вызова}}
+\DoxyCodeLine{00627\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_a46a350a27164e3f11df730673fd94a86}{on}}(callback);}
+\DoxyCodeLine{00628\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ значение\ текущего\ объекта}}
+\DoxyCodeLine{00629\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ (*\ \textcolor{keyword}{this});}
+\DoxyCodeLine{00630\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00631\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00636\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{classawh_1_1_screen_a4768da630f954d81cca15cfa5761a999}{Screen}}()\ noexcept\ :}
+\DoxyCodeLine{00637\ \ \ \ \ \ \ \ \ \ \ \ \ \ \_stop(true),\ \_id(0),\ \_health(\doxymbox{\hyperlink{classawh_1_1_screen_a5355c99a2f918491805f16e9bff75507}{health\_t}}::ALIVE),}
+\DoxyCodeLine{00638\ \ \ \ \ \ \ \ \ \ \ \ \ \ \_delay(std::chrono::milliseconds(TIMEOUT)),}
+\DoxyCodeLine{00639\ \ \ \ \ \ \ \ \ \ \ \ \ \ \_trigger(\textcolor{keywordtype}{nullptr}),\ \_callback(\textcolor{keywordtype}{nullptr}),\ \_state(\textcolor{keywordtype}{nullptr})\ \{}
+\DoxyCodeLine{00640\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ запуск\ модуля}}
+\DoxyCodeLine{00641\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_afb97e82610bbabc24c0621493a521846}{start}}();}
+\DoxyCodeLine{00642\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00648\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{classawh_1_1_screen_a6ceb2e4fff1eb76d54dfbf02d2de7831}{Screen}}(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{classawh_1_1_screen_a5355c99a2f918491805f16e9bff75507}{health\_t}}\ health)\ noexcept\ :}
+\DoxyCodeLine{00649\ \ \ \ \ \ \ \ \ \ \ \ \ \ \_id(0),\ \_health(health),\ \_stop(\textcolor{keyword}{true}),}
+\DoxyCodeLine{00650\ \ \ \ \ \ \ \ \ \ \ \ \ \ \_delay(std::chrono::milliseconds(TIMEOUT)),}
+\DoxyCodeLine{00651\ \ \ \ \ \ \ \ \ \ \ \ \ \ \_trigger(\textcolor{keyword}{nullptr}),\ \_callback(\textcolor{keyword}{nullptr}),\ \_state(\textcolor{keyword}{nullptr})\ \{}
+\DoxyCodeLine{00652\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ статус\ здоровья\ установлен\ как\ живой}}
+\DoxyCodeLine{00653\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(health\ ==\ health\_t::ALIVE)}
+\DoxyCodeLine{00654\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ запуск\ модуля}}
+\DoxyCodeLine{00655\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_afb97e82610bbabc24c0621493a521846}{start}}();}
+\DoxyCodeLine{00656\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00661\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_screen_ae6adcbd944ada2cedbe745078e4a701e}{\string~Screen}}()\ noexcept\ \{}
+\DoxyCodeLine{00662\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ остановку\ работы\ модуля}}
+\DoxyCodeLine{00663\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_screen_acb7f2ecbd0a9dbcbdea7d41088212078}{stop}}();}
+\DoxyCodeLine{00664\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00665\ \ \ \ \ \};}
+\DoxyCodeLine{00671\ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ T>}
+\DoxyCodeLine{00675\ \ \ \ \ \textcolor{keyword}{using\ }\doxymbox{\hyperlink{namespaceawh_ac52758fac8de8d6ee1ba38489997b11f}{screen\_t}}\ =\ Screen\ <T>;}
+\DoxyCodeLine{00676\ \};}
+\DoxyCodeLine{00677\ }
+\DoxyCodeLine{00678\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_SCREEN\_\_}}
+
+\end{DoxyCode}

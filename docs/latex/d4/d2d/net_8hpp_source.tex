@@ -1,0 +1,563 @@
+\doxysection{net.\+hpp}
+\hypertarget{net_8hpp_source}{}\label{net_8hpp_source}\index{include/net/net.hpp@{include/net/net.hpp}}
+\doxymbox{\hyperlink{net_8hpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifndef\ \_\_AWH\_NETWORK\_\_}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ \_\_AWH\_NETWORK\_\_}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#include\ <atomic>}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#include\ <unordered\_set>}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#include\ <unordered\_map>}}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#if\ \_WIN32\ ||\ \_WIN64}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00035\ \textcolor{preprocessor}{\ \ \ \ \#include\ <Ws2def.h>}}
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\ \ \ \ \#include\ <winsock2.h>}}
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\#else}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00044\ \textcolor{preprocessor}{\ \ \ \ \#include\ <sys/socket.h>}}
+\DoxyCodeLine{00045\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\#include\ "{}event.hpp"{}}}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00056\ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh}{awh}}\ \{}
+\DoxyCodeLine{00060\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{00065\ \ \ \ \ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh_1_1net}{net}}\ \{}
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#if\ \_WIN32\ ||\ \_WIN64}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }\doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{socket\_t}}\ =\ \doxymbox{\hyperlink{notifier_8hpp_aff55fe551a9992a54ec54621c524d0a4}{SOCKET}};}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}\ \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{socket\_t}}\ invalid\_socket\_t\ =\ INVALID\_SOCKET;}
+\DoxyCodeLine{00083\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#else}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }\doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{socket\_t}}\ =\ int32\_t;}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}\ \doxymbox{\hyperlink{namespaceawh_1_1net_aa1b3ad000dbc0c8c2db87ec5fce11e2b}{socket\_t}}\ invalid\_socket\_t\ =\ -\/1;}
+\DoxyCodeLine{00094\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#endif}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a5f8182b99dae29e8fa92c482f3c86080}{socket\_mode\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ ENABLED\ \ =\ 0x01,\ \textcolor{comment}{//\ Включено}}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \ \ \ \ DISABLED\ =\ 0x02\ \ \textcolor{comment}{//\ Выключено}}
+\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{namespaceawh_1_1net_adbfff500f355106af7dbb66fb5aed8a2}{socket\_event\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00106\ \ \ \ \ \ \ \ \ \ \ \ \ READ\ \ =\ 0x01,\ \textcolor{comment}{//\ Чтение}}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ \ \ \ \ WRITE\ =\ 0x02\ \ \textcolor{comment}{//\ Запись}}
+\DoxyCodeLine{00108\ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00113\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_address_adc31fbaa49e5616e0683d238bf584e5b}{Address}}\ \{}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Размер\ адреса}}
+\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ size;}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_adc31fbaa49e5616e0683d238bf584e5b}{Address}}(\textcolor{keyword}{const}\ uint16\_t\ size\ =\ 0)\ noexcept\ :\ size(size)\ \{\}}
+\DoxyCodeLine{00126\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_a1b337de15fa47bd89915df599d40879f}{\string~Address}}()\ noexcept\ =\ default;}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{addr\_t}};}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ typedef\ struct\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_m_a_c_a7c19254d32bb0ace49ed9a62020db3bc}{AddressMAC}}\ :\ public\ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{addr\_t}}\ \{}
+\DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Буфер\ MAC-\/адреса}}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ array\ <uint8\_t,\ 6>\ address;}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_m_a_c_a7c19254d32bb0ace49ed9a62020db3bc}{AddressMAC}}()\ noexcept\ :\ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{addr\_t}}(6),\ address\{0\}\ \{\}}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a7d71508e5c8b99d711506325ee495cc6}{addr\_mac\_t}};}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_a78a8fd3fc6ee60d648a37da439ebbcdf}{AddressNetwork}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{addr\_t}}\ \{}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Префикс\ сети}}
+\DoxyCodeLine{00147\ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ prefix;}
+\DoxyCodeLine{00154\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_a78a8fd3fc6ee60d648a37da439ebbcdf}{AddressNetwork}}(\textcolor{keyword}{const}\ uint8\_t\ prefix,\ \textcolor{keyword}{const}\ uint16\_t\ size)\ noexcept\ :}
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{addr\_t}}(size),\ prefix(prefix)\ \{\}}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{addr\_net\_t}};}
+\DoxyCodeLine{00161\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv4_afaf7d7d1eae901d225c72417a4eea3c5}{AddressNetworkIPv4}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{addr\_net\_t}}\ \{}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ IP-\/адрес\ сети}}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ address;}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv4_afaf7d7d1eae901d225c72417a4eea3c5}{AddressNetworkIPv4}}()\ noexcept\ :\ \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{addr\_net\_t}}(32,\ 4),\ address(0)\ \{\}}
+\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv4_a91684ed77927efff4acb15b9f668e473}{\string~AddressNetworkIPv4}}()\ noexcept\ =\ default;}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a379c32a49bfc8797a2db2bac136a55e2}{addr\_net\_ipv4\_t}};}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ typedef\ struct\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv6_ae82b3772cd844a1d7edef6543eeaaa62}{AddressNetworkIPv6}}\ :\ public\ \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{addr\_net\_t}}\ \{}
+\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Буфер\ IP-\/адрес\ сети}}
+\DoxyCodeLine{00181\ \ \ \ \ \ \ \ \ \ \ \ \ array\ <uint8\_t,\ 16>\ address;}
+\DoxyCodeLine{00186\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_network_i_pv6_ae82b3772cd844a1d7edef6543eeaaa62}{AddressNetworkIPv6}}()\ noexcept\ :\ \doxymbox{\hyperlink{namespaceawh_1_1net_a3b7885541a38684a99ecb27d64960cbb}{addr\_net\_t}}(128,\ 16),\ address\{0\}\ \{\}}
+\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ \}\ addr\_net\_ipv6\_t;}
+\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_address_filesystem_ad795e47c2a9ef1dc5e0d59ae758ab504}{AddressFilesystem}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a7bdabaabaacba89a6f0633586fa2e0ef}{addr\_t}}\ \{}
+\DoxyCodeLine{00193\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Путь\ к\ файлу,\ каталогу\ или\ сокету}}
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ address;}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_address_filesystem_ad795e47c2a9ef1dc5e0d59ae758ab504}{AddressFilesystem}}()\ noexcept\ :\ address\{\textcolor{stringliteral}{"{}"{}}\}\ \{\}}
+\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \}\ addr\_fs\_t;}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_source_ac0b76a0b74a2857dadad866552e56fb1}{Source}}\ \{}
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Название\ сетвого\ интерфейса}}
+\DoxyCodeLine{00207\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ iface;}
+\DoxyCodeLine{00208\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ IP-\/адрес\ сети}}
+\DoxyCodeLine{00209\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ ip;}
+\DoxyCodeLine{00210\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ MAC-\/адрес\ сети}}
+\DoxyCodeLine{00211\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ mac;}
+\DoxyCodeLine{00217\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_source_ac0b76a0b74a2857dadad866552e56fb1}{Source}}(unique\_ptr\ <addr\_t>\ ip)\ noexcept\ :}
+\DoxyCodeLine{00218\ \ \ \ \ \ \ \ \ \ \ \ \ \ iface\{\textcolor{stringliteral}{"{}"{}}\},\ ip(std::move(ip)),\ mac(make\_unique\ <addr\_mac\_t>\ ())\ \{\}}
+\DoxyCodeLine{00219\ \ \ \ \ \ \ \ \ \}\ src\_t;}
+\DoxyCodeLine{00224\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_aeb5c4432628a2d6b197c964c8f9d5a3b}{Attributes}}\ \{}
+\DoxyCodeLine{00229\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_aeb5c4432628a2d6b197c964c8f9d5a3b}{Attributes}}()\ noexcept\ =\ default;}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ \ \ \ \ virtual\ \string~\doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_aeb5c4432628a2d6b197c964c8f9d5a3b}{Attributes}}()\ noexcept\ =\ default;}
+\DoxyCodeLine{00235\ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a217b5744c24711a302dd080a03908046}{attr\_t}};}
+\DoxyCodeLine{00240\ \ \ \ \ \ \ \ \ typedef\ struct\ \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_net_a7e4b1fd3a44cffbb366154ea552e99f3}{AttributesNet}}\ :\ public\ \doxymbox{\hyperlink{namespaceawh_1_1net_a217b5744c24711a302dd080a03908046}{attr\_t}}\ \{}
+\DoxyCodeLine{00241\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Порт\ хоста}}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ port;}
+\DoxyCodeLine{00243\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ IP-\/адрес\ хоста}}
+\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ ip;}
+\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_net_a7e4b1fd3a44cffbb366154ea552e99f3}{AttributesNet}}()\ noexcept\ :}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ \ \ \ \ \ \ \ port(0),\ ip(make\_unique\ <\doxymbox{\hyperlink{namespaceawh_1_1net_a379c32a49bfc8797a2db2bac136a55e2}{addr\_net\_ipv4\_t}}>\ ())\ \{\}}
+\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \}\ attr\_net\_t;}
+\DoxyCodeLine{00256\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_u_d_s_a547d00da2c84ab5ab8f61de796b1ce80}{AttributesUDS}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a217b5744c24711a302dd080a03908046}{attr\_t}}\ \{}
+\DoxyCodeLine{00257\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Путь\ к\ сокету}}
+\DoxyCodeLine{00258\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ path;}
+\DoxyCodeLine{00263\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_attributes_u_d_s_a547d00da2c84ab5ab8f61de796b1ce80}{AttributesUDS}}()\ noexcept\ :}
+\DoxyCodeLine{00264\ \ \ \ \ \ \ \ \ \ \ \ \ \ path(make\_unique\ <\doxymbox{\hyperlink{namespaceawh_1_1net_adb4b62f243d48c9f57881c6f99c6c692}{addr\_fs\_t}}>\ ())\ \{\}}
+\DoxyCodeLine{00265\ \ \ \ \ \ \ \ \ \}\ attr\_uds\_t;}
+\DoxyCodeLine{00270\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_backlog_ac2a7e7248385bd900450b9079de829e5}{Backlog}}\ \{}
+\DoxyCodeLine{00271\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Адаптивный\ режим\ очереди\ ожидания\ подключения}}
+\DoxyCodeLine{00272\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ adaptive;}
+\DoxyCodeLine{00273\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ подключений}}
+\DoxyCodeLine{00274\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ max;}
+\DoxyCodeLine{00275\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Количество\ уже\ подключённых\ клиентов}}
+\DoxyCodeLine{00276\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ count;}
+\DoxyCodeLine{00277\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Размер\ очереди\ ожидания\ подключения}}
+\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ depth;}
+\DoxyCodeLine{00283\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_backlog_ac2a7e7248385bd900450b9079de829e5}{Backlog}}()\ noexcept\ :}
+\DoxyCodeLine{00284\ \ \ \ \ \ \ \ \ \ \ \ \ \ adaptive(false),\ max(100),\ count(0),\ depth(SOMAXCONN)\ \{\}}
+\DoxyCodeLine{00285\ \ \ \ \ \ \ \ \ \}\ \_\_attribute\_\_((packed))\ backlog\_t;}
+\DoxyCodeLine{00290\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_state_a9b78acd2a72cd300acb5237dc4ff8ba7}{State}}\ \{}
+\DoxyCodeLine{00291\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ options;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаги\ опций\ события}}
+\DoxyCodeLine{00292\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{event::node\_t}}\ node;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ узла\ события}}
+\DoxyCodeLine{00293\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{event::hops\_t}}\ hops;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ хопов\ события}}
+\DoxyCodeLine{00294\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{event::type\_t}}\ type;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ типа\ события}}
+\DoxyCodeLine{00295\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{event::family\_t}}\ family;\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ семейства\ события}}
+\DoxyCodeLine{00296\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{event::address\_t}}\ address;\ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ адреса\ события}}
+\DoxyCodeLine{00297\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{event::protocol\_t}}\ protocol;\ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ протокола\ события}}
+\DoxyCodeLine{00298\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{event::delivery\_mode\_t}}\ delivery;\ \textcolor{comment}{//\ Флаг\ типа\ режима\ доставки\ события}}
+\DoxyCodeLine{00299\ \ \ \ \ \ \ \ \ \ \ \ \ atomic\ <event::status\_t>\ status;\ \textcolor{comment}{//\ Флаг\ статуса\ события}}
+\DoxyCodeLine{00300\ \ \ \ \ \ \ \ \ \ \ \ \ atomic\ <event::status\_t>\ oldset;\ \textcolor{comment}{//\ Флаг\ старого\ статуса\ события}}
+\DoxyCodeLine{00305\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_state_a9b78acd2a72cd300acb5237dc4ff8ba7}{State}}()\ noexcept\ :}
+\DoxyCodeLine{00306\ \ \ \ \ \ \ \ \ \ \ \ \ \ options(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::options::NONE),}
+\DoxyCodeLine{00307\ \ \ \ \ \ \ \ \ \ \ \ \ \ node(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::\doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}::NONE),}
+\DoxyCodeLine{00308\ \ \ \ \ \ \ \ \ \ \ \ \ \ hops(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::hops\_t::WORLD),}
+\DoxyCodeLine{00309\ \ \ \ \ \ \ \ \ \ \ \ \ \ type(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::type\_t::NONE),}
+\DoxyCodeLine{00310\ \ \ \ \ \ \ \ \ \ \ \ \ \ family(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::family\_t::NONE),}
+\DoxyCodeLine{00311\ \ \ \ \ \ \ \ \ \ \ \ \ \ address(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::address\_t::NONE),}
+\DoxyCodeLine{00312\ \ \ \ \ \ \ \ \ \ \ \ \ \ protocol(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::protocol\_t::NONE),}
+\DoxyCodeLine{00313\ \ \ \ \ \ \ \ \ \ \ \ \ \ delivery(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::delivery\_mode\_t::UNICAST),}
+\DoxyCodeLine{00314\ \ \ \ \ \ \ \ \ \ \ \ \ \ status(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::status\_t::NONE),}
+\DoxyCodeLine{00315\ \ \ \ \ \ \ \ \ \ \ \ \ \ oldset(\doxymbox{\hyperlink{namespaceawh_1_1event}{event}}::status\_t::NONE)\ \{\}}
+\DoxyCodeLine{00316\ \ \ \ \ \ \ \ \ \}\ \_\_attribute\_\_((packed))\ state\_t;}
+\DoxyCodeLine{00321\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_callbacks_a8d687cb30039ab860f3a0f61016ca98f}{Callbacks}}\ \{}
+\DoxyCodeLine{00322\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ ошибке\ события}}
+\DoxyCodeLine{00323\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a047cb0797c59300d87ca7baa6b397a46}{event::callback::error\_t}}\ error;}
+\DoxyCodeLine{00324\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ изменении\ статуса\ события}}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a2a42237d261893c2936610b161e896a6}{event::callback::status\_t}}\ status;}
+\DoxyCodeLine{00330\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_callbacks_a8d687cb30039ab860f3a0f61016ca98f}{Callbacks}}()\ noexcept\ :\ error(\textcolor{keywordtype}{nullptr}),\ status(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_callbacks_a17d8f84de5e5d530a9ebaf2b6e1a88cf}{\string~Callbacks}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ \}\ callbacks\_t;}
+\DoxyCodeLine{00341\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_callbacks_a1e77a63f10d28a71c2b976c57e39a853}{FileSystemCallbacks}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588}{callbacks\_t}}\ \{}
+\DoxyCodeLine{00342\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ чтении\ события}}
+\DoxyCodeLine{00343\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ad6b6884d9bde3eaed7871fcd37614e5e}{event::callback::read\_t}}\ read;}
+\DoxyCodeLine{00344\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ записи\ события}}
+\DoxyCodeLine{00345\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a4d2d55975957134969903834ec6952cc}{event::callback::write\_t}}\ write;}
+\DoxyCodeLine{00346\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ получении\ общего\ события}}
+\DoxyCodeLine{00347\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event::callback::event\_t}}\ event;}
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ изменении\ события}}
+\DoxyCodeLine{00349\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ab24ef6e03f921e2a1e1412e7577981a6}{event::callback::change\_t}}\ change;}
+\DoxyCodeLine{00354\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_callbacks_a1e77a63f10d28a71c2b976c57e39a853}{FileSystemCallbacks}}()\ noexcept\ :}
+\DoxyCodeLine{00355\ \ \ \ \ \ \ \ \ \ \ \ \ \ read(\textcolor{keywordtype}{nullptr}),\ write(\textcolor{keywordtype}{nullptr}),}
+\DoxyCodeLine{00356\ \ \ \ \ \ \ \ \ \ \ \ \ \ event(\textcolor{keywordtype}{nullptr}),\ change(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00357\ \ \ \ \ \ \ \ \ \}\ fs\_callbacks\_t;}
+\DoxyCodeLine{00362\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_server_callbacks_ab04cbbf87a010c9e5b3758a37b8da522}{ServerCallbacks}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588}{callbacks\_t}}\ \{}
+\DoxyCodeLine{00363\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ записи\ события}}
+\DoxyCodeLine{00364\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a4d2d55975957134969903834ec6952cc}{event::callback::write\_t}}\ write;}
+\DoxyCodeLine{00365\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ получении\ общего\ события}}
+\DoxyCodeLine{00366\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event::callback::event\_t}}\ event;}
+\DoxyCodeLine{00367\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ принятии\ события}}
+\DoxyCodeLine{00368\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a83912ccbaacd1439883ef47c63170937}{event::callback::accept\_t}}\ accept;}
+\DoxyCodeLine{00373\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_server_callbacks_ab04cbbf87a010c9e5b3758a37b8da522}{ServerCallbacks}}()\ noexcept\ :}
+\DoxyCodeLine{00374\ \ \ \ \ \ \ \ \ \ \ \ \ \ write(\textcolor{keywordtype}{nullptr}),\ event(\textcolor{keywordtype}{nullptr}),\ accept(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00375\ \ \ \ \ \ \ \ \ \}\ server\_callbacks\_t;}
+\DoxyCodeLine{00380\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_client_callbacks_ac25639893dc14cfce3d0d20376d6bbe5}{ClientCallbacks}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588}{callbacks\_t}}\ \{}
+\DoxyCodeLine{00381\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ чтении\ события}}
+\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ad6b6884d9bde3eaed7871fcd37614e5e}{event::callback::read\_t}}\ read;}
+\DoxyCodeLine{00383\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ записи\ события}}
+\DoxyCodeLine{00384\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a4d2d55975957134969903834ec6952cc}{event::callback::write\_t}}\ write;}
+\DoxyCodeLine{00385\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ получении\ общего\ события}}
+\DoxyCodeLine{00386\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event::callback::event\_t}}\ event;}
+\DoxyCodeLine{00387\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ подключении\ события}}
+\DoxyCodeLine{00388\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ae3d4108e157caeac845242d5d797214a}{event::callback::connect\_t}}\ connect;}
+\DoxyCodeLine{00389\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ возрождении\ клиента}}
+\DoxyCodeLine{00390\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a8d824a351cde64f8fd12d48d47ff7aca}{event::callback::rebirth\_t}}\ rebirth;}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_client_callbacks_ac25639893dc14cfce3d0d20376d6bbe5}{ClientCallbacks}}()\ noexcept\ :}
+\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ \ \ \ \ \ read(\textcolor{keywordtype}{nullptr}),\ write(\textcolor{keywordtype}{nullptr}),}
+\DoxyCodeLine{00397\ \ \ \ \ \ \ \ \ \ \ \ \ \ event(\textcolor{keywordtype}{nullptr}),\ connect(\textcolor{keywordtype}{nullptr}),}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ \ \ \ \ \ rebirth(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00399\ \ \ \ \ \ \ \ \ \}\ client\_callbacks\_t;}
+\DoxyCodeLine{00404\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_peer_callbacks_ac28b334da80bca1e5a3d10855fc6d7fa}{PeerCallbacks}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588}{callbacks\_t}}\ \{}
+\DoxyCodeLine{00405\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ чтении\ события}}
+\DoxyCodeLine{00406\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_ad6b6884d9bde3eaed7871fcd37614e5e}{event::callback::read\_t}}\ read;}
+\DoxyCodeLine{00407\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ записи\ события}}
+\DoxyCodeLine{00408\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a4d2d55975957134969903834ec6952cc}{event::callback::write\_t}}\ write;}
+\DoxyCodeLine{00409\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратный\ вызов\ при\ получении\ общего\ события}}
+\DoxyCodeLine{00410\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event::callback::event\_t}}\ event;}
+\DoxyCodeLine{00415\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_peer_callbacks_ac28b334da80bca1e5a3d10855fc6d7fa}{PeerCallbacks}}()\ noexcept\ :}
+\DoxyCodeLine{00416\ \ \ \ \ \ \ \ \ \ \ \ \ \ read(\textcolor{keywordtype}{nullptr}),\ write(\textcolor{keywordtype}{nullptr}),\ event(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00417\ \ \ \ \ \ \ \ \ \}\ peer\_callbacks\_t;}
+\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_node_a7f8fc72340739fb83c7a64708a533fb7}{Node}}\ \{}
+\DoxyCodeLine{00423\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ события}}
+\DoxyCodeLine{00424\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}{event::id\_t}}\ id;}
+\DoxyCodeLine{00425\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Состояние\ события}}
+\DoxyCodeLine{00426\ \ \ \ \ \ \ \ \ \ \ \ \ state\_t\ state;}
+\DoxyCodeLine{00427\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Счётчик\ ссылок\ на\ событие}}
+\DoxyCodeLine{00428\ \ \ \ \ \ \ \ \ \ \ \ \ atomic\_uint16\_t\ refs;}
+\DoxyCodeLine{00433\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_node_a7f8fc72340739fb83c7a64708a533fb7}{Node}}()\ noexcept\ :\ \textcolor{keywordtype}{id}(0),\ refs(0)\ \{\}}
+\DoxyCodeLine{00438\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_node_aa63b5604857bee1032a67c2ce53728d6}{\string~Node}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00439\ \ \ \ \ \ \ \ \ \}\ node\_t;}
+\DoxyCodeLine{00444\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_timer_ace06860b3fd019b13b3e02ad36bb963e}{Timer}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00445\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Задержка\ времени\ таймера\ в\ миллисекундах}}
+\DoxyCodeLine{00446\ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ delay;}
+\DoxyCodeLine{00447\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00448\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_a9dc62d0cc36eb6a08092ae307727f588}{callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00453\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_timer_ace06860b3fd019b13b3e02ad36bb963e}{Timer}}()\ noexcept\ :\ delay(0)\ \{\}}
+\DoxyCodeLine{00458\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_timer_a066e6b9032eaecd83d8bd9b0884a592c}{\string~Timer}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00459\ \ \ \ \ \ \ \ \ \}\ timer\_t;}
+\DoxyCodeLine{00464\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_user_a438d4fec62f8f99b62a1c38c7802ea21}{User}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00466\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_acfe9eb006477e54441f8f3c9429937fc}{peer\_callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00471\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_user_a438d4fec62f8f99b62a1c38c7802ea21}{User}}()\ noexcept\ =\ default;}
+\DoxyCodeLine{00476\ \ \ \ \ \ \ \ \ \ \ \ \ virtual\ \string~\doxymbox{\hyperlink{structawh_1_1net_1_1_user_a438d4fec62f8f99b62a1c38c7802ea21}{User}}()\ =\ default;}
+\DoxyCodeLine{00477\ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ad1dd1de38f3c21309efff72a52989078}{user\_t}};}
+\DoxyCodeLine{00482\ \ \ \ \ \ \ \ \ typedef\ struct\ \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_af3faef7fc812ebf461aa44f48362af06}{FileSystem}}\ :\ public\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00483\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Путь\ к\ файлу,\ каталогу\ или\ сокету}}
+\DoxyCodeLine{00484\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ path;}
+\DoxyCodeLine{00485\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00486\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_af08ec879be43cc3365e21b72768ef8e3}{fs\_callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00491\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_af3faef7fc812ebf461aa44f48362af06}{FileSystem}}()\ noexcept\ :\ path(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00496\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_file_system_a74721a64eb733173f72390e7c5a24be8}{\string~FileSystem}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00497\ \ \ \ \ \ \ \ \ \}\ fs\_t;}
+\DoxyCodeLine{00502\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_inter_process_communication_ade2636225d2b241ad67f5675599840ba}{InterProcessCommunication}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00503\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00504\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_acfe9eb006477e54441f8f3c9429937fc}{peer\_callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00509\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_inter_process_communication_ade2636225d2b241ad67f5675599840ba}{InterProcessCommunication}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00514\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_inter_process_communication_a99be83113c70e751731f27ae5f1237ad}{\string~InterProcessCommunication}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00515\ \ \ \ \ \ \ \ \ \}\ ipc\_t;}
+\DoxyCodeLine{00520\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_peer_a19c075c40115fe0e44f9b600576272d6}{Peer}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00521\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ MAC-\/адрес\ сетевого\ интерфейса}}
+\DoxyCodeLine{00522\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ mac;}
+\DoxyCodeLine{00523\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Хост\ подключения\ события}}
+\DoxyCodeLine{00524\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <attr\_t>\ remote;}
+\DoxyCodeLine{00525\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00526\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_acfe9eb006477e54441f8f3c9429937fc}{peer\_callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00527\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Активные\ таймауты\ события}}
+\DoxyCodeLine{00528\ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_map\ <event::action\_t,\ uint32\_t>\ timeouts;}
+\DoxyCodeLine{00533\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_peer_a19c075c40115fe0e44f9b600576272d6}{Peer}}()\ noexcept\ :\ mac(\textcolor{keywordtype}{nullptr}),\ remote(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00538\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_peer_aaac4c997cd008b138029d479f5f36788}{\string~Peer}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00539\ \ \ \ \ \ \ \ \ \}\ peer\_t;}
+\DoxyCodeLine{00544\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_client_a7c4919db762e9490ec40255bb2f06fca}{Client}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00545\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Источник\ сетевых\ адресов}}
+\DoxyCodeLine{00546\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ source;}
+\DoxyCodeLine{00547\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Целевые\ параметры\ подключения}}
+\DoxyCodeLine{00548\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <attr\_t>\ target;}
+\DoxyCodeLine{00549\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00550\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_a16d59ca9d4124ada05d04716227a06e8}{client\_callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00551\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Активные\ таймауты\ события}}
+\DoxyCodeLine{00552\ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_map\ <event::action\_t,\ uint32\_t>\ timeouts;}
+\DoxyCodeLine{00557\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_client_a7c4919db762e9490ec40255bb2f06fca}{Client}}()\ noexcept\ :\ source(\textcolor{keywordtype}{nullptr}),\ target(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00562\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_client_aba4cf0a55704e0ed35aa2d0eaf2070ef}{\string~Client}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00563\ \ \ \ \ \ \ \ \ \}\ client\_t;}
+\DoxyCodeLine{00568\ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structawh_1_1net_1_1_server_a3880a1dbf1b8af084919dc5017a35b9d}{Server}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1net_ae5d6998397e833971a0326d71f345624}{node\_t}}\ \{}
+\DoxyCodeLine{00569\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Размер\ очереди\ ожидания\ подключения}}
+\DoxyCodeLine{00570\ \ \ \ \ \ \ \ \ \ \ \ \ backlog\_t\ backlog;}
+\DoxyCodeLine{00571\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Параметры\ хоста\ сервера}}
+\DoxyCodeLine{00572\ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <attr\_t>\ host;}
+\DoxyCodeLine{00573\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Обратные\ вызовы\ события}}
+\DoxyCodeLine{00574\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1net_a74a88c82f86e084bcb795708e7599daf}{server\_callbacks\_t}}\ callbacks;}
+\DoxyCodeLine{00575\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Активные\ таймауты\ события}}
+\DoxyCodeLine{00576\ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_map\ <event::action\_t,\ uint32\_t>\ timeouts;}
+\DoxyCodeLine{00581\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_server_a3880a1dbf1b8af084919dc5017a35b9d}{Server}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00586\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \doxymbox{\hyperlink{structawh_1_1net_1_1_server_ae377f2567fe823ff8bfa998b701f5cb9}{\string~Server}}()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00587\ \ \ \ \ \ \ \ \ \}\ server\_t;}
+\DoxyCodeLine{00591\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#if\ \_\_linux\_\_\ ||\ \_\_FreeBSD\_\_}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00596\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{namespace\ }sctp\ \{}
+\DoxyCodeLine{00600\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ ppid\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00601\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DTLS\ \ \ \ \ \ \ =\ 0x32,\ \textcolor{comment}{//\ (RFC\ 6083)\ DTLS\ поверх\ SCTP}}
+\DoxyCodeLine{00602\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WEBRTC\_STR\ =\ 0x33,\ \textcolor{comment}{//\ Строковые\ данные\ канала\ WebRTC}}
+\DoxyCodeLine{00603\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WEBRTC\_BIN\ =\ 0x35\ \ \textcolor{comment}{//\ Бинарные\ данные\ канала\ WebRTC}}
+\DoxyCodeLine{00604\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00608\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ timeout\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00609\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Таймаут\ отсутствует}}
+\DoxyCodeLine{00610\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INIT\ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Таймаут\ INIT}}
+\DoxyCodeLine{00611\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DATA\ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Таймаут\ DATA}}
+\DoxyCodeLine{00612\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SACK\ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Таймаут\ SACK}}
+\DoxyCodeLine{00613\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Таймаут\ SHUTDOWN}}
+\DoxyCodeLine{00614\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HEARTBEAT\ \ \ =\ 0x05,\ \textcolor{comment}{//\ Таймаут\ HEARTBEAT}}
+\DoxyCodeLine{00615\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COOKIE\ \ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Таймаут\ COOKIE-\/ECHO}}
+\DoxyCodeLine{00616\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWNACK\ =\ 0x07\ \ \textcolor{comment}{//\ Таймаут\ SHUTDOWN-\/ACK}}
+\DoxyCodeLine{00617\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00621\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ auth\_type\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00622\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HMAC\_RSVD\ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ ЗаSCTPрезервировано}}
+\DoxyCodeLine{00623\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HMAC\_SHA1\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ HMAC-\/SHA1\ аутентификация}}
+\DoxyCodeLine{00624\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HMAC\_SHA256\ \ =\ 0x02\ \ \textcolor{comment}{//\ HMAC-\/SHA256\ аутентификация}}
+\DoxyCodeLine{00625\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00629\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ auth\_chunk\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00630\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DATA\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Чанк\ DATA\ подлежит\ аутентификации}}
+\DoxyCodeLine{00631\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INIT\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Чанк\ INIT\ подлежит\ аутентификации}}
+\DoxyCodeLine{00632\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INIT\_ACK\ \ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Чанк\ INIT-\/ACK\ подлежит\ аутентификации}}
+\DoxyCodeLine{00633\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SACK\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Чанк\ SACK\ подлежит\ аутентификации}}
+\DoxyCodeLine{00634\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HEARTBEAT\ \ \ \ \ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Чанк\ HEARTBEAT\ подлежит\ аутентификации}}
+\DoxyCodeLine{00635\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HEARTBEAT\_ACK\ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Чанк\ HEARTBEAT-\/ACK\ подлежит\ аутентификации}}
+\DoxyCodeLine{00636\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ABORT\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Чанк\ ABORT\ подлежит\ аутентификации}}
+\DoxyCodeLine{00637\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\ \ \ \ \ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Чанк\ SHUTDOWN\ подлежит\ аутентификации}}
+\DoxyCodeLine{00638\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_ACK\ \ \ \ \ \ =\ 0x08,\ \textcolor{comment}{//\ Чанк\ SHUTDOWN-\/ACK\ подлежит\ аутентификации}}
+\DoxyCodeLine{00639\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ERROR\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x09,\ \textcolor{comment}{//\ Чанк\ ERROR\ подлежит\ аутентификации}}
+\DoxyCodeLine{00640\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COOKIE\_ECHO\ \ \ \ \ \ \ =\ 0x0A,\ \textcolor{comment}{//\ Чанк\ COOKIE-\/ECHO\ подлежит\ аутентификации}}
+\DoxyCodeLine{00641\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COOKIE\_ACK\ \ \ \ \ \ \ \ =\ 0x0B,\ \textcolor{comment}{//\ Чанк\ COOKIE-\/ACK\ подлежит\ аутентификации}}
+\DoxyCodeLine{00642\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ECNE\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x0C,\ \textcolor{comment}{//\ Чанк\ ECNE\ подлежит\ аутентификации}}
+\DoxyCodeLine{00643\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CWR\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x0D,\ \textcolor{comment}{//\ Чанк\ CWR\ подлежит\ аутентификации}}
+\DoxyCodeLine{00644\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_COMPLETE\ =\ 0x0E,\ \textcolor{comment}{//\ Чанк\ SHUTDOWN-\/COMPLETE\ подлежит\ аутентификации}}
+\DoxyCodeLine{00645\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AUTH\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x0F,\ \textcolor{comment}{//\ Чанк\ AUTH\ подлежит\ аутентификации}}
+\DoxyCodeLine{00646\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FORWARD\_TSN\ \ \ \ \ \ \ =\ 0x10,\ \textcolor{comment}{//\ Чанк\ FORWARD-\/TSN\ подлежит\ аутентификации}}
+\DoxyCodeLine{00647\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ RE\_CONFIG\ \ \ \ \ \ \ \ \ =\ 0x11\ \ \textcolor{comment}{//\ Чанк\ RE-\/CONFIG\ подлежит\ аутентификации}}
+\DoxyCodeLine{00648\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00652\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ auth\_indics\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00653\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Тип\ аутентификации\ отсутствует}}
+\DoxyCodeLine{00654\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NEW\_KEY\ \ =\ 0x01,\ \textcolor{comment}{//\ Событие\ нового\ ключа}}
+\DoxyCodeLine{00655\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NO\_AUTH\ \ =\ 0x02,\ \textcolor{comment}{//\ Событие\ отсутствия\ аутентификации}}
+\DoxyCodeLine{00656\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FREE\_KEY\ =\ 0x03\ \ \textcolor{comment}{//\ Событие\ освобождения\ ключа}}
+\DoxyCodeLine{00657\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00661\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ send\_failed\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00662\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Флаг\ отсутствует}}
+\DoxyCodeLine{00663\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SENT\ \ \ =\ 0x01,\ \textcolor{comment}{//\ Сообщение\ отправлено}}
+\DoxyCodeLine{00664\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UNSENT\ =\ 0x02\ \ \textcolor{comment}{//\ Сообщение\ не\ отправлено}}
+\DoxyCodeLine{00665\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00669\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ pdapi\_indics\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00670\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Индикатор\ отсутствует}}
+\DoxyCodeLine{00671\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PARTIAL\_DELIVERY\_ABORTED\ =\ 0x01\ \ \textcolor{comment}{//\ Частичная\ доставка\ прервана}}
+\DoxyCodeLine{00672\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00676\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ stream\_reset\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00677\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Тип\ сброса\ отсутствует}}
+\DoxyCodeLine{00678\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DENIED\ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Сброс\ отклонён}}
+\DoxyCodeLine{00679\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FAILED\ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Сброс\ не\ выполнен}}
+\DoxyCodeLine{00680\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ OUTGOING\_SSN\ =\ 0x03,\ \textcolor{comment}{//\ Сброс\ исходящих\ потоков}}
+\DoxyCodeLine{00681\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INCOMING\_SSN\ =\ 0x04\ \ \textcolor{comment}{//\ Сброс\ входящих\ потоков}}
+\DoxyCodeLine{00682\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00686\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ stream\_change\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00687\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Тип\ изменения\ отсутствует}}
+\DoxyCodeLine{00688\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FAILED\ =\ 0x01,\ \textcolor{comment}{//\ Изменение\ не\ выполнено}}
+\DoxyCodeLine{00689\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DENIED\ =\ 0x02\ \ \textcolor{comment}{//\ Изменение\ отклонено}}
+\DoxyCodeLine{00690\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00694\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ state\_status\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00695\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Статус\ отсутствует}}
+\DoxyCodeLine{00696\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BOUND\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Вызван\ bind(),\ но\ ассоциация\ не\ установлена}}
+\DoxyCodeLine{00697\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CLOSED\ \ \ \ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Ассоциация\ не\ существует\ (сокет\ создан,\ но\ не\ привязан/не\ использован)}}
+\DoxyCodeLine{00698\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LISTEN\ \ \ \ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Сервер\ вызвал\ listen()\ и\ ждёт\ входящих\ INIT\ (только\ для\ STREAM)}}
+\DoxyCodeLine{00699\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ESTABLISHED\ \ \ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Ассоциация\ установлена,\ можно\ передавать\ данные}}
+\DoxyCodeLine{00700\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COOKIE\_WAIT\ \ \ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Клиент\ отправил\ INIT,\ ждёт\ INIT-\/ACK}}
+\DoxyCodeLine{00701\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COOKIE\_ECHOED\ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Клиент\ получил\ INIT-\/ACK,\ отправил\ COOKIE-\/ECHO,\ ждёт\ COOKIE-\/ACK}}
+\DoxyCodeLine{00702\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_SENT\ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Отправлен\ SHUTDOWN,\ ждём\ SHUTDOWN-\/ACK}}
+\DoxyCodeLine{00703\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_PENDING\ \ =\ 0x08,\ \textcolor{comment}{//\ Приложение\ вызвало\ shutdown(),\ но\ есть\ неподтверждённые\ данные}}
+\DoxyCodeLine{00704\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_RECEIVED\ =\ 0x09,\ \textcolor{comment}{//\ Получен\ SHUTDOWN\ от\ пираа,\ ждём}}
+\DoxyCodeLine{00705\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_ACK\_SENT\ =\ 0x0A\ \ \textcolor{comment}{//\ Отправлен\ SHUTDOWN-\/ACK,\ ждём\ SHUTDOWN-\/COMPLETE}}
+\DoxyCodeLine{00706\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00710\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ event\_type\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00711\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Тип\ события\ отсутствует}}
+\DoxyCodeLine{00712\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DATA\_IO\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Присылать\ уведомление\ о\ каждом\ входящем\ DATA-\/пакете}}
+\DoxyCodeLine{00713\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SEND\_FAILED\ \ \ \ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Ошибка\ отправки\ сообщения}}
+\DoxyCodeLine{00714\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ REMOTE\_ERROR\ \ \ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Ошибка\ удалённого\ узла}}
+\DoxyCodeLine{00715\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ASSOC\_CHANGE\ \ \ \ \ \ \ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Изменение\ ассоциации}}
+\DoxyCodeLine{00716\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_EVENT\ \ \ \ \ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Событие\ завершения\ работы}}
+\DoxyCodeLine{00717\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SENDER\_DRY\_EVENT\ \ \ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Событие\ "{}отправитель\ сухой"{}}}
+\DoxyCodeLine{00718\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PEER\_ADDR\_CHANGE\ \ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Изменение\ адреса\ однорангового\ узла}}
+\DoxyCodeLine{00719\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ASSOC\_RESET\_EVENT\ \ \ \ \ \ =\ 0x08,\ \textcolor{comment}{//\ Сброс\ ассоциации}}
+\DoxyCodeLine{00720\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SEND\_FAILED\_EVENT\ \ \ \ \ \ =\ 0x09,\ \textcolor{comment}{//\ Событие\ ошибки\ отправки}}
+\DoxyCodeLine{00721\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ STREAM\_RESET\_EVENT\ \ \ \ \ =\ 0x0A,\ \textcolor{comment}{//\ Сброс\ потока}}
+\DoxyCodeLine{00722\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ STREAM\_CHANGE\_EVENT\ \ \ \ =\ 0x0B,\ \textcolor{comment}{//\ Изменение\ потоков}}
+\DoxyCodeLine{00723\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AUTHENTICATION\_EVENT\ \ \ =\ 0x0C,\ \textcolor{comment}{//\ Событие\ аутентификации}}
+\DoxyCodeLine{00724\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ADAPTATION\_INDICATION\ \ =\ 0x0D,\ \textcolor{comment}{//\ Адаптационное\ указание}}
+\DoxyCodeLine{00725\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PARTIAL\_DELIVERY\_EVENT\ =\ 0x0E\ \ \textcolor{comment}{//\ Частичная\ доставка}}
+\DoxyCodeLine{00726\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00730\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ assoc\_reset\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00731\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Тип\ сброса\ отсутствует}}
+\DoxyCodeLine{00732\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FAILED\ =\ 0x01,\ \textcolor{comment}{//\ Сброс\ не\ выполнен}}
+\DoxyCodeLine{00733\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DENIED\ =\ 0x02\ \ \textcolor{comment}{//\ Сброс\ отклонён}}
+\DoxyCodeLine{00734\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00738\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ assoc\_info\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00739\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Информация\ об\ ассоциации\ отсутствует}}
+\DoxyCodeLine{00740\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_PR\ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Поддерживается\ частичное\ надёжное\ сообщение}}
+\DoxyCodeLine{00741\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_MAX\ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Поддерживается\ максимальное\ количество\ сообщений}}
+\DoxyCodeLine{00742\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_AUTH\ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Поддерживается\ аутентификация\ сообщений}}
+\DoxyCodeLine{00743\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_ASCONF\ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Поддерживается\ динамическая\ конфигурация\ адресов}}
+\DoxyCodeLine{00744\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_MULTIBUF\ \ \ =\ 0x05,\ \textcolor{comment}{//\ Поддерживается\ мультибуферизация\ сообщений}}
+\DoxyCodeLine{00745\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_RE\_CONFIG\ \ =\ 0x06,\ \textcolor{comment}{//\ Поддерживается\ повторная\ конфигурация\ ассоциации}}
+\DoxyCodeLine{00746\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SUPPORTS\_INTERLEAVE\ =\ 0x07\ \ \textcolor{comment}{//\ Поддерживается\ перемежение\ сообщений}}
+\DoxyCodeLine{00747\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00751\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ assoc\_state\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00752\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Состояние\ ассоциации\ отсутствует}}
+\DoxyCodeLine{00753\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COMM\_UP\ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Связь\ установлена}}
+\DoxyCodeLine{00754\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COMM\_LOST\ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Связь\ потеряна}}
+\DoxyCodeLine{00755\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ RESTARTED\ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Связь\ перезапущена}}
+\DoxyCodeLine{00756\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SHUTDOWN\_COMP\ =\ 0x04,\ \textcolor{comment}{//\ Завершение\ работы\ выполнено}}
+\DoxyCodeLine{00757\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CANT\_START\ \ \ \ =\ 0x05\ \ \textcolor{comment}{//\ Не\ удалось\ запустить\ связь}}
+\DoxyCodeLine{00758\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00762\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ paddr\_state\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00763\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Состояние\ адреса\ отсутствует}}
+\DoxyCodeLine{00764\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ADDED\ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Адрес\ был\ добавлен\ в\ ассоциацию}}
+\DoxyCodeLine{00765\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ REMOVED\ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Адрес\ был\ удалён\ из\ ассоциации}}
+\DoxyCodeLine{00766\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MADE\_PRIM\ \ \ =\ 0x03,\ \textcolor{comment}{//\ Адрес\ был\ установлен\ как\ основной}}
+\DoxyCodeLine{00767\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CONFIRMED\ \ \ =\ 0x04,\ \textcolor{comment}{//\ Адрес\ подтверждён\ одноранговым\ узлом}}
+\DoxyCodeLine{00768\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AVAILABLE\ \ \ =\ 0x05,\ \textcolor{comment}{//\ Адрес\ стал\ доступен}}
+\DoxyCodeLine{00769\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UNREACHABLE\ =\ 0x06\ \ \textcolor{comment}{//\ Адрес\ стал\ недоступен}}
+\DoxyCodeLine{00770\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00774\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ info\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00775\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Флаг\ отсутствует}}
+\DoxyCodeLine{00776\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PR\_TTL\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Сообщение\ имеет\ ограничение\ по\ времени\ жизни}}
+\DoxyCodeLine{00777\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PR\_RTX\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Сообщение\ имеет\ ограничение\ по\ количеству\ повторных\ попыток}}
+\DoxyCodeLine{00778\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PR\_PRIO\ \ \ \ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Сообщение\ имеет\ приоритет}}
+\DoxyCodeLine{00779\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SEND\_ALL\ \ \ \ \ \ \ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Отправка\ сообщения\ всем\ ассоциациям}}
+\DoxyCodeLine{00780\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ADDR\_OVER\ \ \ \ \ \ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Использовать\ адрес\ из\ to,\ даже\ если\ сокет\ подключён}}
+\DoxyCodeLine{00781\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ STATUS\_EOF\ \ \ \ \ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Сообщение\ содержит\ признак\ грациозного\ завершения}}
+\DoxyCodeLine{00782\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ STATUS\_ABORT\ \ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Сообщение\ содержит\ признак\ аварийного\ завершения}}
+\DoxyCodeLine{00783\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SACK\_IMMEDIATELY\ \ \ =\ 0x08,\ \textcolor{comment}{//\ Установка\ бита\ последнего\ фрагмента\ DATA,\ для\ мгновенной\ отправки}}
+\DoxyCodeLine{00784\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DELIVERY\_UNORDERED\ =\ 0x09\ \ \textcolor{comment}{//\ Сообщение\ доставляется\ без\ учёта\ порядка\ в\ потоке}}
+\DoxyCodeLine{00785\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00790\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }event\_types\_t\ =\ unordered\_set\ <event\_type\_t>;}
+\DoxyCodeLine{00795\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }MessageInfo\ \{}
+\DoxyCodeLine{00796\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ppid\_t\ ppid;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ полезной\ нагрузки}}
+\DoxyCodeLine{00797\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ num;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Номер\ потока}}
+\DoxyCodeLine{00798\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ ttl;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Время\ жизни\ (в\ миллисекундах)}}
+\DoxyCodeLine{00799\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ ctx;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Контекст\ для\ уведомлений\ об\ ошибках}}
+\DoxyCodeLine{00800\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_set\ <info\_t>\ flags;\ \textcolor{comment}{//\ Флаги\ сообщения}}
+\DoxyCodeLine{00805\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ MessageInfo()\ noexcept\ :}
+\DoxyCodeLine{00806\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ppid(ppid\_t::DTLS),}
+\DoxyCodeLine{00807\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ num(0),\ ttl(0),\ ctx(0)\ \{\}}
+\DoxyCodeLine{00808\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958}{\_\_attribute\_\_}}((packed))\ minfo\_t;}
+\DoxyCodeLine{00813\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }InitMessage\ \{}
+\DoxyCodeLine{00814\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ время\ инициализации\ SCTP}}
+\DoxyCodeLine{00815\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ timeout;}
+\DoxyCodeLine{00816\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ попыток\ подключения}}
+\DoxyCodeLine{00817\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ attempts;}
+\DoxyCodeLine{00818\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ исходящих\ потоков}}
+\DoxyCodeLine{00819\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ ostreams;}
+\DoxyCodeLine{00820\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ входящих\ потоков}}
+\DoxyCodeLine{00821\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ istreams;}
+\DoxyCodeLine{00826\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ InitMessage()\ noexcept\ :}
+\DoxyCodeLine{00827\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ timeout(0),\ attempts(4),}
+\DoxyCodeLine{00828\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ostreams(5),\ istreams(5)\ \{\}}
+\DoxyCodeLine{00829\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958}{\_\_attribute\_\_}}((packed))\ initmsg\_t;}
+\DoxyCodeLine{00834\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }Status\ \{}
+\DoxyCodeLine{00835\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ id;\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ ID\ ассоциации}}
+\DoxyCodeLine{00836\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ ratewind;\ \ \ \ \textcolor{comment}{//\ Размер\ окна\ скорости\ передачи}}
+\DoxyCodeLine{00837\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ penddata;\ \ \ \ \textcolor{comment}{//\ Количество\ ожидающих\ данных}}
+\DoxyCodeLine{00838\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ ostreams;\ \ \ \ \textcolor{comment}{//\ Количество\ исходящих\ потоков}}
+\DoxyCodeLine{00839\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ istreams;\ \ \ \ \textcolor{comment}{//\ Количество\ входящих\ потоков}}
+\DoxyCodeLine{00840\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ unackdata;\ \ \ \textcolor{comment}{//\ Количество\ неподтверждённых\ DATA\ чанков}}
+\DoxyCodeLine{00841\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ fragpoint;\ \ \ \textcolor{comment}{//\ Точка\ фрагментации\ в\ байтах}}
+\DoxyCodeLine{00842\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ state\_status\_t\ state;\ \textcolor{comment}{//\ Текущее\ состояние\ ассоциации}}
+\DoxyCodeLine{00847\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ Status()\ noexcept\ :}
+\DoxyCodeLine{00848\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{id}(0),}
+\DoxyCodeLine{00849\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ratewind(0),\ penddata(0),}
+\DoxyCodeLine{00850\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ostreams(0),\ istreams(0),}
+\DoxyCodeLine{00851\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unackdata(0),\ fragpoint(0),}
+\DoxyCodeLine{00852\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ state(state\_status\_t::NONE)\ \{\}}
+\DoxyCodeLine{00853\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958}{\_\_attribute\_\_}}((packed))\ \doxymbox{\hyperlink{namespaceawh_1_1event_acedc070d29fbf353ba6af4831101223a}{status\_t}};}
+\DoxyCodeLine{00858\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }Error\ \{}
+\DoxyCodeLine{00859\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ code;\ \ \ \textcolor{comment}{//\ Код\ ошибки\ события}}
+\DoxyCodeLine{00860\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ message;\ \textcolor{comment}{//\ Сообщение\ ошибки\ события}}
+\DoxyCodeLine{00865\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ Error()\ noexcept\ :}
+\DoxyCodeLine{00866\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ code(0),\ message\{\textcolor{stringliteral}{"{}"{}}\}\ \{\}}
+\DoxyCodeLine{00867\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}{error\_t}};}
+\DoxyCodeLine{00872\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }Event\ \{}
+\DoxyCodeLine{00873\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ события}}
+\DoxyCodeLine{00874\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ id;}
+\DoxyCodeLine{00875\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Тип\ события}}
+\DoxyCodeLine{00876\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ event\_type\_t\ type;}
+\DoxyCodeLine{00881\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ Event()\ noexcept\ :}
+\DoxyCodeLine{00882\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{id}(0),\ type(event\_type\_t::NONE)\ \{\}}
+\DoxyCodeLine{00887\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~Event()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00888\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}};}
+\DoxyCodeLine{00893\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventAdaptation\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{00894\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Адаптационное\ указание}}
+\DoxyCodeLine{00895\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ indication;}
+\DoxyCodeLine{00900\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventAdaptation()\ noexcept\ :\ indication(0)\ \{\}}
+\DoxyCodeLine{00905\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventAdaptation()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00906\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_adaptation\_t;}
+\DoxyCodeLine{00911\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventAssocChange\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{00912\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}{error\_t}}\ error;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Ошибка\ события}}
+\DoxyCodeLine{00913\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ ostreams;\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ исходящих\ потоков}}
+\DoxyCodeLine{00914\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ istreams;\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ входящих\ потоков}}
+\DoxyCodeLine{00915\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ assoc\_state\_t\ state;\ \ \ \ \ \ \ \ \textcolor{comment}{//\ Состояние\ события}}
+\DoxyCodeLine{00916\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <assoc\_info\_t>\ info;\ \textcolor{comment}{//\ Дополнительная\ информация\ события}}
+\DoxyCodeLine{00921\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventAssocChange()\ noexcept\ :}
+\DoxyCodeLine{00922\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ostreams(0),\ istreams(0),}
+\DoxyCodeLine{00923\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ state(assoc\_state\_t::NONE)\ \{\}}
+\DoxyCodeLine{00928\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventAssocChange()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00929\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_assoc\_change\_t;}
+\DoxyCodeLine{00934\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventAssocReset\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{00935\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Последний\ TSN\ (Transmission\ Sequence\ Number),\ подтверждённый\ вами\ (вы\ получили\ его\ от\ пира)}}
+\DoxyCodeLine{00936\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ localTSN;}
+\DoxyCodeLine{00937\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Последний\ TSN\ (Transmission\ Sequence\ Number),\ подтверждённый\ пиром\ (он\ получил\ его\ от\ вас)}}
+\DoxyCodeLine{00938\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ remoteTSN;}
+\DoxyCodeLine{00939\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаги\ сброса\ ассоциации}}
+\DoxyCodeLine{00940\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_set\ <assoc\_reset\_t>\ flags;}
+\DoxyCodeLine{00945\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventAssocReset()\ noexcept\ :}
+\DoxyCodeLine{00946\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ localTSN(0),\ remoteTSN(0)\ \{\}}
+\DoxyCodeLine{00951\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventAssocReset()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00952\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_assoc\_reset\_t;}
+\DoxyCodeLine{00957\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventRemoteError\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{00958\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}{error\_t}}\ error;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Ошибка\ события}}
+\DoxyCodeLine{00959\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <uint8\_t>\ data;\ \textcolor{comment}{//\ Дополнительная\ информация\ события}}
+\DoxyCodeLine{00964\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventRemoteError()\ noexcept\ =\ default;}
+\DoxyCodeLine{00969\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ virtual\ \string~EventRemoteError()\ =\ default;}
+\DoxyCodeLine{00970\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_remote\_error\_t;}
+\DoxyCodeLine{00975\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ typedef\ struct\ EventAddrChange\ :\ public\ event\_t\ \{}
+\DoxyCodeLine{00976\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}{error\_t}}\ error;\ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Ошибка\ события}}
+\DoxyCodeLine{00977\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ paddr\_state\_t\ state;\ \ \ \ \ \ \textcolor{comment}{//\ Состояние\ события}}
+\DoxyCodeLine{00978\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unique\_ptr\ <addr\_t>\ addr;\ \textcolor{comment}{//\ Адрес\ однорангового\ узла}}
+\DoxyCodeLine{00983\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventAddrChange()\ noexcept\ :}
+\DoxyCodeLine{00984\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ state(paddr\_state\_t::NONE),\ addr(\textcolor{keywordtype}{nullptr})\ \{\}}
+\DoxyCodeLine{00989\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventAddrChange()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00990\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_addr\_change\_t;}
+\DoxyCodeLine{00995\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }PartialDeliveryEvent\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{00996\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ stream;\ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Номер\ потока}}
+\DoxyCodeLine{00997\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ sequence;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Последовательный\ номер\ сообщения}}
+\DoxyCodeLine{00998\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ pdapi\_indics\_t\ indication;\ \textcolor{comment}{//\ Индикатор\ частичной\ доставки}}
+\DoxyCodeLine{01003\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ PartialDeliveryEvent()\ noexcept\ :}
+\DoxyCodeLine{01004\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ stream(0),\ sequence(0),}
+\DoxyCodeLine{01005\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ indication(pdapi\_indics\_t::NONE)\ \{\}}
+\DoxyCodeLine{01010\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~PartialDeliveryEvent()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{01011\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_pdapi\_t;}
+\DoxyCodeLine{01016\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventAuth\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{01017\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ key;\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Номер\ ключа}}
+\DoxyCodeLine{01018\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ auth\_indics\_t\ indication;\ \textcolor{comment}{//\ Индикатор\ аутентификации}}
+\DoxyCodeLine{01023\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventAuth()\ noexcept\ :}
+\DoxyCodeLine{01024\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ key(0),\ indication(auth\_indics\_t::NONE)\ \{\}}
+\DoxyCodeLine{01029\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventAuth()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{01030\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_auth\_t;}
+\DoxyCodeLine{01035\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventSendFailed\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{01036\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}{error\_t}}\ error;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Ошибка\ события}}
+\DoxyCodeLine{01037\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ send\_failed\_t\ status;\ \ \textcolor{comment}{//\ Статус\ отправки\ сообщения}}
+\DoxyCodeLine{01038\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <uint8\_t>\ data;\ \textcolor{comment}{//\ Дополнительная\ информация\ события}}
+\DoxyCodeLine{01043\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventSendFailed()\ noexcept\ :\ status(send\_failed\_t::NONE)\ \{\}}
+\DoxyCodeLine{01048\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventSendFailed()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{01049\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_send\_failed\_t;}
+\DoxyCodeLine{01054\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventStreamReset\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{01055\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <uint16\_t>\ streams;\ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Номера\ сброшенных\ потоков}}
+\DoxyCodeLine{01056\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_set\ <stream\_reset\_t>\ flags;\ \textcolor{comment}{//\ Типы\ сброса\ потоков}}
+\DoxyCodeLine{01061\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventStreamReset()\ noexcept\ \{\}}
+\DoxyCodeLine{01066\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventStreamReset()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{01067\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_stream\_reset\_t;}
+\DoxyCodeLine{01072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }EventStreamChange\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback_a338f740a1aea257f4ce120d146f06a9a}{event\_t}}\ \{}
+\DoxyCodeLine{01073\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ исходящих\ потоков}}
+\DoxyCodeLine{01074\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ ostreams;}
+\DoxyCodeLine{01075\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальное\ количество\ входящих\ потоков}}
+\DoxyCodeLine{01076\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ istreams;}
+\DoxyCodeLine{01077\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаги\ сброса\ ассоциации}}
+\DoxyCodeLine{01078\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ unordered\_set\ <stream\_change\_t>\ flags;}
+\DoxyCodeLine{01083\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ EventStreamChange()\ noexcept\ :}
+\DoxyCodeLine{01084\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ostreams(0),\ istreams(0)\ \{\}}
+\DoxyCodeLine{01089\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~EventStreamChange()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{01090\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ event\_stream\_change\_t;}
+\DoxyCodeLine{01095\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{namespace\ }callback\ \{}
+\DoxyCodeLine{01099\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }info\_t\ =\ std::function\ <void\ (\textcolor{keyword}{const}\ event::id\_t,\ \textcolor{keyword}{const}\ minfo\_t\ \&)>;}
+\DoxyCodeLine{01103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }events\_t\ =\ std::function\ <void\ (\textcolor{keyword}{const}\ event::id\_t,\ unique\_ptr\ <event\_t>)>;}
+\DoxyCodeLine{01104\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{01105\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{01110\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }sctp\_event\_t\ =\ unique\_ptr\ <sctp::event\_t>;}
+\DoxyCodeLine{01111\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \#endif}}
+\DoxyCodeLine{01112\ \ \ \ \ \};}
+\DoxyCodeLine{01113\ \};}
+\DoxyCodeLine{01114\ }
+\DoxyCodeLine{01115\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_NETWORK\_\_}}
+
+\end{DoxyCode}

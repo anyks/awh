@@ -1,0 +1,72 @@
+\doxysection{awh::\+event Namespace Reference}
+\hypertarget{namespaceawh_1_1event}{}\label{namespaceawh_1_1event}\index{awh::event@{awh::event}}
+
+
+пространство имён работы с событием  
+
+
+\doxysubsubsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \doxymbox{\hyperlink{namespaceawh_1_1event_1_1options}{options}}
+\begin{DoxyCompactList}\small\item\em пространство имён опций событий \end{DoxyCompactList}\item 
+namespace \doxymbox{\hyperlink{namespaceawh_1_1event_1_1callback}{callback}}
+\begin{DoxyCompactList}\small\item\em пространство имён работы с обратными вызовами \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48}\label{namespaceawh_1_1event_a095828921b6e7d65265953d0fd785f48} 
+using {\bfseries id\+\_\+t} = uint32\+\_\+t
+\begin{DoxyCompactList}\small\item\em Тип идентификатора события \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}\label{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_ad39efad2468afda3e35dc1ecce0cd73e}{action\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Действия событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}\label{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a205e3207f8e2f53e569ebee363c4a39f}{node\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы узлов \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a02d522e8eddb1367bf55f62fa259570e}\label{namespaceawh_1_1event_a02d522e8eddb1367bf55f62fa259570e} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a02d522e8eddb1367bf55f62fa259570e}{vnode\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы виртуальных узлов \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}\label{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_afc24e7553bb8c7fd36c7b13021029b2d}{address\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы адресов событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}\label{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a3eadd7611eaf17df5842009392fd95bf}{delivery\+\_\+mode\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы трансляции пакетов \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}\label{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a05f02307875bd199f26ed395b411dbee}{hops\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Максимальное количество хопов через которые может пройти пакет \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_acedc070d29fbf353ba6af4831101223a}\label{namespaceawh_1_1event_acedc070d29fbf353ba6af4831101223a} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_acedc070d29fbf353ba6af4831101223a}{status\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Статусы событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}\label{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_ad3ecda167bee46f23da488e87eb01ca3}{error\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы ошибок событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a05c697880f81fc65a86749b92a5d844d}\label{namespaceawh_1_1event_a05c697880f81fc65a86749b92a5d844d} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a05c697880f81fc65a86749b92a5d844d}{origin\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Происхождение событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}\label{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a2c49e3cc8bf98180b4e33f171903cf2a}{mode\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Режимы событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a8b64db5ab06bfafdc17e1b79db726a23}\label{namespaceawh_1_1event_a8b64db5ab06bfafdc17e1b79db726a23} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a8b64db5ab06bfafdc17e1b79db726a23}{control\+\_\+list\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы контрольных списков событий \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394}\label{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a5174689fd8c34abb365335cc6c04d394}{seek\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы смещений в файле \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}\label{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_ad6767cedf944f99890612350763cc89e}{protocol\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы протоколов сокетов \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}\label{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_a017a566a382b40c8552b0d2417305bf5}{family\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Семейства сокетов \end{DoxyCompactList}\item 
+\Hypertarget{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}\label{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df} 
+enum class \doxymbox{\hyperlink{namespaceawh_1_1event_ae004adc876ac7cdc678d87b4ec3da7df}{type\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Типы сокетов \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+пространство имён работы с событием 

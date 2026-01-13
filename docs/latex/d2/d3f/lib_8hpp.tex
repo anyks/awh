@@ -1,0 +1,122 @@
+\doxysection{include/\+sys/\+lib.hpp File Reference}
+\hypertarget{lib_8hpp}{}\label{lib_8hpp}\index{include/sys/lib.hpp@{include/sys/lib.hpp}}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_a348b15bb056f5a65dfc2a3120a666255}{AWH\+\_\+\+LOCALE}}~"{}en\+\_\+\+US.\+UTF-\/8"{}
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_a45778abd323f5d46df0dc215bf7f8e86}{awh\+\_\+cast}}~static\+\_\+cast
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_a24bec38496f005eaabaccc935b1d9094}{TIME\+\_\+\+ZONE}}~"{}UTC"{}
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_a6da0bbe04c839d175add2432188aada6}{AWH\+\_\+\+PAYLOAD\+\_\+\+SIZE}}~0x\+FFFFF
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_a2cce9562e3c873ccea1f90ba5f830152}{AWH\+\_\+\+MAX\+\_\+\+BODY\+\_\+\+SIZE}}~0x6400000
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_ae044ce064cd0ca096a36ec20a66a27cd}{HTTP\+\_\+\+HEADER\+\_\+\+ACCEPTLANGUAGE}}~"{}\texorpdfstring{$\ast$}{*}"{}
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_a8bb9017f30ff8959b7916f558c82d306}{HTTP\+\_\+\+VERSION}}~1.\+1
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_ab1e01c6e2499ef1ed9c8da23c7485daa}{IPV4\+\_\+\+NTP}}
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_ac42367fe5c999ec6650de83e9d72fe8c}{SERVER\+\_\+\+PORT}}~80
+\item 
+\+\#define \doxymbox{\hyperlink{lib_8hpp_abf6ff7ad3e92f1285ef3bd7757ffcb88}{SSL\+\_\+\+CA\+\_\+\+FILE}}~"{}"{}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyDate}{Date}
+:\+ 2025-\/10-\/25 @license:\+ GPL-\/3.\+0
+\end{DoxyDate}
+@telegram:\+ @forman \begin{DoxyAuthor}{Author}
+:\+ Yuriy Lobarev @phone:\+ +7 (910) 983-\/95-\/90 @email:\+ \href{mailto:forman@anyks.com}{\texttt{forman@anyks.\+com}} @site:\+ \href{https://anyks.com}{\texttt{https:\+/\+/\+anyks.\+com}}
+\end{DoxyAuthor}
+\begin{DoxyCopyright}{Copyright}
+:\+ Copyright © 2025 
+\end{DoxyCopyright}
+
+
+\label{doc-define-members}
+\Hypertarget{lib_8hpp_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{lib_8hpp_a45778abd323f5d46df0dc215bf7f8e86}\index{lib.hpp@{lib.hpp}!awh\_cast@{awh\_cast}}
+\index{awh\_cast@{awh\_cast}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{awh\_cast}{awh\_cast}}
+{\footnotesize\ttfamily \label{lib_8hpp_a45778abd323f5d46df0dc215bf7f8e86} 
+\+\#define awh\+\_\+cast~static\+\_\+cast}
+
+Если включён режим отладки \Hypertarget{lib_8hpp_a348b15bb056f5a65dfc2a3120a666255}\index{lib.hpp@{lib.hpp}!AWH\_LOCALE@{AWH\_LOCALE}}
+\index{AWH\_LOCALE@{AWH\_LOCALE}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{AWH\_LOCALE}{AWH\_LOCALE}}
+{\footnotesize\ttfamily \label{lib_8hpp_a348b15bb056f5a65dfc2a3120a666255} 
+\+\#define AWH\+\_\+\+LOCALE~"{}en\+\_\+\+US.\+UTF-\/8"{}}
+
+Для операционной системы MS Windows \Hypertarget{lib_8hpp_a2cce9562e3c873ccea1f90ba5f830152}\index{lib.hpp@{lib.hpp}!AWH\_MAX\_BODY\_SIZE@{AWH\_MAX\_BODY\_SIZE}}
+\index{AWH\_MAX\_BODY\_SIZE@{AWH\_MAX\_BODY\_SIZE}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{AWH\_MAX\_BODY\_SIZE}{AWH\_MAX\_BODY\_SIZE}}
+{\footnotesize\ttfamily \label{lib_8hpp_a2cce9562e3c873ccea1f90ba5f830152} 
+\+\#define AWH\+\_\+\+MAX\+\_\+\+BODY\+\_\+\+SIZE~0x6400000}
+
+Если максимальный размер HTTP-\/тела запроса/\+ответа установлено Устанавливаем максимальный размер HTTP-\/тела 100Mb \Hypertarget{lib_8hpp_a6da0bbe04c839d175add2432188aada6}\index{lib.hpp@{lib.hpp}!AWH\_PAYLOAD\_SIZE@{AWH\_PAYLOAD\_SIZE}}
+\index{AWH\_PAYLOAD\_SIZE@{AWH\_PAYLOAD\_SIZE}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{AWH\_PAYLOAD\_SIZE}{AWH\_PAYLOAD\_SIZE}}
+{\footnotesize\ttfamily \label{lib_8hpp_a6da0bbe04c839d175add2432188aada6} 
+\+\#define AWH\+\_\+\+PAYLOAD\+\_\+\+SIZE~0x\+FFFFF}
+
+Размеры буферов данных \Hypertarget{lib_8hpp_ae044ce064cd0ca096a36ec20a66a27cd}\index{lib.hpp@{lib.hpp}!HTTP\_HEADER\_ACCEPTLANGUAGE@{HTTP\_HEADER\_ACCEPTLANGUAGE}}
+\index{HTTP\_HEADER\_ACCEPTLANGUAGE@{HTTP\_HEADER\_ACCEPTLANGUAGE}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{HTTP\_HEADER\_ACCEPTLANGUAGE}{HTTP\_HEADER\_ACCEPTLANGUAGE}}
+{\footnotesize\ttfamily \label{lib_8hpp_ae044ce064cd0ca096a36ec20a66a27cd} 
+\+\#define HTTP\+\_\+\+HEADER\+\_\+\+ACCEPTLANGUAGE~"{}\texorpdfstring{$\ast$}{*}"{}}
+
+HTTP заголовки по умолчанию \Hypertarget{lib_8hpp_a8bb9017f30ff8959b7916f558c82d306}\index{lib.hpp@{lib.hpp}!HTTP\_VERSION@{HTTP\_VERSION}}
+\index{HTTP\_VERSION@{HTTP\_VERSION}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{HTTP\_VERSION}{HTTP\_VERSION}}
+{\footnotesize\ttfamily \label{lib_8hpp_a8bb9017f30ff8959b7916f558c82d306} 
+\+\#define HTTP\+\_\+\+VERSION~1.\+1}
+
+Параметры сети \Hypertarget{lib_8hpp_ab1e01c6e2499ef1ed9c8da23c7485daa}\index{lib.hpp@{lib.hpp}!IPV4\_NTP@{IPV4\_NTP}}
+\index{IPV4\_NTP@{IPV4\_NTP}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{IPV4\_NTP}{IPV4\_NTP}}
+{\footnotesize\ttfamily \label{lib_8hpp_ab1e01c6e2499ef1ed9c8da23c7485daa} 
+\+\#define IPV4\+\_\+\+NTP}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\ \ \ \ \{\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp0.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp1.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp2.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp3.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp4.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp5.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp6.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}ntp7.ntp-\/servers.net"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}pool.ntp.org"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}0.pool.ntp.org"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}1.pool.ntp.org"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}2.pool.ntp.org"{}},\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{stringliteral}{"{}3.pool.ntp.org"{}}\ \(\backslash\)}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+Адреса NTP серверов \Hypertarget{lib_8hpp_ac42367fe5c999ec6650de83e9d72fe8c}\index{lib.hpp@{lib.hpp}!SERVER\_PORT@{SERVER\_PORT}}
+\index{SERVER\_PORT@{SERVER\_PORT}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{SERVER\_PORT}{SERVER\_PORT}}
+{\footnotesize\ttfamily \label{lib_8hpp_ac42367fe5c999ec6650de83e9d72fe8c} 
+\+\#define SERVER\+\_\+\+PORT~80}
+
+Параметры сервера \Hypertarget{lib_8hpp_abf6ff7ad3e92f1285ef3bd7757ffcb88}\index{lib.hpp@{lib.hpp}!SSL\_CA\_FILE@{SSL\_CA\_FILE}}
+\index{SSL\_CA\_FILE@{SSL\_CA\_FILE}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{SSL\_CA\_FILE}{SSL\_CA\_FILE}}
+{\footnotesize\ttfamily \label{lib_8hpp_abf6ff7ad3e92f1285ef3bd7757ffcb88} 
+\+\#define SSL\+\_\+\+CA\+\_\+\+FILE~"{}"{}}
+
+Файловые пути хранения SSL CA-\/файла Для операционной системы MS Windows \Hypertarget{lib_8hpp_a24bec38496f005eaabaccc935b1d9094}\index{lib.hpp@{lib.hpp}!TIME\_ZONE@{TIME\_ZONE}}
+\index{TIME\_ZONE@{TIME\_ZONE}!lib.hpp@{lib.hpp}}
+\doxysubsubsection{\texorpdfstring{TIME\_ZONE}{TIME\_ZONE}}
+{\footnotesize\ttfamily \label{lib_8hpp_a24bec38496f005eaabaccc935b1d9094} 
+\+\#define TIME\+\_\+\+ZONE~"{}UTC"{}}
+
+Параметры библиотеки 

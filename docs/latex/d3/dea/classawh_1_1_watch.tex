@@ -1,0 +1,150 @@
+\doxysection{awh::\+Watch Class Reference}
+\hypertarget{classawh_1_1_watch}{}\label{classawh_1_1_watch}\index{awh::Watch@{awh::Watch}}
+
+
+Класс для работы с часами  
+
+
+
+
+{\ttfamily \+\#include $<$watch.\+hpp$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \doxymbox{\hyperlink{classawh_1_1_watch_aa8760bb3d7e2dabde4c791c5eebca26a}{stop}} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод остановки работы таймера \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{classawh_1_1_watch_a16c78cc49b15d0cce05c23531fad3cc4}{start}} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод запуска работы таймера \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{notifier_8hpp_aff55fe551a9992a54ec54621c524d0a4}{SOCKET}} \doxymbox{\hyperlink{classawh_1_1_watch_ace08fe4ad5ea7b5133a505fa9311ad0d}{create}} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод создания нового таймера \end{DoxyCompactList}\item 
+uint32\+\_\+t \doxymbox{\hyperlink{classawh_1_1_watch_a6ca3099ae270a1a4b65f3c5bb342a0f9}{event}} () noexcept
+\begin{DoxyCompactList}\small\item\em Метод извлечения идентификатора события \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_watch_ac8729c7bc04704181058b7075aff2525}{away}} (const uint32\+\_\+t id) noexcept
+\begin{DoxyCompactList}\small\item\em Метод убрать таймер из отслеживания \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{classawh_1_1_watch_aca54ff92fc02a9e1415f435aaab7465a}{wait}} (const uint32\+\_\+t id, const uint32\+\_\+t delay) noexcept
+\begin{DoxyCompactList}\small\item\em Метод ожидания указанного промежутка времени \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{classawh_1_1_watch_ac43cdc13f56fb577911e9478588ce3da}{Watch}} (const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}fmk, const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}log) noexcept
+\begin{DoxyCompactList}\small\item\em Конструктор \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_watch_a3cf6fe1023a76b3ed0a5c34c78902ef0}\label{classawh_1_1_watch_a3cf6fe1023a76b3ed0a5c34c78902ef0} 
+{\bfseries \texorpdfstring{$\sim$}{\string~}\+Watch} () noexcept
+\begin{DoxyCompactList}\small\item\em Деструктор \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Класс для работы с часами 
+
+\label{doc-constructors}
+\Hypertarget{classawh_1_1_watch_doc-constructors}
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classawh_1_1_watch_ac43cdc13f56fb577911e9478588ce3da}\index{awh::Watch@{awh::Watch}!Watch@{Watch}}
+\index{Watch@{Watch}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{Watch()}{Watch()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_ac43cdc13f56fb577911e9478588ce3da} 
+awh::\+\+Watch::\+\+Watch (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{fmk}{, }\item[{const \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{log}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [explicit]}, {\ttfamily [noexcept]}}
+
+
+
+Конструктор 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fmk} & объект фреймворка \\
+\hline
+{\em log} & объект для работы с логами \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{classawh_1_1_watch_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classawh_1_1_watch_ac8729c7bc04704181058b7075aff2525}\index{awh::Watch@{awh::Watch}!away@{away}}
+\index{away@{away}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{away()}{away()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_ac8729c7bc04704181058b7075aff2525} 
+void awh::\+\+Watch::\+away (\begin{DoxyParamCaption}\item[{const uint32\+\_\+t}]{id}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод убрать таймер из отслеживания 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор таймера \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classawh_1_1_watch_ace08fe4ad5ea7b5133a505fa9311ad0d}\index{awh::Watch@{awh::Watch}!create@{create}}
+\index{create@{create}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{create()}{create()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_ace08fe4ad5ea7b5133a505fa9311ad0d} 
+\doxymbox{\hyperlink{notifier_8hpp_aff55fe551a9992a54ec54621c524d0a4}{SOCKET}} awh::\+\+Watch::\+create (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод создания нового таймера 
+
+\begin{DoxyReturn}{Returns}
+файловый дескриптор для отслеживания 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_watch_a6ca3099ae270a1a4b65f3c5bb342a0f9}\index{awh::Watch@{awh::Watch}!event@{event}}
+\index{event@{event}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{event()}{event()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_a6ca3099ae270a1a4b65f3c5bb342a0f9} 
+uint32\+\_\+t awh::\+\+Watch::\+event (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод извлечения идентификатора события 
+
+\begin{DoxyReturn}{Returns}
+идентификатор события 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_watch_a16c78cc49b15d0cce05c23531fad3cc4}\index{awh::Watch@{awh::Watch}!start@{start}}
+\index{start@{start}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{start()}{start()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_a16c78cc49b15d0cce05c23531fad3cc4} 
+bool awh::\+\+Watch::\+start (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод запуска работы таймера 
+
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_watch_aa8760bb3d7e2dabde4c791c5eebca26a}\index{awh::Watch@{awh::Watch}!stop@{stop}}
+\index{stop@{stop}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{stop()}{stop()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_aa8760bb3d7e2dabde4c791c5eebca26a} 
+bool awh::\+\+Watch::\+stop (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод остановки работы таймера 
+
+\begin{DoxyReturn}{Returns}
+результат работы функции 
+\end{DoxyReturn}
+\Hypertarget{classawh_1_1_watch_aca54ff92fc02a9e1415f435aaab7465a}\index{awh::Watch@{awh::Watch}!wait@{wait}}
+\index{wait@{wait}!awh::Watch@{awh::Watch}}
+\doxysubsubsection{\texorpdfstring{wait()}{wait()}}
+{\footnotesize\ttfamily \label{classawh_1_1_watch_aca54ff92fc02a9e1415f435aaab7465a} 
+void awh::\+\+Watch::\+wait (\begin{DoxyParamCaption}\item[{const uint32\+\_\+t}]{id}{, }\item[{const uint32\+\_\+t}]{delay}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [noexcept]}}
+
+
+
+Метод ожидания указанного промежутка времени 
+
+
+\begin{DoxyParams}{Parameters}
+{\em id} & идентификатор таймера \\
+\hline
+{\em delay} & задержка времени в миллисекундах \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+net/\+backend/\+sun/\+\doxymbox{\hyperlink{watch_8hpp}{watch.\+hpp}}\end{DoxyCompactItemize}

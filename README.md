@@ -95,6 +95,22 @@ $ ./generate.sh example.com
 $ ./sh/build_third_party.sh
 ```
 
+### Build documentation
+
+```bash
+$ mkdir ./build
+$ cd ./build
+
+$ cmake ..
+
+$ cmake --build . --target doc
+
+# Or
+
+$ make doc
+```
+> Result in ./docs/html/index.html
+
 ### Build on MacOS X, Linux, FreeBSD or Solaris without Unit-tests
 
 ```bash

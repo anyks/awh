@@ -295,6 +295,9 @@ endif (CMAKE_SHARED_BUILD_LIB)
 # Добавляем модули cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+# Находим Doxygen
+find_package(Doxygen QUIET)
+
 # Выполняем библиотек зависимостей
 find_package(Dependence REQUIRED)
 
@@ -349,6 +352,32 @@ if (CMAKE_BUILD_TESTS)
         message(FATAL_ERROR "OpenSSL not found")
     endif (OpenSSL_FOUND)
 endif (CMAKE_BUILD_TESTS)
+
+# Если Doxygen найден
+if(Doxygen_FOUND)
+    # Предположим, что Doxyfile лежит в корне исходников
+    SET(DOXYFILE_PATH ${CMAKE_SOURCE_DIR}/Doxyfile)
+
+    # Проверяем, что файл существует
+    if(EXISTS ${DOXYFILE_PATH})
+        # Создаём кастомную цель
+        add_custom_target(doc
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_PATH}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Generating API documentation with Doxygen"
+            VERBATIM
+        )
+    # Если файл не найден
+    else()
+        # Выводим сообщение об отсутствии Doxyfile
+        message(STATUS "Doxyfile not found at ${DOXYFILE_PATH} — doc target skipped")
+    # Конец проверки файла
+    endif()
+# Если Doxygen не найден
+else()
+    # Выводим сообщение об отсутствии Doxygen
+    message(STATUS "Doxygen not found — 'doc' target will not be available")
+endif()
 
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})

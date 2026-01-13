@@ -1,0 +1,451 @@
+\doxysection{chrono.\+hpp}
+\hypertarget{chrono_8hpp_source}{}\label{chrono_8hpp_source}\index{include/sys/chrono.hpp@{include/sys/chrono.hpp}}
+\doxymbox{\hyperlink{chrono_8hpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifndef\ \_\_AWH\_CHRONO\_\_}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ \_\_AWH\_CHRONO\_\_}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ <any>}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#include\ <type\_traits>}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#include\ <unordered\_map>}}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\#include\ "{}\doxymbox{\hyperlink{fmk_8hpp}{fmk.hpp}}"{}}}
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#include\ "{}\doxymbox{\hyperlink{locker_8hpp}{locker.hpp}}"{}}}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00037\ \textcolor{keyword}{namespace\ }\doxymbox{\hyperlink{namespaceawh}{awh}}\ \{}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keyword}{class\ }Log;}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ac5f25b0bc0f4a5fe72ac616bab283e4e}{Chrono}}\ \{}
+\DoxyCodeLine{00052\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00056\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ format\_t\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00057\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ =\ 0x00,\ \textcolor{comment}{//\ Формат\ не\ определён}}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ y\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Формат\ соответствует\ \%y\ и\ \%g\ (YY)}}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Y\ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Формат\ соответствует\ \%Y\ и\ \%G\ (YYYY)}}
+\DoxyCodeLine{00060\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ b\ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Формат\ соответствует\ \%b\ и\ \%h\ (MMM)}}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ B\ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Формат\ соответствует\ \%B\ (MMMMM)}}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ m\ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Формат\ соответствует\ \%m\ (MM)}}
+\DoxyCodeLine{00063\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ d\ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Формат\ соответствует\ \%d\ (dd)}}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ a\ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Формат\ соответствует\ \%a\ (EEE)}}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ A\ \ \ \ =\ 0x08,\ \textcolor{comment}{//\ Формат\ соответствует\ \%A\ (EEEEE)}}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ j\ \ \ \ =\ 0x09,\ \textcolor{comment}{//\ Формат\ соответствует\ \%j}}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ u\ \ \ \ =\ 0x0A,\ \textcolor{comment}{//\ Формат\ соответствует\ \%u\ (u)}}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ w\ \ \ \ =\ 0x0B,\ \textcolor{comment}{//\ Формат\ соответствует\ \%w}}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ W\ \ \ \ =\ 0x0C,\ \textcolor{comment}{//\ Формат\ соответствует\ \%W}}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ D\ \ \ \ =\ 0x0D,\ \textcolor{comment}{//\ Формат\ соответствует\ \%D\ и\ \%x\ (MM/dd/YYYY)}}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ F\ \ \ \ =\ 0x0E,\ \textcolor{comment}{//\ Формат\ соответствует\ \%F\ (YYYY-\/MM-\/dd)}}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ H\ \ \ \ =\ 0x0F,\ \textcolor{comment}{//\ Формат\ соответствует\ \%H\ (HH)}}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ I\ \ \ \ =\ 0x10,\ \textcolor{comment}{//\ Формат\ соответствует\ \%I\ (h)}}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ M\ \ \ \ =\ 0x11,\ \textcolor{comment}{//\ Формат\ соответствует\ \%M\ (mm)}}
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ s\ \ \ \ =\ 0x12,\ \textcolor{comment}{//\ Формат\ соответствует\ (SSS)}}
+\DoxyCodeLine{00076\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ S\ \ \ \ =\ 0x13,\ \textcolor{comment}{//\ Формат\ соответствует\ \%S\ (ss)}}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ p\ \ \ \ =\ 0x14,\ \textcolor{comment}{//\ Формат\ соответствует\ \%p\ (a)}}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ R\ \ \ \ =\ 0x15,\ \textcolor{comment}{//\ Формат\ соответствует\ \%R\ (HH:mm)}}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ T\ \ \ \ =\ 0x16,\ \textcolor{comment}{//\ Формат\ соответствует\ \%T\ и\ \%X\ (HH:mm:ss)}}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ r\ \ \ \ =\ 0x17,\ \textcolor{comment}{//\ Формат\ соответствует\ \%r\ (h:mm:ss\ a)}}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ c\ \ \ \ =\ 0x18,\ \textcolor{comment}{//\ Формат\ соответствует\ \%c\ (EEE\ MMM\ dd\ HH:mm:ss\ YYYY)}}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ z\ \ \ \ =\ 0x19,\ \textcolor{comment}{//\ Формат\ соответствует\ \%z\ (Z)}}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Z\ \ \ \ =\ 0x1A,\ \textcolor{comment}{//\ Формат\ соответствует\ \%Z\ (z)}}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ e\ \ \ \ =\ 0x1B\ \ \textcolor{comment}{//\ Формат\ соответствует\ \%e\ (Zz)}}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AM\ =\ 0x00,\ \textcolor{comment}{//\ До\ полудня}}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PM\ =\ 0x01\ \ \textcolor{comment}{//\ После\ полудня}}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INCREMENT\ =\ 0x00,\ \textcolor{comment}{//\ Инкремент}}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DECREMENT\ =\ 0x01\ \ \textcolor{comment}{//\ Декремент}}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LEFT\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Сколько\ осталось\ времени}}
+\DoxyCodeLine{00106\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PASSED\ =\ 0x01\ \ \textcolor{comment}{//\ Сколько\ прошло\ времени}}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00111\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00112\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Хранение\ даты\ не\ установлено}}
+\DoxyCodeLine{00113\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LOCAL\ \ =\ 0x01,\ \textcolor{comment}{//\ Дата\ в\ формате\ локальных\ настроек}}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GLOBAL\ =\ 0x02\ \ \textcolor{comment}{//\ Дата\ в\ формате\ глобального\ времени}}
+\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00119\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00120\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Не\ установлено}}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ YEAR\ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Год}}
+\DoxyCodeLine{00122\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MONTH\ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Месяц}}
+\DoxyCodeLine{00123\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WEEK\ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Неделя}}
+\DoxyCodeLine{00124\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DAY\ \ \ \ \ \ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ День}}
+\DoxyCodeLine{00125\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HOUR\ \ \ \ \ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Час}}
+\DoxyCodeLine{00126\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MINUTES\ \ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Минуты}}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SECONDS\ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Секунды}}
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MILLISECONDS\ =\ 0x08,\ \textcolor{comment}{//\ Миллисекунды}}
+\DoxyCodeLine{00129\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MICROSECONDS\ =\ 0x09,\ \textcolor{comment}{//\ Микросекунды}}
+\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NANOSECONDS\ \ =\ 0x0A\ \ \textcolor{comment}{//\ Наносекунды}}
+\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00136\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Элемент\ даты\ не\ установлен}}
+\DoxyCodeLine{00137\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DAY\ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Номер\ текущего\ дня\ недели\ от\ 1\ до\ 7}}
+\DoxyCodeLine{00138\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DATE\ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Число\ месяца\ от\ 1\ до\ 31}}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ YEAR\ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Полное\ обозначение\ года}}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HOUR\ \ \ \ \ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Количество\ часов\ от\ 0\ до\ 23}}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DAYS\ \ \ \ \ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Количество\ прошедвших\ дней\ от\ 1\ января}}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MONTH\ \ \ \ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Номер\ месяца\ от\ 1\ до\ 12\ (начиная\ с\ Января)}}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WEEKS\ \ \ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Количество\ недель\ прошедших\ с\ начала\ года}}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ OFFSET\ \ \ \ \ \ \ =\ 0x08,\ \textcolor{comment}{//\ Смещение\ временной\ зоны\ в\ секундах\ относительно\ UTC}}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MINUTES\ \ \ \ \ \ =\ 0x09,\ \textcolor{comment}{//\ Количество\ минут\ от\ 0\ до\ 59}}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SECONDS\ \ \ \ \ \ =\ 0x0A,\ \textcolor{comment}{//\ Количество\ секунд\ от\ 0\ до\ 59}}
+\DoxyCodeLine{00147\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MILLISECONDS\ =\ 0x0B,\ \textcolor{comment}{//\ Количество\ миллисекунд}}
+\DoxyCodeLine{00148\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MICROSECONDS\ =\ 0x0C,\ \textcolor{comment}{//\ Количество\ микросекунд}}
+\DoxyCodeLine{00149\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NANOSECONDS\ \ =\ 0x0D\ \ \textcolor{comment}{//\ Количество\ наносекунд}}
+\DoxyCodeLine{00150\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Временная\ зона\ не\ установлена}}
+\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AT\ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Атлантическое\ Время}}
+\DoxyCodeLine{00158\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CT\ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Северноамериканское\ Центральное\ Время}}
+\DoxyCodeLine{00159\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ET\ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Северноамериканское\ Восточное\ Время}}
+\DoxyCodeLine{00160\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MT\ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Северноамериканское\ Горное\ Время}}
+\DoxyCodeLine{00161\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NT\ \ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Время\ В\ Ньюфаундленде}}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PT\ \ \ \ \ =\ 0x06,\ \textcolor{comment}{//\ Северноамериканское\ Тихоокеанское\ Время}}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MUT\ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Острове\ Маврикий}}
+\DoxyCodeLine{00164\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MVT\ \ \ \ =\ 0x08,\ \textcolor{comment}{//\ Время\ На\ Мальдивах}}
+\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MYT\ \ \ \ =\ 0x09,\ \textcolor{comment}{//\ Малайское\ Время}}
+\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NCT\ \ \ \ =\ 0x0A,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Новой\ Каледонии}}
+\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NDT\ \ \ \ =\ 0x0B,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Ньюфаундленде}}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NFT\ \ \ \ =\ 0x0C,\ \textcolor{comment}{//\ Время\ На\ Острове\ Норфолк}}
+\DoxyCodeLine{00169\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NPT\ \ \ \ =\ 0x0D,\ \textcolor{comment}{//\ Непальськое\ Время}}
+\DoxyCodeLine{00170\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NRT\ \ \ \ =\ 0x0E,\ \textcolor{comment}{//\ Время\ На\ Острове\ Науру}}
+\DoxyCodeLine{00171\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NST\ \ \ \ =\ 0x0F,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Ньюфаундленде}}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PWT\ \ \ \ =\ 0x10,\ \textcolor{comment}{//\ Время\ На\ Острове\ Палау}}
+\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NUT\ \ \ \ =\ 0x11,\ \textcolor{comment}{//\ Время\ На\ Острове\ Ниуэ}}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FET\ \ \ \ =\ 0x12,\ \textcolor{comment}{//\ Минское\ Время}}
+\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FJT\ \ \ \ =\ 0x13,\ \textcolor{comment}{//\ Летнее\ Время\ На\ О.\ Фиджи}}
+\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PYT\ \ \ \ =\ 0x14,\ \textcolor{comment}{//\ Парагвайское\ Стандартное\ Время}}
+\DoxyCodeLine{00177\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ RET\ \ \ \ =\ 0x15,\ \textcolor{comment}{//\ Время\ На\ Острове\ Реюньон}}
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SBT\ \ \ \ =\ 0x16,\ \textcolor{comment}{//\ Время\ На\ Соломоновых\ Островах}}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SCT\ \ \ \ =\ 0x17,\ \textcolor{comment}{//\ Время\ На\ Сейшелах}}
+\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SGT\ \ \ \ =\ 0x18,\ \textcolor{comment}{//\ Сингапурское\ Время}}
+\DoxyCodeLine{00181\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SRT\ \ \ \ =\ 0x19,\ \textcolor{comment}{//\ Время\ В\ Суринаме}}
+\DoxyCodeLine{00182\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SST\ \ \ \ =\ 0x1A,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Острове\ Самоа}}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TFT\ \ \ \ =\ 0x1B,\ \textcolor{comment}{//\ Французское\ Южное\ И\ Антарктическое\ Время}}
+\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ THA\ \ \ \ =\ 0x1C,\ \textcolor{comment}{//\ Тайландское\ Время}}
+\DoxyCodeLine{00185\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TJT\ \ \ \ =\ 0x1D,\ \textcolor{comment}{//\ Время\ В\ Таджикистане}}
+\DoxyCodeLine{00186\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TKT\ \ \ \ =\ 0x1E,\ \textcolor{comment}{//\ Время\ На\ Островах\ Токелау}}
+\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TLT\ \ \ \ =\ 0x1F,\ \textcolor{comment}{//\ Время\ В\ Восточном\ Тиморе}}
+\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TMT\ \ \ \ =\ 0x20,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Туркмении}}
+\DoxyCodeLine{00189\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TOT\ \ \ \ =\ 0x21,\ \textcolor{comment}{//\ Время\ На\ Островах\ Тонга}}
+\DoxyCodeLine{00190\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TRT\ \ \ \ =\ 0x22,\ \textcolor{comment}{//\ Турецкое\ Время}}
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TVT\ \ \ \ =\ 0x23,\ \textcolor{comment}{//\ Время\ На\ Островах\ Тувалу}}
+\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FKT\ \ \ \ =\ 0x24,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Фолклендах}}
+\DoxyCodeLine{00193\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FNT\ \ \ \ =\ 0x25,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Фернанду-\/Ди-\/Норонья}}
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AFT\ \ \ \ =\ 0x26,\ \textcolor{comment}{//\ Время\ В\ Афганистане}}
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ACT\ \ \ \ =\ 0x27,\ \textcolor{comment}{//\ Амазонское\ Стандартное\ Время}}
+\DoxyCodeLine{00196\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ADT\ \ \ \ =\ 0x28,\ \textcolor{comment}{//\ Атлантическое\ Летнее\ Время}}
+\DoxyCodeLine{00197\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AZT\ \ \ \ =\ 0x29,\ \textcolor{comment}{//\ Азербайджанское\ Стандартное\ Время}}
+\DoxyCodeLine{00198\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ART\ \ \ \ =\ 0x2A,\ \textcolor{comment}{//\ Аргентинское\ Стандартное\ Время}}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BDT\ \ \ \ =\ 0x2B,\ \textcolor{comment}{//\ Время\ В\ Бруней-\/Даруссаламе}}
+\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BNT\ \ \ \ =\ 0x2C,\ \textcolor{comment}{//\ Время\ В\ Бруней-\/Даруссаламе}}
+\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BOT\ \ \ \ =\ 0x2D,\ \textcolor{comment}{//\ Боливийское\ Время}}
+\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BRT\ \ \ \ =\ 0x2E,\ \textcolor{comment}{//\ Бразильское\ Стандартное\ Время}}
+\DoxyCodeLine{00203\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BTT\ \ \ \ =\ 0x2F,\ \textcolor{comment}{//\ Бутанское\ Время}}
+\DoxyCodeLine{00204\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CAT\ \ \ \ =\ 0x30,\ \textcolor{comment}{//\ Восточноафриканское\ Время}}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CVT\ \ \ \ =\ 0x31,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Островах\ Кабо-\/Верде}}
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CXT\ \ \ \ =\ 0x33,\ \textcolor{comment}{//\ Время\ На\ Острове\ Рождества}}
+\DoxyCodeLine{00207\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CCT\ \ \ \ =\ 0x34,\ \textcolor{comment}{//\ Время\ На\ Кокосовые\ Островах}}
+\DoxyCodeLine{00208\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CET\ \ \ \ =\ 0x35,\ \textcolor{comment}{//\ Центральноевропейское\ Стандартное\ Время}}
+\DoxyCodeLine{00209\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CIT\ \ \ \ =\ 0x36,\ \textcolor{comment}{//\ Время\ В\ Центральной\ Индонезии}}
+\DoxyCodeLine{00210\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CKT\ \ \ \ =\ 0x37,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Островах\ Кука}}
+\DoxyCodeLine{00211\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CLT\ \ \ \ =\ 0x38,\ \textcolor{comment}{//\ Чилийское\ Стандартное\ Время}}
+\DoxyCodeLine{00212\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COT\ \ \ \ =\ 0x39,\ \textcolor{comment}{//\ Колумбийское\ Стандартное\ Время}}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EAT\ \ \ \ =\ 0x3A,\ \textcolor{comment}{//\ Восточноафриканский\ Час}}
+\DoxyCodeLine{00214\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ECT\ \ \ \ =\ 0x3B,\ \textcolor{comment}{//\ Эквадорское\ Время}}
+\DoxyCodeLine{00215\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EDT\ \ \ \ =\ 0x3C,\ \textcolor{comment}{//\ Северноамериканское\ Восточное\ Летнее\ Время}}
+\DoxyCodeLine{00216\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EET\ \ \ \ =\ 0x3D,\ \textcolor{comment}{//\ Восточноевропейское\ Стандартное\ Время}}
+\DoxyCodeLine{00217\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EGT\ \ \ \ =\ 0x3E,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Восточной\ Гренландии}}
+\DoxyCodeLine{00218\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EIT\ \ \ \ =\ 0x3F,\ \textcolor{comment}{//\ Время\ В\ Восточной\ Индонезии}}
+\DoxyCodeLine{00219\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EST\ \ \ \ =\ 0x40,\ \textcolor{comment}{//\ Северноамериканское\ Восточное\ Стандартное\ Время}}
+\DoxyCodeLine{00220\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GET\ \ \ \ =\ 0x41,\ \textcolor{comment}{//\ Грузинское\ Стандартное\ Время}}
+\DoxyCodeLine{00221\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ICT\ \ \ \ =\ 0x42,\ \textcolor{comment}{//\ Время\ В\ Индокитае}}
+\DoxyCodeLine{00222\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ IDT\ \ \ \ =\ 0x43,\ \textcolor{comment}{//\ Израильское\ Летнее\ Время}}
+\DoxyCodeLine{00223\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GFT\ \ \ \ =\ 0x44,\ \textcolor{comment}{//\ Время\ В\ Французской\ Гвиане}}
+\DoxyCodeLine{00224\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GIT\ \ \ \ =\ 0x45,\ \textcolor{comment}{//\ Время\ На\ О.\ Гамбье}}
+\DoxyCodeLine{00225\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GMT\ \ \ \ =\ 0x46,\ \textcolor{comment}{//\ Среднее\ Время\ По\ Гринвичу}}
+\DoxyCodeLine{00226\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GYT\ \ \ \ =\ 0x47,\ \textcolor{comment}{//\ Время\ В\ Гайане}}
+\DoxyCodeLine{00227\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HKT\ \ \ \ =\ 0x48,\ \textcolor{comment}{//\ Гонконгское\ Стандартное\ Время}}
+\DoxyCodeLine{00228\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ JST\ \ \ \ =\ 0x49,\ \textcolor{comment}{//\ Японское\ Стандартное\ Время}}
+\DoxyCodeLine{00229\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ KGT\ \ \ \ =\ 0x4A,\ \textcolor{comment}{//\ Время\ В\ Киргизии}}
+\DoxyCodeLine{00230\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ KST\ \ \ \ =\ 0x4B,\ \textcolor{comment}{//\ Корейское\ Стандартное\ Время}}
+\DoxyCodeLine{00231\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MDT\ \ \ \ =\ 0x4C,\ \textcolor{comment}{//\ Северноамериканское\ Горное\ Летнее\ Время}}
+\DoxyCodeLine{00232\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MHT\ \ \ \ =\ 0x4D,\ \textcolor{comment}{//\ Время\ На\ Маршалловых\ Островах}}
+\DoxyCodeLine{00233\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MIT\ \ \ \ =\ 0x4E,\ \textcolor{comment}{//\ Время\ На\ Маркизских\ Островах}}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MMT\ \ \ \ =\ 0x4F,\ \textcolor{comment}{//\ Время\ В\ Мьянме}}
+\DoxyCodeLine{00235\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MSK\ \ \ \ =\ 0x50,\ \textcolor{comment}{//\ Московское\ Время}}
+\DoxyCodeLine{00236\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MSD\ \ \ \ =\ 0x51,\ \textcolor{comment}{//\ Московское\ летнее\ время}}
+\DoxyCodeLine{00237\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PST\ \ \ \ =\ 0x52,\ \textcolor{comment}{//\ Северноамериканское\ Тихоокеанское\ Стандартное\ Время}}
+\DoxyCodeLine{00238\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PDT\ \ \ \ =\ 0x53,\ \textcolor{comment}{//\ Северноамериканское\ Тихоокеанское\ Летнее\ Время}}
+\DoxyCodeLine{00239\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PET\ \ \ \ =\ 0x54,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Перу}}
+\DoxyCodeLine{00240\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PGT\ \ \ \ =\ 0x55,\ \textcolor{comment}{//\ Время\ В\ Папуа-\/Новой\ Гвинее}}
+\DoxyCodeLine{00241\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UTC\ \ \ \ =\ 0x56,\ \textcolor{comment}{//\ Всемирное\ Координированное\ Время}}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PHT\ \ \ \ =\ 0x57,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Филлипинах}}
+\DoxyCodeLine{00243\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PKT\ \ \ \ =\ 0x58,\ \textcolor{comment}{//\ Пакистанское\ Стандартное\ Время}}
+\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UYT\ \ \ \ =\ 0x59,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Уругвае}}
+\DoxyCodeLine{00245\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UZT\ \ \ \ =\ 0x5A,\ \textcolor{comment}{//\ Время\ В\ Узбекистане}}
+\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VET\ \ \ \ =\ 0x5B,\ \textcolor{comment}{//\ Время\ В\ Венесуеле}}
+\DoxyCodeLine{00247\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VUT\ \ \ \ =\ 0x5C,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Островах\ Вануату}}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WAT\ \ \ \ =\ 0x5D,\ \textcolor{comment}{//\ Западноафриканское\ Стандартное\ Время}}
+\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WET\ \ \ \ =\ 0x5E,\ \textcolor{comment}{//\ Западноевропейский\ Стандартний\ Час}}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WFT\ \ \ \ =\ 0x5F,\ \textcolor{comment}{//\ Время\ На\ Островах\ Уоллис\ И\ Футуна}}
+\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WIB\ \ \ \ =\ 0x60,\ \textcolor{comment}{//\ Время\ В\ Западной\ Индонезии}}
+\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WIT\ \ \ \ =\ 0x61,\ \textcolor{comment}{//\ Время\ В\ Восточной\ Индонезии}}
+\DoxyCodeLine{00253\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ACDT\ \ \ =\ 0x62,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Центральной\ Австралии}}
+\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ACST\ \ \ =\ 0x63,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Центральной\ Австралии}}
+\DoxyCodeLine{00255\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AEDT\ \ \ =\ 0x64,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Восточной\ Австралии}}
+\DoxyCodeLine{00256\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AEST\ \ \ =\ 0x65,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Восточной\ Австралии}}
+\DoxyCodeLine{00257\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AKDT\ \ \ =\ 0x66,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Аляске}}
+\DoxyCodeLine{00258\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AKST\ \ \ =\ 0x67,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Аляске}}
+\DoxyCodeLine{00259\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AMST\ \ \ =\ 0x68,\ \textcolor{comment}{//\ Амазонка,\ Стандартное\ Время}}
+\DoxyCodeLine{00260\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AWST\ \ \ =\ 0x69,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Западной\ Австралии}}
+\DoxyCodeLine{00261\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AZOT\ \ \ =\ 0x6A,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Азорских\ Островах}}
+\DoxyCodeLine{00262\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BRST\ \ \ =\ 0x6B,\ \textcolor{comment}{//\ Бразильское\ Летнее\ Время}}
+\DoxyCodeLine{00263\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CLST\ \ \ =\ 0x6C,\ \textcolor{comment}{//\ Чилийское\ Летнее\ Время}}
+\DoxyCodeLine{00264\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CEST\ \ \ =\ 0x6D,\ \textcolor{comment}{//\ Центральноевропейское\ Летнее\ Время}}
+\DoxyCodeLine{00265\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CHOT\ \ \ =\ 0x6E,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Чойлобалсане}}
+\DoxyCodeLine{00266\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CHST\ \ \ =\ 0x6F,\ \textcolor{comment}{//\ Час\ Чаморро}}
+\DoxyCodeLine{00267\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CHUT\ \ \ =\ 0x70,\ \textcolor{comment}{//\ Время\ На\ Островах\ Чуук}}
+\DoxyCodeLine{00268\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ COST\ \ \ =\ 0x71,\ \textcolor{comment}{//\ Колумбийское\ Летнее\ Время}}
+\DoxyCodeLine{00269\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DAVT\ \ \ =\ 0x72,\ \textcolor{comment}{//\ Дейвис}}
+\DoxyCodeLine{00270\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DDUT\ \ \ =\ 0x73,\ \textcolor{comment}{//\ Дюмон-\/Д'юрвиль}}
+\DoxyCodeLine{00271\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EGST\ \ \ =\ 0x74,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Восточной\ Гренландии}}
+\DoxyCodeLine{00272\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EAST\ \ \ =\ 0x75,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Острове\ Пасхи}}
+\DoxyCodeLine{00273\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EEST\ \ \ =\ 0x76,\ \textcolor{comment}{//\ Восточноевропейское\ Летнее\ Время}}
+\DoxyCodeLine{00274\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FKST\ \ \ =\ 0x77,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Фолклендах}}
+\DoxyCodeLine{00275\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GAMT\ \ \ =\ 0x78,\ \textcolor{comment}{//\ Время\ На\ Острове\ Гамбье}}
+\DoxyCodeLine{00276\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HOVT\ \ \ =\ 0x79,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Ховде}}
+\DoxyCodeLine{00277\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HADT\ \ \ =\ 0x7A,\ \textcolor{comment}{//\ Гавайско-\/Алеутское\ Летнее\ Время}}
+\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HAST\ \ \ =\ 0x7B,\ \textcolor{comment}{//\ Гавайско-\/Алеутское\ Стандартное\ Время}}
+\DoxyCodeLine{00279\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ IRDT\ \ \ =\ 0x7C,\ \textcolor{comment}{//\ Иранское\ Летнее\ Время}}
+\DoxyCodeLine{00280\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ IRKT\ \ \ =\ 0x7D,\ \textcolor{comment}{//\ Иркутское\ Стандартное\ Время}}
+\DoxyCodeLine{00281\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ IRST\ \ \ =\ 0x7E,\ \textcolor{comment}{//\ Иранское\ Стандартное\ Время}}
+\DoxyCodeLine{00282\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GILT\ \ \ =\ 0x7F,\ \textcolor{comment}{//\ Время\ На\ Островах\ Гилберта}}
+\DoxyCodeLine{00283\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GALT\ \ \ =\ 0x80,\ \textcolor{comment}{//\ Время\ На\ Галапагосских\ Островах}}
+\DoxyCodeLine{00284\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ KOST\ \ \ =\ 0x81,\ \textcolor{comment}{//\ Время\ На\ Острове\ Косраэ}}
+\DoxyCodeLine{00285\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ KRAT\ \ \ =\ 0x82,\ \textcolor{comment}{//\ Красноярское\ Стандартное\ Время}}
+\DoxyCodeLine{00286\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LHDT\ \ \ =\ 0x83,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Лорд-\/Хау}}
+\DoxyCodeLine{00287\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LHST\ \ \ =\ 0x84,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Лорд-\/Хау}}
+\DoxyCodeLine{00288\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LINT\ \ \ =\ 0x85,\ \textcolor{comment}{//\ Время\ На\ Острове\ Лайн}}
+\DoxyCodeLine{00289\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MAGT\ \ \ =\ 0x86,\ \textcolor{comment}{//\ Магаданское\ Стандартное\ Время}}
+\DoxyCodeLine{00290\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MART\ \ \ =\ 0x87,\ \textcolor{comment}{//\ Время\ На\ Маркизских\ Островах}}
+\DoxyCodeLine{00291\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MIST\ \ \ =\ 0x88,\ \textcolor{comment}{//\ Время\ На\ Станции\ Маккуори}}
+\DoxyCodeLine{00292\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MAWT\ \ \ =\ 0x89,\ \textcolor{comment}{//\ Время\ На\ Станции\ Моусон}}
+\DoxyCodeLine{00293\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NZDT\ \ \ =\ 0x8A,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Новой\ Зеландии}}
+\DoxyCodeLine{00294\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NZST\ \ \ =\ 0x8B,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Новой\ Зеландии}}
+\DoxyCodeLine{00295\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PYST\ \ \ =\ 0x8C,\ \textcolor{comment}{//\ Парагвайское\ Летнее\ Время}}
+\DoxyCodeLine{00296\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PETT\ \ \ =\ 0x8D,\ \textcolor{comment}{//\ Камчатское\ Время}}
+\DoxyCodeLine{00297\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PMDT\ \ \ =\ 0x8E,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Островах\ Сен-\/Пьер\ И\ Микелон}}
+\DoxyCodeLine{00298\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PMST\ \ \ =\ 0x8F,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Островах\ Сен-\/Пьер\ И\ Микелон}}
+\DoxyCodeLine{00299\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PONT\ \ \ =\ 0x90,\ \textcolor{comment}{//\ Время\ На\ Острове\ Понапе}}
+\DoxyCodeLine{00300\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PHOT\ \ \ =\ 0x91,\ \textcolor{comment}{//\ Время\ На\ Островах\ Феникс}}
+\DoxyCodeLine{00301\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ PhST\ \ \ =\ 0x92,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Филлипинах}}
+\DoxyCodeLine{00302\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ROTT\ \ \ =\ 0x93,\ \textcolor{comment}{//\ Время\ На\ Станции\ Ротера}}
+\DoxyCodeLine{00303\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SLST\ \ \ =\ 0x94,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Шри-\/Ланке}}
+\DoxyCodeLine{00304\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SAKT\ \ \ =\ 0x95,\ \textcolor{comment}{//\ Сахалинское\ Стандартное\ Время}}
+\DoxyCodeLine{00305\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SAMT\ \ \ =\ 0x96,\ \textcolor{comment}{//\ Самарское\ Время}}
+\DoxyCodeLine{00306\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SAST\ \ \ =\ 0x97,\ \textcolor{comment}{//\ Южноафриканское\ Время}}
+\DoxyCodeLine{00307\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SYOT\ \ \ =\ 0x98,\ \textcolor{comment}{//\ Время\ На\ Станции\ Сёва}}
+\DoxyCodeLine{00308\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ TAHT\ \ \ =\ 0x99,\ \textcolor{comment}{//\ Время\ На\ Острове\ Таити}}
+\DoxyCodeLine{00309\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ OMST\ \ \ =\ 0x9A,\ \textcolor{comment}{//\ Омское\ Время}}
+\DoxyCodeLine{00310\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ORAT\ \ \ =\ 0x9B,\ \textcolor{comment}{//\ Время\ В\ Западном\ Казахстане}}
+\DoxyCodeLine{00311\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VLAT\ \ \ =\ 0x9C,\ \textcolor{comment}{//\ Владивостокское\ Время}}
+\DoxyCodeLine{00312\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VOLT\ \ \ =\ 0x9D,\ \textcolor{comment}{//\ Волгоградское\ Время}}
+\DoxyCodeLine{00313\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VOST\ \ \ =\ 0x9E,\ \textcolor{comment}{//\ Время\ На\ Станции\ Восток}}
+\DoxyCodeLine{00314\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UYST\ \ \ =\ 0x9F,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Уругвае}}
+\DoxyCodeLine{00315\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ULAT\ \ \ =\ 0xA0,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Монголии}}
+\DoxyCodeLine{00316\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ USZ1\ \ \ =\ 0xA1,\ \textcolor{comment}{//\ Калиниградское\ Время}}
+\DoxyCodeLine{00317\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WAKT\ \ \ =\ 0xA2,\ \textcolor{comment}{//\ Время\ На\ Острове\ Уэйк}}
+\DoxyCodeLine{00318\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WAST\ \ \ =\ 0xA3,\ \textcolor{comment}{//\ Западноафриканское\ Летнее\ Время}}
+\DoxyCodeLine{00319\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WEST\ \ \ =\ 0xA4,\ \textcolor{comment}{//\ Западноевропейское\ Летнее\ Время}}
+\DoxyCodeLine{00320\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WGST\ \ \ =\ 0xA5,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Западной\ Гренландии}}
+\DoxyCodeLine{00321\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ YAKT\ \ \ =\ 0xA6,\ \textcolor{comment}{//\ Якутское\ Время}}
+\DoxyCodeLine{00322\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ YEKT\ \ \ =\ 0xA7,\ \textcolor{comment}{//\ Екатеринбургское\ Время}}
+\DoxyCodeLine{00323\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ACWST\ \ =\ 0xA8,\ \textcolor{comment}{//\ Центрально-\/Западная\ Австралия,\ Стандартное\ Время}}
+\DoxyCodeLine{00324\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AZOST\ \ =\ 0xA9,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Азорских\ Островах}}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CHADT\ \ =\ 0xAA,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Архипелаге\ Чатем}}
+\DoxyCodeLine{00326\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CHAST\ \ =\ 0xAB,\ \textcolor{comment}{//\ Стандартное\ Время\ На\ Архипелаге\ Чатем}}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CHOST\ \ =\ 0xAC,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Чойлобалсане}}
+\DoxyCodeLine{00328\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ EASST\ \ =\ 0xAD,\ \textcolor{comment}{//\ Летнее\ Время\ На\ Острове\ Пасхи}}
+\DoxyCodeLine{00329\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ HOVST\ \ =\ 0xAE,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Ховде}}
+\DoxyCodeLine{00330\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ULAST\ \ =\ 0xAF,\ \textcolor{comment}{//\ Летнее\ Время\ В\ Монголии}}
+\DoxyCodeLine{00331\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AMTAM\ \ =\ 0xB0,\ \textcolor{comment}{//\ Амазонское\ Стандартное\ Время}}
+\DoxyCodeLine{00332\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ AMTAR\ \ =\ 0xB1,\ \textcolor{comment}{//\ Армянское\ Стандартное\ Время}}
+\DoxyCodeLine{00333\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ASTAL\ \ =\ 0xB2,\ \textcolor{comment}{//\ Атлантическое\ Стандартное\ Время}}
+\DoxyCodeLine{00334\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ASTSA\ \ =\ 0xB3,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Саудовской\ Аравии}}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BSTBR\ \ =\ 0xB4,\ \textcolor{comment}{//\ Британское\ Летнее\ Время}}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ BSTBL\ \ =\ 0xB5,\ \textcolor{comment}{//\ Стандартное\ Время\ В\ Бангладеш}}
+\DoxyCodeLine{00337\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CDTNA\ \ =\ 0xB6,\ \textcolor{comment}{//\ Северноамериканское\ Центральное\ Летнее\ Время}}
+\DoxyCodeLine{00338\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CDTCB\ \ =\ 0xB7,\ \textcolor{comment}{//\ Кубинское\ Летнее\ Время}}
+\DoxyCodeLine{00339\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CSTNA\ \ =\ 0xB8,\ \textcolor{comment}{//\ Северноамериканское\ Центральное\ Стандартное\ Время}}
+\DoxyCodeLine{00340\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CSTKT\ \ =\ 0xB9,\ \textcolor{comment}{//\ Китайское\ Стандартное\ Время}}
+\DoxyCodeLine{00341\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CSTCB\ \ =\ 0xBA,\ \textcolor{comment}{//\ Кубинское\ Стандартное\ Время}}
+\DoxyCodeLine{00342\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GSTPG\ \ =\ 0xBB,\ \textcolor{comment}{//\ Время\ В\ Персидском\ Заливе}}
+\DoxyCodeLine{00343\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ GSTSG\ \ =\ 0xBC,\ \textcolor{comment}{//\ Время\ В\ Южной\ Георгии}}
+\DoxyCodeLine{00344\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ISTID\ \ =\ 0xBD,\ \textcolor{comment}{//\ Индийское\ Стандартное\ Время}}
+\DoxyCodeLine{00345\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ISTIR\ \ =\ 0xBE,\ \textcolor{comment}{//\ Ирландия,\ Летнее\ Время}}
+\DoxyCodeLine{00346\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ISTIS\ \ =\ 0xBF,\ \textcolor{comment}{//\ Израильское\ Стандартное\ Время}}
+\DoxyCodeLine{00347\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MSTNA\ \ =\ 0xC0,\ \textcolor{comment}{//\ Северноамериканское\ Горное\ Стандартное\ Время}}
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MSTMS\ \ =\ 0xC1,\ \textcolor{comment}{//\ Время\ В\ Малайзии}}
+\DoxyCodeLine{00349\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WGSTST\ =\ 0xC2\ \ \textcolor{comment}{//\ Летнее\ Время\ В\ Западной\ Гренландии}}
+\DoxyCodeLine{00350\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00351\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00356\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }Mutex\ \{}
+\DoxyCodeLine{00357\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ контроля\ добавления\ временной\ зоны}}
+\DoxyCodeLine{00358\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lock\_state\_t\ <std::mutex>\ tz;}
+\DoxyCodeLine{00359\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ контроля\ локального\ объекта\ даты}}
+\DoxyCodeLine{00360\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lock\_state\_t\ <std::mutex>\ date;}
+\DoxyCodeLine{00361\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ контроля\ парсинга}}
+\DoxyCodeLine{00362\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lock\_state\_t\ <std::recursive\_mutex>\ parse;}
+\DoxyCodeLine{00363\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ mtx\_t;}
+\DoxyCodeLine{00368\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{chrono_8hpp_a19843e0d889b35f4a894547c86ee2b6a}{DateTime}}\ \{}
+\DoxyCodeLine{00369\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ dst;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ летнего\ времени}}
+\DoxyCodeLine{00370\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ leap;\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ високосного\ года}}
+\DoxyCodeLine{00371\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ h12\_t\ h12;\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Статус\ 12-\/и\ часового\ формата\ времени}}
+\DoxyCodeLine{00372\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ zone\_t\ zone;\ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ временной\ зоны}}
+\DoxyCodeLine{00373\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ day;\ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Номер\ текущего\ дня\ недели\ от\ 1\ до\ 7}}
+\DoxyCodeLine{00374\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ date;\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Число\ месяца\ от\ 1\ до\ 31}}
+\DoxyCodeLine{00375\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ hour;\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Количество\ часов\ от\ 0\ до\ 23}}
+\DoxyCodeLine{00376\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ month;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Номер\ месяца\ от\ 1\ до\ 12\ (начиная\ с\ Января)}}
+\DoxyCodeLine{00377\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ weeks;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Количество\ недель\ прошедших\ с\ начала\ года}}
+\DoxyCodeLine{00378\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ seconds;\ \ \ \ \ \ \ \textcolor{comment}{//\ Количество\ секунд\ от\ 0\ до\ 59}}
+\DoxyCodeLine{00379\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint8\_t\ minutes;\ \ \ \ \ \ \ \textcolor{comment}{//\ Количество\ минут\ от\ 0\ до\ 59}}
+\DoxyCodeLine{00380\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ year;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Полное\ обозначение\ года}}
+\DoxyCodeLine{00381\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ days;\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Количество\ прошедвших\ дней\ от\ 1\ января}}
+\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ offset;\ \ \ \ \ \ \ \ \textcolor{comment}{//\ Смещение\ временной\ зоны\ в\ секундах\ относительно\ UTC}}
+\DoxyCodeLine{00383\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ milliseconds;\ \textcolor{comment}{//\ Количество\ миллисекунд}}
+\DoxyCodeLine{00384\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ nanoseconds;\ \ \textcolor{comment}{//\ Количество\ наносекунд}}
+\DoxyCodeLine{00385\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ microseconds;\ \textcolor{comment}{//\ Количество\ микросекунд}}
+\DoxyCodeLine{00390\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{chrono_8hpp_a19843e0d889b35f4a894547c86ee2b6a}{DateTime}}()\ noexcept\ :}
+\DoxyCodeLine{00391\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ dst(false),\ leap(false),}
+\DoxyCodeLine{00392\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ h12(h12\_t::AM),\ zone(zone\_t::NONE),}
+\DoxyCodeLine{00393\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ day(2),\ date(1),\ hour(0),\ month(1),}
+\DoxyCodeLine{00394\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ weeks(0),\ seconds(0),\ minutes(0),}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ year(1970),\ days(0),\ offset(0),}
+\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ milliseconds(0),\ nanoseconds(0),\ microseconds(0)\ \{\}}
+\DoxyCodeLine{00397\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_1_1net_a046bfa55d56a70d1595cdfc275621958}{\_\_attribute\_\_}}((packed))\ dt\_t;}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00399\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ локального\ времени}}
+\DoxyCodeLine{00400\ \ \ \ \ \ \ \ \ \ \ \ \ dt\_t\ \_dt;}
+\DoxyCodeLine{00401\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00402\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ для\ блокировки\ потока}}
+\DoxyCodeLine{00403\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ mtx\_t\ \_mtx;}
+\DoxyCodeLine{00404\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00405\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ внутренних\ временных\ зон}}
+\DoxyCodeLine{00406\ \ \ \ \ \ \ \ \ \ \ \ \ std::unordered\_map\ <string,\ int32\_t>\ \_timeZones;}
+\DoxyCodeLine{00407\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ скомпилированных\ регулярных\ выражений}}
+\DoxyCodeLine{00408\ \ \ \ \ \ \ \ \ \ \ \ \ std::unordered\_map\ <format\_t,\ std::any>\ \_expressions;}
+\DoxyCodeLine{00409\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00410\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ логера}}
+\DoxyCodeLine{00411\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ Log\ *\ \_log;}
+\DoxyCodeLine{00412\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ фреймворка}}
+\DoxyCodeLine{00413\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ \_fmk;}
+\DoxyCodeLine{00414\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00419\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a477172e5f17851b641dad41aafa84076}{clear}}()\ noexcept;}
+\DoxyCodeLine{00420\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00427\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ makeDate(const\ dt\_t\ \&\ dt)\ const\ noexcept;}
+\DoxyCodeLine{00434\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ makeDate(const\ uint64\_t\ date,\ dt\_t\ \&\ dt)\ const\ noexcept;}
+\DoxyCodeLine{00435\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00442\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ compile(const\ \textcolor{keywordtype}{string}\ \&\ expression,\ const\ format\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}})\ noexcept;}
+\DoxyCodeLine{00443\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00453\ \ \ \ \ \ \ \ \ \ \ \ \ ssize\_t\ prepare(dt\_t\ \&\ dt,\ const\ \textcolor{keywordtype}{string}\ \&\ text,\ const\ format\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}},\ const\ \textcolor{keywordtype}{size\_t}\ pos\ =\ 0)\ const\ noexcept;}
+\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ std::pair\ <\doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}},\ \textcolor{keywordtype}{double}>\ \doxymbox{\hyperlink{classawh_1_1_chrono_a603b7669c12b1dd41a75a2524137c5f1}{abbreviation}}(const\ uint64\_t\ date)\ const\ noexcept;}
+\DoxyCodeLine{00462\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a939c4b8c5cb0433f2ceb768d79f1610f}{end}}(const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type)\ const\ noexcept;}
+\DoxyCodeLine{00478\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a939c4b8c5cb0433f2ceb768d79f1610f}{end}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00479\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00487\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_af670d7483330c7ebca062da1ccb72be8}{begin}}(const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type)\ const\ noexcept;}
+\DoxyCodeLine{00495\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_af670d7483330c7ebca062da1ccb72be8}{begin}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00496\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00506\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}}(const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ value,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}})\ const\ noexcept;}
+\DoxyCodeLine{00516\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ value,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5129055a7c983f8346dbeee061349890}{actual\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a4d4c1f277f747508b7c26da82d8257d0}{actual}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00517\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00527\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}}(const\ uint64\_t\ date,\ const\ uint64\_t\ value,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}})\ const\ noexcept;}
+\DoxyCodeLine{00537\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}}(const\ uint64\_t\ value,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a89596a0f80dbbaf2c1376fb5ee0ea7f3}{offset\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00538\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00545\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0}{seconds}}(const\ \textcolor{keywordtype}{double}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0}{seconds}})\ const\ noexcept;}
+\DoxyCodeLine{00552\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{double}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4762682bdc3c3354383f045a6ab8be0}{seconds}}(const\ \textcolor{keywordtype}{string}\ \&\ value)\ const\ noexcept;}
+\DoxyCodeLine{00553\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00559\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a1ac735332b7035227e51f81e8c3d3095}{h12}}(const\ uint64\_t\ date)\ const\ noexcept;}
+\DoxyCodeLine{00566\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_chrono_ad52e8b0b17b6d69efbba17c00d168ad1}{h12\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a1ac735332b7035227e51f81e8c3d3095}{h12}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00567\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00573\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}{year}}(const\ uint64\_t\ date)\ const\ noexcept;}
+\DoxyCodeLine{00580\ \ \ \ \ \ \ \ \ \ \ \ \ uint16\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}{year}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00581\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00588\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a06096002d7c28931fc373a8c71c515ea}{dst}}(const\ uint64\_t\ date)\ const\ noexcept;}
+\DoxyCodeLine{00595\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a06096002d7c28931fc373a8c71c515ea}{dst}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00596\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00603\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a2f6b9f4aef97d7750e9257e32e10441d}{leap}}(const\ uint16\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3feba1328c6656095cb1edca6c9d2ea7}{year}})\ const\ noexcept;}
+\DoxyCodeLine{00610\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a2f6b9f4aef97d7750e9257e32e10441d}{leap}}(const\ uint64\_t\ date)\ const\ noexcept;}
+\DoxyCodeLine{00617\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a2f6b9f4aef97d7750e9257e32e10441d}{leap}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00618\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00624\ \ \ \ \ \ \ \ \ \ \ \ \ template\ <typename\ T>}
+\DoxyCodeLine{00631\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ac7bcaa4d33bbb66ab17cb950be183e2f}{set}}(const\ T\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit)\ noexcept;}
+\DoxyCodeLine{00632\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00641\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ac7bcaa4d33bbb66ab17cb950be183e2f}{set}}(const\ \textcolor{keywordtype}{void}\ *\ buffer,\ const\ \textcolor{keywordtype}{size\_t}\ size,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit,\ const\ \textcolor{keywordtype}{bool}\ text)\ noexcept;}
+\DoxyCodeLine{00642\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00648\ \ \ \ \ \ \ \ \ \ \ \ \ template\ <typename\ T>}
+\DoxyCodeLine{00656\ \ \ \ \ \ \ \ \ \ \ \ \ T\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}{get}}(const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit)\ const\ noexcept;}
+\DoxyCodeLine{00662\ \ \ \ \ \ \ \ \ \ \ \ \ template\ <typename\ T>}
+\DoxyCodeLine{00669\ \ \ \ \ \ \ \ \ \ \ \ \ T\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}{get}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit)\ const\ noexcept;}
+\DoxyCodeLine{00675\ \ \ \ \ \ \ \ \ \ \ \ \ template\ <typename\ T>}
+\DoxyCodeLine{00683\ \ \ \ \ \ \ \ \ \ \ \ \ T\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}{get}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage)\ const\ noexcept;}
+\DoxyCodeLine{00684\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00694\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}{get}}(\textcolor{keywordtype}{void}\ *\ buffer,\ const\ \textcolor{keywordtype}{size\_t}\ size,\ const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit,\ const\ \textcolor{keywordtype}{bool}\ text)\ const\ noexcept;}
+\DoxyCodeLine{00704\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5b28b0d24ae99a5e43233c5893efefe4}{get}}(\textcolor{keywordtype}{void}\ *\ buffer,\ const\ \textcolor{keywordtype}{size\_t}\ size,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3ab0b6dc2e2f9e59ff72547d6822d351}{unit\_t}}\ unit,\ const\ \textcolor{keywordtype}{bool}\ text,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage)\ const\ noexcept;}
+\DoxyCodeLine{00705\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00711\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a8a3ad3bcdc3dec02807b2df87ee61c77}{setTimeZone}}(const\ int32\_t\ zone)\ noexcept;}
+\DoxyCodeLine{00717\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a8a3ad3bcdc3dec02807b2df87ee61c77}{setTimeZone}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ zone)\ noexcept;}
+\DoxyCodeLine{00723\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a8a3ad3bcdc3dec02807b2df87ee61c77}{setTimeZone}}(const\ \textcolor{keywordtype}{string}\ \&\ zone)\ noexcept;}
+\DoxyCodeLine{00724\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00731\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_abbe1c4107d15ffb19d83260ffd2f0571}{matchTimeZone}}(const\ \textcolor{keywordtype}{string}\ \&\ zone)\ const\ noexcept;}
+\DoxyCodeLine{00738\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ \doxymbox{\hyperlink{classawh_1_1_chrono_abbe1c4107d15ffb19d83260ffd2f0571}{matchTimeZone}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00739\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00746\ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352}{getTimeZone}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ zone)\ const\ noexcept;}
+\DoxyCodeLine{00753\ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352}{getTimeZone}}(const\ \textcolor{keywordtype}{string}\ \&\ zone)\ const\ noexcept;}
+\DoxyCodeLine{00754\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00762\ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352}{getTimeZone}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ std,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ sum)\ const\ noexcept;}
+\DoxyCodeLine{00763\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00770\ \ \ \ \ \ \ \ \ \ \ \ \ int32\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a3d42fddf77ad82be5edb327b9054d352}{getTimeZone}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00771\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00776\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab959badd10c4ac8d87df55ce30ebae91}{clearTimeZones}}()\ noexcept;}
+\DoxyCodeLine{00783\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a4003117fe081e24f41a280d6588fbb5f}{addTimeZone}}(const\ \textcolor{keywordtype}{string}\ \&\ name,\ const\ int32\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a39bb98fe0d0f00e5afee0eeba3111396}{offset}})\ noexcept;}
+\DoxyCodeLine{00789\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_ad7ba73c9fe2332e3b6b028ece98b5e19}{setTimeZones}}(const\ std::unordered\_map\ <\textcolor{keywordtype}{string},\ int32\_t>\ \&\ zones)\ noexcept;}
+\DoxyCodeLine{00790\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00797\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a83c48b1cc4b865412b539096351399b1}{timestamp}}(const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type)\ noexcept;}
+\DoxyCodeLine{00805\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_a83c48b1cc4b865412b539096351399b1}{timestamp}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab4158d27f21446b253beacd63b03483e}{type\_t}}\ type,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00806\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00815\ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ \doxymbox{\hyperlink{classawh_1_1_chrono_ad1c84aabb5c12b6befabda59c45cefb1}{parse}}(const\ \textcolor{keywordtype}{string}\ \&\ date,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ noexcept;}
+\DoxyCodeLine{00816\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00823\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ int32\_t\ zone)\ const\ noexcept;}
+\DoxyCodeLine{00830\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ zone)\ const\ noexcept;}
+\DoxyCodeLine{00831\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00839\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ dt\_t\ \&\ dt,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}})\ const\ noexcept;}
+\DoxyCodeLine{00840\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00848\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ uint64\_t\ date,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}})\ const\ noexcept;}
+\DoxyCodeLine{00857\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ uint64\_t\ date,\ const\ int32\_t\ zone,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}})\ const\ noexcept;}
+\DoxyCodeLine{00866\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ uint64\_t\ date,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ zone,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}})\ const\ noexcept;}
+\DoxyCodeLine{00875\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ uint64\_t\ date,\ const\ \textcolor{keywordtype}{string}\ \&\ zone,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}})\ const\ noexcept;}
+\DoxyCodeLine{00876\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00884\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00893\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ int32\_t\ zone,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00902\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0d5f00e0e05dbf401a950fc75e0e654}{zone\_t}}\ zone,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00911\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}}(const\ \textcolor{keywordtype}{string}\ \&\ zone,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_chrono_a5439e55fa14d5da4b7f663f4f566a9da}{format}},\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00912\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00922\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_chrono_a97cdbe0b561394f1638bd719b03ddaa0}{strip}}(const\ \textcolor{keywordtype}{string}\ \&\ date,\ const\ \textcolor{keywordtype}{string}\ \&\ format1,\ const\ \textcolor{keywordtype}{string}\ \&\ format2,\ const\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}\ storage\ =\ \doxymbox{\hyperlink{classawh_1_1_chrono_ab0f68a118081fc6c9bb97da20ef10dd4}{storage\_t}}::GLOBAL)\ const\ noexcept;}
+\DoxyCodeLine{00923\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00930\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_chrono_ac5f25b0bc0f4a5fe72ac616bab283e4e}{Chrono}}(const\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ fmk,\ const\ \doxymbox{\hyperlink{classawh_1_1_log}{Log}}\ *\ log)\ noexcept;}
+\DoxyCodeLine{00931\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00936\ \ \ \ \ \ \ \ \ \ \ \ \ \string~\doxymbox{\hyperlink{classawh_1_1_chrono_ac5f25b0bc0f4a5fe72ac616bab283e4e}{Chrono}}()\ noexcept;}
+\DoxyCodeLine{00937\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a4ac2f493721712005f622fe18e6a728d}{chrono\_t}};}
+\DoxyCodeLine{00938\ \};}
+\DoxyCodeLine{00939\ }
+\DoxyCodeLine{00940\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_CHRONO\_\_}}
+
+\end{DoxyCode}
