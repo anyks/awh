@@ -131,13 +131,13 @@ $ make
 # Disabling unit test building for SYS modules
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_TESTS=OFF \
+ -DCMAKE_BUILD_SYS_TESTS=NO \
  ..
 
 # Disabling unit test building for NET modules
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_NET_TESTS=OFF \
+ -DCMAKE_BUILD_NET_TESTS=NO \
  ..
 ```
 
@@ -149,49 +149,49 @@ $ cmake \
 # We indicate that there is no need to compile tests for working with the OS module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_OS_TEST=OFF \
+ -DCMAKE_BUILD_SYS_OS_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the NET module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_FMK_TEST=OFF \
+ -DCMAKE_BUILD_SYS_FMK_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the LOG module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_LOG_TEST=OFF \
+ -DCMAKE_BUILD_SYS_LOG_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the REG module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_REG_TEST=OFF \
+ -DCMAKE_BUILD_SYS_REG_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the QUEUE module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_QUEUE_TEST=OFF \
+ -DCMAKE_BUILD_SYS_QUEUE_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the BUFFER module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_BUFFER_TEST=OFF \
+ -DCMAKE_BUILD_SYS_BUFFER_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the CHRONO module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_CHRONO_TEST=OFF \
+ -DCMAKE_BUILD_SYS_CHRONO_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the THREADPOOL module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_SYS_THREADPOOL_TEST=OFF \
+ -DCMAKE_BUILD_SYS_THREADPOOL_TEST=NO \
  ..
 ```
 
@@ -201,31 +201,31 @@ $ cmake \
 # We indicate that there is no need to compile tests for working with the ADDR module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_NET_ADDR_TEST=OFF \
+ -DCMAKE_BUILD_NET_ADDR_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the NWT module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_NET_NWT_TEST=OFF \
+ -DCMAKE_BUILD_NET_NWT_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the FDS module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_NET_FDS_TEST=OFF \
+ -DCMAKE_BUILD_NET_FDS_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the ETH module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_NET_ETH_TEST=OFF \
+ -DCMAKE_BUILD_NET_ETH_TEST=NO \
  ..
 
 # We indicate that there is no need to compile tests for working with the IO module.
 $ cmake \
  -DCMAKE_BUILD_TESTS=YES \
- -DCMAKE_BUILD_NET_IO_TEST=OFF \
+ -DCMAKE_BUILD_NET_IO_TEST=NO \
  ..
 ```
 
