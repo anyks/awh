@@ -402,7 +402,7 @@ namespace state {
 	 */
 	static constexpr uint8_t STATELESS_MODE = 0x04;
 	/**
-	 * Флаг мультисертификатов
+	 * Флаг работы в мультисертификатном режиме
 	 */
 	static constexpr uint8_t MULTICERT_MODE = 0x08;
 	/**
