@@ -129,10 +129,16 @@ $ make
 
 ```bash
 # Disabling unit test building for SYS modules
-$ cmake -DCMAKE_BUILD_SYS_TESTS=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_TESTS=OFF \
+ ..
 
 # Disabling unit test building for NET modules
-$ cmake -DCMAKE_BUILD_NET_TESTS=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_NET_TESTS=OFF \
+ ..
 ```
 
 ### You can disable the compilation of specific unit tests.
@@ -141,47 +147,86 @@ $ cmake -DCMAKE_BUILD_NET_TESTS=OFF ..
 
 ```bash
 # We indicate that there is no need to compile tests for working with the OS module.
-$ cmake -DCMAKE_BUILD_SYS_OS_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_OS_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the NET module.
-$ cmake -DCMAKE_BUILD_SYS_FMK_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_FMK_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the LOG module.
-$ cmake -DCMAKE_BUILD_SYS_LOG_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_LOG_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the REG module.
-$ cmake -DCMAKE_BUILD_SYS_REG_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_REG_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the QUEUE module.
-$ cmake -DCMAKE_BUILD_SYS_QUEUE_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_QUEUE_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the BUFFER module.
-$ cmake -DCMAKE_BUILD_SYS_BUFFER_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_BUFFER_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the CHRONO module.
-$ cmake -DCMAKE_BUILD_SYS_CHRONO_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_CHRONO_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the THREADPOOL module.
-$ cmake -DCMAKE_BUILD_SYS_THREADPOOL_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SYS_THREADPOOL_TEST=OFF \
+ ..
 ```
 
 #### Disabling specific unit tests for the NET group
 
 ```bash
 # We indicate that there is no need to compile tests for working with the ADDR module.
-$ cmake -DCMAKE_BUILD_NET_ADDR_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_NET_ADDR_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the NWT module.
-$ cmake -DCMAKE_BUILD_NET_NWT_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_NET_NWT_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the FDS module.
-$ cmake -DCMAKE_BUILD_NET_FDS_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_NET_FDS_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the ETH module.
-$ cmake -DCMAKE_BUILD_NET_ETH_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_NET_ETH_TEST=OFF \
+ ..
 
 # We indicate that there is no need to compile tests for working with the IO module.
-$ cmake -DCMAKE_BUILD_NET_IO_TEST=OFF ..
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_NET_IO_TEST=OFF \
+ ..
 ```
 
 #### Running unittest, benchmark and coverage statistic on Linux
