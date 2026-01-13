@@ -13479,7 +13479,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Регистрируем функцию обратного вызова на чтение данных DTLS
-			this->_tls->on(ctl, [&stop, eid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			this->_tls->on(ctl, [&stop, &events, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события DTLS
 				 */
@@ -13487,11 +13487,11 @@ TEST_F(IoFixture, IoDTLSTest){
 					// Если событие шифрования данных DTLS
 					case static_cast <uint8_t> (awh::tls_t::event_t::ENCRYPTION): {
 						// Отправляем данные обратно клиенту
-						if(this->_io->send(eid, reinterpret_cast <const char *> (buffer), size))
+						if(this->_io->send(events[0], reinterpret_cast <const char *> (buffer), size))
 							// Если данные успешно отправлены
-							this->_log->print("Отправлено зашифрованных данных: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+							this->_log->print("Отправлено зашифрованных данных: ID=%u, %zu байт", awh::log_t::flag_t::INFO, events[0], size);
 						// Если данные не отправлены
-						else this->_log->print("Ошибка отправки зашифрованных данных: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+						else this->_log->print("Ошибка отправки зашифрованных данных: ID=%u", awh::log_t::flag_t::CRITICAL, events[0]);
 					} break;
 					// Если событие дешифрования данных DTLS
 					case static_cast <uint8_t> (awh::tls_t::event_t::DECRYPTION): {
