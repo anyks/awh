@@ -125,24 +125,84 @@ $ cmake \
 $ make
 ```
 
+### Unit tests can be disabled in groups
+
+```bash
+# Disabling unit test building for SYS modules
+$ cmake -DCMAKE_BUILD_SYS_TESTS=OFF ..
+
+# Disabling unit test building for NET modules
+$ cmake -DCMAKE_BUILD_NET_TESTS=OFF ..
+```
+
+### You can disable the compilation of specific unit tests.
+
+#### Disabling specific unit tests for the SYS group
+
+```bash
+# We indicate that there is no need to compile tests for working with the OS module.
+$ cmake -DCMAKE_BUILD_SYS_OS_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the NET module.
+$ cmake -DCMAKE_BUILD_SYS_FMK_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the LOG module.
+$ cmake -DCMAKE_BUILD_SYS_LOG_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the REG module.
+$ cmake -DCMAKE_BUILD_SYS_REG_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the QUEUE module.
+$ cmake -DCMAKE_BUILD_SYS_QUEUE_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the BUFFER module.
+$ cmake -DCMAKE_BUILD_SYS_BUFFER_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the CHRONO module.
+$ cmake -DCMAKE_BUILD_SYS_CHRONO_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the THREADPOOL module.
+$ cmake -DCMAKE_BUILD_SYS_THREADPOOL_TEST=OFF ..
+```
+
+#### Disabling specific unit tests for the NET group
+
+```bash
+# We indicate that there is no need to compile tests for working with the ADDR module.
+$ cmake -DCMAKE_BUILD_NET_ADDR_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the NWT module.
+$ cmake -DCMAKE_BUILD_NET_NWT_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the FDS module.
+$ cmake -DCMAKE_BUILD_NET_FDS_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the ETH module.
+$ cmake -DCMAKE_BUILD_NET_ETH_TEST=OFF ..
+
+# We indicate that there is no need to compile tests for working with the IO module.
+$ cmake -DCMAKE_BUILD_NET_IO_TEST=OFF ..
+```
+
 #### Running unittest, benchmark and coverage statistic on Linux
 ```bash
 # Assume we in build folder
 $ lcov --capture --initial --directory . --output-file awh_base.info
 
 # Running unit tests
-$ test/awh_UNITTEST
+$ unit-tests/sys
+$ unit-tests/net
 
 # Running benchmark
 #$ benchmark/awh_BENCHMARK
 
 # Collect coverage statistic, should be executed after UNITTEST
-$ gcovr -r ../ -e ../test/ -e ../contrib/ -e ../sample/ -e ../submodules/ -e ../third_party/ -e ../benchmark/ -e ../experience/ -e /usr/include/
+$ gcovr -r ../ -e ../unit-tests/ -e ../contrib/ -e ../sample/ -e ../submodules/ -e ../third_party/ -e ../benchmark/ -e ../experience/ -e /usr/include/
 
 # Create html report with lcov 
 $ lcov --capture --directory . --output-file awh_test.info
 $ lcov --add-tracefile awh_base.info --add-tracefile awh_test.info -o awh.info
-$ lcov --remove awh.info '*/test/*' '/usr/include/*' '*/contrib/*' '*/benchmark/*' '*/sample/*' '*/submodules/*' '*/third_party/*' '*/experience/*' -o awh_filtered.info
+$ lcov --remove awh.info '*/unit-tests/*' '/usr/include/*' '*/contrib/*' '*/benchmark/*' '*/sample/*' '*/submodules/*' '*/third_party/*' '*/experience/*' -o awh_filtered.info
 $ genhtml -o report awh_filtered.info
 ```
 
