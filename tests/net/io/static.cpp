@@ -119,7 +119,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			 */
 			#if __FreeBSD__
 				// Извлекаем информационные метаданные SCTP сообщения
-				const awh::net::sctp::minfo_t & minfo = this->_io->sctp.messageInfo(eid1);
+				const awh::net::sctp::minfo_t & minfo = this->sctp->messageInfo(eid1);
 				// Выводим информацию о сообщении SCTP-сокета
 				std::cout << " SCTP Message Info: " << std::endl;
 				std::cout << "  - Stream Number: " << minfo.num << std::endl;
@@ -128,9 +128,9 @@ TEST_F(IoFixture, IoSuiteTest){
 				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
 				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Устанавливаем информационные метаданные SCTP сообщения
-				this->_io->sctp.messageInfo(eid1, minfo);
+				this->sctp->messageInfo(eid1, minfo);
 				// Извлекаем статус SCTP событий SCTP
-				const awh::net::sctp::status_t & status = this->_io->sctp.status(eid1);
+				const awh::net::sctp::status_t & status = this->sctp->status(eid1);
 				// Выводим статус SCTP-сокета
 				std::cout << " SCTP Status: " << std::endl;
 				std::cout << "  - ID: " << status.id << std::endl;
@@ -151,7 +151,7 @@ TEST_F(IoFixture, IoSuiteTest){
 				// Устанавливаем количество входящих потоков SCTP
 				initmsg.istreams = 5;
 				// Инициализируем сообщения SCTP
-				this->_io->sctp.initMessages(eid1, initmsg);
+				this->sctp->initMessages(eid1, initmsg);
 				// Типы SCTP событий для подписки
 				awh::net::sctp::event_types_t types = {
 					awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -161,59 +161,59 @@ TEST_F(IoFixture, IoSuiteTest){
 					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
 				};
 				// Выполняем подписку на SCTP события
-				this->_io->sctp.eventsSubscribe(eid1, types);
+				this->sctp->eventsSubscribe(eid1, types);
 
 				// Проверяем что типы SCTP событий совпадают с установленными ранее
-				ASSERT_EQ(types, this->_io->sctp.eventsSubscribed(eid1));
+				ASSERT_EQ(types, this->sctp->eventsSubscribed(eid1));
 
 				// Устанавливаем таймаут INIT SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
 				// Проверяем что таймаут INIT SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::INIT));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::INIT));
 
 				// Устанавливаем таймаут DATA SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
 				// Проверяем что таймаут DATA SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::DATA));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::DATA));
 
 				// Устанавливаем таймаут SACK SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
 				// Проверяем что таймаут SACK SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SACK));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::SACK));
 
 				// Устанавливаем таймаут COOKIE SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
 				// Проверяем что таймаут COOKIE SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::COOKIE));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::COOKIE));
 
 				// Устанавливаем таймаут SHUTDOWN SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
 				// Проверяем что таймаут SHUTDOWN SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
 
 				// Устанавливаем таймаут HEARTBEAT SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Проверяем что таймаут HEARTBEAT SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
 
 				// Устанавливаем таймаут SHUTDOWNACK SCTP события
-				ASSERT_TRUE(this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
+				ASSERT_TRUE(this->sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
 				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
-				ASSERT_EQ(3000, this->_io->sctp.timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
+				ASSERT_EQ(3000, this->sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
 
 				// Устанавливаем ключ аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctp.authenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
+				ASSERT_TRUE(this->sctp->authenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
 				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctp.authenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
+				ASSERT_TRUE(this->sctp->authenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
 				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctp.authenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+				ASSERT_TRUE(this->sctp->authenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 				// Устанавливаем чанки аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctp.authenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+				ASSERT_TRUE(this->sctp->authenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
 
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_io->sctp.authenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
+				ASSERT_TRUE(this->sctp->authenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
 				// Проверяем что чанки аутентификации SCTP-сокета получены
 				ASSERT_FALSE(chunks.empty());
 				// Перебираем все извлечённые чанки
