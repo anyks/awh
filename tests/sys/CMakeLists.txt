@@ -1,0 +1,221 @@
+# Если операционной системой является FreeBSD
+if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+    # Указываем путь к установленной библиотеке GTest
+    find_path(GTEST_INCLUDE_DIR gtest/gtest.h
+        PATHS ${GTEST_ROOT}/include
+        NO_DEFAULT_PATH
+    )
+
+    # Ищем библиотеку GTest
+    find_library(GTEST_LIBRARY gtest
+        PATHS ${GTEST_ROOT}/lib
+        NO_DEFAULT_PATH
+    )
+
+    # Ищем основную библиотеку GTest
+    find_library(GTEST_MAIN_LIBRARY gtest_main
+        PATHS ${GTEST_ROOT}/lib
+        NO_DEFAULT_PATH
+    )
+
+    # Устанавливаем переменные, как будто find_package(GTest) сработал
+    SET(GTEST_FOUND TRUE)
+    SET(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIR})
+    SET(GTEST_LIBRARIES ${GTEST_LIBRARY})
+    SET(GTEST_MAIN_LIBRARIES ${GTEST_MAIN_LIBRARY})
+
+    # Если заголовочные файлы GTest не найдены
+    if(NOT GTEST_INCLUDE_DIR)
+        message(FATAL_ERROR "GTest headers not found in /usr/local/include")
+    endif()
+
+    # Если библиотека GTest не найдена
+    if(NOT GTEST_LIBRARY)
+        message(FATAL_ERROR "GTest library not found in /usr/local/lib")
+    endif()
+endif()
+
+# Unit test settings
+find_package(GTest)
+
+# Если библиотека GTest найдена
+if(${GTest_FOUND})
+    # Определяем имя для юнит-тестов
+    SET(NAME "sys")
+
+    # Переводим название теста в верхний регистр
+    string(TOUPPER "${NAME}" UNIT_TEST_NAME)
+
+    # Указываем что нужно собрать тесты
+    option(CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS "Build unit tests for ${UNIT_TEST_NAME}" ON)
+
+    # Если необходимо собрать тесты
+    if (${CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS})
+        # Определяем постфикс для юнит-тестов
+        SET(POSTFIX "_UNITTEST_${NAME}")
+
+        # Enable C++17
+        SET(CMAKE_CXX_STANDARD 17)
+        SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+        # Убираем ненужные и глупые варинги которые не имеют ничего общего с реальностью
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-implicitly-unsigned-literal -Wno-reserved-user-defined-literal")
+
+        # Источники для сборки юнит-тестов
+        SET(${PROJECT_NAME}_UNITTEST_SOURCES ../main.cpp)
+
+        # Указываем что нужно собрать тесты для работы с ОС
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST "Build unit OS test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с фреймворком
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST "Build unit FMK test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с логированием
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST "Build unit LOG test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с регулярными выражениями
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST "Build unit REG test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с очередями
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST "Build unit QUEUE test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с буферами
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST "Build unit BUFFER test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с датой и временем
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST "Build unit CHRONO test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с пуллам потоков
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST "Build unit THREADPOOL test for ${UNIT_TEST_NAME}" ON)
+
+        # Если нужно собрать тесты для работы с ОС
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
+            # Дополняем список источников тестами для модуля работы с операционной системой
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                os/os.cpp
+                os/static.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
+
+        # Если нужно собрать тесты для работы с фреймворком
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST})
+            # Дополняем список источников тестами для модуля работы с фреймворком
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                fmk/fmk.cpp
+                fmk/static.cpp
+                fmk/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST})
+
+        # Если нужно собрать тесты для работы с логированием
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST})
+            # Дополняем список источников тестами для модуля работы с логированием
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                log/log.cpp
+                log/static.cpp
+                log/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST})
+
+        # Если нужно собрать тесты для работы с регулярными выражениями
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST})
+            # Дополняем список источников тестами для модуля работы с регулярными выражениями
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                reg/reg.cpp
+                reg/static.cpp
+                reg/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST})
+
+        # Если нужно собрать тесты для работы с очередями
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
+            # Дополняем список источников тестами для модуля работы с очередями
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                queue/queue.cpp
+                queue/static.cpp
+                queue/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
+
+        # Если нужно собрать тесты для работы с буферами
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST})
+            # Дополняем список источников тестами для модуля работы с буферами
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                buffer/buffer.cpp
+                buffer/static.cpp
+                buffer/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST})
+
+        # Если нужно собрать тесты для работы с датой и временем
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
+            # Дополняем список источников тестами для модуля работы с датой и временем
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                chrono/chrono.cpp
+                chrono/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
+
+        # Если нужно собрать тесты для работы с пуллам потоков
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})
+            # Дополняем список источников тестами для модуля работы с пуллам потоков
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                threadpool/threadpool.cpp
+                threadpool/static.cpp
+                threadpool/parameterized.cpp
+            )
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})
+
+        # Библиотеки GTest для линковки
+        SET(${PROJECT_NAME}_GTEST_LIBS
+            GTest::gtest
+            GTest::gmock
+        )
+
+        # Указывает каталог для ВСЕХ исполняемых файлов
+        SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/unit-tests)
+
+        # Сборка бинарного приложения тестов
+        add_executable(
+            ${PROJECT_NAME}${POSTFIX}
+            ${${PROJECT_NAME}_UNITTEST_SOURCES}
+        )
+
+        # Указываем, какое имя файла использовать при сборке
+        set_target_properties(
+            ${PROJECT_NAME}${POSTFIX} PROPERTIES
+            OUTPUT_NAME ${NAME}
+        )
+
+        # Если нужно собрать и динамическую библиотеку
+        if (CMAKE_SHARED_BUILD_LIB)
+            target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+                ${${PROJECT_NAME}_GTEST_LIBS}
+                ${AWH_LIB_GCOV_NAME}
+                ${GCC_COVERAGE_LIBS}
+                ${OPENSSL_LIBRARIES}
+                ${TCMALLOC_LIBRARIES}
+            )
+        # Если нужно собрать и статическую библиотеку
+        else (CMAKE_SHARED_BUILD_LIB)
+            # Если режим отладки не активирован
+            if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
+                target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+                    ${${PROJECT_NAME}_GTEST_LIBS}
+                    ${AWH_LIB_GCOV_NAME}
+                    ${PCRE_LIBRARY}
+                    ${GCC_COVERAGE_LIBS}
+                    ${OPENSSL_LIBRARIES}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            # Если режим отладки активирован
+            else()
+                target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+                    ${${PROJECT_NAME}_GTEST_LIBS}
+                    ${AWH_LIB_GCOV_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${PCRE_LIBRARY}
+                    ${GCC_COVERAGE_LIBS}
+                    ${OPENSSL_LIBRARIES}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif()
+        endif (CMAKE_SHARED_BUILD_LIB)
+
+        # Включаем флаги компиляции для сбора статистики покрытия кода
+        target_compile_options(${PROJECT_NAME}${POSTFIX} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+    endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS})
+endif()
