@@ -455,22 +455,38 @@ if (${CMAKE_BUILD_SAMPLES})
     # Задаем именя библиотеки и бинарника
     
     #SET(IPC_APP_NAME ipc)
-    #SET(DIR_APP_NAME dir)
-    #SET(FILE_APP_NAME file)
-    #SET(TIMER_APP_NAME timer)
-    #SET(EVENT_APP_NAME event)
     #SET(CLIENT_APP_NAME client)
     #SET(SERVER_APP_NAME server)
     
     # Устанавливаем имя приложения работы с IP-адресами
-    SET(IP_APP_NAME ip)
+    SET(IP_APP_NET_NAME net-ip)
     # Указываем что нужно собрать приложение работы с IP-адресами
-    option(CMAKE_BUILD_IP_APP_SAMPLE "Build IP app sample" ON)
+    option(CMAKE_BUILD_IP_NET_APP_SAMPLE "Build IP app sample" ON)
 
     # Устанавливаем имя приложения работы с датой и временем
-    SET(DATE_APP_NAME date)
+    SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
-    option(CMAKE_BUILD_DATE_APP_SAMPLE "Build Date app sample" ON)
+    option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
+
+    # Устанавливаем имя приложения работы с каталогами
+    SET(DIR_APP_IO_NAME io-dir)
+    # Указываем что нужно собрать приложение работы с каталогами
+    option(CMAKE_BUILD_DIR_IO_APP_SAMPLE "Build Dir IO app sample" ON)
+
+    # Устанавливаем имя приложения работы с файлами
+    SET(FILE_APP_IO_NAME io-file)
+    # Указываем что нужно собрать приложение работы с файлами
+    option(CMAKE_BUILD_FILE_IO_APP_SAMPLE "Build File IO app sample" ON)
+
+    # Устанавливаем имя приложения работы с таймером
+    SET(TIMER_APP_IO_NAME io-timer)
+    # Указываем что нужно собрать приложение работы с таймером
+    option(CMAKE_BUILD_TIMER_IO_APP_SAMPLE "Build Timer IO app sample" ON)
+
+    # Устанавливаем имя приложения работы с пользовательскими событиями
+    SET(EVENTS_APP_IO_NAME io-events)
+    # Указываем что нужно собрать приложение работы с пользовательскими событиями
+    option(CMAKE_BUILD_EVENTS_IO_APP_SAMPLE "Build Events IO app sample" ON)
 endif (${CMAKE_BUILD_SAMPLES})
 
 # Если операционной системой является Windows
@@ -505,22 +521,42 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         endfunction()
     
         # Если нужно собрать тесты для работы с ОС
-        if (${CMAKE_BUILD_IP_APP_SAMPLE})
+        if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
             # Выполняем создание приложения работы с IP-адресами
-            add_sample(${IP_APP_NAME} sample/net/ip.cpp net)
-        endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
+        endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
         # Если нужно собрать тесты для работы с датой и временем
-        if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+        if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
             # Выполняем создание приложения работы с датой и временем
-            add_sample(${DATE_APP_NAME} sample/sys/date.cpp sys)
-        endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
+        endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с каталогами
+        if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с каталогами
+            add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
+        endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с файлами
+        if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с файлами
+            add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
+        endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с таймером
+        if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с таймером
+            add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
+        endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с пользовательскими событиями
+        if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с пользовательскими событиями
+            add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
+        endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
         #add_executable(${IPC_APP_NAME} sample/ipc.cpp ${RES_FILES})
-        #add_executable(${DIR_APP_NAME} sample/dir.cpp ${RES_FILES})
-        #add_executable(${FILE_APP_NAME} sample/file.cpp ${RES_FILES})
-        #add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
-        #add_executable(${EVENT_APP_NAME} sample/event.cpp ${RES_FILES})
         #add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
         #add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
     endif (${CMAKE_BUILD_SAMPLES})
@@ -546,22 +582,42 @@ else()
         endfunction()
     
         # Если нужно собрать тесты для работы с ОС
-        if (${CMAKE_BUILD_IP_APP_SAMPLE})
+        if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
             # Выполняем создание приложения работы с IP-адресами
-            add_sample(${IP_APP_NAME} sample/net/ip.cpp net)
-        endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
+        endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
         # Если нужно собрать тесты для работы с датой и временем
-        if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+        if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
             # Выполняем создание приложения работы с датой и временем
-            add_sample(${DATE_APP_NAME} sample/sys/date.cpp sys)
-        endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
+        endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с каталогами
+        if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с каталогами
+            add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
+        endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с файлами
+        if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с файлами
+            add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
+        endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+         # Если нужно собрать тесты для работы с таймером
+        if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с таймером
+            add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
+        endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с пользовательскими событиями
+        if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+            # Выполняем создание приложения работы с пользовательскими событиями
+            add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
+        endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
         
         #add_executable(${IPC_APP_NAME} sample/ipc.cpp)
-        #add_executable(${DIR_APP_NAME} sample/dir.cpp)
-        #add_executable(${FILE_APP_NAME} sample/file.cpp)
-        #add_executable(${TIMER_APP_NAME} sample/timer.cpp)
-        #add_executable(${EVENT_APP_NAME} sample/event.cpp)
         #add_executable(${CLIENT_APP_NAME} sample/client.cpp)
         #add_executable(${SERVER_APP_NAME} sample/server.cpp)
     endif (${CMAKE_BUILD_SAMPLES})
@@ -589,62 +645,74 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
             # Если нужно собрать тесты для работы с ОС
-            if (${CMAKE_BUILD_IP_APP_SAMPLE})
+            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
-                    ${IP_APP_NAME}
+                    ${IP_APP_NET_NAME}
                     ${AWH_LIB_NAME}
                     ${TCMALLOC_LIBRARIES}
                     ${WINFLAGS}
                 )
-            endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
             # Если нужно собрать тесты для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
-                    ${DATE_APP_NAME}
+                    ${DATE_APP_SYS_NAME}
                     ${AWH_LIB_NAME}
                     ${TCMALLOC_LIBRARIES}
                     ${WINFLAGS}
                 )
-            endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с каталогами
+            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с каталогами
+                target_link_libraries(
+                    ${DIR_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с файлами
+            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с файлами
+                target_link_libraries(
+                    ${FILE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с таймером
+            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                # Выполняем сборку приложения таймера
+                target_link_libraries(
+                    ${TIMER_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с пользовательскими событиями
+            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                # Выполняем сборку приложения пользовательских событий
+                target_link_libraries(
+                    ${EVENTS_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения межпроцессного взаимодействия
             #target_link_libraries(
             #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения работы с каталогами
-            #target_link_libraries(
-            #    ${DIR_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения работы с файлами
-            #target_link_libraries(
-            #    ${FILE_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения таймера
-            #target_link_libraries(
-            #    ${TIMER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения пользовательских событий
-            #target_link_libraries(
-            #    ${EVENT_APP_NAME}
             #    ${AWH_LIB_NAME}
             #    ${TCMALLOC_LIBRARIES}
             #    ${WINFLAGS}
@@ -679,56 +747,68 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
             # Если нужно собрать тесты для работы с ОС
-            if (${CMAKE_BUILD_IP_APP_SAMPLE})
+            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
-                    ${IP_APP_NAME}
+                    ${IP_APP_NET_NAME}
                     ${AWH_LIB_NAME}
                     ${TCMALLOC_LIBRARIES}
                 )
-            endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
             # Если нужно собрать тесты для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
-                    ${DATE_APP_NAME}
+                    ${DATE_APP_SYS_NAME}
                     ${AWH_LIB_NAME}
                     ${TCMALLOC_LIBRARIES}
                 )
-            endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с каталогами
+            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с каталогами
+                target_link_libraries(
+                    ${DIR_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с файлами
+            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с файлами
+                target_link_libraries(
+                    ${FILE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с таймером
+            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                # Выполняем сборку приложения таймера
+                target_link_libraries(
+                    ${TIMER_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с пользовательскими событиями
+            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                # Выполняем сборку приложения пользовательских событий
+                target_link_libraries(
+                    ${EVENTS_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения межпроцессного взаимодействия
             #target_link_libraries(
             #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения работы с каталогами
-            #target_link_libraries(
-            #    ${DIR_APP_NAME}
-            #   ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения работы с файлами
-            #target_link_libraries(
-            #    ${FILE_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения таймера
-            #target_link_libraries(
-            #    ${TIMER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения пользовательских событий
-            #target_link_libraries(
-            #    ${EVENT_APP_NAME}
             #    ${AWH_LIB_NAME}
             #    ${TCMALLOC_LIBRARIES}
             #)
@@ -755,68 +835,80 @@ else (CMAKE_SHARED_BUILD_LIB)
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
             # Если нужно собрать тесты для работы с ОС
-            if (${CMAKE_BUILD_IP_APP_SAMPLE})
+            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
-                    ${IP_APP_NAME}
+                    ${IP_APP_NET_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                     ${WINFLAGS}
                 )
-            endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
             # Если нужно собрать тесты для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
-                    ${DATE_APP_NAME}
+                    ${DATE_APP_SYS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                     ${WINFLAGS}
                 )
-            endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с каталогами
+            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с каталогами
+                target_link_libraries(
+                    ${DIR_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с файлами
+            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с файлами
+                target_link_libraries(
+                    ${FILE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с таймером
+            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                # Выполняем сборку приложения таймера
+                target_link_libraries(
+                    ${TIMER_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с пользовательскими событиями
+            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                # Выполняем сборку приложения пользовательских событий
+                target_link_libraries(
+                    ${EVENTS_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения межпроцессного взаимодействия
             #target_link_libraries(
             #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения работы с каталогами
-            #target_link_libraries(
-            #    ${DIR_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения работы с файлами
-            #target_link_libraries(
-            #    ${FILE_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения таймера
-            #target_link_libraries(
-            #    ${TIMER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
-
-            # Выполняем сборку приложения пользовательских событий
-            #target_link_libraries(
-            #    ${EVENT_APP_NAME}
             #    ${AWH_LIB_NAME}
             #    ${DEPEND_LIBRARY}
             #    ${TCMALLOC_LIBRARIES}
@@ -846,62 +938,74 @@ else (CMAKE_SHARED_BUILD_LIB)
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
             # Если нужно собрать тесты для работы с ОС
-            if (${CMAKE_BUILD_IP_APP_SAMPLE})
+            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
-                    ${IP_APP_NAME}
+                    ${IP_APP_NET_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
-            endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
             # Если нужно собрать тесты для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
-                    ${DATE_APP_NAME}
+                    ${DATE_APP_SYS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
-            endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с каталогами
+            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с каталогами
+                target_link_libraries(
+                    ${DIR_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с файлами
+            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с файлами
+                target_link_libraries(
+                    ${FILE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с таймером
+            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                # Выполняем сборку приложения таймера
+                target_link_libraries(
+                    ${TIMER_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с пользовательскими событиями
+            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                # Выполняем сборку приложения пользовательских событий
+                target_link_libraries(
+                    ${EVENTS_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения межпроцессного взаимодействия
             #target_link_libraries(
             #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения работы с каталогами
-            #target_link_libraries(
-            #    ${DIR_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения работы с файлами
-            #target_link_libraries(
-            #    ${FILE_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения таймера
-            #target_link_libraries(
-            #    ${TIMER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
-
-            # Выполняем сборку приложения пользовательских событий
-            #target_link_libraries(
-            #    ${EVENT_APP_NAME}
             #    ${AWH_LIB_NAME}
             #    ${DEPEND_LIBRARY}
             #    ${TCMALLOC_LIBRARIES}
@@ -933,50 +1037,62 @@ if (${CMAKE_BUILD_SAMPLES})
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
             # Если нужно собрать тесты для работы с ОС
-            if (${CMAKE_BUILD_IP_APP_SAMPLE})
-                add_custom_command(TARGET "${IP_APP_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IP_APP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${IP_APP_NAME}\" to enable core dump on MacOS X"
+            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+                add_custom_command(TARGET "${IP_APP_NET_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IP_APP_NET_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${IP_APP_NET_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
-            endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
             # Если нужно собрать тесты для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_APP_SAMPLE})
-                add_custom_command(TARGET "${DATE_APP_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DATE_APP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${DATE_APP_NAME}\" to enable core dump on MacOS X"
+            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+                add_custom_command(TARGET "${DATE_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DATE_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${DATE_APP_SYS_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
-            endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с каталогами
+            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                add_custom_command(TARGET "${DIR_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DIR_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${DIR_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с файлами
+            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                add_custom_command(TARGET "${FILE_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${FILE_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${FILE_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с таймером
+            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                add_custom_command(TARGET "${TIMER_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TIMER_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${TIMER_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с пользовательскими событиями
+            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                add_custom_command(TARGET "${EVENTS_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${EVENTS_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${EVENTS_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
             #add_custom_command(TARGET "${IPC_APP_NAME}" POST_BUILD
             #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_APP_NAME}>" "${entitlements_file}"
             #    COMMENT "Sign target \"${IPC_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
-
-            #add_custom_command(TARGET "${DIR_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DIR_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${DIR_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
-
-            #add_custom_command(TARGET "${FILE_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${FILE_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${FILE_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
-
-            #add_custom_command(TARGET "${TIMER_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TIMER_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${TIMER_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
-
-            #add_custom_command(TARGET "${EVENT_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${EVENT_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${EVENT_APP_NAME}\" to enable core dump on MacOS X"
             #    VERBATIM
             #)
 
@@ -1005,21 +1121,42 @@ if (${CMAKE_BUILD_SAMPLES})
             include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
 
             # Если нужно собрать тесты для работы с ОС
-            if (${CMAKE_BUILD_IP_APP_SAMPLE})
+            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем анализ приложения работы с IP-адресами
-                pvs_studio_add_target(TARGET ${IP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+                pvs_studio_add_target(TARGET ${IP_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
             # Если нужно собрать тесты для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_APP_SAMPLE})
-                pvs_studio_add_target(TARGET ${DATE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения даты и времени
+                pvs_studio_add_target(TARGET ${DATE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с каталогами
+            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                # Выполняем анализ приложения работы с каталогами
+                pvs_studio_add_target(TARGET ${DIR_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DIR_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с файлами
+            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                # Выполняем анализ приложения работы с файлами
+                pvs_studio_add_target(TARGET ${FILE_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${FILE_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с таймером
+            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                # Выполняем анализ приложения таймера
+                pvs_studio_add_target(TARGET ${TIMER_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+            # Если нужно собрать тесты для работы с пользовательскими событиями
+            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                # Выполняем анализ приложения пользовательских событий
+                pvs_studio_add_target(TARGET ${EVENTS_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${EVENTS_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
             #pvs_studio_add_target(TARGET ${IPC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            #pvs_studio_add_target(TARGET ${DIR_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DIR_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            #pvs_studio_add_target(TARGET ${FILE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${FILE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            #pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            #pvs_studio_add_target(TARGET ${EVENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${EVENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             #pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             #pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         endif (CMAKE_ENABLED_PVS)
@@ -1104,22 +1241,42 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать тесты для работы с ОС
-    if (${CMAKE_BUILD_IP_APP_SAMPLE})
+    if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
         # Устанавливаем приложение работы с IP-адресами
-        install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    endif (${CMAKE_BUILD_IP_APP_SAMPLE})
+        install(TARGETS ${IP_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
     # Если нужно собрать тесты для работы с датой и временем
-    if (${CMAKE_BUILD_DATE_APP_SAMPLE})
+    if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
         # Устанавливаем приложение работы с датой и временем
-        install(TARGETS ${DATE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    endif (${CMAKE_BUILD_DATE_APP_SAMPLE})
+        install(TARGETS ${DATE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с каталогами
+    if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+        # Устанавливаем приложение работы с каталогами
+        install(TARGETS ${DIR_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с файлами
+    if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+        # Устанавливаем приложение работы с файлами
+        install(TARGETS ${FILE_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с таймером
+    if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+        # Устанавливаем приложение работы с таймером
+        install(TARGETS ${TIMER_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с пользовательскими событиями
+    if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+        # Устанавливаем приложение работы с пользовательскими событиями
+        install(TARGETS ${EVENTS_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
     #install(TARGETS ${IPC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    #install(TARGETS ${DIR_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    #install(TARGETS ${FILE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    #install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    #install(TARGETS ${EVENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     #install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     #install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 

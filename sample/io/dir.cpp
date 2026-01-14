@@ -317,7 +317,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на общее событие
-		io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
+		io.on(eid, [&io, &log](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Обрабатываем действие события
 			 */
@@ -350,7 +350,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Если действие является переименованием
 				case static_cast <uint8_t> (event::action_t::RENAME):
 					// Выводим сообщение о переименовании события
-					log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
+					log.print("Событие на переименование: ID=%u, новый адрес: %s", log_t::flag_t::INFO, eid, io.address(eid, event::address_t::FS).c_str());
 				break;
 				// Если действие является изменением атрибутов
 				case static_cast <uint8_t> (event::action_t::ATTRIB):
