@@ -4588,6 +4588,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		ASSERT_TRUE(this->_io->port(events[i], port));
 		// Проверяем что порт получен
 		ASSERT_EQ(port, this->_io->port(events[i]));
+		// Устанавливаем размер буфера для чтения и записи
+		this->_io->bufferSize(events[i], awh::event::action_t::READ, 10240);
+		this->_io->bufferSize(events[i], awh::event::action_t::WRITE, 10240);
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -8001,12 +8004,6 @@ TEST_F(IoFixture, IoTLSTest){
 					break;
 				}
 			});
-			// Если рукопожатие TLS успешно
-			if(this->_tls->handshake(ctl))
-				// Выводим сообщение о начале рукопожатия TLS
-				this->_log->print("Начинаем процесс рукопожатия: ID=%u", awh::log_t::flag_t::INFO, ctl);
-			// Если рукопожатие TLS не выполнено
-			else this->_log->print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
 		}));
 		// Устанавливаем функцию обратного вызова на общее событие
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
@@ -8897,12 +8894,6 @@ TEST_F(IoFixture, IoMultiTLSTest){
 					break;
 				}
 			});
-			// Если рукопожатие TLS успешно
-			if(this->_tls->handshake(ctl))
-				// Выводим сообщение о начале рукопожатия TLS
-				this->_log->print("Начинаем процесс рукопожатия: ID=%u", awh::log_t::flag_t::INFO, ctl);
-			// Если рукопожатие TLS не выполнено
-			else this->_log->print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
 		}));
 		// Устанавливаем функцию обратного вызова на общее событие
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
@@ -9691,17 +9682,11 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем функцию обратного вызова на чтение из события
 			this->_io->on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
-				if(this->_tls->decrypt(ctl, data, size)){
+				if(this->_tls->decrypt(ctl, data, size))
 					// Выводим сообщение об успешном дешифровании данных TLS
 					this->_log->print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, ctl, size);
-					// Если рукопожатие DTLS успешно
-					if(this->_tls->handshake(ctl))
-						// Выводим сообщение о начале рукопожатия DTLS
-						this->_log->print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, ctl);
-					// Если рукопожатие DTLS не выполнено
-					else this->_log->print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
 				// Если данные не отправлены
-				} else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+				else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
 			});
 			// Устанавливаем функцию обратного вызова на общее событие
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
@@ -13197,17 +13182,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Устанавливаем функцию обратного вызова на чтение из события
 				this->_io->on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные успешно дешифрованы DTLS
-					if(this->_tls->decrypt(ctl, data, size)){
+					if(this->_tls->decrypt(ctl, data, size))
 						// Выводим сообщение об успешном дешифровании данных DTLS
 						this->_log->print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log_t::flag_t::INFO, ctl, size);
 					// Если данные не отправлены
-					} else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
-					// Если рукопожатие DTLS успешно
-					if(this->_tls->handshake(ctl))
-						// Выводим сообщение о начале рукопожатия DTLS
-						this->_log->print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, ctl);
-					// Если рукопожатие DTLS не выполнено
-					else this->_log->print("Ошибка рукопожатия DTLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
+					else this->_log->print("Ошибка дешифрования: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
 				});
 				// Устанавливаем функцию обратного вызова на общее событие
 				this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
@@ -14360,12 +14339,6 @@ TEST_F(IoFixture, IoDTLSTest){
 						break;
 					}
 				});
-				// Если рукопожатие TLS успешно
-				if(this->_tls->handshake(ctl))
-					// Выводим сообщение о начале рукопожатия TLS
-					this->_log->print("Начинаем процесс рукопожатия: ID=%" PRIu64 "", awh::log_t::flag_t::INFO, ctl);
-				// Если рукопожатие TLS не выполнено
-				else this->_log->print("Ошибка рукопожатия TLS: ID=%" PRIu64 "", awh::log_t::flag_t::CRITICAL, ctl);
 			}));
 			// Устанавливаем функцию обратного вызова на общее событие
 			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {

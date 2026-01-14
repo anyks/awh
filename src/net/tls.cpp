@@ -4616,15 +4616,78 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если рукопожатие ещё не завершено
-					if(::SSL_is_init_finished(member->ssl) != 1){
+					if(!(result = (::SSL_is_init_finished(member->ssl) == 1))){
 						// Выполняем TLS рукопожатие
 						const int32_t handshake = ::SSL_do_handshake(member->ssl);
 						// Если рукопожатие не выполнено
 						if(!(result = (handshake == 1))){
 							// Получаем код ошибки
 							const int32_t error = ::SSL_get_error(member->ssl, handshake);
+							// Если ошибка связана с необходимостью повторного чтения или записи
+							if((result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+								// Количество прочитанных данных
+								int32_t bytes = 0;
+								// Количество ожидающих данных для чтения
+								size_t pending = 0;
+								// Буфер данных для чтения
+								uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
+								/**
+								 * Читаем все ожидающие данные из BIO буфера записи
+								 */
+								while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
+									// Читаем данные из BIO буфера записи
+									bytes = ::BIO_read(member->bio.write, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+									// Если данные не прочитаны
+									if(bytes <= 0){
+										// Получаем код ошибки
+										const int32_t error = ::SSL_get_error(member->ssl, bytes);
+										// Если ошибка не связана с необходимостью повторного чтения или записи
+										if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Handshake failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::CRITICAL, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr){
+												// Вызываем функцию обратного вызова на неудачу рукопожатия
+												member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
+												// Вызываем функцию обратного вызова на уничтожение контекста TLS
+												member->callback.state(id, tls_t::state_t::DESTROYED);
+											}
+											// Устанавливаем режим удаления участника обмена защищёнными данными
+											member->state |= ::state::GARBAGE_MODE;
+										}
+										// Выходим из цикла
+										break;
+									// Если функция обратного вызова чтения данных установлена
+									} else if(member->callback.read != nullptr)
+										// Вызываем функцию обратного вызова чтения данных
+										member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
+								}
 							// Если ошибка не связана с необходимостью повторного чтения или записи
-							if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+							} else {
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова на получение ошибки рукопожатия
@@ -4660,29 +4723,6 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 								}
 								// Устанавливаем режим удаления участника обмена защищёнными данными
 								member->state |= ::state::GARBAGE_MODE;
-							// Если ошибка связана с необходимостью повторного чтения или записи
-							} else {
-								// Количество прочитанных данных
-								int32_t bytes = 0;
-								// Количество ожидающих данных для чтения
-								size_t pending = 0;
-								// Буфер данных для чтения
-								uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
-								/**
-								 * Читаем все ожидающие данные из BIO буфера записи
-								 */
-								while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
-									// Читаем данные из BIO буфера записи
-									bytes = ::BIO_read(member->bio.write, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-									// Если данные не прочитаны
-									if(bytes <= 0)
-										// Выходим из цикла
-										break;
-									// Если функция обратного вызова чтения данных установлена
-									else if(member->callback.read != nullptr)
-										// Вызываем функцию обратного вызова чтения данных
-										member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
-								}
 							}
 							// Выводим результат
 							return result;
@@ -6142,6 +6182,12 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
+								// Если функция обратного вызова состояния установлена
+								if(member->callback.state != nullptr)
+									// Вызываем функцию обратного вызова на уничтожение контекста TLS
+									member->callback.state(id, tls_t::state_t::DESTROYED);
+								// Устанавливаем режим удаления участника обмена защищёнными данными
+								member->state |= ::state::GARBAGE_MODE;
 							}
 						// Если данные записаны удачно
 						} else {
@@ -6160,11 +6206,48 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 								// Читаем данные из BIO буфера записи
 								bytes = ::BIO_read(member->bio.write, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 								// Если данные не прочитаны
-								if(bytes <= 0)
+								if(bytes <= 0){
+									// Получаем код ошибки
+									const int32_t error = ::SSL_get_error(member->ssl, bytes);
+									// Если ошибка не связана с необходимостью повторного чтения или записи
+									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова состояния
+											member->callback.state(id, tls_t::state_t::FAILED);
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Write is failed");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::CRITICAL, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова на уничтожение контекста TLS
+											member->callback.state(id, tls_t::state_t::DESTROYED);
+										// Устанавливаем режим удаления участника обмена защищёнными данными
+										member->state |= ::state::GARBAGE_MODE;
+									}
 									// Выходим из цикла
 									break;
 								// Если функция обратного вызова чтения данных установлена
-								else if(member->callback.read != nullptr)
+								} else if(member->callback.read != nullptr)
 									// Вызываем функцию обратного вызова чтения данных
 									member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
 							}
@@ -6295,17 +6378,22 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 							// Вызываем функцию обратного вызова записи данных
 							member->callback.write(id, event_t::DECRYPTION, static_cast <size_t> (bytes));
 						// Если рукопожатие ещё не выполнено
-						if(!(member->state & state::HANDSHAKE_MODE))
+						if(!(member->state & state::HANDSHAKE_MODE)){
 							// Выполняем рукопожатие TLS
 							result = this->handshake(id);
+							// Если рукопожатие ещё не выполнено
+							if(!result || !(member->state & state::HANDSHAKE_MODE))
+								// Выходим из функции
+								return result;
+						}
 						// Если у нас есть подготовленные данные для чтения
-						if((::BIO_ctrl_pending(member->bio.read) > 0) || ::SSL_has_pending(member->ssl)){
+						if((::BIO_ctrl_pending(member->bio.read) > 0) || (::SSL_has_pending(member->ssl) == 1)){
 							// Буфер данных для чтения
 							uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 							/**
 							 * Читаем все доступные данные из защищённого сокета
 							 */
-							while((::BIO_ctrl_pending(member->bio.read) > 0) || ::SSL_has_pending(member->ssl)){
+							do {
 								// Читаем данные из защищённого сокета
 								bytes = ::SSL_read(member->ssl, buffer, AWH_MAX_SSL_BUFFER_SIZE);
 								// Если данные не прочитаны
@@ -6313,7 +6401,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 									// Получаем код ошибки
 									const int32_t error = ::SSL_get_error(member->ssl, bytes);
 									// Если ошибка не связана с необходимостью повторного чтения или записи
-									if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
@@ -6340,6 +6428,12 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова на уничтожение контекста TLS
+											member->callback.state(id, tls_t::state_t::DESTROYED);
+										// Устанавливаем режим удаления участника обмена защищёнными данными
+										member->state |= ::state::GARBAGE_MODE;
 									}
 									// Выходим из цикла
 									break;
@@ -6347,35 +6441,49 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 								} else if(member->callback.read != nullptr)
 									// Вызываем функцию обратного вызова чтения данных
 									member->callback.read(id, event_t::DECRYPTION, buffer, static_cast <size_t> (bytes));
-							}
+							/**
+							 * Пока в BIO буфере чтения или в защищённом сокете есть ожидающие данные для чтения
+							 */
+							} while((::BIO_ctrl_pending(member->bio.read) > 0) || (::SSL_has_pending(member->ssl) == 1));
 						}
 					// Если данные не записаны полностью
 					} else {
-						// Если функция обратного вызова состояния установлена
-						if(member->callback.state != nullptr)
-							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
-						// Получаем текст ошибки
-						const string error = ::ssl::error(id, "BIO write failed");
-						// Если функция обратного вызова ошибки установлена
-						if(member->callback.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, error);
-						// Если функция обратного вызова ошибки не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-							#endif
+						// Получаем код ошибки
+						const int32_t error = ::SSL_get_error(member->ssl, bytes);
+						// Если ошибка не связана с необходимостью повторного чтения или записи
+						if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+							// Если функция обратного вызова состояния установлена
+							if(member->callback.state != nullptr)
+								// Вызываем функцию обратного вызова состояния
+								member->callback.state(id, tls_t::state_t::FAILED);
+							// Получаем текст ошибки
+							const string error = ::ssl::error(id, "BIO write failed");
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, error_t::CRITICAL, error);
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+								#endif
+							}
+							// Если функция обратного вызова состояния установлена
+							if(member->callback.state != nullptr)
+								// Вызываем функцию обратного вызова на уничтожение контекста TLS
+								member->callback.state(id, tls_t::state_t::DESTROYED);
+							// Устанавливаем режим удаления участника обмена защищёнными данными
+							member->state |= ::state::GARBAGE_MODE;
 						}
 					}
 				} break;
