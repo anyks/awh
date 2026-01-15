@@ -1438,7 +1438,7 @@ namespace cookie {
 				// Если функция обратного вызова ошибки установлена
 				if(member->callback.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					member->callback.error(id, awh::tls_t::error_t::CRITICAL, error);
+					member->callback.error(id, awh::tls_t::error_t::COOKIE_FAILED, error);
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					// Получаем объект логирования
@@ -1480,7 +1480,7 @@ namespace cookie {
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, awh::tls_t::error_t::CRITICAL, error);
+				member->callback.error(id, awh::tls_t::error_t::COOKIE_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
@@ -1588,7 +1588,7 @@ namespace cookie {
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, awh::tls_t::error_t::CRITICAL, error);
+				member->callback.error(id, awh::tls_t::error_t::COOKIE_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
@@ -1811,7 +1811,7 @@ namespace verify {
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, awh::tls_t::error_t::WARNING, error);
+				member->callback.error(id, awh::tls_t::error_t::SNI_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
@@ -2060,7 +2060,7 @@ namespace verify {
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, awh::tls_t::error_t::WARNING, error);
+							member->callback.error(id, awh::tls_t::error_t::CERT_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							// Получаем объект логирования
@@ -2096,7 +2096,7 @@ namespace verify {
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, awh::tls_t::error_t::CRITICAL, error);
+								member->callback.error(id, awh::tls_t::error_t::CERT_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								// Получаем объект логирования
@@ -2187,7 +2187,7 @@ namespace verify {
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, awh::tls_t::error_t::WARNING, error);
+									member->callback.error(id, awh::tls_t::error_t::HOSTNAME_BAD, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									// Получаем объект логирования
@@ -2262,7 +2262,7 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::INVALID_LAYER, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -2500,7 +2500,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 						if(member->callback.error != nullptr){
 							// Вызываем функцию обратного вызова ошибки
 							member->callback.error(
-								id, error_t::WARNING,
+								id, error_t::MISMATCH_VERSION,
 								this->_fmk->format(
 									"OpenSSL version mismatch!\n"
 									"Compiled against %s\n"
@@ -2512,7 +2512,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Если мажорная и минорная версия OpenSSL не совпадают
 							if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, "Major and minor version numbers must match, exiting");
+								member->callback.error(id, error_t::MISMATCH_VERSION, "Major and minor version numbers must match, exiting");
 						// Если функция обратного вызова ошибки не установлена
 						} else {
 							/**
@@ -2565,7 +2565,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
 							member->callback.error(
-								id, error_t::CRITICAL,
+								id, error_t::UNSUPPORTED_VERSION,
 								this->_fmk->format("%s is unsupported, use OpenSSL Version 1.1.1a or higher", ::OpenSSL_version(OPENSSL_VERSION))
 							);
 						// Если функция обратного вызова ошибки не установлена
@@ -2602,7 +2602,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -2633,7 +2633,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -2685,7 +2685,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 						if(member->callback.error != nullptr){
 							// Вызываем функцию обратного вызова ошибки
 							member->callback.error(
-								id, error_t::WARNING,
+								id, error_t::MISMATCH_VERSION,
 								this->_fmk->format(
 									"OpenSSL version mismatch!\n"
 									"Compiled against %s\n"
@@ -2697,7 +2697,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Если мажорная и минорная версия OpenSSL не совпадают
 							if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, "Major and minor version numbers must match, exiting");
+								member->callback.error(id, error_t::MISMATCH_VERSION, "Major and minor version numbers must match, exiting");
 						// Если функция обратного вызова ошибки не установлена
 						} else {
 							/**
@@ -2750,7 +2750,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
 							member->callback.error(
-								id, error_t::CRITICAL,
+								id, error_t::UNSUPPORTED_VERSION,
 								this->_fmk->format("%s is unsupported, use OpenSSL Version 1.1.1a or higher", ::OpenSSL_version(OPENSSL_VERSION))
 							);
 						// Если функция обратного вызова ошибки не установлена
@@ -2852,7 +2852,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -2883,7 +2883,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -2974,7 +2974,7 @@ string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::CIPHER_FAILED, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -3055,7 +3055,7 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::CERT_FAILED, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -3190,7 +3190,7 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -3221,7 +3221,7 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -3278,7 +3278,7 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -3309,7 +3309,7 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -3402,7 +3402,7 @@ string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noex
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::CERT_FAILED, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -3524,7 +3524,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::INVALID_LAYER, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -3569,7 +3569,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::WARNING, error);
+							member->callback.error(id, error_t::CERT_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -3604,7 +3604,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, error);
+							member->callback.error(id, error_t::STORE_X509_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -3637,7 +3637,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, error);
+							member->callback.error(id, error_t::STORE_X509_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -3670,7 +3670,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, ::X509_verify_cert_error_string(error));
+							member->callback.error(id, error_t::STORE_X509_FAILED, ::X509_verify_cert_error_string(error));
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -4164,7 +4164,7 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::HOSTNAME_VERIFY, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -4248,7 +4248,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::CRITICAL, error);
+							member->callback.error(id, error_t::INVALID_LAYER, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -4309,7 +4309,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 									// Если функция обратного вызова ошибки установлена
 									if(member->callback.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки
-										member->callback.error(id, error_t::CRITICAL, error);
+										member->callback.error(id, error_t::UNSUPPORTED_IP, error);
 									// Если функция обратного вызова ошибки не установлена
 									else {
 										/**
@@ -4337,7 +4337,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::UNSUPPORTED_IP, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -4508,7 +4508,7 @@ bool awh::TransportLayerSecurity::shutdown(const id_t id) noexcept {
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::INVALID_LAYER, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -4587,7 +4587,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 				// Если функция обратного вызова ошибки установлена
 				if(member->callback.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					member->callback.error(id, error_t::CRITICAL, error);
+					member->callback.error(id, error_t::INVALID_LAYER, error);
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					/**
@@ -4652,7 +4652,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::HANDSHAKE_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -4672,7 +4672,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr){
 												// Вызываем функцию обратного вызова на неудачу рукопожатия
-												member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
+												member->callback.state(id, tls_t::state_t::HANDSHAKE);
 												// Вызываем функцию обратного вызова на уничтожение контекста TLS
 												member->callback.state(id, tls_t::state_t::DESTROYED);
 											}
@@ -4697,7 +4697,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::HANDSHAKE_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -4717,7 +4717,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr){
 									// Вызываем функцию обратного вызова на неудачу рукопожатия
-									member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
+									member->callback.state(id, tls_t::state_t::HANDSHAKE);
 									// Вызываем функцию обратного вызова на уничтожение контекста TLS
 									member->callback.state(id, tls_t::state_t::DESTROYED);
 								}
@@ -4824,7 +4824,7 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::INVALID_LAYER, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -4961,7 +4961,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 							// Если функция обратного вызова ошибки установлена
 							if(cts->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								cts->callback.error(id, error_t::CRITICAL, error);
+								cts->callback.error(id, error_t::TLS_SESSION_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -5004,7 +5004,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 							// Если функция обратного вызова ошибки установлена
 							if(cts->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								cts->callback.error(id, error_t::CRITICAL, error);
+								cts->callback.error(id, error_t::BIO_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -5079,7 +5079,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 								// Если функция обратного вызова ошибки установлена
 								if(cts->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									cts->callback.error(id, error_t::CRITICAL, error);
+									cts->callback.error(id, error_t::HOSTNAME_VERIFY, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -5146,7 +5146,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 							// Если функция обратного вызова ошибки установлена
 							if(cts->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								cts->callback.error(id, error_t::CRITICAL, error);
+								cts->callback.error(id, error_t::TLS_SESSION_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -5189,7 +5189,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 							// Если функция обратного вызова ошибки установлена
 							if(cts->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								cts->callback.error(id, error_t::CRITICAL, error);
+								cts->callback.error(id, error_t::BIO_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -5264,7 +5264,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 								// Если функция обратного вызова ошибки установлена
 								if(cts->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									cts->callback.error(id, error_t::CRITICAL, error);
+									cts->callback.error(id, error_t::HOSTNAME_VERIFY, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -6120,7 +6120,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::INVALID_LAYER, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -6165,7 +6165,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::WRITE_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -6220,7 +6220,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 										// Если функция обратного вызова ошибки установлена
 										if(member->callback.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки
-											member->callback.error(id, error_t::CRITICAL, error);
+											member->callback.error(id, error_t::WRITE_FAILED, error);
 										// Если функция обратного вызова ошибки не установлена
 										else {
 											/**
@@ -6263,7 +6263,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, error_t::WARNING, error);
+							member->callback.error(id, error_t::HANDSHAKE_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -6343,7 +6343,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 					// Если функция обратного вызова ошибки установлена
 					if(member->callback.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки
-						member->callback.error(id, error_t::CRITICAL, error);
+						member->callback.error(id, error_t::INVALID_LAYER, error);
 					// Если функция обратного вызова ошибки не установлена
 					else {
 						/**
@@ -6411,7 +6411,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 										// Если функция обратного вызова ошибки установлена
 										if(member->callback.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки
-											member->callback.error(id, error_t::CRITICAL, error);
+											member->callback.error(id, error_t::READ_FAILED, error);
 										// Если функция обратного вызова ошибки не установлена
 										else {
 											/**
@@ -6461,7 +6461,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::BIO_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -6611,7 +6611,7 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CIPHER_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -6649,7 +6649,7 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CIPHER_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -6892,7 +6892,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::STORE_X509_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -6923,7 +6923,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CA_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -6962,7 +6962,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CA_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -7006,7 +7006,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::STORE_X509_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7037,7 +7037,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CA_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7125,7 +7125,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::STORE_X509_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7166,7 +7166,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CA_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -7203,7 +7203,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CA_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -7253,7 +7253,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::STORE_X509_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7294,7 +7294,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CA_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -7331,7 +7331,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::CRITICAL, error);
+									member->callback.error(id, error_t::CA_FAILED, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -7423,7 +7423,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7454,7 +7454,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7489,7 +7489,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7535,7 +7535,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7566,7 +7566,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7601,7 +7601,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::CRL_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7689,7 +7689,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 									// Если функция обратного вызова ошибки установлена
 									if(member->callback.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки
-										member->callback.error(id, error_t::CRITICAL, error);
+										member->callback.error(id, error_t::PRIVATE_KEY_FAILED, error);
 									// Если функция обратного вызова ошибки не установлена
 									else {
 										/**
@@ -7723,7 +7723,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 									// Если функция обратного вызова ошибки установлена
 									if(member->callback.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки
-										member->callback.error(id, error_t::CRITICAL, error);
+										member->callback.error(id, error_t::PRIVATE_KEY_FAILED, error);
 									// Если функция обратного вызова ошибки не установлена
 									else {
 										/**
@@ -7756,7 +7756,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::PRIVATE_KEY_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7800,7 +7800,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 									// Если функция обратного вызова ошибки установлена
 									if(member->callback.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки
-										member->callback.error(id, error_t::CRITICAL, error);
+										member->callback.error(id, error_t::PRIVATE_KEY_FAILED, error);
 									// Если функция обратного вызова ошибки не установлена
 									else {
 										/**
@@ -7834,7 +7834,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 									// Если функция обратного вызова ошибки установлена
 									if(member->callback.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки
-										member->callback.error(id, error_t::CRITICAL, error);
+										member->callback.error(id, error_t::PRIVATE_KEY_FAILED, error);
 									// Если функция обратного вызова ошибки не установлена
 									else {
 										/**
@@ -7867,7 +7867,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::CRITICAL, error);
+								member->callback.error(id, error_t::PRIVATE_KEY_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -7959,7 +7959,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -7991,7 +7991,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -8031,7 +8031,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -8063,7 +8063,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -8117,7 +8117,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -8149,7 +8149,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -8189,7 +8189,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**
@@ -8221,7 +8221,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
 											// Если функция обратного вызова ошибки установлена
 											if(member->callback.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CRITICAL, error);
+												member->callback.error(id, error_t::CERT_FAILED, error);
 											// Если функция обратного вызова ошибки не установлена
 											else {
 												/**

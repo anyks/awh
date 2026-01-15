@@ -46,7 +46,7 @@ namespace awh {
 				FAILED           = 0x01, // Состояние ошибки
 				DESTROYED        = 0x02, // Состояние разрушения
 				HANDSHAKED       = 0x03, // Состояние рукопожатия
-				HANDSHAKE_FAILED = 0x04  // Состояние ошибки рукопожатия
+				HANDSHAKE = 0x04  // Состояние ошибки рукопожатия
 			};
 			/**
 			 * Режимы работы TLS
@@ -68,9 +68,26 @@ namespace awh {
 			 * Флаги типов ошибок TLS
 			 */
 			enum class error_t : uint8_t {
-				NONE     = 0x00, // Флаг не установлен
-				WARNING  = 0x01, // Предупреждающее сообщение
-				CRITICAL = 0x02  // Критическое сообщение
+				NONE                = 0x00, // Ошибка не установлена
+				CA_FAILED           = 0x01, // Ошибка центра сертификации
+				SNI_FAILED          = 0x02, // Ошибка проверки SNI
+				CRL_FAILED          = 0x03, // Ошибка списка отзыва сертификатов
+				BIO_FAILED          = 0x04, // Ошибка BIO
+				CERT_FAILED         = 0x05, // Ошибка проверки сертификата
+				READ_FAILED         = 0x06, // Ошибка чтения
+				WRITE_FAILED        = 0x07, // Ошибка записи
+				COOKIE_FAILED       = 0x08, // Ошибка проверки cookie
+				CIPHER_FAILED       = 0x09, // Ошибка шифра
+				HANDSHAKE_FAILED    = 0x0A, // Ошибка рукопожатия
+				STORE_X509_FAILED   = 0x0B, // Ошибка хранилища X509
+				TLS_SESSION_FAILED  = 0x0C, // Ошибка TLS сессии
+				PRIVATE_KEY_FAILED  = 0x0D, // Ошибка приватного ключа
+				HOSTNAME_BAD        = 0x0E, // Ошибка имени хоста
+				INVALID_LAYER       = 0x0F, // Ошибка уровня TLS
+				UNSUPPORTED_IP      = 0x10, // Ошибка неподдерживаемого IP-адреса
+				HOSTNAME_VERIFY     = 0x11, // Ошибка проверки имени хоста
+				MISMATCH_VERSION    = 0x12, // Ошибка версии TLS
+				UNSUPPORTED_VERSION = 0x13, // Ошибка неподдерживаемой версии TLS
 			};
 			/**
 			 * Типы событий TLS

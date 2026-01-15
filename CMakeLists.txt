@@ -453,8 +453,6 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/samples)
 
     # Задаем именя библиотеки и бинарника
-    
-    #SET(IPC_APP_NAME ipc)
     #SET(CLIENT_APP_NAME client)
     #SET(SERVER_APP_NAME server)
     
@@ -478,6 +476,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с файлами
     option(CMAKE_BUILD_FILE_IO_APP_SAMPLE "Build File IO app sample" ON)
 
+    # Устанавливаем имя приложения работы с пингами (ICMP)
+    SET(PING_APP_IO_NAME io-ping)
+    # Указываем что нужно собрать приложение работы с пингами (ICMP)
+    option(CMAKE_BUILD_PING_IO_APP_SAMPLE "Build Ping IO app sample" ON)
+
     # Устанавливаем имя приложения работы с таймером
     SET(TIMER_APP_IO_NAME io-timer)
     # Указываем что нужно собрать приложение работы с таймером
@@ -487,6 +490,17 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(EVENTS_APP_IO_NAME io-events)
     # Указываем что нужно собрать приложение работы с пользовательскими событиями
     option(CMAKE_BUILD_EVENTS_IO_APP_SAMPLE "Build Events IO app sample" ON)
+
+    # Устанавливаем имя приложения работы с межпроцессорным взаимодействием (именованный канал)
+    SET(IPC_PIPE_APP_IO_NAME ipc-pipe)
+    # Устанавливаем имя приложения работы с межпроцессорным взаимодействием (поток)
+    SET(IPC_STREAM_APP_IO_NAME ipc-stream)
+    # Устанавливаем имя приложения работы с межпроцессорным взаимодействием (датаграмма)
+    SET(IPC_DATAGRAM_APP_IO_NAME ipc-datagram)
+    # Устанавливаем имя приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+    SET(IPC_SEQPACKET_APP_IO_NAME ipc-seqpacket)
+    # Указываем что нужно собрать приложение работы с межпроцессорным взаимодействием
+    option(CMAKE_BUILD_IPC_IO_APP_SAMPLE "Build IPC IO app sample" ON)
 endif (${CMAKE_BUILD_SAMPLES})
 
 # Если операционной системой является Windows
@@ -519,46 +533,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
                 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${dir}
             )
         endfunction()
-    
-        # Если нужно собрать тесты для работы с ОС
-        if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-            # Выполняем создание приложения работы с IP-адресами
-            add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
-        endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с датой и временем
-        if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-            # Выполняем создание приложения работы с датой и временем
-            add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
-        endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с каталогами
-        if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с каталогами
-            add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
-        endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с файлами
-        if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с файлами
-            add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
-        endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с таймером
-        if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с таймером
-            add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
-        endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с пользовательскими событиями
-        if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с пользовательскими событиями
-            add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
-        endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-
-        #add_executable(${IPC_APP_NAME} sample/ipc.cpp ${RES_FILES})
-        #add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
-        #add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
     endif (${CMAKE_BUILD_SAMPLES})
 # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
 else()
@@ -580,48 +554,68 @@ else()
                 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${dir}
             )
         endfunction()
-    
-        # Если нужно собрать тесты для работы с ОС
-        if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-            # Выполняем создание приложения работы с IP-адресами
-            add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
-        endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с датой и временем
-        if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-            # Выполняем создание приложения работы с датой и временем
-            add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
-        endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с каталогами
-        if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с каталогами
-            add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
-        endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с файлами
-        if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с файлами
-            add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
-        endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-
-         # Если нужно собрать тесты для работы с таймером
-        if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с таймером
-            add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
-        endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-
-        # Если нужно собрать тесты для работы с пользовательскими событиями
-        if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-            # Выполняем создание приложения работы с пользовательскими событиями
-            add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
-        endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-        
-        #add_executable(${IPC_APP_NAME} sample/ipc.cpp)
-        #add_executable(${CLIENT_APP_NAME} sample/client.cpp)
-        #add_executable(${SERVER_APP_NAME} sample/server.cpp)
     endif (${CMAKE_BUILD_SAMPLES})
 endif()
+
+# Если необходимо собрать семплы
+if (${CMAKE_BUILD_SAMPLES})
+    # Если нужно собрать тесты для работы с ОС
+    if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+        # Выполняем создание приложения работы с IP-адресами
+        add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
+    endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с датой и временем
+    if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+        # Выполняем создание приложения работы с датой и временем
+        add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
+    endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с каталогами
+    if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+        # Выполняем создание приложения работы с каталогами
+        add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
+    endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с файлами
+    if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+        # Выполняем создание приложения работы с файлами
+        add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
+    endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с пингами (ICMP)
+    if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+        # Выполняем создание приложения работы с пингами (ICMP)
+        add_sample(${PING_APP_IO_NAME} sample/io/ping.cpp io)
+    endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
+        # Если нужно собрать тесты для работы с таймером
+    if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+        # Выполняем создание приложения работы с таймером
+        add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
+    endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+    # Если нужно собрать тесты для работы с пользовательскими событиями
+    if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+        # Выполняем создание приложения работы с пользовательскими событиями
+        add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
+    endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+    
+    # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+    if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+        # Выполняем создание приложения работы с межпроцессорным взаимодействием (именованный канал)
+        add_sample(${IPC_PIPE_APP_IO_NAME} sample/ipc/pipe.cpp ipc)
+        # Выполняем создание приложения работы с межпроцессорным взаимодействием (поток)
+        add_sample(${IPC_STREAM_APP_IO_NAME} sample/ipc/stream.cpp ipc)
+        # Выполняем создание приложения работы с межпроцессорным взаимодействием (датаграмма)
+        add_sample(${IPC_DATAGRAM_APP_IO_NAME} sample/ipc/datagram.cpp ipc)
+        # Выполняем создание приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+        add_sample(${IPC_SEQPACKET_APP_IO_NAME} sample/ipc/seqpacket.cpp ipc)
+    endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+
+    #add_executable(${CLIENT_APP_NAME} sample/client.cpp)
+    #add_executable(${SERVER_APP_NAME} sample/server.cpp)
+endif (${CMAKE_BUILD_SAMPLES})
 
 # Если активирован режим отладки
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -688,6 +682,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+            # Если нужно собрать тесты для работы с пингами (ICMP)
+            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с пингами (ICMP)
+                target_link_libraries(
+                    ${PING_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
             # Если нужно собрать тесты для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
@@ -710,13 +715,40 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения межпроцессного взаимодействия
-            #target_link_libraries(
-            #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
+            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+                target_link_libraries(
+                    ${IPC_PIPE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+                target_link_libraries(
+                    ${IPC_STREAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+                target_link_libraries(
+                    ${IPC_DATAGRAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+                target_link_libraries(
+                    ${IPC_SEQPACKET_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения клиента
             #target_link_libraries(
@@ -786,6 +818,16 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+            # Если нужно собрать тесты для работы с пингами (ICMP)
+            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с пингами (ICMP)
+                target_link_libraries(
+                    ${PING_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
             # Если нужно собрать тесты для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
@@ -806,12 +848,36 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения межпроцессного взаимодействия
-            #target_link_libraries(
-            #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
+            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+                target_link_libraries(
+                    ${IPC_PIPE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+                target_link_libraries(
+                    ${IPC_STREAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+                target_link_libraries(
+                    ${IPC_DATAGRAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+                target_link_libraries(
+                    ${IPC_SEQPACKET_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения клиента
             #target_link_libraries(
@@ -882,6 +948,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+            # Если нужно собрать тесты для работы с пингами (ICMP)
+            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с пингами (ICMP)
+                target_link_libraries(
+                    ${PING_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
             # Если нужно собрать тесты для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
@@ -906,14 +984,44 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения межпроцессного взаимодействия
-            #target_link_libraries(
-            #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
+            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+                target_link_libraries(
+                    ${IPC_PIPE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+                target_link_libraries(
+                    ${IPC_STREAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+                target_link_libraries(
+                    ${IPC_DATAGRAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+                target_link_libraries(
+                    ${IPC_SEQPACKET_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения клиента
             #target_link_libraries(
@@ -981,6 +1089,17 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+            # Если нужно собрать тесты для работы с пингами (ICMP)
+            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с пингами (ICMP)
+                target_link_libraries(
+                    ${PING_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
             # Если нужно собрать тесты для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
@@ -1003,13 +1122,40 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения межпроцессного взаимодействия
-            #target_link_libraries(
-            #    ${IPC_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
+            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+                target_link_libraries(
+                    ${IPC_PIPE_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+                target_link_libraries(
+                    ${IPC_STREAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+                target_link_libraries(
+                    ${IPC_DATAGRAM_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+                target_link_libraries(
+                    ${IPC_SEQPACKET_APP_IO_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
             # Выполняем сборку приложения клиента
             #target_link_libraries(
@@ -1038,6 +1184,7 @@ if (${CMAKE_BUILD_SAMPLES})
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
             # Если нужно собрать тесты для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+                # Выполняем сборку приложения работы с IP-адресами
                 add_custom_command(TARGET "${IP_APP_NET_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IP_APP_NET_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${IP_APP_NET_NAME}\" to enable core dump on MacOS X"
@@ -1047,6 +1194,7 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать тесты для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения даты и времени
                 add_custom_command(TARGET "${DATE_APP_SYS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DATE_APP_SYS_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${DATE_APP_SYS_NAME}\" to enable core dump on MacOS X"
@@ -1056,6 +1204,7 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать тесты для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с каталогами
                 add_custom_command(TARGET "${DIR_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DIR_APP_IO_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${DIR_APP_IO_NAME}\" to enable core dump on MacOS X"
@@ -1065,6 +1214,7 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать тесты для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с файлами
                 add_custom_command(TARGET "${FILE_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${FILE_APP_IO_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${FILE_APP_IO_NAME}\" to enable core dump on MacOS X"
@@ -1072,8 +1222,19 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+            # Если нужно собрать тесты для работы с пингами (ICMP)
+            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с пингами (ICMP)
+                add_custom_command(TARGET "${PING_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PING_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${PING_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
             # Если нужно собрать тесты для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+                # Выполняем сборку приложения таймера
                 add_custom_command(TARGET "${TIMER_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TIMER_APP_IO_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${TIMER_APP_IO_NAME}\" to enable core dump on MacOS X"
@@ -1083,6 +1244,7 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать тесты для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+                # Выполняем сборку приложения пользовательских событий
                 add_custom_command(TARGET "${EVENTS_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${EVENTS_APP_IO_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${EVENTS_APP_IO_NAME}\" to enable core dump on MacOS X"
@@ -1090,11 +1252,36 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            #add_custom_command(TARGET "${IPC_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${IPC_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
+            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+                add_custom_command(TARGET "${IPC_PIPE_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_PIPE_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${IPC_PIPE_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+                add_custom_command(TARGET "${IPC_STREAM_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_STREAM_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${IPC_STREAM_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+                add_custom_command(TARGET "${IPC_DATAGRAM_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_DATAGRAM_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${IPC_DATAGRAM_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+                add_custom_command(TARGET "${IPC_SEQPACKET_APP_IO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_SEQPACKET_APP_IO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${IPC_SEQPACKET_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
             #add_custom_command(TARGET "${CLIENT_APP_NAME}" POST_BUILD
             #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NAME}>" "${entitlements_file}"
@@ -1144,6 +1331,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${FILE_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${FILE_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+            # Если нужно собрать тесты для работы с пингами (ICMP)
+            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+                # Выполняем анализ приложения пинга (ICMP)
+                pvs_studio_add_target(TARGET ${PING_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
             # Если нужно собрать тесты для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем анализ приложения таймера
@@ -1156,7 +1349,18 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${EVENTS_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${EVENTS_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            #pvs_studio_add_target(TARGET ${IPC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+                # Выполняем анализ приложения работы с межпроцессорным взаимодействием (именованный канал)
+                pvs_studio_add_target(TARGET ${IPC_PIPE_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_PIPE_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с межпроцессорным взаимодействием (поток)
+                pvs_studio_add_target(TARGET ${IPC_STREAM_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_STREAM_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с межпроцессорным взаимодействием (датаграмма)
+                pvs_studio_add_target(TARGET ${IPC_DATAGRAM_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_DATAGRAM_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+                pvs_studio_add_target(TARGET ${IPC_SEQPACKET_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_SEQPACKET_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+
             #pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             #pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         endif (CMAKE_ENABLED_PVS)
@@ -1264,6 +1468,12 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${FILE_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
+    # Если нужно собрать тесты для работы с пингами (ICMP)
+    if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+        # Устанавливаем приложение работы с пингами (ICMP)
+        install(TARGETS ${PING_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
     # Если нужно собрать тесты для работы с таймером
     if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с таймером
@@ -1276,7 +1486,18 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${EVENTS_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-    #install(TARGETS ${IPC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+    if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+        # Устанавливаем приложение работы с межпроцессорным взаимодействием (именованный канал)
+        install(TARGETS ${IPC_PIPE_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с межпроцессорным взаимодействием (поток)
+        install(TARGETS ${IPC_STREAM_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с межпроцессорным взаимодействием (датаграмма)
+        install(TARGETS ${IPC_DATAGRAM_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с межпроцессорным взаимодействием (последовательная упаковка)
+        install(TARGETS ${IPC_SEQPACKET_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+
     #install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     #install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
