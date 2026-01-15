@@ -390,23 +390,28 @@ namespace {
  */
 namespace state {
 	/**
-	 * Флаг проверки на мусорные данные подлежащие удалению
+	 * @brief Флаг проверки на мусорные данные подлежащие удалению
+	 *
 	 */
 	static constexpr uint8_t GARBAGE_MODE = 0x01;
 	/**
-	 * Флаг выполненного рукопожатия TLS
+	 * @brief Флаг выполненного рукопожатия TLS
+	 *
 	 */
 	static constexpr uint8_t HANDSHAKE_MODE = 0x02;
 	/**
-	 * Флаг проверки режима безсостояния TLS
+	 * @brief Флаг проверки режима безсостояния TLS
+	 *
 	 */
 	static constexpr uint8_t STATELESS_MODE = 0x04;
 	/**
-	 * Флаг работы в мультисертификатном режиме
+	 * @brief Флаг работы в мультисертификатном режиме
+	 *
 	 */
 	static constexpr uint8_t MULTICERT_MODE = 0x08;
 	/**
-	 * Флаг проверки имени хоста сервера
+	 * @brief Флаг проверки имени хоста сервера
+	 *
 	 */
 	static constexpr uint8_t CERTIFICATE_VERIFY = 0x10;
 };

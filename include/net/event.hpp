@@ -240,63 +240,78 @@ namespace awh {
 		 */
 		namespace options {
 			/**
-			 * Опция не определена
+			 * @brief Опция не определена
+			 *
 			 */
 			static constexpr uint16_t NONE = 0x00;
 			/**
-			 * Опция ручной установки заголовков IP пакетов
+			 * @brief Опция ручной установки заголовков IP пакетов
+			 *
 			 */
 			static constexpr uint16_t HDRINCL = 0x01;
 			/**
-			 * Опция отложенной отправки TCP пакетов
+			 * @brief Опция отложенной отправки TCP пакетов
+			 *
 			 */
 			static constexpr uint16_t TCP_CORK = 0x02;
 			/**
-			 * Опция отключения алгоритма Нейгла
+			 * @brief Опция отключения алгоритма Нейгла
+			 *
 			 */
 			static constexpr uint16_t TCP_NO_DELAY = 0x04;
 			/**
-			 * Опция широковещательного адреса
+			 * @brief Опция широковещательного адреса
+			 *
 			 */
 			static constexpr uint16_t BROADCAST = 0x08;
 			/**
-			 * Опция включения TCP keepalive
+			 * @brief Опция включения TCP keepalive
+			 *
 			 */
 			static constexpr uint16_t KEEPALIVE = 0x10;
 			/**
-			 * Опция только IPv6 для сокета
+			 * @brief Опция только IPv6 для сокета
+			 *
 			 */
 			static constexpr uint16_t IPV6_ONLY = 0x20;
 			/**
-			 * Опция отключения сигнала SIGILL
+			 * @brief Опция отключения сигнала SIGILL
+			 *
 			 */
 			static constexpr uint16_t NO_SIGILL = 0x40;
 			/**
-			 * Опция отключения сигнала SIGPIPE
+			 * @brief Опция отключения сигнала SIGPIPE
+			 *
 			 */
 			static constexpr uint16_t NO_SIGPIPE = 0x80;
 			/**
-			 * Опция повторного использования адреса
+			 * @brief Опция повторного использования адреса
+			 *
 			 */
 			static constexpr uint16_t REUSE_ADDR = 0x100;
 			/**
-			 * Опция повторного использования порта
+			 * @brief Опция повторного использования порта
+			 *
 			 */
 			static constexpr uint16_t REUSE_PORT = 0x200;
 			/**
-			 * Опция неблокирующего ввода-вывода
+			 * @brief Опция неблокирующего ввода-вывода
+			 *
 			 */
 			static constexpr uint16_t NO_IO_BLOCK = 0x400;
 			/**
-			 * Опция умного неблокирующего ввода-вывода
+			 * @brief Опция умного неблокирующего ввода-вывода
+			 *
 			 */
 			static constexpr uint16_t SM_IO_BLOCK = 0x800;
 			/**
-			 * Опция закрытия сокета при выполнении exec
+			 * @brief Опция закрытия сокета при выполнении exec
+			 *
 			 */
 			static constexpr uint16_t CLOSE_ON_EXEC = 0x1000;
 			/**
-			 * Опция включения мультикастовой петли
+			 * @brief Опция включения мультикастовой петли
+			 *
 			 */
 			static constexpr uint16_t MULTICAST_LOOPBACK = 0x2000;
 		};
@@ -306,39 +321,48 @@ namespace awh {
 		 */
 		namespace callback {
 			/**
-			 * Функция обратного вызова срабатывающая при возрождении события
+			 * @brief Функция обратного вызова срабатывающая при возрождении события
+			 *
 			 */
 			using rebirth_t = std::function <void (const event::id_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при подключении события
+			 * @brief Функция обратного вызова срабатывающая при подключении события
+			 *
 			 */
 			using connect_t = std::function <void (const event::id_t, const bool)>;
 			/**
-			 * Функция обратного вызова срабатывающая при записи в событие
+			 * @brief Функция обратного вызова срабатывающая при записи в событие
+			 *
 			 */
 			using write_t = std::function <void (const event::id_t, const size_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при принятии события
+			 * @brief Функция обратного вызова срабатывающая при принятии события
+			 *
 			 */
 			using accept_t = std::function <void (const event::id_t, const event::id_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при общем событии
+			 * @brief Функция обратного вызова срабатывающая при общем событии
+			 *
 			 */
 			using event_t = std::function <void (const event::id_t, const event::action_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при изменении статуса события
+			 * @brief Функция обратного вызова срабатывающая при изменении статуса события
+			 *
 			 */
 			using status_t = std::function <void (const event::id_t, const event::status_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при чтении из события
+			 * @brief Функция обратного вызова срабатывающая при чтении из события
+			 *
 			 */
 			using read_t = std::function <void (const event::id_t, const uint8_t *, const size_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при ошибке события
+			 * @brief Функция обратного вызова срабатывающая при ошибке события
+			 *
 			 */
 			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
 			/**
-			 * Функция обратного вызова срабатывающая при изменении каталога
+			 * @brief Функция обратного вызова срабатывающая при изменении каталога
+			 *
 			 */
 			using change_t = std::function <void (const event::id_t, const action_t, const vnode_t, const std::string &)>;
 		};

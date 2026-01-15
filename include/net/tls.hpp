@@ -121,19 +121,23 @@ namespace awh {
 			using id_t = uint64_t;
 		public:
 			/**
-			 * Функция обратного вызова срабатывающая при изменении состояния
+			 * @brief Функция обратного вызова срабатывающая при изменении состояния
+			 *
 			 */
 			using state_callback_t = std::function <void (const id_t, const state_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при ошибке события
+			 * @brief Функция обратного вызова срабатывающая при ошибке события
+			 *
 			 */
 			using error_callback_t = std::function <void (const id_t, const error_t, const string &)>;
 			/**
-			 * Функция обратного вызова срабатывающая при записи
+			 * @brief Функция обратного вызова срабатывающая при записи
+			 *
 			 */
 			using write_callback_t = std::function <void (const id_t, const event_t, const size_t)>;
 			/**
-			 * Функция обратного вызова срабатывающая при чтении
+			 * @brief Функция обратного вызова срабатывающая при чтении
+			 *
 			 */
 			using read_callback_t = std::function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
 		private:

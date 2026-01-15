@@ -1112,11 +1112,13 @@ namespace awh {
 				 */
 				namespace callback {
 					/**
-					 * Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
+					 * @brief Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
+					 *
 					 */
 					using info_t = std::function <void (const event::id_t, const minfo_t &)>;
 					/**
-					 * Функция обратного вызова срабатывающая при получении событий SCTP
+					 * @brief Функция обратного вызова срабатывающая при получении событий SCTP
+					 *
 					 */
 					using events_t = std::function <void (const event::id_t, unique_ptr <event_t>)>;
 				};
