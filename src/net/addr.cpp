@@ -2930,7 +2930,8 @@ string awh::NetworkAddress::arpa() const noexcept {
 			// Если IP-адрес определён как IPv6
 			case static_cast <uint8_t> (type_t::IPV6): {
 				/**
-				 * Шестнадцатеричные цифры
+				 * @brief Шестнадцатеричные цифры
+				 *
 				 */
 				static constexpr char hex[] = "0123456789abcdef";
 				// 32 hex-цифры + 31 точка + ".ip6.arpa" = ~72 символов
