@@ -4672,7 +4672,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr){
 												// Вызываем функцию обратного вызова на неудачу рукопожатия
-												member->callback.state(id, tls_t::state_t::HANDSHAKE);
+												member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
 												// Вызываем функцию обратного вызова на уничтожение контекста TLS
 												member->callback.state(id, tls_t::state_t::DESTROYED);
 											}
@@ -4717,7 +4717,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr){
 									// Вызываем функцию обратного вызова на неудачу рукопожатия
-									member->callback.state(id, tls_t::state_t::HANDSHAKE);
+									member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
 									// Вызываем функцию обратного вызова на уничтожение контекста TLS
 									member->callback.state(id, tls_t::state_t::DESTROYED);
 								}
