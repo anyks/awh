@@ -63,7 +63,8 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Log {
 		public:
 			/**
-			 * Флаги логирования
+			 * @brief Флаги логирования
+			 *
 			 */
 			enum class flag_t : uint8_t {
 				NONE     = 0x00, // Флаг не установлен
@@ -72,7 +73,8 @@ namespace awh {
 				CRITICAL = 0x03  // Критическое сообщение
 			};
 			/**
-			 * Флаги работы логов
+			 * @brief Флаги работы логов
+			 *
 			 */
 			enum class mode_t : uint8_t {
 				NONE     = 0x00, // Вывод логов запрещён
@@ -82,7 +84,8 @@ namespace awh {
 				DEFERRED = 0x04  // Разрешено выводить логи в функцию обратного вызова
 			};
 			/**
-			 * Флаги разделителя формирования логов
+			 * @brief Флаги разделителя формирования логов
+			 *
 			 */
 			enum class separator_t : uint8_t {
 				NONE   = 0x00, // Разделитель отключён
@@ -90,7 +93,8 @@ namespace awh {
 				ALWAYS = 0x02  // Отображать разделитель всегда
 			};
 			/**
-			 * Уровни логирования
+			 * @brief Уровни логирования
+			 *
 			 */
 			enum class level_t : uint8_t {
 				NONE             = 0x00, // Логирование отключено

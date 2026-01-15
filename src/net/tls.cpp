@@ -1661,7 +1661,8 @@ namespace cookie {
  */
 namespace verify {
 	/**
-	 * Статусы проверки сертификата
+	 * @brief Статусы проверки сертификата
+	 *
 	 */
 	enum class status_t : uint8_t {
 		NONE                 = 0x00, // Не установлено

@@ -53,7 +53,8 @@ namespace awh {
 	class Screen {
 		public:
 			/**
-			 * Состояние очереди
+			 * @brief Состояние очереди
+			 *
 			 */
 			enum class state_t : uint8_t {
 				NONE      = 0x00, // Состояние очереди не установленно
@@ -61,7 +62,8 @@ namespace awh {
 				DECREMENT = 0x02  // Уменьшение очереди
 			};
 			/**
-			 * Состояние здоровья
+			 * @brief Состояние здоровья
+			 *
 			 */
 			enum class health_t : uint8_t {
 				DEAD  = 0x00, // Мёртвый

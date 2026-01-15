@@ -56,7 +56,8 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Framework {
 		public:
 			/**
-			 * Типы кодировок адресов файлов и каталогов
+			 * @brief Типы кодировок адресов файлов и каталогов
+			 *
 			 */
 			enum class codepage_t : uint8_t {
 				NONE        = 0x00, // Кодировка не установлена
@@ -65,7 +66,8 @@ namespace awh {
 				CP1251_UTF8 = 0x03  // Кодировка CP1251
 			};
 			/**
-			 * Флаги трансформации строк
+			 * @brief Флаги трансформации строк
+			 *
 			 */
 			enum class transform_t : uint8_t {
 				NONE       = 0x00, // Флаг не установлен
@@ -75,7 +77,8 @@ namespace awh {
 				SMART_CASE = 0x04  // Флаг умного перевода начальных символов в верхний режим
 			};
 			/**
-			 * Тип штампа времени
+			 * @brief Тип штампа времени
+			 *
 			 */
 			enum class chrono_t : uint8_t {
 				NONE         = 0x00, // Не установлено
@@ -91,7 +94,8 @@ namespace awh {
 				NANOSECONDS  = 0x0A  // Наносекунды
 			};
 			/**
-			 * Флаги проверки текстовых данных
+			 * @brief Флаги проверки текстовых данных
+			 *
 			 */
 			enum class check_t : uint8_t {
 				NONE            = 0x00, // Флаг не установлен

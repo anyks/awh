@@ -63,7 +63,8 @@ namespace awh {
 			} mtx_t;
 		public:
 			/**
-			 * option_t Опции работы с регулярными выражениями
+			 * @brief Опции работы с регулярными выражениями
+			 *
 			 */
 			enum class option_t : uint8_t {
 				NONE      = 0x00, // Не установлено

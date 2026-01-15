@@ -51,7 +51,8 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Chrono {
 		private:
 			/**
-			 * Формат парсинга даты
+			 * @brief Формат парсинга даты
+			 *
 			 */
 			enum class format_t : uint8_t {
 				NONE = 0x00, // Формат не определён
@@ -85,28 +86,32 @@ namespace awh {
 			};
 		public:
 			/**
-			 * 12-и часовой формат времени
+			 * @brief 12-и часовой формат времени
+			 *
 			 */
 			enum class h12_t : uint8_t {
 				AM = 0x00, // До полудня
 				PM = 0x01  // После полудня
 			};
 			/**
-			 * Параметры смещения
+			 * @brief Параметры смещения
+			 *
 			 */
 			enum class offset_t : uint8_t {
 				INCREMENT = 0x00, // Инкремент
 				DECREMENT = 0x01  // Декремент
 			};
 			/**
-			 * Параметры актуального состояния даты
+			 * @brief Параметры актуального состояния даты
+			 *
 			 */
 			enum class actual_t : uint8_t {
 				LEFT   = 0x00, // Сколько осталось времени
 				PASSED = 0x01  // Сколько прошло времени
 			};
 			/**
-			 * Тип хранимой даты
+			 * @brief Тип хранимой даты
+			 *
 			 */
 			enum class storage_t : uint8_t {
 				NONE   = 0x00, // Хранение даты не установлено
@@ -114,7 +119,8 @@ namespace awh {
 				GLOBAL = 0x02  // Дата в формате глобального времени
 			};
 			/**
-			 * Тип штампа времени
+			 * @brief Тип штампа времени
+			 *
 			 */
 			enum class type_t : uint8_t {
 				NONE         = 0x00, // Не установлено
@@ -130,7 +136,8 @@ namespace awh {
 				NANOSECONDS  = 0x0A  // Наносекунды
 			};
 			/**
-			 * Тип элементов даты
+			 * @brief Тип элементов даты
+			 *
 			 */
 			enum class unit_t : uint8_t {
 				NONE         = 0x00, // Элемент даты не установлен
@@ -149,7 +156,8 @@ namespace awh {
 				NANOSECONDS  = 0x0D  // Количество наносекунд
 			};
 			/**
-			 * Временная зона
+			 * @brief Временная зона
+			 *
 			 * @site https://24timezones.com/mirovoe_vremia3.php
 			 */
 			enum class zone_t : uint8_t {

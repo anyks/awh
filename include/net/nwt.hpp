@@ -47,7 +47,10 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT NWT {
 		public:
-			// Типы URL-адреса
+			/**
+			 * @brief Типы URL-адреса
+			 *
+			 */
 			enum class types_t : uint8_t {
 				NONE  = 0x00, // Тип не определён
 				MAC   = 0x01, // MAC-адрес

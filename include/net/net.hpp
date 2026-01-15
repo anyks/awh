@@ -93,14 +93,16 @@ namespace awh {
 			static constexpr socket_t invalid_socket_t = -1;
 		#endif
 		/**
-		 * Режимы установки типа сокета
+		 * @brief Режимы установки типа сокета
+		 *
 		 */
 		enum class socket_mode_t : uint8_t {
 			ENABLED  = 0x01, // Включено
 			DISABLED = 0x02  // Выключено
 		};
 		/**
-		 * События сокета
+		 * @brief События сокета
+		 *
 		 */
 		enum class socket_event_t : uint8_t {
 			READ  = 0x01, // Чтение
@@ -595,7 +597,8 @@ namespace awh {
 			 */
 			namespace sctp {
 				/**
-				 * Идентификатор полезной нагрузки SCTP
+				 * @brief Идентификатор полезной нагрузки SCTP
+				 *
 				 */
 				enum class ppid_t : uint8_t {
 					DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
@@ -603,7 +606,8 @@ namespace awh {
 					WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
 				};
 				/**
-				 * Статусы таймаутов SCTP
+				 * @brief Статусы таймаутов SCTP
+				 *
 				 */
 				enum class timeout_t : uint8_t {
 					NONE        = 0x00, // Таймаут отсутствует
@@ -616,7 +620,8 @@ namespace awh {
 					SHUTDOWNACK = 0x07  // Таймаут SHUTDOWN-ACK
 				};
 				/**
-				 * Типы аутентификации события SCTP
+				 * @brief Типы аутентификации события SCTP
+				 *
 				 */
 				enum class auth_type_t : uint8_t {
 					HMAC_RSVD    = 0x00, // ЗаSCTPрезервировано
@@ -624,7 +629,8 @@ namespace awh {
 					HMAC_SHA256  = 0x02  // HMAC-SHA256 аутентификация
 				};
 				/**
-				 * Типы чанков попадающие под аутентификацию SCTP
+				 * @brief Типы чанков попадающие под аутентификацию SCTP
+				 *
 				 */
 				enum class auth_chunk_t : uint8_t {
 					DATA              = 0x00, // Чанк DATA подлежит аутентификации
@@ -647,7 +653,8 @@ namespace awh {
 					RE_CONFIG         = 0x11  // Чанк RE-CONFIG подлежит аутентификации
 				};
 				/**
-				 * Типы индикаторов события аутентификации
+				 * @brief Типы индикаторов события аутентификации
+				 *
 				 */
 				enum class auth_indics_t : uint8_t {
 					NONE     = 0x00, // Тип аутентификации отсутствует
@@ -656,7 +663,8 @@ namespace awh {
 					FREE_KEY = 0x03  // Событие освобождения ключа
 				};
 				/**
-				 * Флаги отправки сообщения SCTP
+				 * @brief Флаги отправки сообщения SCTP
+				 *
 				 */
 				enum class send_failed_t : uint8_t {
 					NONE   = 0x00, // Флаг отсутствует
@@ -664,14 +672,16 @@ namespace awh {
 					UNSENT = 0x02  // Сообщение не отправлено
 				};
 				/**
-				 * Индикаторы доставки SCTP
+				 * @brief Индикаторы доставки SCTP
+				 *
 				 */
 				enum class pdapi_indics_t : uint8_t {
 					NONE                     = 0x00, // Индикатор отсутствует
 					PARTIAL_DELIVERY_ABORTED = 0x01  // Частичная доставка прервана
 				};
 				/**
-				 * Типы сброса потоков SCTP
+				 * @brief Типы сброса потоков SCTP
+				 *
 				 */
 				enum class stream_reset_t : uint8_t {
 					NONE         = 0x00, // Тип сброса отсутствует
@@ -681,7 +691,8 @@ namespace awh {
 					INCOMING_SSN = 0x04  // Сброс входящих потоков
 				};
 				/**
-				 * Типы изменения потоков SCTP
+				 * @brief Типы изменения потоков SCTP
+				 *
 				 */
 				enum class stream_change_t : uint8_t {
 					NONE   = 0x00, // Тип изменения отсутствует
@@ -689,7 +700,8 @@ namespace awh {
 					DENIED = 0x02  // Изменение отклонено
 				};
 				/**
-				 * Статусы состояния сокета SCTP
+				 * @brief Статусы состояния сокета SCTP
+				 *
 				 */
 				enum class state_status_t : uint8_t {
 					NONE              = 0x00, // Статус отсутствует
@@ -705,7 +717,8 @@ namespace awh {
 					SHUTDOWN_ACK_SENT = 0x0A  // Отправлен SHUTDOWN-ACK, ждём SHUTDOWN-COMPLETE
 				};
 				/**
-				 * Типы событий SCTP
+				 * @brief Типы событий SCTP
+				 *
 				 */
 				enum class event_type_t : uint8_t {
 					NONE                   = 0x00, // Тип события отсутствует
@@ -725,7 +738,8 @@ namespace awh {
 					PARTIAL_DELIVERY_EVENT = 0x0E  // Частичная доставка
 				};
 				/**
-				 * Типы сброса ассоциации SCTP
+				 * @brief Типы сброса ассоциации SCTP
+				 *
 				 */
 				enum class assoc_reset_t : uint8_t {
 					NONE   = 0x00, // Тип сброса отсутствует
@@ -733,7 +747,8 @@ namespace awh {
 					DENIED = 0x02  // Сброс отклонён
 				};
 				/**
-				 * Информация об ассоциации SCTP
+				 * @brief Информация об ассоциации SCTP
+				 *
 				 */
 				enum class assoc_info_t : uint8_t {
 					NONE                = 0x00, // Информация об ассоциации отсутствует
@@ -746,7 +761,8 @@ namespace awh {
 					SUPPORTS_INTERLEAVE = 0x07  // Поддерживается перемежение сообщений
 				};
 				/**
-				 * Состояния ассоциации SCTP
+				 * @brief Состояния ассоциации SCTP
+				 *
 				 */
 				enum class assoc_state_t : uint8_t {
 					NONE 	      = 0x00, // Состояние ассоциации отсутствует
@@ -757,7 +773,8 @@ namespace awh {
 					CANT_START    = 0x05  // Не удалось запустить связь
 				};
 				/**
-				 * Состояния адреса однорангового узла SCTP
+				 * @brief Состояния адреса однорангового узла SCTP
+				 *
 				 */
 				enum class paddr_state_t : uint8_t {
 					NONE        = 0x00, // Состояние адреса отсутствует
@@ -769,7 +786,8 @@ namespace awh {
 					UNREACHABLE = 0x06  // Адрес стал недоступен
 				};
 				/**
-				 * Флаги информации о сообщении SCTP
+				 * @brief Флаги информации о сообщении SCTP
+				 *
 				 */
 				enum class info_t : uint8_t {
 					NONE               = 0x00, // Флаг отсутствует

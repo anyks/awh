@@ -39,7 +39,17 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT TransportLayerSecurity {
 		public:
 			/**
-			 * Состояния TLS работы
+			 * @brief Типы событий TLS
+			 *
+			 */
+			enum class event_t : uint8_t {
+				NONE       = 0x00, // Событие не установлено
+				ENCRYPTION = 0x01, // Событие шифрования данных
+				DECRYPTION = 0x02  // Событие расшифровки данных
+			};
+			/**
+			 * @brief Состояния TLS работы
+			 *
 			 */
 			enum class state_t : uint8_t {
 				NONE             = 0x00, // Состояние не установлено
@@ -49,7 +59,8 @@ namespace awh {
 				HANDSHAKE_FAILED = 0x04  // Состояние ошибки рукопожатия
 			};
 			/**
-			 * Режимы работы TLS
+			 * @brief Режимы работы TLS
+			 *
 			 */
 			enum class mode_t : uint8_t {
 				NONE      = 0x00, // Режим не установлен
@@ -57,7 +68,8 @@ namespace awh {
 				MULTICERT = 0x02  // Режим мультисертификатов
 			};
 			/**
-			 * Флаги типов файлов TLS
+			 * @brief Флаги типов файлов TLS
+			 *
 			 */
 			enum class type_t : uint8_t {
 				NONE = 0x00, // Тип не установлен
@@ -65,7 +77,8 @@ namespace awh {
 				ASN1 = 0x02, // Формат ASN1
 			};
 			/**
-			 * Флаги типов ошибок TLS
+			 * @brief Флаги типов ошибок TLS
+			 *
 			 */
 			enum class error_t : uint8_t {
 				NONE                = 0x00, // Ошибка не установлена
@@ -88,15 +101,6 @@ namespace awh {
 				HOSTNAME_VERIFY     = 0x11, // Ошибка проверки имени хоста
 				MISMATCH_VERSION    = 0x12, // Ошибка версии TLS
 				UNSUPPORTED_VERSION = 0x13, // Ошибка неподдерживаемой версии TLS
-			};
-			/**
-			 * Типы событий TLS
-			 *
-			 */
-			enum class event_t : uint8_t {
-				NONE       = 0x00, // Событие не установлено
-				ENCRYPTION = 0x01, // Событие шифрования данных
-				DECRYPTION = 0x02  // Событие расшифровки данных
 			};
 		public:
 			/**

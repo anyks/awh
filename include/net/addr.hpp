@@ -48,7 +48,8 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT NetworkAddress {
 		public:
 			/**
-			 * Режим дислокации IP-адреса
+			 * @brief Режим дислокации IP-адреса
+			 *
 			 */
 			enum class own_t : uint8_t {
 				NONE = 0x00, // Адрес не установлен
@@ -57,7 +58,8 @@ namespace awh {
 				SYS  = 0x03  // Адрес является зарезервированным
 			};
 			/**
-			 * Составная часть IP-адреса
+			 * @brief Составная часть IP-адреса
+			 *
 			 */
 			enum class addr_t : uint8_t {
 				NONE    = 0x00, // Адрес не установлен
@@ -65,7 +67,8 @@ namespace awh {
 				NETWORK = 0x02  // Адрес сети
 			};
 			/**
-			 * Порядок следования байт
+			 * @brief Порядок следования байт
+			 *
 			 */
 			enum class endian_t : uint8_t {
 				NONE   = 0x00, // Порядок следования байт не установлен
@@ -73,7 +76,8 @@ namespace awh {
 				LITTLE = 0x02  // Порядок байт от младшего к старшему
 			};
 			/**
-			 * Размер формата IP-адреса
+			 * @brief Размер формата IP-адреса
+			 *
 			 */
 			enum class format_size_t : uint8_t {
 				NONE   = 0x00, // Размер формата не установлен
@@ -82,7 +86,8 @@ namespace awh {
 				MIDDLE = 0x03  // Средний формат IP-адреса [0:0:0:0:0:0:ae21:ad12 / 192.168.0.1]
 			};
 			/**
-			 * Флаги форматирования IP-адреса
+			 * @brief Флаги форматирования IP-адреса
+			 *
 			 */
 			enum class format_flag_t : uint8_t {
 				NONE      = 0x00, // Флаг не установлен
@@ -93,7 +98,8 @@ namespace awh {
 				HEX_IPV6  = 0x05  // Шестнадцатеричный формат IPv6
 			};
 			/**
-			 * Идентификаторы разновидностей адресов
+			 * @brief Идентификаторы разновидностей адресов
+			 *
 			 */
 			enum class type_t : uint8_t {
 				NONE  = 0x00, // Не определено
