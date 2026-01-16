@@ -1349,40 +1349,11 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Размер буфера на чтение: " << io.bufferSize(eids2[0], event::action_t::READ) << " байт. " << endl;
 		cout << " Размер буфера на запись: " << io.bufferSize(eids2[0], event::action_t::WRITE) << " байт. " << endl;
 	}
-	/**
-	 * Таймерная часть асинхронного движка ввода-вывода
-	 */
-	/*
-	{
-		// Создаём объект асинхронного движка ввода-вывода
-		io_t io(&fmk, &log);
-
-		cout << endl << " ******************** TIMER ******************** " << endl;
-		cout << " ======================================== TIMER " << endl;
-
-		// Добавляем новое событие клиента интервала
-		event::id_t eid = io.event(event::node_t::TIMER, event::family_t::INTERVAL, event::type_t::NONE, event::protocol_t::NONE);
-
-		cout << " Таймерное событие ID: " << eid << endl;
-
-		io.timeout(eid, event::action_t::NONE, 12000);
-
-		if(io.initialize()){
-			io.commit(eid);
-
-			io.on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
-				if(status == event::status_t::SUCCESS)
-					cout << " Таймер сработал! " << eid << endl;
-			});
-
-			while(io.poll());
-		}
-	}
-	*/
+	
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -1633,7 +1604,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Если подключение к серверу прошло успешно
-					if(io.connect(eid)){
+					if(io.connect(eid, true)){
 						// Выполняем запуск события
 						if(io.launch(eid)){
 							// Выводим сообщение об успешном запуске события
@@ -1651,65 +1622,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Если адрес не установлен
 		} else cout << " Ошибка установки адреса клиента!" << endl;
 	}
-
-	/**
-	 При коннекте использовать проверку для локальных интерфейсов 127.0.0.1 и ::1
-
-	 	bool is_loopback(const std::string& ip_str) {
-			struct in_addr addr;
-			if (inet_pton(AF_INET, ip_str.c_str(), &addr) != 1)
-				return false; // некорректный IPv4
-
-			uint32_t ip = ntohl(addr.s_addr);
-			return (ip >> 24) == 127; // первые 8 бит == 127
-		}
-
-		bool is_loopback_v6(const std::string& ip_str) {
-			struct in6_addr addr;
-			if (inet_pton(AF_INET6, ip_str.c_str(), &addr) != 1)
-				return false;
-
-			const uint8_t* bytes = addr.s6_addr;
-			for (int i = 0; i < 15; ++i)
-				if (bytes[i] != 0) return false;
-			return bytes[15] == 1; // только последний байт == 1
-		}
-	 */
-
-	/*
-	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
-	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
-	// Устанавливаем порт события
-	io.port(eid, 8080);
-	// Устанавливаем адрес события (en0 -> ea:ab:fd:74:1d:0d -> 10.9.5.161)
-	// if(io.address(eid, event::address_t::NETWORK, "10.9.5.0/255.255.255.0")){
-	// if(io.address(eid, event::address_t::NETWORK, "fe80::105d:12e9:40c7:a76/76")){
-	// if(io.address(eid, event::address_t::IPV4, "192.168.7.231")){
-	// if(io.address(eid, event::address_t::NETWORK, "192.168.7.231/255.255.255.0")){
-	// if(io.address(eid, event::address_t::NETWORK, "FE80::96:81FE:CCE3:0/112")){
-	// if(io.address(eid, event::address_t::MAC, "EA:AB:FD:74:1D:0D")){
-	// if(io.address(eid, event::address_t::UDS, "/tmp/awh.sock")){
-	if(io.iface(eid, "EN0")){
-
-		cout << " !!!!! " << io.address(eid, event::address_t::MAC) << ":" << io.port(eid) << " !!!!! " << io.target(eid) << " == " << io.iface(eid) << endl;
-
-		// cout << " !!!!! " << io.address(eid, event::address_t::UDS) << " !!!!! " << io.host(eid) << endl;
-
-		io.bufferSize(eid, event::action_t::READ, 1024 * 64);
-		io.bufferSize(eid, event::action_t::WRITE, 1024 * 64);
-
-		cout << " Размер буфера на чтение: " << io.bufferSize(eid, event::action_t::READ) << " байт. " << endl;
-		cout << " Размер буфера на запись: " << io.bufferSize(eid, event::action_t::WRITE) << " байт. " << endl;
-
-	// Если адрес не установлен
-	} else {
-
-		cout << " Ошибка установки адреса события! " << endl;
-
-	}
-	*/
 	// Выводим результат
 	return 0;
 }

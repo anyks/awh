@@ -121,22 +121,9 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок DTLS
-		tls.on(ctl, [&log](const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки DTLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение DTLS
-				case static_cast <uint8_t> (tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке DTLS
-					log.print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка DTLS
-				case static_cast <uint8_t> (tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке DTLS
-					log.print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+		tls.on(ctl, [&log](const tls_t::id_t id, [[maybe_unused]] const tls_t::error_t error, const string & message) noexcept -> void {
+			// Выводим сообщение о предупреждающей ошибке DTLS
+			log.print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных DTLS
 		tls.on(ctl, [&log](const tls_t::id_t id, const tls_t::event_t event, const size_t size) noexcept -> void {

@@ -63,86 +63,86 @@
 \DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ логера}}
 \DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ \_log;}
 \DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad0923c77d60556f0f34b1ea5e54cab3b}{rss\_t}}\ :\ uint8\_t\ \{}
-\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CURRENT\ =\ 0x00,\ \textcolor{comment}{//\ Текущее\ потребление\ памяти}}
-\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MAXIMUM\ =\ 0x01\ \ \textcolor{comment}{//\ Максимальное\ потребление\ памяти}}
-\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
-\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a1cd76d6afbdae61e1d092699d658e598}{family\_t}}\ :\ uint8\_t\ \{}
-\DoxyCodeLine{00147\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Операционная\ система\ не\ определена}}
-\DoxyCodeLine{00148\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UNIX\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Операционная\ система\ Unix}}
-\DoxyCodeLine{00149\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LINUX\ \ \ =\ 0x02,\ \textcolor{comment}{//\ Операционная\ система\ Linux}}
-\DoxyCodeLine{00150\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WIND32\ \ =\ 0x03,\ \textcolor{comment}{//\ Операционная\ система\ Windows\ 32bit}}
-\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WIND64\ \ =\ 0x04,\ \textcolor{comment}{//\ Операционная\ система\ Windows\ 64bit}}
-\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MACOSX\ \ =\ 0x05,\ \textcolor{comment}{//\ Операционная\ система\ MacOS\ X}}
-\DoxyCodeLine{00153\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NETBSD\ \ =\ 0x06,\ \textcolor{comment}{//\ Операционная\ система\ NetBSD}}
-\DoxyCodeLine{00154\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ OPENBSD\ =\ 0x07,\ \textcolor{comment}{//\ Операционная\ система\ OpenBSD}}
-\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FREEBSD\ =\ 0x08,\ \textcolor{comment}{//\ Операционная\ система\ FreeBSD}}
-\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SOLARIS\ =\ 0x09,\ \textcolor{comment}{//\ Операционная\ система\ Sun\ Solaris}}
-\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ILLUMOS\ =\ 0x0A\ \ \textcolor{comment}{//\ Операционная\ система\ (OpenIndiana,\ SmartOS,\ OmniOS)}}
-\DoxyCodeLine{00158\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
-\DoxyCodeLine{00159\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a1ebbd821e54604e5add6df115930c63b}{isAdmin}}()\ const\ noexcept;}
-\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_o_s_a1cd76d6afbdae61e1d092699d658e598}{family\_t}}\ \doxymbox{\hyperlink{classawh_1_1_o_s_aa57b9e672400fc982f41b10d3096bcd0}{family}}()\ const\ noexcept;}
-\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ade9ee8765fe1badc2c7767934be465ad}{rss}}(const\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad0923c77d60556f0f34b1ea5e54cab3b}{rss\_t}}\ mode)\ const\ noexcept;}
-\DoxyCodeLine{00181\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00186\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a692eea69b50ea28d909a724924514df7}{printStatsMemory}}()\ const\ noexcept;}
-\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a3b09b5a1792f25087bf561713b542bbb}{releaseFreeMemory}}()\ const\ noexcept;}
-\DoxyCodeLine{00193\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a43418eee2373008edc1a4a4365e8dba7}{warmup}}(const\ \textcolor{keywordtype}{size\_t}\ size)\ const\ noexcept;}
-\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00208\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a2557324c302f5d347a3fb564c8355fa8}{disableReturnMemory}}(const\ \textcolor{keywordtype}{bool}\ mode)\ const\ noexcept;}
-\DoxyCodeLine{00212\ \ \ \ \ \textcolor{preprocessor}{\#if\ !\_WIN32\ \&\&\ !\_WIN64}}
-\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00219\ \ \ \ \ \ \ \ \ \ \ \ \ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}}()\ const\ noexcept;}
-\DoxyCodeLine{00225\ \ \ \ \ \ \ \ \ \ \ \ \ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}()\ const\ noexcept;}
-\DoxyCodeLine{00231\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <gid\_t>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}()\ const\ noexcept;}
-\DoxyCodeLine{00232\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00239\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}}(const\ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}})\ const\ noexcept;}
-\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}(const\ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_a8dec1df4d5cd44aeba2b5d174d6a6041}{gid}})\ const\ noexcept;}
-\DoxyCodeLine{00253\ \ \ \ \ \ \ \ \ \ \ \ \ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
-\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00261\ \ \ \ \ \ \ \ \ \ \ \ \ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}}(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
-\DoxyCodeLine{00268\ \ \ \ \ \ \ \ \ \ \ \ \ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_a8dec1df4d5cd44aeba2b5d174d6a6041}{gid}}(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
-\DoxyCodeLine{00269\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00276\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <gid\_t>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}})\ const\ noexcept;}
-\DoxyCodeLine{00277\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00284\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad4ef082fb18621405813ebc55a26d5a4}{chown}}(const\ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}})\ const\ noexcept;}
-\DoxyCodeLine{00292\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad4ef082fb18621405813ebc55a26d5a4}{chown}}(const\ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}},\ const\ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_a8dec1df4d5cd44aeba2b5d174d6a6041}{gid}})\ const\ noexcept;}
-\DoxyCodeLine{00300\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad4ef082fb18621405813ebc55a26d5a4}{chown}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}},\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}\ =\ \textcolor{stringliteral}{"{}"{}})\ const\ noexcept;}
-\DoxyCodeLine{00304\ \ \ \ \ \textcolor{preprocessor}{\#else}}
-\DoxyCodeLine{00305\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00311\ \ \ \ \ \ \ \ \ \ \ \ \ wstring\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}}()\ const\ noexcept;}
-\DoxyCodeLine{00317\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <wstring>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}()\ const\ noexcept;}
-\DoxyCodeLine{00318\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ account(const\ wstring\ \&\ sid)\ const\ noexcept;}
-\DoxyCodeLine{00332\ \ \ \ \ \ \ \ \ \ \ \ \ wstring\ account(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
-\DoxyCodeLine{00333\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00340\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <wstring>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}})\ const\ noexcept;}
-\DoxyCodeLine{00341\ \ \ \ \ \textcolor{preprocessor}{\#endif}\textcolor{preprocessor}{}}
-\DoxyCodeLine{00345\ \textcolor{preprocessor}{\ \ \ \ \#if\ !\_WIN32\ \&\&\ !\_WIN64}}
-\DoxyCodeLine{00346\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00352\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
-\DoxyCodeLine{00359\ \ \ \ \ \ \ \ \ \ \ \ \ T\ \doxymbox{\hyperlink{classawh_1_1_o_s_ace0636fa5c942a67446c1041c43e5335}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00360\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00366\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
-\DoxyCodeLine{00374\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a510bc483f7cf5f39b6e6c7eba2ff83bc}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ T\ value)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a388fcf9ae96e841f6fd62fd8c32281d7}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ value)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00390\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a986b84b6ca90d1fe3eebdc211f091aac}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\ value)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
-\DoxyCodeLine{00404\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a15daf4c0ad2ecf5b8959afc8b9726b1e}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ vector\ <T>\ \&\ items)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00412\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a26224b20c98d9e45e40dc2a6f43180f9}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ vector\ <string>\ \&\ items)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00420\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a2a788d9cea377e2fc06c3f19ac84e9cf}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ vector\ <const\ char\ *>\ \&\ items)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00421\ \textcolor{preprocessor}{\ \ \ \ \#endif}}
-\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a32d5e44ddb4a5096541ec0bba7d49478}{exec}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ cmd,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{bool}\ multiline\ =\ \textcolor{keyword}{true})\ const\ noexcept;}
-\DoxyCodeLine{00430\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00436\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_o_s_a99bc80e6e07eedfbb81a4470747e2266}{OS}}(const\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ log)\ noexcept\ :\ \_log(log)\ \{\}}
-\DoxyCodeLine{00437\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a50419712bd910adcfac4b883a16f33d3}{os\_t}};}
-\DoxyCodeLine{00438\ \};}
-\DoxyCodeLine{00439\ }
-\DoxyCodeLine{00440\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_OPERATING\_SYSTEM\_\_}}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad0923c77d60556f0f34b1ea5e54cab3b}{rss\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CURRENT\ =\ 0x00,\ \textcolor{comment}{//\ Текущее\ потребление\ памяти}}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MAXIMUM\ =\ 0x01\ \ \textcolor{comment}{//\ Максимальное\ потребление\ памяти}}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00148\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a1cd76d6afbdae61e1d092699d658e598}{family\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00149\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Операционная\ система\ не\ определена}}
+\DoxyCodeLine{00150\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UNIX\ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Операционная\ система\ Unix}}
+\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ LINUX\ \ \ =\ 0x02,\ \textcolor{comment}{//\ Операционная\ система\ Linux}}
+\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WIND32\ \ =\ 0x03,\ \textcolor{comment}{//\ Операционная\ система\ Windows\ 32bit}}
+\DoxyCodeLine{00153\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WIND64\ \ =\ 0x04,\ \textcolor{comment}{//\ Операционная\ система\ Windows\ 64bit}}
+\DoxyCodeLine{00154\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MACOSX\ \ =\ 0x05,\ \textcolor{comment}{//\ Операционная\ система\ MacOS\ X}}
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NETBSD\ \ =\ 0x06,\ \textcolor{comment}{//\ Операционная\ система\ NetBSD}}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ OPENBSD\ =\ 0x07,\ \textcolor{comment}{//\ Операционная\ система\ OpenBSD}}
+\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FREEBSD\ =\ 0x08,\ \textcolor{comment}{//\ Операционная\ система\ FreeBSD}}
+\DoxyCodeLine{00158\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SOLARIS\ =\ 0x09,\ \textcolor{comment}{//\ Операционная\ система\ Sun\ Solaris}}
+\DoxyCodeLine{00159\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ILLUMOS\ =\ 0x0A\ \ \textcolor{comment}{//\ Операционная\ система\ (OpenIndiana,\ SmartOS,\ OmniOS)}}
+\DoxyCodeLine{00160\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00161\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a1ebbd821e54604e5add6df115930c63b}{isAdmin}}()\ const\ noexcept;}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_o_s_a1cd76d6afbdae61e1d092699d658e598}{family\_t}}\ \doxymbox{\hyperlink{classawh_1_1_o_s_aa57b9e672400fc982f41b10d3096bcd0}{family}}()\ const\ noexcept;}
+\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00182\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ade9ee8765fe1badc2c7767934be465ad}{rss}}(const\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad0923c77d60556f0f34b1ea5e54cab3b}{rss\_t}}\ mode)\ const\ noexcept;}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a692eea69b50ea28d909a724924514df7}{printStatsMemory}}()\ const\ noexcept;}
+\DoxyCodeLine{00189\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a3b09b5a1792f25087bf561713b542bbb}{releaseFreeMemory}}()\ const\ noexcept;}
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a43418eee2373008edc1a4a4365e8dba7}{warmup}}(const\ \textcolor{keywordtype}{size\_t}\ size)\ const\ noexcept;}
+\DoxyCodeLine{00203\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00210\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a2557324c302f5d347a3fb564c8355fa8}{disableReturnMemory}}(const\ \textcolor{keywordtype}{bool}\ mode)\ const\ noexcept;}
+\DoxyCodeLine{00214\ \ \ \ \ \textcolor{preprocessor}{\#if\ !\_WIN32\ \&\&\ !\_WIN64}}
+\DoxyCodeLine{00215\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00221\ \ \ \ \ \ \ \ \ \ \ \ \ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}}()\ const\ noexcept;}
+\DoxyCodeLine{00227\ \ \ \ \ \ \ \ \ \ \ \ \ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}()\ const\ noexcept;}
+\DoxyCodeLine{00233\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <gid\_t>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}()\ const\ noexcept;}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00241\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}}(const\ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}})\ const\ noexcept;}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}(const\ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_a8dec1df4d5cd44aeba2b5d174d6a6041}{gid}})\ const\ noexcept;}
+\DoxyCodeLine{00255\ \ \ \ \ \ \ \ \ \ \ \ \ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
+\DoxyCodeLine{00256\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00263\ \ \ \ \ \ \ \ \ \ \ \ \ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}}(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
+\DoxyCodeLine{00270\ \ \ \ \ \ \ \ \ \ \ \ \ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_a8dec1df4d5cd44aeba2b5d174d6a6041}{gid}}(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
+\DoxyCodeLine{00271\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <gid\_t>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}})\ const\ noexcept;}
+\DoxyCodeLine{00279\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00286\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad4ef082fb18621405813ebc55a26d5a4}{chown}}(const\ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}})\ const\ noexcept;}
+\DoxyCodeLine{00294\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad4ef082fb18621405813ebc55a26d5a4}{chown}}(const\ uid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_afa10e6f99f79cb3609a2a37fab859421}{uid}},\ const\ gid\_t\ \doxymbox{\hyperlink{classawh_1_1_o_s_a8dec1df4d5cd44aeba2b5d174d6a6041}{gid}})\ const\ noexcept;}
+\DoxyCodeLine{00302\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad4ef082fb18621405813ebc55a26d5a4}{chown}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}},\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ab704cbbce320bdb2fda87f0a9a316aa0}{group}}\ =\ \textcolor{stringliteral}{"{}"{}})\ const\ noexcept;}
+\DoxyCodeLine{00306\ \ \ \ \ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00307\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00313\ \ \ \ \ \ \ \ \ \ \ \ \ wstring\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}}()\ const\ noexcept;}
+\DoxyCodeLine{00319\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <wstring>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}()\ const\ noexcept;}
+\DoxyCodeLine{00320\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ account(const\ wstring\ \&\ sid)\ const\ noexcept;}
+\DoxyCodeLine{00334\ \ \ \ \ \ \ \ \ \ \ \ \ wstring\ account(const\ \textcolor{keywordtype}{string}\ \&\ name)\ const\ noexcept;}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00342\ \ \ \ \ \ \ \ \ \ \ \ \ vector\ <wstring>\ \doxymbox{\hyperlink{classawh_1_1_o_s_ad95f2dab45217154efa7c5a14691c547}{groups}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_o_s_ae74911a340f3757ccceda1d2c56b8388}{user}})\ const\ noexcept;}
+\DoxyCodeLine{00343\ \ \ \ \ \textcolor{preprocessor}{\#endif}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00347\ \textcolor{preprocessor}{\ \ \ \ \#if\ !\_WIN32\ \&\&\ !\_WIN64}}
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00354\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00361\ \ \ \ \ \ \ \ \ \ \ \ \ T\ \doxymbox{\hyperlink{classawh_1_1_o_s_ace0636fa5c942a67446c1041c43e5335}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00362\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00368\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00376\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a510bc483f7cf5f39b6e6c7eba2ff83bc}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ T\ value)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00384\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a388fcf9ae96e841f6fd62fd8c32281d7}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ value)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00392\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a986b84b6ca90d1fe3eebdc211f091aac}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\ value)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00406\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a15daf4c0ad2ecf5b8959afc8b9726b1e}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ vector\ <T>\ \&\ items)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00414\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a26224b20c98d9e45e40dc2a6f43180f9}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ vector\ <string>\ \&\ items)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a2a788d9cea377e2fc06c3f19ac84e9cf}{sysctl}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ name,\ \textcolor{keyword}{const}\ vector\ <const\ char\ *>\ \&\ items)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00423\ \textcolor{preprocessor}{\ \ \ \ \#endif}}
+\DoxyCodeLine{00424\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00431\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_o_s_a32d5e44ddb4a5096541ec0bba7d49478}{exec}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ cmd,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{bool}\ multiline\ =\ \textcolor{keyword}{true})\ const\ noexcept;}
+\DoxyCodeLine{00432\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00438\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_o_s_a99bc80e6e07eedfbb81a4470747e2266}{OS}}(const\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}}\ *\ log)\ noexcept\ :\ \_log(log)\ \{\}}
+\DoxyCodeLine{00439\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a50419712bd910adcfac4b883a16f33d3}{os\_t}};}
+\DoxyCodeLine{00440\ \};}
+\DoxyCodeLine{00441\ }
+\DoxyCodeLine{00442\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_OPERATING\_SYSTEM\_\_}}
 
 \end{DoxyCode}

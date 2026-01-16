@@ -1,5 +1,5 @@
 /**
- * @file: server.cpp
+ * @file: client.cpp
  * @date: 2025-10-25
  * @license: GPL-3.0
  *
@@ -12,9 +12,6 @@
  * @copyright: Copyright © 2025
  */
 
-/**
- * Стандартные модули
- */
 #include <iostream>
 #include <cinttypes>
 
@@ -45,22 +42,24 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект логирования
 	log_t log(&fmk);
+	// Устанавливаем логгер
+	fmk.setLogger(&log);
+	// Устанавливаем уровень логирования
+	// log.level(log_t::level_t::NONE);
 	// Создаём объект асинхронного движка ввода-вывода
 	io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-	// Устанавливаем порт события
-	io.port(eid, 2222);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
-		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		// Устанавливаем адрес сервера назначения
+		if(io.target(eid, "/tmp/awh.sock")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -140,17 +139,11 @@ int32_t main(int32_t argc, char * argv[]){
 				log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на чтение из события
-			io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			io.on(eid, [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Текст входящего сообщения
 				const string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события
 				log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-				// Отправляем данные обратно клиенту
-				if(io.send(eid, reinterpret_cast <const char *> (data), size))
-					// Если данные успешно отправлены
-					log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
-				// Если данные не отправлены
-				else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
 			});
 			// Устанавливаем функцию обратного вызова на ошибку события
 			io.on(eid, [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
@@ -210,97 +203,21 @@ int32_t main(int32_t argc, char * argv[]){
 					break;
 				}
 			});
-			// Устанавливаем функцию обратного вызова на принятие события
-			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
+			io.on(eid, static_cast <event::callback::connect_t> ([&io, &log](const event::id_t eid, const bool ok) noexcept -> void {
 				// Выводим сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
-				// Устананавливаем опции события
-				if(io.options(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
-					// Выводим сообщение об успешной установке опций события
-					cout << " Успешно установлены опции события!" << endl;
-					// Устанавливаем функцию обратного вызова на чтение из события
-					io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-						// Текст входящего сообщения
-						const string message(reinterpret_cast <const char *> (data), size);
-						// Выводим сообщение о переподключении события
-						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-						// Отправляем данные обратно клиенту
-						if(io.send(eid, reinterpret_cast <const char *> (data), size))
-							// Если данные успешно отправлены
-							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
-						// Если данные не отправлены
-						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
-					});
-					// Устанавливаем функцию обратного вызова на общее событие
-					io.on(cid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
-						/**
-						 * Обрабатываем действие события
-						 */
-						switch(static_cast <uint8_t> (action)){
-							// Если действие является чтением
-							case static_cast <uint8_t> (event::action_t::READ):
-								// Выводим сообщение о чтении события
-								log.print("Событие на чтение: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является записью
-							case static_cast <uint8_t> (event::action_t::WRITE):
-								// Выводим сообщение о записи события
-								log.print("Событие на запись: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является подключением
-							case static_cast <uint8_t> (event::action_t::CONNECT):
-								// Выводим сообщение о подключении события
-								log.print("Событие на подключение: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является отключением
-							case static_cast <uint8_t> (event::action_t::DISCONNECT):
-								// Выводим сообщение об отключении события
-								log.print("Событие на отключение: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является переподключением
-							case static_cast <uint8_t> (event::action_t::RECONNECT):
-								// Выводим сообщение о переподключении события
-								log.print("Событие на переподключение: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является закрытием
-							case static_cast <uint8_t> (event::action_t::CLOSE):
-								// Выводим сообщение о закрытии события
-								log.print("Событие на закрытие подключения: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является изменением
-							case static_cast <uint8_t> (event::action_t::CHANGE):
-								// Выводим сообщение об изменении события
-								log.print("Событие на изменение: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является удалением
-							case static_cast <uint8_t> (event::action_t::DELETE):
-								// Выводим сообщение об удалении события
-								log.print("Событие на удаление: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является переименованием
-							case static_cast <uint8_t> (event::action_t::RENAME):
-								// Выводим сообщение о переименовании события
-								log.print("Событие на переименование: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является изменением атрибутов
-							case static_cast <uint8_t> (event::action_t::ATTRIB):
-								// Выводим сообщение об изменении атрибутов события
-								log.print("Событие на изменение атрибутов: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является отзывом доступа
-							case static_cast <uint8_t> (event::action_t::REVOKE):
-								// Выводим сообщение об отзыве доступа события
-								log.print("Событие на отзыв доступа: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-							// Если действие является изменением счётчика жёстких ссылок
-							case static_cast <uint8_t> (event::action_t::HDLINK):
-								// Выводим сообщение о изменении счётчика жёстких ссылок события
-								log.print("Событие на изменение счётчика жёстких ссылок: ID=%u", log_t::flag_t::INFO, eid);
-							break;
-						}
-					});
-				// Выводим сообщение об ошибке установки опций события
-				} else cout << " Ошибка установки опций события!" << endl;
+				log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
+				// Если подключение успешно
+				if(ok){
+					// Текст исходящего сообщения
+					const string message("Hello from async client!");
+					// Отправляем данные обратно клиенту
+					if(io.send(eid, message.c_str(), message.size()))
+						// Если данные успешно отправлены
+						log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, message.size());
+					// Если данные не отправлены
+					else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
+				}
 			}));
 			// Устанавливаем функцию обратного вызова на общее событие
 			io.on(eid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
@@ -371,13 +288,15 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 5000);
+			io.timeout(eid, event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 5000);
+			io.timeout(eid, event::action_t::WRITE, 3000);
+			// Устанавливаем таймаут события на подключение
+			io.timeout(eid, event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
-				// Если прослушивание события успешно
-				if(io.listen(eid, 100)){
+				// Если подключение к серверу прошло успешно
+				if(io.connect(eid)){
 					// Выполняем запуск события
 					if(io.launch(eid)){
 						// Выводим сообщение об успешном запуске события
@@ -390,9 +309,9 @@ int32_t main(int32_t argc, char * argv[]){
 					} else cout << " Ошибка запуска события!" << endl;
 				}
 			}
-		// Если адрес не установлен
-		} else cout << " Ошибка установки адреса события!" << endl;
+		// Если адрес назначения не установлен
+		} else cout << " Ошибка установки адреса сервера!" << endl;
 	}
 	// Выводим результат
-	return EXIT_SUCCESS;
+	return 0;
 }

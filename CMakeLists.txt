@@ -111,7 +111,7 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
-# Если операционной системой является Linux
+# Если сборка производится под операционную систему Linux
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
     SET(DEBUGGER "-ggdb3")
@@ -128,7 +128,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     endif()
-# Если операционной системой является Solaris
+# Если сборка производится под операционную систему Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND uname -a COMMAND gawk "{print $4}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
@@ -144,7 +144,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)
-# Если операционной системой является MacOS X
+# Если сборка производится под операционную систему MacOS X
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
@@ -152,22 +152,22 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     message(STATUS "Detected OS: MacOS X v${OS_VERSION}")
     SET(DEBUGGER "-glldb")    
     SET(CMAKE_OSX_DEPLOYMENT_TARGET ${OS_VERSION})
-# Если операционной системой является FreeBSD
+# Если сборка производится под операционную систему FreeBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND uname -a COMMAND awk "{print $3}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
     message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
-# Если операционной системой является NetBSD
+# Если сборка производится под операционную систему NetBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD")
     message(STATUS "Detected OS: NetBSD")
     SET(DEBUGGER "-ggdb3")
-# Если операционной системой является OpenBSD
+# Если сборка производится под операционную систему OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     message(STATUS "Detected OS: OpenBSD")
     SET(DEBUGGER "-ggdb3")
-# Если операционной системой является Windows
+# Если сборка производится под операционную систему Windows
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     message(STATUS "Detected OS: Microsoft Windows")
     SET(DEBUGGER "-ggdb3")
@@ -386,7 +386,7 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
-# Устанавливаем параметры игнорирования ошибок для FreeBSD, NetBSD и OpenBSD
+# Если сборка производится под операционные системы MacOS X, FreeBSD, NetBSD или OpenBSD
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
@@ -452,10 +452,6 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/samples)
 
-    # Задаем именя библиотеки и бинарника
-    #SET(CLIENT_APP_NAME client)
-    #SET(SERVER_APP_NAME server)
-    
     # Устанавливаем имя приложения работы с IP-адресами
     SET(IP_APP_NET_NAME net-ip)
     # Указываем что нужно собрать приложение работы с IP-адресами
@@ -501,9 +497,105 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(IPC_SEQPACKET_APP_IO_NAME ipc-seqpacket)
     # Указываем что нужно собрать приложение работы с межпроцессорным взаимодействием
     option(CMAKE_BUILD_IPC_IO_APP_SAMPLE "Build IPC IO app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с TCP
+    SET(CLIENT_APP_NET_TCP_NAME net-tcp-client)
+    # Устанавливаем имя серверного приложения работы с TCP
+    SET(SERVER_APP_NET_TCP_NAME net-tcp-server)
+    # Указываем что нужно собрать приложение работы с TCP (клиент и сервер)
+    option(CMAKE_BUILD_NET_TCP_APP_SAMPLE "Build NET TCP app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с UDP
+    SET(CLIENT_APP_NET_UDP_NAME net-udp-client)
+    # Устанавливаем имя клиентского приложения работы с UDP с подключением
+    SET(CLIENT_APP_NET_UDP_CONN_NAME net-udp-conn-client)
+    # Устанавливаем имя серверного приложения работы с UDP
+    SET(SERVER_APP_NET_UDP_NAME net-udp-server)
+    # Указываем что нужно собрать приложение работы с UDP (клиент и сервер)
+    option(CMAKE_BUILD_NET_UDP_APP_SAMPLE "Build NET UDP app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с UDP Broadcast
+    SET(CLIENT_APP_NET_BROADCAST_NAME net-broadcast-client)
+    # Устанавливаем имя серверного приложения работы с UDP Broadcast
+    SET(SERVER_APP_NET_BROADCAST_NAME net-broadcast-server)
+    # Указываем что нужно собрать приложение работы с UDP Broadcast (клиент и сервер)
+    option(CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE "Build NET Broadcast app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с UDP Multicast сценарий 1
+    SET(CLIENT_APP_NET_MULTICAST1_NAME net-multicast1-client)
+    # Устанавливаем имя серверного приложения работы с UDP Multicast сценарий 1
+    SET(SERVER_APP_NET_MULTICAST1_NAME net-multicast1-server)
+    # Устанавливаем имя клиентского приложения работы с UDP Multicast сценарий 3
+    SET(CLIENT_APP_NET_MULTICAST3_NAME net-multicast3-client)
+    # Устанавливаем имя серверного приложения работы с UDP Multicast сценарий 3
+    SET(SERVER_APP_NET_MULTICAST3_NAME net-multicast3-server)
+    # Указываем что нужно собрать приложение работы с UDP Multicast (клиент и сервер)
+    option(CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE "Build NET Multicast app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с UDP Splice
+    SET(CLIENT_APP_NET_SPLICE_NAME net-splice-client)
+    # Устанавливаем имя серверного приложения работы с UDP Splice
+    SET(SERVER_APP_NET_SPLICE_NAME net-splice-server)
+    # Указываем что нужно собрать приложение работы с UDP Splice (клиент и сервер)
+    option(CMAKE_BUILD_NET_SPLICE_APP_SAMPLE "Build NET Splice app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с UDS-TCP
+    SET(CLIENT_APP_NET_UDS_TCP_NAME net-uds-tcp-client)
+    # Устанавливаем имя серверного приложения работы с UDS-TCP
+    SET(SERVER_APP_NET_UDS_TCP_NAME net-uds-tcp-server)
+    # Устанавливаем имя клиентского приложения работы с UDS-UDP
+    SET(CLIENT_APP_NET_UDS_UDP_NAME net-uds-udp-client)
+    # Устанавливаем имя серверного приложения работы с UDS-UDP
+    SET(SERVER_APP_NET_UDS_UDP_NAME net-uds-udp-server)
+    # Указываем что нужно собрать приложение работы с UDS (клиент и сервер)
+    option(CMAKE_BUILD_NET_UDS_APP_SAMPLE "Build NET UDS app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с DTLS
+    SET(CLIENT_APP_NET_DTLS_NAME net-dtls-client)
+    # Устанавливаем имя серверного приложения работы с DTLS
+    SET(SERVER_APP_NET_DTLS_NAME net-dtls-server)
+    # Указываем что нужно собрать приложение работы с DTLS (клиент и сервер)
+    option(CMAKE_BUILD_NET_DTLS_APP_SAMPLE "Build NET DTLS app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с TLS
+    SET(CLIENT_APP_NET_TLS_NAME net-tls-client)
+     # Устанавливаем имя серверного приложения работы с TLS
+    SET(SERVER_APP_NET_TLS_NAME net-tls-server)
+    # Устанавливаем имя клиентского приложения работы с TLS и HTTP/1.1 подключением
+    SET(CLIENT_APP_NET_TLS_WEB_NAME net-tls-web-client)
+    # Устанавливаем имя серверного приложения работы с мультисертификатным TLS
+    SET(SERVER_APP_NET_TLS_MULTI_NAME net-tls-multi-server)
+    # Указываем что нужно собрать приложение работы с TLS (клиент и сервер)
+    option(CMAKE_BUILD_NET_TLS_APP_SAMPLE "Build NET TLS app sample" ON)
+
+    # Если сборка производится под операционную систему FreeBSD или Linux
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        # Устанавливаем имя клиентского приложения работы с SCTP - TLS
+        SET(CLIENT_APP_NET_SCTP_TLS_NAME net-sctp-tls-client)
+        # Устанавливаем имя серверного приложения работы с SCTP - TLS
+        SET(SERVER_APP_NET_SCTP_TLS_NAME net-sctp-tls-server)
+        # Устанавливаем имя клиентского приложения работы с SCTP - DTLS
+        SET(CLIENT_APP_NET_SCTP_DTLS_NAME net-sctp-dtls-client)
+        # Устанавливаем имя серверного приложения работы с SCTP - DTLS
+        SET(SERVER_APP_NET_SCTP_DTLS_NAME net-sctp-dtls-server)
+        # Устанавливаем имя клиентского приложения работы с SCTP - аутентификация
+        SET(CLIENT_APP_NET_SCTP_AUTH_NAME net-sctp-auth-client)
+        # Устанавливаем имя серверного приложения работы с SCTP - аутентификация
+        SET(SERVER_APP_NET_SCTP_AUTH_NAME net-sctp-auth-server)
+        # Устанавливаем имя клиентского приложения работы с SCTP - потоковый режим
+        SET(CLIENT_APP_NET_SCTP_STREAM_NAME net-sctp-stream-client)
+        # Устанавливаем имя серверного приложения работы с SCTP - потоковый режим
+        SET(SERVER_APP_NET_SCTP_STREAM_NAME net-sctp-stream-server)
+        # Устанавливаем имя клиентского приложения работы с SCTP - пакетный режим
+        SET(CLIENT_APP_NET_SCTP_SEQPACKET_NAME net-sctp-seqpacket-client)
+        # Устанавливаем имя серверного приложения работы с SCTP - пакетный режим
+        SET(SERVER_APP_NET_SCTP_SEQPACKET_NAME net-sctp-seqpacket-server)
+        # Указываем что нужно собрать приложение работы с SCTP (клиент и сервер)
+        option(CMAKE_BUILD_NET_SCTP_APP_SAMPLE "Build NET SCTP app sample" ON)
+    endif()
 endif (${CMAKE_BUILD_SAMPLES})
 
-# Если операционной системой является Windows
+# Если сборка производится под операционную систему Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
@@ -534,7 +626,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             )
         endfunction()
     endif (${CMAKE_BUILD_SAMPLES})
-# Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
+# Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
 else()
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
@@ -559,49 +651,43 @@ endif()
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
-    # Если нужно собрать тесты для работы с ОС
-    if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-        # Выполняем создание приложения работы с IP-адресами
-        add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
-    endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-    # Если нужно собрать тесты для работы с датой и временем
+    # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
         # Выполняем создание приложения работы с датой и временем
         add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с каталогами
+    # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
         # Выполняем создание приложения работы с каталогами
         add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
     endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с файлами
+    # Если нужно собрать семплы для работы с файлами
     if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
         # Выполняем создание приложения работы с файлами
         add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
     endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с пингами (ICMP)
+    # Если нужно собрать семплы для работы с пингами (ICMP)
     if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
         # Выполняем создание приложения работы с пингами (ICMP)
         add_sample(${PING_APP_IO_NAME} sample/io/ping.cpp io)
     endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-        # Если нужно собрать тесты для работы с таймером
+        # Если нужно собрать семплы для работы с таймером
     if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
         # Выполняем создание приложения работы с таймером
         add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
     endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с пользовательскими событиями
+    # Если нужно собрать семплы для работы с пользовательскими событиями
     if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
         # Выполняем создание приложения работы с пользовательскими событиями
         add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
     endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
     
-    # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+    # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
     if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
         # Выполняем создание приложения работы с межпроцессорным взаимодействием (именованный канал)
         add_sample(${IPC_PIPE_APP_IO_NAME} sample/ipc/pipe.cpp ipc)
@@ -613,8 +699,116 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${IPC_SEQPACKET_APP_IO_NAME} sample/ipc/seqpacket.cpp ipc)
     endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-    #add_executable(${CLIENT_APP_NAME} sample/client.cpp)
-    #add_executable(${SERVER_APP_NAME} sample/server.cpp)
+    # Если нужно собрать семплы для работы с ОС
+    if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+        # Выполняем создание приложения работы с IP-адресами
+        add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
+    endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+    if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+        # Выполняем создание приложения работы с TCP клиент
+        add_sample(${CLIENT_APP_NET_TCP_NAME} sample/net/tcp/client.cpp net/tcp)
+        # Выполняем создание приложения работы с TCP сервер
+        add_sample(${SERVER_APP_NET_TCP_NAME} sample/net/tcp/server.cpp net/tcp)
+    endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+    if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+        # Выполняем создание приложения работы с UDP клиент
+        add_sample(${CLIENT_APP_NET_UDP_NAME} sample/net/udp/client.cpp net/udp)
+        # Выполняем создание приложения работы с UDP с подключением клиент
+        add_sample(${CLIENT_APP_NET_UDP_CONN_NAME} sample/net/udp/client-conn.cpp net/udp)
+        # Выполняем создание приложения работы с UDP сервер
+        add_sample(${SERVER_APP_NET_UDP_NAME} sample/net/udp/server.cpp net/udp)
+    endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+    if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+        # Выполняем создание приложения работы с UDP Broadcast клиент
+        add_sample(${CLIENT_APP_NET_BROADCAST_NAME} sample/net/broadcast/client.cpp net/broadcast)
+        # Выполняем создание приложения работы с UDP Broadcast сервер
+        add_sample(${SERVER_APP_NET_BROADCAST_NAME} sample/net/broadcast/server.cpp net/broadcast)
+    endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+    if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+        # Выполняем создание приложения работы с UDP Multicast клиент сценарий 1
+        add_sample(${CLIENT_APP_NET_MULTICAST1_NAME} sample/net/multicast/client1.cpp net/multicast)
+        # Выполняем создание приложения работы с UDP Multicast сервер сценарий 1
+        add_sample(${SERVER_APP_NET_MULTICAST1_NAME} sample/net/multicast/server1.cpp net/multicast)
+        # Выполняем создание приложения работы с UDP Multicast клиент сценарий 3
+        add_sample(${CLIENT_APP_NET_MULTICAST3_NAME} sample/net/multicast/client3.cpp net/multicast)
+        # Выполняем создание приложения работы с UDP Multicast сервер сценарий 3
+        add_sample(${SERVER_APP_NET_MULTICAST3_NAME} sample/net/multicast/server3.cpp net/multicast)
+    endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+    if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+        # Выполняем создание приложения работы с UDP Splice клиент
+        add_sample(${CLIENT_APP_NET_SPLICE_NAME} sample/net/splice/client.cpp net/splice)
+        # Выполняем создание приложения работы с UDP Splice сервер
+        add_sample(${SERVER_APP_NET_SPLICE_NAME} sample/net/splice/server.cpp net/splice)
+    endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+    if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+        # Выполняем создание приложения работы с UDS-TCP клиент
+        add_sample(${CLIENT_APP_NET_UDS_TCP_NAME} sample/net/uds/client-tcp.cpp net/uds)
+        # Выполняем создание приложения работы с UDS-TCP сервер
+        add_sample(${SERVER_APP_NET_UDS_TCP_NAME} sample/net/uds/server-tcp.cpp net/uds)
+        # Выполняем создание приложения работы с UDS-UDP клиент
+        add_sample(${CLIENT_APP_NET_UDS_UDP_NAME} sample/net/uds/client-udp.cpp net/uds)
+        # Выполняем создание приложения работы с UDS-UDP сервер
+        add_sample(${SERVER_APP_NET_UDS_UDP_NAME} sample/net/uds/server-udp.cpp net/uds)
+    endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+    if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+        # Выполняем создание приложения работы с DTLS клиент
+        add_sample(${CLIENT_APP_NET_DTLS_NAME} sample/net/dtls/client.cpp net/dtls)
+        # Выполняем создание приложения работы с DTLS сервер
+        add_sample(${SERVER_APP_NET_DTLS_NAME} sample/net/dtls/server.cpp net/dtls)
+    endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+    if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+        # Выполняем создание приложения работы с TLS клиент
+        add_sample(${CLIENT_APP_NET_TLS_NAME} sample/net/tls/client.cpp net/tls)
+        # Выполняем создание приложения работы с TLS сервер
+        add_sample(${SERVER_APP_NET_TLS_NAME} sample/net/tls/server.cpp net/tls)
+        # Выполняем создание приложения работы с TLS клиент и HTTP/1.1 подключением
+        add_sample(${CLIENT_APP_NET_TLS_WEB_NAME} sample/net/tls/client-web.cpp net/tls)
+        # Выполняем создание приложения работы с TLS сервер и мультисертификатом
+        add_sample(${SERVER_APP_NET_TLS_MULTI_NAME} sample/net/tls/server-multi.cpp net/tls)
+    endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+    # Если сборка производится под операционную систему FreeBSD или Linux
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+        if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+            # Выполняем создание приложения работы с SCTP клиент - TLS
+            add_sample(${CLIENT_APP_NET_SCTP_TLS_NAME} sample/net/sctp/client-tls.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP сервер - TLS
+            add_sample(${SERVER_APP_NET_SCTP_TLS_NAME} sample/net/sctp/server-tls.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP клиент - DTLS
+            add_sample(${CLIENT_APP_NET_SCTP_DTLS_NAME} sample/net/sctp/client-dtls.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP сервер - DTLS
+            add_sample(${SERVER_APP_NET_SCTP_DTLS_NAME} sample/net/sctp/server-dtls.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP клиент - AUTH
+            add_sample(${CLIENT_APP_NET_SCTP_AUTH_NAME} sample/net/sctp/client-auth.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP сервер - AUTH
+            add_sample(${SERVER_APP_NET_SCTP_AUTH_NAME} sample/net/sctp/server-auth.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP клиент - STREAM
+            add_sample(${CLIENT_APP_NET_SCTP_STREAM_NAME} sample/net/sctp/client-stream.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP сервер - STREAM
+            add_sample(${SERVER_APP_NET_SCTP_STREAM_NAME} sample/net/sctp/server-stream.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP клиент - SEQPACKET
+            add_sample(${CLIENT_APP_NET_SCTP_SEQPACKET_NAME} sample/net/sctp/client-seqpacket.cpp net/sctp)
+            # Выполняем создание приложения работы с SCTP сервер - SEQPACKET
+            add_sample(${SERVER_APP_NET_SCTP_SEQPACKET_NAME} sample/net/sctp/server-seqpacket.cpp net/sctp)
+        endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+    endif()
 endif (${CMAKE_BUILD_SAMPLES})
 
 # Если активирован режим отладки
@@ -625,7 +819,7 @@ endif()
 
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
-    # Если операционной системой является Windows
+    # Если сборка производится под операционную систему Windows
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
@@ -638,7 +832,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать тесты для работы с ОС
+            # Если нужно собрать семплы для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
@@ -649,7 +843,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с датой и временем
+            # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
@@ -660,7 +854,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с каталогами
+            # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с каталогами
                 target_link_libraries(
@@ -671,7 +865,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с файлами
+            # Если нужно собрать семплы для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с файлами
                 target_link_libraries(
@@ -682,7 +876,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пингами (ICMP)
+            # Если нужно собрать семплы для работы с пингами (ICMP)
             if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с пингами (ICMP)
                 target_link_libraries(
@@ -693,7 +887,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с таймером
+            # Если нужно собрать семплы для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
                 target_link_libraries(
@@ -704,7 +898,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пользовательскими событиями
+            # Если нужно собрать семплы для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
                 # Выполняем сборку приложения пользовательских событий
                 target_link_libraries(
@@ -715,7 +909,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
             if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
                 target_link_libraries(
@@ -750,23 +944,215 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения клиента
-            #target_link_libraries(
-            #    ${CLIENT_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
+            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
 
-            # Выполняем сборку приложения сервера
-            #target_link_libraries(
-            #    ${SERVER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента с подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_CONN_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента сценарий 1
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 1
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента сценарий 3
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 3
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента UDS-TCP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера UDS-TCP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента UDS-UDP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера UDS-UDP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента работы с TLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_WEB_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_MULTI_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
         endif (${CMAKE_BUILD_SAMPLES})
-    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
+    # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
     else()
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
@@ -778,7 +1164,7 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать тесты для работы с ОС
+            # Если нужно собрать семплы для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
@@ -788,7 +1174,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с датой и временем
+            # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
@@ -798,7 +1184,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с каталогами
+            # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с каталогами
                 target_link_libraries(
@@ -808,7 +1194,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с файлами
+            # Если нужно собрать семплы для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с файлами
                 target_link_libraries(
@@ -818,7 +1204,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пингами (ICMP)
+            # Если нужно собрать семплы для работы с пингами (ICMP)
             if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с пингами (ICMP)
                 target_link_libraries(
@@ -828,7 +1214,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с таймером
+            # Если нужно собрать семплы для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
                 target_link_libraries(
@@ -838,7 +1224,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пользовательскими событиями
+            # Если нужно собрать семплы для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
                 # Выполняем сборку приложения пользовательских событий
                 target_link_libraries(
@@ -848,7 +1234,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
             if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
                 target_link_libraries(
@@ -879,28 +1265,275 @@ if (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения клиента
-            #target_link_libraries(
-            #    ${CLIENT_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
+            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
 
-            # Выполняем сборку приложения сервера
-            #target_link_libraries(
-            #    ${SERVER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента с подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_CONN_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента сценарий 1
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 1
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента сценарий 3
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 3
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента UDS-TCP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера UDS-TCP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента UDS-UDP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера UDS-UDP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента работы с TLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_WEB_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_MULTI_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+                if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+                    # Выполняем сборку приложения клиента работы с TLS
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_TLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с TLS
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_TLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с DTLS
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_DTLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с DTLS
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_DTLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с SCTP - AUTH
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_AUTH_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с SCTP - AUTH
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_AUTH_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с SCTP - STREAM
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_STREAM_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с SCTP - STREAM
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_STREAM_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
+                        ${AWH_LIB_NAME}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+                endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+            endif()
         endif (${CMAKE_BUILD_SAMPLES})
     endif()
 # Если нужно собрать и статическую библиотеку
 else (CMAKE_SHARED_BUILD_LIB)
-    # Если операционной системой является Windows
+    # Если сборка производится под операционную систему Windows
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать тесты для работы с ОС
+            # Если нужно собрать семплы для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
@@ -912,7 +1545,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с датой и временем
+            # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
@@ -924,7 +1557,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с каталогами
+            # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с каталогами
                 target_link_libraries(
@@ -936,7 +1569,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с файлами
+            # Если нужно собрать семплы для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с файлами
                 target_link_libraries(
@@ -948,7 +1581,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пингами (ICMP)
+            # Если нужно собрать семплы для работы с пингами (ICMP)
             if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с пингами (ICMP)
                 target_link_libraries(
@@ -960,7 +1593,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с таймером
+            # Если нужно собрать семплы для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
                 target_link_libraries(
@@ -972,7 +1605,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пользовательскими событиями
+            # Если нужно собрать семплы для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
                 # Выполняем сборку приложения пользовательских событий
                 target_link_libraries(
@@ -984,7 +1617,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
             if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
                 target_link_libraries(
@@ -1023,29 +1656,242 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения клиента
-            #target_link_libraries(
-            #    ${CLIENT_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
+            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
 
-            # Выполняем сборку приложения сервера
-            #target_link_libraries(
-            #    ${SERVER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #    ${WINFLAGS}
-            #)
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента с подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_CONN_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента сценарий 1
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 1
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента сценарий 3
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 3
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента UDS-TCP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера UDS-TCP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента UDS-UDP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера UDS-UDP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента работы с TLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_WEB_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_MULTI_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${WINFLAGS}
+                )
+            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
         endif (${CMAKE_BUILD_SAMPLES})
-    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
+    # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
     else()
         # Если необходимо собрать семплы
         if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать тесты для работы с ОС
+            # Если нужно собрать семплы для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 target_link_libraries(
@@ -1056,7 +1902,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с датой и временем
+            # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 target_link_libraries(
@@ -1067,7 +1913,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с каталогами
+            # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с каталогами
                 target_link_libraries(
@@ -1078,7 +1924,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с файлами
+            # Если нужно собрать семплы для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с файлами
                 target_link_libraries(
@@ -1089,7 +1935,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пингами (ICMP)
+            # Если нужно собрать семплы для работы с пингами (ICMP)
             if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с пингами (ICMP)
                 target_link_libraries(
@@ -1100,7 +1946,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с таймером
+            # Если нужно собрать семплы для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
                 target_link_libraries(
@@ -1111,7 +1957,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пользовательскими событиями
+            # Если нужно собрать семплы для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
                 # Выполняем сборку приложения пользовательских событий
                 target_link_libraries(
@@ -1122,7 +1968,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
             if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
                 target_link_libraries(
@@ -1157,21 +2003,299 @@ else (CMAKE_SHARED_BUILD_LIB)
                 )
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-            # Выполняем сборку приложения клиента
-            #target_link_libraries(
-            #    ${CLIENT_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
+            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
 
-            # Выполняем сборку приложения сервера
-            #target_link_libraries(
-            #    ${SERVER_APP_NAME}
-            #    ${AWH_LIB_NAME}
-            #    ${DEPEND_LIBRARY}
-            #    ${TCMALLOC_LIBRARIES}
-            #)
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента с подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDP_CONN_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_BROADCAST_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+                # Выполняем сборку приложения клиента сценарий 1
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 1
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST1_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента сценарий 3
+                target_link_libraries(
+                    ${CLIENT_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера сценарий 3
+                target_link_libraries(
+                    ${SERVER_APP_NET_MULTICAST3_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_SPLICE_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента UDS-TCP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера UDS-TCP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_TCP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента UDS-UDP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера UDS-UDP
+                target_link_libraries(
+                    ${SERVER_APP_NET_UDS_UDP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента
+                target_link_libraries(
+                    ${CLIENT_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера
+                target_link_libraries(
+                    ${SERVER_APP_NET_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+                # Выполняем сборку приложения клиента работы с TLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
+                target_link_libraries(
+                    ${CLIENT_APP_NET_TLS_WEB_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
+                target_link_libraries(
+                    ${SERVER_APP_NET_TLS_MULTI_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+                if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+                    # Выполняем сборку приложения клиента работы с TLS
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_TLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с TLS
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_TLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с DTLS
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_DTLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с DTLS
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_DTLS_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с SCTP - AUTH
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_AUTH_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с SCTP - AUTH
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_AUTH_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с SCTP - STREAM
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_STREAM_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с SCTP - STREAM
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_STREAM_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
+                    target_link_libraries(
+                        ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+
+                    # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
+                    target_link_libraries(
+                        ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
+                        ${AWH_LIB_NAME}
+                        ${DEPEND_LIBRARY}
+                        ${TCMALLOC_LIBRARIES}
+                    )
+                endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+            endif()
         endif (${CMAKE_BUILD_SAMPLES})
     endif()
 endif (CMAKE_SHARED_BUILD_LIB)
@@ -1182,7 +2306,7 @@ if (${CMAKE_BUILD_SAMPLES})
     if (CMAKE_BUILD_TYPE MATCHES Debug)
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
-            # Если нужно собрать тесты для работы с ОС
+            # Если нужно собрать семплы для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 add_custom_command(TARGET "${IP_APP_NET_NAME}" POST_BUILD
@@ -1192,7 +2316,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с датой и временем
+            # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
                 add_custom_command(TARGET "${DATE_APP_SYS_NAME}" POST_BUILD
@@ -1202,7 +2326,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с каталогами
+            # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с каталогами
                 add_custom_command(TARGET "${DIR_APP_IO_NAME}" POST_BUILD
@@ -1212,7 +2336,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с файлами
+            # Если нужно собрать семплы для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с файлами
                 add_custom_command(TARGET "${FILE_APP_IO_NAME}" POST_BUILD
@@ -1222,7 +2346,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пингами (ICMP)
+            # Если нужно собрать семплы для работы с пингами (ICMP)
             if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с пингами (ICMP)
                 add_custom_command(TARGET "${PING_APP_IO_NAME}" POST_BUILD
@@ -1232,7 +2356,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с таймером
+            # Если нужно собрать семплы для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем сборку приложения таймера
                 add_custom_command(TARGET "${TIMER_APP_IO_NAME}" POST_BUILD
@@ -1242,7 +2366,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пользовательскими событиями
+            # Если нужно собрать семплы для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
                 # Выполняем сборку приложения пользовательских событий
                 add_custom_command(TARGET "${EVENTS_APP_IO_NAME}" POST_BUILD
@@ -1252,7 +2376,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
             if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
                 add_custom_command(TARGET "${IPC_PIPE_APP_IO_NAME}" POST_BUILD
@@ -1283,18 +2407,175 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-            #add_custom_command(TARGET "${CLIENT_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${CLIENT_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
+            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+                # Выполняем сборку приложения работы с TCP клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_TCP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TCP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TCP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с TCP сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_TCP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TCP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TCP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
 
-            #add_custom_command(TARGET "${SERVER_APP_NAME}" POST_BUILD
-            #    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NAME}>" "${entitlements_file}"
-            #    COMMENT "Sign target \"${SERVER_APP_NAME}\" to enable core dump on MacOS X"
-            #    VERBATIM
-            #)
+            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+                # Выполняем сборку приложения работы с UDP клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP клиентом с подключением
+                add_custom_command(TARGET "${CLIENT_APP_NET_UDP_CONN_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDP_CONN_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDP_CONN_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+                # Выполняем сборку приложения работы с UDP Broadcast клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_BROADCAST_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_BROADCAST_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_BROADCAST_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP Broadcast сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_BROADCAST_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_BROADCAST_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_BROADCAST_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+                # Выполняем сборку приложения работы с UDP Multicast клиентом сценарий 1
+                add_custom_command(TARGET "${CLIENT_APP_NET_MULTICAST1_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_MULTICAST1_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_MULTICAST1_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP Multicast сервером сценарий 1
+                add_custom_command(TARGET "${SERVER_APP_NET_MULTICAST1_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_MULTICAST1_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_MULTICAST1_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP Multicast клиентом сценарий 3
+                add_custom_command(TARGET "${CLIENT_APP_NET_MULTICAST3_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_MULTICAST3_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_MULTICAST3_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP Multicast сервером сценарий 3
+                add_custom_command(TARGET "${SERVER_APP_NET_MULTICAST3_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_MULTICAST3_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_MULTICAST3_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+                # Выполняем сборку приложения работы с UDP Splice клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_SPLICE_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_SPLICE_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_SPLICE_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDP Splice сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_SPLICE_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_SPLICE_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_SPLICE_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+                # Выполняем сборку приложения работы с UDS-TCP клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_UDS_TCP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDS_TCP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDS_TCP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDS-TCP сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_UDS_TCP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_UDS_TCP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_UDS_TCP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDS-UDP клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_UDS_UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDS_UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDS_UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с UDS-UDP сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_UDS_UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_UDS_UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_UDS_UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+                # Выполняем сборку приложения работы с DTLS клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_DTLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_DTLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_DTLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с DTLS сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_DTLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_DTLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_DTLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+                # Выполняем сборку приложения работы с TLS клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_TLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с TLS сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_TLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с TLS и HTTP/1.1 клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_TLS_WEB_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TLS_WEB_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TLS_WEB_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с TLS и мультисертификатом сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_TLS_MULTI_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TLS_MULTI_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TLS_MULTI_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
         endif()
         # Сборка модуля CMAKE_ENABLED_PVS
         if (CMAKE_ENABLED_PVS)
@@ -1307,49 +2588,49 @@ if (${CMAKE_BUILD_SAMPLES})
             FetchContent_MakeAvailable(PVS_CMakeModule)
             include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
 
-            # Если нужно собрать тесты для работы с ОС
+            # Если нужно собрать семплы для работы с ОС
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем анализ приложения работы с IP-адресами
                 pvs_studio_add_target(TARGET ${IP_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с датой и временем
+            # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
                 pvs_studio_add_target(TARGET ${DATE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с каталогами
+            # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем анализ приложения работы с каталогами
                 pvs_studio_add_target(TARGET ${DIR_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DIR_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с файлами
+            # Если нужно собрать семплы для работы с файлами
             if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
                 # Выполняем анализ приложения работы с файлами
                 pvs_studio_add_target(TARGET ${FILE_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${FILE_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пингами (ICMP)
+            # Если нужно собрать семплы для работы с пингами (ICMP)
             if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
                 # Выполняем анализ приложения пинга (ICMP)
                 pvs_studio_add_target(TARGET ${PING_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с таймером
+            # Если нужно собрать семплы для работы с таймером
             if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
                 # Выполняем анализ приложения таймера
                 pvs_studio_add_target(TARGET ${TIMER_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с пользовательскими событиями
+            # Если нужно собрать семплы для работы с пользовательскими событиями
             if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
                 # Выполняем анализ приложения пользовательских событий
                 pvs_studio_add_target(TARGET ${EVENTS_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${EVENTS_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-            # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
             if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
                 # Выполняем анализ приложения работы с межпроцессорным взаимодействием (именованный канал)
                 pvs_studio_add_target(TARGET ${IPC_PIPE_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_PIPE_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -1361,8 +2642,110 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${IPC_SEQPACKET_APP_IO_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IPC_SEQPACKET_APP_IO_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-            #pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            #pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+                # Выполняем анализ приложения работы с TCP клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_TCP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_TCP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с TCP сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_TCP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_TCP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+                # Выполняем анализ приложения работы с UDP клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP клиентом с подключением
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_UDP_CONN_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_UDP_CONN_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+                # Выполняем анализ приложения работы с UDP Broadcast клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_BROADCAST_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_BROADCAST_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP Broadcast сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_BROADCAST_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_BROADCAST_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+                # Выполняем анализ приложения работы с UDP Multicast клиентом сценарий 1
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_MULTICAST1_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_MULTICAST1_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP Multicast сервером сценарий 1
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_MULTICAST1_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_MULTICAST1_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP Multicast клиентом сценарий 3
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_MULTICAST3_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_MULTICAST3_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP Multicast сервером сценарий 3
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_MULTICAST3_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_MULTICAST3_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+                # Выполняем анализ приложения работы с UDP Splice клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_SPLICE_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_SPLICE_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDP Splice сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_SPLICE_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_SPLICE_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+                # Выполняем анализ приложения работы с UDS-TCP клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_UDS_TCP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_UDS_TCP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDS-TCP сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_UDS_TCP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_UDS_TCP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDS-UDP клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_UDS_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_UDS_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с UDS-UDP сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_UDS_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_UDS_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+                # Выполняем анализ приложения работы с DTLS клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с DTLS сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+                # Выполняем анализ приложения работы с TLS клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с TLS сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с TLS и HTTP/1.1 клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_TLS_WEB_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_TLS_WEB_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с TLS и мультисертификатом сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_TLS_MULTI_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_TLS_MULTI_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+                if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+                    # Выполняем анализ приложения работы с TLS клиентом
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_NET_SCTP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_SCTP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с TLS сервером
+                    pvs_studio_add_target(TARGET ${SERVER_APP_NET_SCTP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_SCTP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с DTLS клиентом
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_NET_SCTP_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_SCTP_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с DTLS сервером
+                    pvs_studio_add_target(TARGET ${SERVER_APP_NET_SCTP_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_SCTP_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с клиентом SCTP - AUTH
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_NET_SCTP_AUTH_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_SCTP_AUTH_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с сервером SCTP - AUTH
+                    pvs_studio_add_target(TARGET ${SERVER_APP_NET_SCTP_AUTH_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_SCTP_AUTH_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с клиентом SCTP - STREAM
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_NET_SCTP_STREAM_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_SCTP_STREAM_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с сервером SCTP - STREAM
+                    pvs_studio_add_target(TARGET ${SERVER_APP_NET_SCTP_STREAM_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_SCTP_STREAM_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с клиентом SCTP - SEQPACKET
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с сервером SCTP - SEQPACKET
+                    pvs_studio_add_target(TARGET ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_SCTP_SEQPACKET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+            endif()
         endif (CMAKE_ENABLED_PVS)
     endif()
 endif (${CMAKE_BUILD_SAMPLES})
@@ -1417,7 +2800,7 @@ if (CMAKE_BUILD_TESTS)
     # add_subdirectory(benchmark)
 endif (CMAKE_BUILD_TESTS)
 
-# Если операционной системой является Windows
+# Если сборка производится под операционную систему Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если собрана динамическая библиотека
     if (CMAKE_SHARED_BUILD_LIB)
@@ -1433,7 +2816,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Устанавливаем статическую библиотеку AWH
         install(TARGETS ${AWH_LIB_NAME} ARCHIVE DESTINATION lib RENAME ${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif (CMAKE_SHARED_BUILD_LIB)
-# Если операцинная система относится к Nix-подобной
+# Если сборка производится под операционную систему принадлежащей к Nix-подобной группе (Linux, FreeBSD, Darwin и т.д.)
 else()
     # Устанавливаем статическую библиотеку AWH
     install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
@@ -1444,49 +2827,49 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
-    # Если нужно собрать тесты для работы с ОС
+    # Если нужно собрать семплы для работы с ОС
     if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
         # Устанавливаем приложение работы с IP-адресами
         install(TARGETS ${IP_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с датой и временем
+    # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
         # Устанавливаем приложение работы с датой и временем
         install(TARGETS ${DATE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с каталогами
+    # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с каталогами
         install(TARGETS ${DIR_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с файлами
+    # Если нужно собрать семплы для работы с файлами
     if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с файлами
         install(TARGETS ${FILE_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с пингами (ICMP)
+    # Если нужно собрать семплы для работы с пингами (ICMP)
     if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с пингами (ICMP)
         install(TARGETS ${PING_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с таймером
+    # Если нужно собрать семплы для работы с таймером
     if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с таймером
         install(TARGETS ${TIMER_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с пользовательскими событиями
+    # Если нужно собрать семплы для работы с пользовательскими событиями
     if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с пользовательскими событиями
         install(TARGETS ${EVENTS_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
-    # Если нужно собрать тесты для работы с межпроцессорным взаимодействием
+    # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
     if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
         # Устанавливаем приложение работы с межпроцессорным взаимодействием (именованный канал)
         install(TARGETS ${IPC_PIPE_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
@@ -1498,10 +2881,112 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${IPC_SEQPACKET_APP_IO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-    #install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    #install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+    if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+        # Устанавливаем приложение клиента TCP
+        install(TARGETS ${CLIENT_APP_NET_TCP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера TCP
+        install(TARGETS ${SERVER_APP_NET_TCP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
 
-    # Если операционной системой не является Windows
+    # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+    if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+        # Устанавливаем приложение клиента UDP
+        install(TARGETS ${CLIENT_APP_NET_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение клиента UDP с подключением
+        install(TARGETS ${CLIENT_APP_NET_UDP_CONN_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDP
+        install(TARGETS ${SERVER_APP_NET_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+    if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+        # Устанавливаем приложение клиента UDP Broadcast
+        install(TARGETS ${CLIENT_APP_NET_BROADCAST_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDP Broadcast
+        install(TARGETS ${SERVER_APP_NET_BROADCAST_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+    if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+        # Устанавливаем приложение клиента UDP Multicast сценарий 1
+        install(TARGETS ${CLIENT_APP_NET_MULTICAST1_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDP Multicast сценарий 1
+        install(TARGETS ${SERVER_APP_NET_MULTICAST1_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение клиента UDP Multicast сценарий 3
+        install(TARGETS ${CLIENT_APP_NET_MULTICAST3_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDP Multicast сценарий 3
+        install(TARGETS ${SERVER_APP_NET_MULTICAST3_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+    if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+        # Устанавливаем приложение клиента UDP Splice
+        install(TARGETS ${CLIENT_APP_NET_SPLICE_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDP Splice
+        install(TARGETS ${SERVER_APP_NET_SPLICE_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+    if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+        # Устанавливаем приложение клиента UDS-TCP
+        install(TARGETS ${CLIENT_APP_NET_UDS_TCP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDS-TCP
+        install(TARGETS ${SERVER_APP_NET_UDS_TCP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение клиента UDS-UDP
+        install(TARGETS ${CLIENT_APP_NET_UDS_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера UDS-UDP
+        install(TARGETS ${SERVER_APP_NET_UDS_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+    if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+        # Устанавливаем приложение клиента DTLS
+        install(TARGETS ${CLIENT_APP_NET_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера DTLS
+        install(TARGETS ${SERVER_APP_NET_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+    if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+        # Устанавливаем приложение клиента TLS
+        install(TARGETS ${CLIENT_APP_NET_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера TLS
+        install(TARGETS ${SERVER_APP_NET_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение клиента TLS с поддержкой веб-серверов
+        install(TARGETS ${CLIENT_APP_NET_TLS_WEB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера TLS с поддержкой мультисертификатов
+        install(TARGETS ${SERVER_APP_NET_TLS_MULTI_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+    # Если сборка производится под операционную систему FreeBSD или Linux
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+        if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+            # Устанавливаем приложение клиента TLS
+            install(TARGETS ${CLIENT_APP_NET_SCTP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение сервера TLS
+            install(TARGETS ${SERVER_APP_NET_SCTP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение клиента DTLS
+            install(TARGETS ${CLIENT_APP_NET_SCTP_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение сервера DTLS
+            install(TARGETS ${SERVER_APP_NET_SCTP_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение клиента SCTP - AUTH
+            install(TARGETS ${CLIENT_APP_NET_SCTP_AUTH_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение сервера SCTP - AUTH
+            install(TARGETS ${SERVER_APP_NET_SCTP_AUTH_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение клиента SCTP - STREAM
+            install(TARGETS ${CLIENT_APP_NET_SCTP_STREAM_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение сервера SCTP - STREAM
+            install(TARGETS ${SERVER_APP_NET_SCTP_STREAM_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение клиента SCTP - SEQPACKET
+            install(TARGETS ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение сервера SCTP - SEQPACKET
+            install(TARGETS ${SERVER_APP_NET_SCTP_SEQPACKET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+    endif()
+
+    # Если сборка производится под операционную систему Windows
     if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         #install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif()

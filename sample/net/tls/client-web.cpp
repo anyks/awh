@@ -120,22 +120,9 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		tls.on(ctl, [&log](const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					log.print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					log.print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+		tls.on(ctl, [&log](const tls_t::id_t id, [[maybe_unused]] const tls_t::error_t error, const string & message) noexcept -> void {
+			// Выводим сообщение о предупреждающей ошибке TLS
+			log.print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
 		tls.on(ctl, [&log](const tls_t::id_t id, const tls_t::event_t event, const size_t size) noexcept -> void {

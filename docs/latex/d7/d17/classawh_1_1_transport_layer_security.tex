@@ -17,30 +17,39 @@ struct \doxymbox{\hyperlink{structawh_1_1_transport_layer_security_1_1_a_l_p_n}{
 \doxysubsubsection*{Public Types}
 \begin{DoxyCompactItemize}
 \item 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}{state\+\_\+t}} :\+ uint8\+\_\+t 
-\item 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61}{mode\+\_\+t}} :\+ uint8\+\_\+t 
-\item 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6}{type\+\_\+t}} :\+ uint8\+\_\+t 
-\item 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}{error\+\_\+t}} :\+ uint8\+\_\+t 
-\item 
+\Hypertarget{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}\label{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866} 
 enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}} :\+ uint8\+\_\+t 
-\item 
+\begin{DoxyCompactList}\small\item\em Типы событий TLS. \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}\label{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5} 
+enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}{state\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Состояния TLS работы \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61}\label{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61} 
+enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61}{mode\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Режимы работы TLS. \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6}\label{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6} 
+enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6}{type\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Флаги типов файлов TLS. \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}\label{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489} 
+enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}{error\+\_\+t}} :\+ uint8\+\_\+t 
+\begin{DoxyCompactList}\small\item\em Флаги типов ошибок TLS. \end{DoxyCompactList}\item 
 \Hypertarget{classawh_1_1_transport_layer_security_ad8eb308f7f7bb6e799f86e1153a652c0}\label{classawh_1_1_transport_layer_security_ad8eb308f7f7bb6e799f86e1153a652c0} 
 typedef struct \doxymbox{\hyperlink{structawh_1_1_transport_layer_security_1_1_a_l_p_n}{awh::\+\+Transport\+Layer\+Security::\+\+ALPN}} {\bfseries alpn\+\_\+t}
 \begin{DoxyCompactList}\small\item\em Структура ALPN-\/протокола \end{DoxyCompactList}\item 
 \Hypertarget{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}\label{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b} 
 using {\bfseries id\+\_\+t} = uint64\+\_\+t
 \begin{DoxyCompactList}\small\item\em Тип идентификатора события \end{DoxyCompactList}\item 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a6091963433f8ea9cb729fcc53422cf8d}{state\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}{state\+\_\+t}})$>$
-\item 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a8c31e5de36919079ce52c7e1b7e037bc}{error\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}{error\+\_\+t}}, const string \&)$>$
-\item 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_af37a46d69af6a77abda92392a69bc3c5}{write\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}}, const size\+\_\+t)$>$
-\item 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a983273f3aa1c062bbaff46cffca54860}{read\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}}, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}, const size\+\_\+t)$>$
-\end{DoxyCompactItemize}
+\Hypertarget{classawh_1_1_transport_layer_security_a6091963433f8ea9cb729fcc53422cf8d}\label{classawh_1_1_transport_layer_security_a6091963433f8ea9cb729fcc53422cf8d} 
+using {\bfseries state\+\_\+callback\+\_\+t} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}{state\+\_\+t}})$>$
+\begin{DoxyCompactList}\small\item\em Функция обратного вызова срабатывающая при изменении состояния \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_a8c31e5de36919079ce52c7e1b7e037bc}\label{classawh_1_1_transport_layer_security_a8c31e5de36919079ce52c7e1b7e037bc} 
+using {\bfseries error\+\_\+callback\+\_\+t} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}{error\+\_\+t}}, const string \&)$>$
+\begin{DoxyCompactList}\small\item\em Функция обратного вызова срабатывающая при ошибке события \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_af37a46d69af6a77abda92392a69bc3c5}\label{classawh_1_1_transport_layer_security_af37a46d69af6a77abda92392a69bc3c5} 
+using {\bfseries write\+\_\+callback\+\_\+t} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}}, const size\+\_\+t)$>$
+\begin{DoxyCompactList}\small\item\em Функция обратного вызова срабатывающая при записи \end{DoxyCompactList}\item 
+\Hypertarget{classawh_1_1_transport_layer_security_a983273f3aa1c062bbaff46cffca54860}\label{classawh_1_1_transport_layer_security_a983273f3aa1c062bbaff46cffca54860} 
+using {\bfseries read\+\_\+callback\+\_\+t} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}}, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}, const size\+\_\+t)$>$
+\begin{DoxyCompactList}\small\item\em Функция обратного вызова срабатывающая при чтении \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsubsection*{Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
@@ -123,70 +132,6 @@ bool \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a4d4537e34f9ecf1
 
 \doxysubsection{Detailed Description}
 Структура транспортного уровня безопасности 
-
-\label{doc-typedef-members}
-\Hypertarget{classawh_1_1_transport_layer_security_doc-typedef-members}
-\doxysubsection{Member Typedef Documentation}
-\Hypertarget{classawh_1_1_transport_layer_security_a8c31e5de36919079ce52c7e1b7e037bc}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!error\_callback\_t@{error\_callback\_t}}
-\index{error\_callback\_t@{error\_callback\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{error\_callback\_t}{error\_callback\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_a8c31e5de36919079ce52c7e1b7e037bc} 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a8c31e5de36919079ce52c7e1b7e037bc}{awh::\+\+Transport\+Layer\+Security::\+error\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}{error\+\_\+t}}, const string \&)$>$}
-
-Функция обратного вызова срабатывающая при ошибке события \Hypertarget{classawh_1_1_transport_layer_security_a983273f3aa1c062bbaff46cffca54860}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!read\_callback\_t@{read\_callback\_t}}
-\index{read\_callback\_t@{read\_callback\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{read\_callback\_t}{read\_callback\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_a983273f3aa1c062bbaff46cffca54860} 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a983273f3aa1c062bbaff46cffca54860}{awh::\+\+Transport\+Layer\+Security::\+read\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}}, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}, const size\+\_\+t)$>$}
-
-Функция обратного вызова срабатывающая при чтении \Hypertarget{classawh_1_1_transport_layer_security_a6091963433f8ea9cb729fcc53422cf8d}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!state\_callback\_t@{state\_callback\_t}}
-\index{state\_callback\_t@{state\_callback\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{state\_callback\_t}{state\_callback\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_a6091963433f8ea9cb729fcc53422cf8d} 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a6091963433f8ea9cb729fcc53422cf8d}{awh::\+\+Transport\+Layer\+Security::\+state\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}{state\+\_\+t}})$>$}
-
-Функция обратного вызова срабатывающая при изменении состояния \Hypertarget{classawh_1_1_transport_layer_security_af37a46d69af6a77abda92392a69bc3c5}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!write\_callback\_t@{write\_callback\_t}}
-\index{write\_callback\_t@{write\_callback\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{write\_callback\_t}{write\_callback\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_af37a46d69af6a77abda92392a69bc3c5} 
-using \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_af37a46d69af6a77abda92392a69bc3c5}{awh::\+\+Transport\+Layer\+Security::\+write\+\_\+callback\+\_\+t}} = std::\+function $<$void (const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1773913339fd248d2e742f2b4bc4fb8b}{id\+\_\+t}}, const \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{event\+\_\+t}}, const size\+\_\+t)$>$}
-
-Функция обратного вызова срабатывающая при записи 
-
-\label{doc-enum-members}
-\Hypertarget{classawh_1_1_transport_layer_security_doc-enum-members}
-\doxysubsection{Member Enumeration Documentation}
-\Hypertarget{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!error\_t@{error\_t}}
-\index{error\_t@{error\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{error\_t}{error\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489} 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a48b00e960cf72d6ef4f41d6dd60a9489}{awh::\+\+Transport\+Layer\+Security::\+error\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
-
-Флаги типов ошибок TLS \Hypertarget{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!event\_t@{event\_t}}
-\index{event\_t@{event\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{event\_t}{event\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866} 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_aad15ef8607f2598bbc76b61c4acfb866}{awh::\+\+Transport\+Layer\+Security::\+event\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
-
-Типы событий TLS \Hypertarget{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!mode\_t@{mode\_t}}
-\index{mode\_t@{mode\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{mode\_t}{mode\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61} 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_ab5da1898b5f39c2eb234f7bd26156d61}{awh::\+\+Transport\+Layer\+Security::\+mode\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
-
-Режимы работы TLS \Hypertarget{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!state\_t@{state\_t}}
-\index{state\_t@{state\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{state\_t}{state\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5} 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_a1b8bab417745aedb35e2f7f272a3eba5}{awh::\+\+Transport\+Layer\+Security::\+state\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
-
-Состояния TLS работы \Hypertarget{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6}\index{awh::TransportLayerSecurity@{awh::TransportLayerSecurity}!type\_t@{type\_t}}
-\index{type\_t@{type\_t}!awh::TransportLayerSecurity@{awh::TransportLayerSecurity}}
-\doxysubsubsection{\texorpdfstring{type\_t}{type\_t}}
-{\footnotesize\ttfamily \label{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6} 
-enum class \doxymbox{\hyperlink{classawh_1_1_transport_layer_security_afca6ca8af09fb3c17851220ce3652cc6}{awh::\+\+Transport\+Layer\+Security::\+type\+\_\+t}} :\+ uint8\+\_\+t\hspace{0.3cm}{\ttfamily [strong]}}
-
-Флаги типов файлов TLS 
 
 \label{doc-constructors}
 \Hypertarget{classawh_1_1_transport_layer_security_doc-constructors}

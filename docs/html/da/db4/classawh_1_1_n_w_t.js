@@ -2,6 +2,7 @@ var classawh_1_1_n_w_t =
 [
     [ "URL", "d6/d42/classawh_1_1_n_w_t_1_1_u_r_l.html", "d6/d42/classawh_1_1_n_w_t_1_1_u_r_l" ],
     [ "url_t", "da/db4/classawh_1_1_n_w_t.html#abc31434361a5acc836daa96f4b1193a6", null ],
+    [ "types_t", "da/db4/classawh_1_1_n_w_t.html#a853c352307a2664c0c8d151b092754d4", null ],
     [ "NWT", "da/db4/classawh_1_1_n_w_t.html#a8307b1d0f6a67517c674811df4c419ed", null ],
     [ "NWT", "da/db4/classawh_1_1_n_w_t.html#a5063c062befe30318d90abd2ea2dee46", null ],
     [ "NWT", "da/db4/classawh_1_1_n_w_t.html#a943075c63b2887466cb3c3b6b248c816", null ],

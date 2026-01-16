@@ -31,278 +31,278 @@
 \DoxyCodeLine{00058\ \ \ \ \ \textcolor{keyword}{using\ namespace\ }std;}
 \DoxyCodeLine{00063\ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ \doxymbox{\hyperlink{classawh_1_1_log_afcbd6e0e1e43ce15312246fcf66e9027}{Log}}\ \{}
 \DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ :\ uint8\_t\ \{}
-\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Флаг\ не\ установлен}}
-\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Информационное\ сообщение}}
-\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WARNING\ \ =\ 0x02,\ \textcolor{comment}{//\ Предупреждающее\ сообщение}}
-\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CRITICAL\ =\ 0x03\ \ \textcolor{comment}{//\ Критическое\ сообщение}}
-\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
-\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_ac47fa480590728980fc1ce7b4a820d57}{mode\_t}}\ :\ uint8\_t\ \{}
-\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Вывод\ логов\ запрещён}}
-\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FILE\ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ в\ файлы}}
-\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SYSLOG\ \ \ =\ 0x02,\ \textcolor{comment}{//\ Разрешено\ отправлять\ логи\ в\ SysLog}}
-\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CONSOLE\ \ =\ 0x03,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ в\ консоль}}
-\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DEFERRED\ =\ 0x04\ \ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ в\ функцию\ обратного\ вызова}}
-\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
-\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_ab935ea4600f18bb58372f16d08496d53}{separator\_t}}\ :\ uint8\_t\ \{}
-\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Разделитель\ отключён}}
-\DoxyCodeLine{00089\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SMART\ \ =\ 0x01,\ \textcolor{comment}{//\ Умный\ разделитель\ по\ длине\ сообщения}}
-\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ALWAYS\ =\ 0x02\ \ \textcolor{comment}{//\ Отображать\ разделитель\ всегда}}
-\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
-\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_a1f628eeaf9e58b0f8c7cba9032bb87ff}{level\_t}}\ :\ uint8\_t\ \{}
-\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Логирование\ отключено}}
-\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ALL\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Разрешено\ выводить\ все\ виды\ логов}}
-\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Разрешено\ выводить\ только\ информационные\ логи}}
-\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WARNING\ \ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Разрешено\ выводить\ только\ логи\ предупреждения}}
-\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CRITICAL\ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Разрешено\ выводить\ только\ критические\ логи}}
-\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\_WARNING\ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ информационные\ и\ предупреждения}}
-\DoxyCodeLine{00102\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\_CRITICAL\ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ информационные\ и\ критические}}
-\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WARNING\_CRITICAL\ =\ 0x06\ \ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ предупреждения\ и\ критические}}
-\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
-\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00110\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ Payload\ \{}
-\DoxyCodeLine{00111\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00112\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ полезной\ нагрузки}}
-\DoxyCodeLine{00113\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ flag\_t\ flag;}
-\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Текст\ полезной\ нагрузки}}
-\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ text;}
-\DoxyCodeLine{00116\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00123\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload\ \&\ operator\ =\ (Payload\ \&\&\ payload)\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload\ \&\ operator\ =\ (\textcolor{keyword}{const}\ Payload\ \&\ payload)\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00138\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ ==\ (\textcolor{keyword}{const}\ Payload\ \&\ payload)\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload(Payload\ \&\&\ payload)\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload(\textcolor{keyword}{const}\ Payload\ \&\ payload)\ \textcolor{keyword}{noexcept};}
-\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload()\ noexcept;}
-\DoxyCodeLine{00158\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \string~Payload()\ noexcept\ \{\}}
-\DoxyCodeLine{00164\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ payload\_t;}
-\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ родительского\ процесса}}
-\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ \ \ \ \ pid\_t\ \_pid;}
-\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00169\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ асинхронного\ режима\ работы}}
-\DoxyCodeLine{00170\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \_async;}
-\DoxyCodeLine{00171\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальный\ размер\ файла\ лога}}
-\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \_maxSize;}
-\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Размер\ сообщения\ для\ формирования\ разделителя}}
-\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \_sepSize;}
-\DoxyCodeLine{00177\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Уровень\ логирования}}
-\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ \ \ \ \ level\_t\ \_level;}
-\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00181\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ формирования\ разделителя}}
-\DoxyCodeLine{00182\ \ \ \ \ \ \ \ \ \ \ \ \ separator\_t\ \_sep;}
-\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ работы\ с\ датой\ и\ временем}}
-\DoxyCodeLine{00185\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_a4ac2f493721712005f622fe18e6a728d}{chrono\_t}}\ \_chrono;}
-\DoxyCodeLine{00186\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Название\ сервиса\ для\ вывода\ лога}}
-\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_name;}
-\DoxyCodeLine{00189\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формат\ даты\ и\ времени\ для\ вывода\ лога}}
-\DoxyCodeLine{00190\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_format;}
-\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Адрес\ файла\ для\ сохранения\ логов}}
-\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_filename;}
-\DoxyCodeLine{00193\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ доступных\ флагов}}
-\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \ \ \ \ std::unordered\_set\ <mode\_t>\ \_mode;}
-\DoxyCodeLine{00196\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00197\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ проинициализированных\ процессов}}
-\DoxyCodeLine{00198\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ std::unordered\_set\ <pid\_t>\ \_initialized;}
-\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ для\ блокировки\ потока}}
-\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ lock\_state\_t\ <std::recursive\_mutex>\ \_mtx;}
-\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00203\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ работы\ с\ дочерними\ потоками}}
-\DoxyCodeLine{00204\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ screen\_t\ <payload\_t>\ \_screen;}
-\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00209\ \ \ \ \ \ \ \ \ \ \ \ \ function\ <void\ (\textcolor{keyword}{const}\ flag\_t,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&)>\ \_fn;}
-\DoxyCodeLine{00210\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00211\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ фреймворка}}
-\DoxyCodeLine{00212\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ \_fmk;}
-\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00219\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ TupType>}
-\DoxyCodeLine{00226\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ count(TupType)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
-\DoxyCodeLine{00227\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ количество\ переданных\ аргументов}}
-\DoxyCodeLine{00228\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ tuple\_size\_v\ <TupType>;}
-\DoxyCodeLine{00229\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00230\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00237\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class\ }TupType,\ \textcolor{keywordtype}{size\_t}...\ I>}
-\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ formation(\textcolor{keyword}{const}\ TupType\ \&\ args,\ index\_sequence\ <I...>)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
-\DoxyCodeLine{00245\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Создаём\ объект\ строкового\ потока}}
-\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ stringstream\ ss;}
-\DoxyCodeLine{00247\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ добавление\ открывающую\ скобку}}
-\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ss\ <<\ \textcolor{stringliteral}{"{}("{}};}
-\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ запись\ всех\ аргументов}}
-\DoxyCodeLine{00250\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (...,\ (ss\ <<\ (I\ ==\ 0\ ?\ \textcolor{stringliteral}{"{}"{}}\ :\ \textcolor{stringliteral}{"{},\ "{}})\ <<\ get\ <I>\ (args)));}
-\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ добавление\ закрывающую\ скобку}}
-\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ss\ <<\ \textcolor{stringliteral}{"{})"{}};}
-\DoxyCodeLine{00253\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ результат}}
-\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ ss.str();}
-\DoxyCodeLine{00255\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00261\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ TupType>}
-\DoxyCodeLine{00268\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ serialization(\textcolor{keyword}{const}\ tuple\ <TupType...>\ \&\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
-\DoxyCodeLine{00269\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ серриализацию\ полученных\ аргументов}}
-\DoxyCodeLine{00270\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ this-\/>formation(args,\ make\_index\_sequence\ <\textcolor{keyword}{sizeof}...(TupType)>\ ());}
-\DoxyCodeLine{00271\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00272\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
-\DoxyCodeLine{00277\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ rotate()\ const\ noexcept;}
-\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ private:}
-\DoxyCodeLine{00285\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \&\ cleaner(\textcolor{keywordtype}{string}\ \&\ text)\ const\ noexcept;}
-\DoxyCodeLine{00286\ \ \ \ \ \ \ \ \ private:}
-\DoxyCodeLine{00292\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ receiving(const\ payload\_t\ \&\ payload)\ const\ noexcept;}
-\DoxyCodeLine{00293\ \ \ \ \ \ \ \ \ private:}
-\DoxyCodeLine{00300\ \ \ \ \ \ \ \ \ \ \ \ \ std::pair\ <\textcolor{keywordtype}{string},\ \textcolor{keywordtype}{string}>\ components(const\ \textcolor{keywordtype}{string}\ \&\ filename)\ const\ noexcept;}
-\DoxyCodeLine{00301\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00308\ \ \ \ \ \ \ \ \ \ \ \ \ template\ <class...\ T,\ typename...\ Args>}
-\DoxyCodeLine{00318\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ const\ \textcolor{keywordtype}{string}\ \&\ method,\ const\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ Args\&\&...\ args)\ const\ noexcept\ \{}
-\DoxyCodeLine{00319\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
-\DoxyCodeLine{00320\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
-\DoxyCodeLine{00321\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
-\DoxyCodeLine{00322\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if(!method.empty())\{}
-\DoxyCodeLine{00323\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
-\DoxyCodeLine{00324\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ string\ debug\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}AWH\_STRING\_BREAK;}
-\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
-\DoxyCodeLine{00326\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(method);}
-\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00328\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00329\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
-\DoxyCodeLine{00330\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if(this-\/>count(params)\ >\ 0)\{}
-\DoxyCodeLine{00331\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
-\DoxyCodeLine{00332\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}AWH\_STRING\_BREAK);}
-\DoxyCodeLine{00333\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
-\DoxyCodeLine{00334\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(this-\/>serialization(params));}
-\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00337\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
-\DoxyCodeLine{00338\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}AWH\_STRING\_BREAK);}
-\DoxyCodeLine{00339\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00340\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
-\DoxyCodeLine{00341\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>print(debug\ +\ format,\ flag,\ args...);}
-\DoxyCodeLine{00342\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
-\DoxyCodeLine{00343\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>print(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args...);}
-\DoxyCodeLine{00344\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00345\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00352\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ T,\ \textcolor{keyword}{typename}...\ Args>}
-\DoxyCodeLine{00362\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_af6656447f8345e845d569bd4a3e76b4c}{debug}}(\textcolor{keyword}{const}\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ method,\ \textcolor{keyword}{const}\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ Args\&\&...\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
-\DoxyCodeLine{00363\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
-\DoxyCodeLine{00364\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
-\DoxyCodeLine{00365\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
-\DoxyCodeLine{00366\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!method.empty())\{}
-\DoxyCodeLine{00367\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
-\DoxyCodeLine{00368\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}};}
-\DoxyCodeLine{00369\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
-\DoxyCodeLine{00370\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(method);}
-\DoxyCodeLine{00371\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00372\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00373\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
-\DoxyCodeLine{00374\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>count(params)\ >\ 0)\{}
-\DoxyCodeLine{00375\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
-\DoxyCodeLine{00376\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
-\DoxyCodeLine{00377\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
-\DoxyCodeLine{00378\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(this-\/>serialization(params));}
-\DoxyCodeLine{00379\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00380\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00381\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
-\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
-\DoxyCodeLine{00383\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00384\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
-\DoxyCodeLine{00385\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(this-\/>\_fmk-\/>convert(\doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}})\ +\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args...);}
-\DoxyCodeLine{00386\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
-\DoxyCodeLine{00387\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args...);}
-\DoxyCodeLine{00388\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00389\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00390\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00396\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ T>}
-\DoxyCodeLine{00406\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a1ef6c27501212deda6ed9fa97355bc10}{debug}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ method,\ \textcolor{keyword}{const}\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ \textcolor{keyword}{const}\ vector\ <string>\ \&\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
-\DoxyCodeLine{00407\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
-\DoxyCodeLine{00408\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
-\DoxyCodeLine{00409\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
-\DoxyCodeLine{00410\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!method.empty())\{}
-\DoxyCodeLine{00411\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
-\DoxyCodeLine{00412\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}};}
-\DoxyCodeLine{00413\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
-\DoxyCodeLine{00414\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(method);}
-\DoxyCodeLine{00415\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00416\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00417\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
-\DoxyCodeLine{00418\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>count(params)\ >\ 0)\{}
-\DoxyCodeLine{00419\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
-\DoxyCodeLine{00420\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
-\DoxyCodeLine{00421\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
-\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(this-\/>serialization(params));}
-\DoxyCodeLine{00423\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00424\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00425\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
-\DoxyCodeLine{00426\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
-\DoxyCodeLine{00427\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00428\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
-\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ +\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
-\DoxyCodeLine{00430\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
-\DoxyCodeLine{00431\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
-\DoxyCodeLine{00432\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00433\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00439\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ T>}
-\DoxyCodeLine{00449\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a54785d443fd24eae3290117f33cb1e82}{debug}}(\textcolor{keyword}{const}\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ method,\ \textcolor{keyword}{const}\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ \textcolor{keyword}{const}\ vector\ <wstring>\ \&\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
-\DoxyCodeLine{00450\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
-\DoxyCodeLine{00451\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
-\DoxyCodeLine{00452\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
-\DoxyCodeLine{00453\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!method.empty())\{}
-\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
-\DoxyCodeLine{00455\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}};}
-\DoxyCodeLine{00456\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
-\DoxyCodeLine{00457\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(method);}
-\DoxyCodeLine{00458\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00459\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00460\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
-\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>count(params)\ >\ 0)\{}
-\DoxyCodeLine{00462\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
-\DoxyCodeLine{00463\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
-\DoxyCodeLine{00464\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
-\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(this-\/>serialization(params));}
-\DoxyCodeLine{00466\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
-\DoxyCodeLine{00467\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
-\DoxyCodeLine{00468\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
-\DoxyCodeLine{00469\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
-\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00471\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
-\DoxyCodeLine{00472\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(this-\/>\_fmk-\/>convert(\doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}})\ +\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
-\DoxyCodeLine{00473\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
-\DoxyCodeLine{00474\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
-\DoxyCodeLine{00475\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00476\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{00477\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
-\DoxyCodeLine{00484\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ ...)\ const\ noexcept;}
-\DoxyCodeLine{00491\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(const\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ ...)\ const\ noexcept;}
-\DoxyCodeLine{00492\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00500\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ const\ vector\ <\textcolor{keywordtype}{string}>\ \&\ args)\ const\ noexcept;}
-\DoxyCodeLine{00508\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(const\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ const\ vector\ <wstring>\ \&\ args)\ const\ noexcept;}
-\DoxyCodeLine{00509\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00515\ \ \ \ \ \ \ \ \ \ \ \ \ const\ std::unordered\_set\ <\doxymbox{\hyperlink{classawh_1_1_log_ac47fa480590728980fc1ce7b4a820d57}{mode\_t}}>\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}}()\ const\ noexcept;}
-\DoxyCodeLine{00521\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}}(const\ std::unordered\_set\ <\doxymbox{\hyperlink{classawh_1_1_log_ac47fa480590728980fc1ce7b4a820d57}{mode\_t}}>\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}})\ noexcept;}
-\DoxyCodeLine{00522\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00528\ \ \ \ \ \ \ \ \ \ \ \ \ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}()\ const\ noexcept;}
-\DoxyCodeLine{00534\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}})\ noexcept;}
-\DoxyCodeLine{00535\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00541\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a443e9ff3343a5fe9755a3ec9908836ca}{async}}(const\ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}})\ noexcept;}
-\DoxyCodeLine{00547\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a234daa7c527158928c14c2f84c7c18f4}{name}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a234daa7c527158928c14c2f84c7c18f4}{name}})\ noexcept;}
-\DoxyCodeLine{00553\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a70facfdd01c13fb23875d043f6565bc9}{maxSize}}(const\ \textcolor{keywordtype}{float}\ size)\ noexcept;}
-\DoxyCodeLine{00559\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_aaa7a7b48e3b45276221a3bc03389df06}{sepSize}}(const\ \textcolor{keywordtype}{size\_t}\ size)\ noexcept;}
-\DoxyCodeLine{00565\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a4d1f93f5f8f89d742012a3ec00d4321f}{level}}(const\ \doxymbox{\hyperlink{classawh_1_1_log_a1f628eeaf9e58b0f8c7cba9032bb87ff}{level\_t}}\ \doxymbox{\hyperlink{classawh_1_1_log_a4d1f93f5f8f89d742012a3ec00d4321f}{level}})\ noexcept;}
-\DoxyCodeLine{00571\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_adcf0cf434e7ce7e05035019ba8ff09f8}{separator}}(const\ \doxymbox{\hyperlink{classawh_1_1_log_ab935ea4600f18bb58372f16d08496d53}{separator\_t}}\ sep)\ noexcept;}
-\DoxyCodeLine{00577\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a28290df62626304e9b216a35d1f2436f}{filename}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a28290df62626304e9b216a35d1f2436f}{filename}})\ noexcept;}
-\DoxyCodeLine{00578\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00584\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_af17751ca3c4f20e20005607525d84892}{subscribe}}(function\ <\textcolor{keywordtype}{void}\ (const\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}},\ const\ \textcolor{keywordtype}{string}\ \&)>\ callback)\ noexcept;}
-\DoxyCodeLine{00585\ \ \ \ \ \ \ \ \ public:}
-\DoxyCodeLine{00592\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_log_afcbd6e0e1e43ce15312246fcf66e9027}{Log}}(const\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ fmk,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a28290df62626304e9b216a35d1f2436f}{filename}}\ =\ \textcolor{stringliteral}{"{}"{}})\ noexcept;}
-\DoxyCodeLine{00597\ \ \ \ \ \ \ \ \ \ \ \ \ \string~\doxymbox{\hyperlink{classawh_1_1_log_afcbd6e0e1e43ce15312246fcf66e9027}{Log}}()\ noexcept;}
-\DoxyCodeLine{00598\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}};}
-\DoxyCodeLine{00599\ \};}
-\DoxyCodeLine{00600\ }
-\DoxyCodeLine{00601\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_LOG\_\_}}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Флаг\ не\ установлен}}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Информационное\ сообщение}}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WARNING\ \ =\ 0x02,\ \textcolor{comment}{//\ Предупреждающее\ сообщение}}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CRITICAL\ =\ 0x03\ \ \textcolor{comment}{//\ Критическое\ сообщение}}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_ac47fa480590728980fc1ce7b4a820d57}{mode\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Вывод\ логов\ запрещён}}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FILE\ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ в\ файлы}}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SYSLOG\ \ \ =\ 0x02,\ \textcolor{comment}{//\ Разрешено\ отправлять\ логи\ в\ SysLog}}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CONSOLE\ \ =\ 0x03,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ в\ консоль}}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DEFERRED\ =\ 0x04\ \ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ в\ функцию\ обратного\ вызова}}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_ab935ea4600f18bb58372f16d08496d53}{separator\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ =\ 0x00,\ \textcolor{comment}{//\ Разделитель\ отключён}}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SMART\ \ =\ 0x01,\ \textcolor{comment}{//\ Умный\ разделитель\ по\ длине\ сообщения}}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ALWAYS\ =\ 0x02\ \ \textcolor{comment}{//\ Отображать\ разделитель\ всегда}}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum\ class}\ \doxymbox{\hyperlink{classawh_1_1_log_a1f628eeaf9e58b0f8c7cba9032bb87ff}{level\_t}}\ :\ uint8\_t\ \{}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NONE\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x00,\ \textcolor{comment}{//\ Логирование\ отключено}}
+\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ALL\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x07,\ \textcolor{comment}{//\ Разрешено\ выводить\ все\ виды\ логов}}
+\DoxyCodeLine{00102\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\ \ \ \ \ \ \ \ \ \ \ \ \ =\ 0x01,\ \textcolor{comment}{//\ Разрешено\ выводить\ только\ информационные\ логи}}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WARNING\ \ \ \ \ \ \ \ \ \ =\ 0x02,\ \textcolor{comment}{//\ Разрешено\ выводить\ только\ логи\ предупреждения}}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ CRITICAL\ \ \ \ \ \ \ \ \ =\ 0x03,\ \textcolor{comment}{//\ Разрешено\ выводить\ только\ критические\ логи}}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\_WARNING\ \ \ \ \ =\ 0x04,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ информационные\ и\ предупреждения}}
+\DoxyCodeLine{00106\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INFO\_CRITICAL\ \ \ \ =\ 0x05,\ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ информационные\ и\ критические}}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ WARNING\_CRITICAL\ =\ 0x06\ \ \textcolor{comment}{//\ Разрешено\ выводить\ логи\ предупреждения\ и\ критические}}
+\DoxyCodeLine{00108\ \ \ \ \ \ \ \ \ \ \ \ \ \};}
+\DoxyCodeLine{00109\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{typedef}\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{global_8hpp_a20ca968c013411b40dcb4352534038c8}{AWH\_SHARED\_EXPORT}}\ Payload\ \{}
+\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00116\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ полезной\ нагрузки}}
+\DoxyCodeLine{00117\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ flag\_t\ flag;}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Текст\ полезной\ нагрузки}}
+\DoxyCodeLine{00119\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ text;}
+\DoxyCodeLine{00120\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload\ \&\ operator\ =\ (Payload\ \&\&\ payload)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload\ \&\ operator\ =\ (\textcolor{keyword}{const}\ Payload\ \&\ payload)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ operator\ ==\ (\textcolor{keyword}{const}\ Payload\ \&\ payload)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00149\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload(Payload\ \&\&\ payload)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload(\textcolor{keyword}{const}\ Payload\ \&\ payload)\ \textcolor{keyword}{noexcept};}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00161\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Payload()\ noexcept;}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \string~Payload()\ noexcept\ \{\}}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ payload\_t;}
+\DoxyCodeLine{00169\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00170\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Идентификатор\ родительского\ процесса}}
+\DoxyCodeLine{00171\ \ \ \ \ \ \ \ \ \ \ \ \ pid\_t\ \_pid;}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ асинхронного\ режима\ работы}}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{bool}\ \_async;}
+\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Максимальный\ размер\ файла\ лога}}
+\DoxyCodeLine{00177\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \_maxSize;}
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Размер\ сообщения\ для\ формирования\ разделителя}}
+\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \_sepSize;}
+\DoxyCodeLine{00181\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00182\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Уровень\ логирования}}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \ \ \ \ level\_t\ \_level;}
+\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00185\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Флаг\ формирования\ разделителя}}
+\DoxyCodeLine{00186\ \ \ \ \ \ \ \ \ \ \ \ \ separator\_t\ \_sep;}
+\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ работы\ с\ датой\ и\ временем}}
+\DoxyCodeLine{00189\ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{namespaceawh_a4ac2f493721712005f622fe18e6a728d}{chrono\_t}}\ \_chrono;}
+\DoxyCodeLine{00190\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Название\ сервиса\ для\ вывода\ лога}}
+\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_name;}
+\DoxyCodeLine{00193\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формат\ даты\ и\ времени\ для\ вывода\ лога}}
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_format;}
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Адрес\ файла\ для\ сохранения\ логов}}
+\DoxyCodeLine{00196\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \_filename;}
+\DoxyCodeLine{00197\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00198\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ доступных\ флагов}}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ std::unordered\_set\ <mode\_t>\ \_mode;}
+\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Список\ проинициализированных\ процессов}}
+\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ std::unordered\_set\ <pid\_t>\ \_initialized;}
+\DoxyCodeLine{00203\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00204\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Мютекс\ для\ блокировки\ потока}}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ lock\_state\_t\ <std::recursive\_mutex>\ \_mtx;}
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00207\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ работы\ с\ дочерними\ потоками}}
+\DoxyCodeLine{00208\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{mutable}\ screen\_t\ <payload\_t>\ \_screen;}
+\DoxyCodeLine{00209\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \ \ \ \ function\ <void\ (\textcolor{keyword}{const}\ flag\_t,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&)>\ \_fn;}
+\DoxyCodeLine{00214\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00215\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Объект\ фреймворка}}
+\DoxyCodeLine{00216\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ \_fmk;}
+\DoxyCodeLine{00217\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00223\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{typename}\ TupType>}
+\DoxyCodeLine{00230\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ count(TupType)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00231\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ количество\ переданных\ аргументов}}
+\DoxyCodeLine{00232\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ tuple\_size\_v\ <TupType>;}
+\DoxyCodeLine{00233\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00241\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class\ }TupType,\ \textcolor{keywordtype}{size\_t}...\ I>}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ formation(\textcolor{keyword}{const}\ TupType\ \&\ args,\ index\_sequence\ <I...>)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Создаём\ объект\ строкового\ потока}}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ stringstream\ ss;}
+\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ добавление\ открывающую\ скобку}}
+\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ss\ <<\ \textcolor{stringliteral}{"{}("{}};}
+\DoxyCodeLine{00253\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ запись\ всех\ аргументов}}
+\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (...,\ (ss\ <<\ (I\ ==\ 0\ ?\ \textcolor{stringliteral}{"{}"{}}\ :\ \textcolor{stringliteral}{"{},\ "{}})\ <<\ get\ <I>\ (args)));}
+\DoxyCodeLine{00255\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ добавление\ закрывающую\ скобку}}
+\DoxyCodeLine{00256\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ss\ <<\ \textcolor{stringliteral}{"{})"{}};}
+\DoxyCodeLine{00257\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ результат}}
+\DoxyCodeLine{00258\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ ss.str();}
+\DoxyCodeLine{00259\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00265\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ TupType>}
+\DoxyCodeLine{00272\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ serialization(\textcolor{keyword}{const}\ tuple\ <TupType...>\ \&\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00273\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выполняем\ серриализацию\ полученных\ аргументов}}
+\DoxyCodeLine{00274\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ this-\/>formation(args,\ make\_index\_sequence\ <\textcolor{keyword}{sizeof}...(TupType)>\ ());}
+\DoxyCodeLine{00275\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00276\ \ \ \ \ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00281\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ rotate()\ const\ noexcept;}
+\DoxyCodeLine{00282\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00289\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \&\ cleaner(\textcolor{keywordtype}{string}\ \&\ text)\ const\ noexcept;}
+\DoxyCodeLine{00290\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00296\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ receiving(const\ payload\_t\ \&\ payload)\ const\ noexcept;}
+\DoxyCodeLine{00297\ \ \ \ \ \ \ \ \ private:}
+\DoxyCodeLine{00304\ \ \ \ \ \ \ \ \ \ \ \ \ std::pair\ <\textcolor{keywordtype}{string},\ \textcolor{keywordtype}{string}>\ components(const\ \textcolor{keywordtype}{string}\ \&\ filename)\ const\ noexcept;}
+\DoxyCodeLine{00305\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00312\ \ \ \ \ \ \ \ \ \ \ \ \ template\ <class...\ T,\ typename...\ Args>}
+\DoxyCodeLine{00322\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ const\ \textcolor{keywordtype}{string}\ \&\ method,\ const\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ Args\&\&...\ args)\ const\ noexcept\ \{}
+\DoxyCodeLine{00323\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
+\DoxyCodeLine{00324\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
+\DoxyCodeLine{00326\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if(!method.empty())\{}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
+\DoxyCodeLine{00328\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ string\ debug\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}AWH\_STRING\_BREAK;}
+\DoxyCodeLine{00329\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
+\DoxyCodeLine{00330\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(method);}
+\DoxyCodeLine{00331\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00332\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00333\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
+\DoxyCodeLine{00334\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if(this-\/>count(params)\ >\ 0)\{}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}AWH\_STRING\_BREAK);}
+\DoxyCodeLine{00337\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
+\DoxyCodeLine{00338\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(this-\/>serialization(params));}
+\DoxyCodeLine{00339\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00340\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00341\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
+\DoxyCodeLine{00342\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ debug.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}AWH\_STRING\_BREAK);}
+\DoxyCodeLine{00343\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00344\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
+\DoxyCodeLine{00345\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>print(debug\ +\ format,\ flag,\ args...);}
+\DoxyCodeLine{00346\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
+\DoxyCodeLine{00347\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>print(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args...);}
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00349\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00356\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ T,\ \textcolor{keyword}{typename}...\ Args>}
+\DoxyCodeLine{00366\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_af6656447f8345e845d569bd4a3e76b4c}{debug}}(\textcolor{keyword}{const}\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ method,\ \textcolor{keyword}{const}\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ Args\&\&...\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00367\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
+\DoxyCodeLine{00368\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
+\DoxyCodeLine{00369\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
+\DoxyCodeLine{00370\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!method.empty())\{}
+\DoxyCodeLine{00371\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
+\DoxyCodeLine{00372\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}};}
+\DoxyCodeLine{00373\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
+\DoxyCodeLine{00374\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(method);}
+\DoxyCodeLine{00375\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00376\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00377\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
+\DoxyCodeLine{00378\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>count(params)\ >\ 0)\{}
+\DoxyCodeLine{00379\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
+\DoxyCodeLine{00380\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
+\DoxyCodeLine{00381\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
+\DoxyCodeLine{00382\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(this-\/>serialization(params));}
+\DoxyCodeLine{00383\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00384\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00385\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
+\DoxyCodeLine{00386\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
+\DoxyCodeLine{00387\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00388\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
+\DoxyCodeLine{00389\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(this-\/>\_fmk-\/>convert(\doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}})\ +\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args...);}
+\DoxyCodeLine{00390\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
+\DoxyCodeLine{00391\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args...);}
+\DoxyCodeLine{00392\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00393\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00394\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00400\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ T>}
+\DoxyCodeLine{00410\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a1ef6c27501212deda6ed9fa97355bc10}{debug}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ method,\ \textcolor{keyword}{const}\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ \textcolor{keyword}{const}\ vector\ <string>\ \&\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00411\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
+\DoxyCodeLine{00412\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
+\DoxyCodeLine{00413\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
+\DoxyCodeLine{00414\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!method.empty())\{}
+\DoxyCodeLine{00415\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
+\DoxyCodeLine{00416\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}};}
+\DoxyCodeLine{00417\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
+\DoxyCodeLine{00418\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(method);}
+\DoxyCodeLine{00419\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00420\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00421\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
+\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>count(params)\ >\ 0)\{}
+\DoxyCodeLine{00423\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
+\DoxyCodeLine{00424\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
+\DoxyCodeLine{00425\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
+\DoxyCodeLine{00426\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(this-\/>serialization(params));}
+\DoxyCodeLine{00427\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00428\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
+\DoxyCodeLine{00430\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
+\DoxyCodeLine{00431\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00432\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
+\DoxyCodeLine{00433\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ +\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
+\DoxyCodeLine{00434\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
+\DoxyCodeLine{00435\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
+\DoxyCodeLine{00436\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00437\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00443\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}...\ T>}
+\DoxyCodeLine{00453\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a54785d443fd24eae3290117f33cb1e82}{debug}}(\textcolor{keyword}{const}\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ method,\ \textcolor{keyword}{const}\ tuple\ <T...>\ \&\ params,\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ \textcolor{keyword}{const}\ vector\ <wstring>\ \&\ args)\ \textcolor{keyword}{const}\ \textcolor{keyword}{noexcept}\ \{}
+\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ формат\ строки\ вывода\ передан}}
+\DoxyCodeLine{00455\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}.empty())\{}
+\DoxyCodeLine{00456\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ метод\ названия\ функции\ передан}}
+\DoxyCodeLine{00457\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!method.empty())\{}
+\DoxyCodeLine{00458\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Формируем\ результирующую\ строку\ отладки}}
+\DoxyCodeLine{00459\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{string}\ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}\ =\ AWH\_STRING\_BREAKS\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mCalled\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}};}
+\DoxyCodeLine{00460\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ название\ метода}}
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(method);}
+\DoxyCodeLine{00462\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00463\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00464\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Если\ аргументы\ функции\ переданы}}
+\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(this-\/>count(params)\ >\ 0)\{}
+\DoxyCodeLine{00466\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ входные\ аргументы\ функции}}
+\DoxyCodeLine{00467\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mArguments\ function:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
+\DoxyCodeLine{00468\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ список\ аргументов\ функции}}
+\DoxyCodeLine{00469\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(this-\/>serialization(params));}
+\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ перенос\ строки}}
+\DoxyCodeLine{00471\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(AWH\_STRING\_BREAKS);}
+\DoxyCodeLine{00472\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Добавляем\ описание\ входящего\ сообщения}}
+\DoxyCodeLine{00473\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}}.append(\textcolor{stringliteral}{"{}\(\backslash\)x1B[1mMessage:\(\backslash\)x1B[0m"{}}\doxymbox{\hyperlink{log_8hpp_a97ceea9c448bc1ae411d618008c4180e}{AWH\_STRING\_BREAK}});}
+\DoxyCodeLine{00474\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00475\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ полученный\ нами\ лог}}
+\DoxyCodeLine{00476\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(this-\/>\_fmk-\/>convert(\doxymbox{\hyperlink{classawh_1_1_log_ad6f24932d186910cd794943960dd8862}{debug}})\ +\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
+\DoxyCodeLine{00477\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Выводим\ лог\ в\ том\ виде\ как\ он\ пришёл}}
+\DoxyCodeLine{00478\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ this-\/>\doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ flag,\ args);}
+\DoxyCodeLine{00479\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00480\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00481\ \ \ \ \ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00488\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ ...)\ const\ noexcept;}
+\DoxyCodeLine{00495\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(const\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ ...)\ const\ noexcept;}
+\DoxyCodeLine{00496\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00504\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ const\ vector\ <\textcolor{keywordtype}{string}>\ \&\ args)\ const\ noexcept;}
+\DoxyCodeLine{00512\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5d9a03b5cb34cad5be3e07428a13727b}{print}}(const\ wstring\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}},\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}}\ flag,\ const\ vector\ <wstring>\ \&\ args)\ const\ noexcept;}
+\DoxyCodeLine{00513\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00519\ \ \ \ \ \ \ \ \ \ \ \ \ const\ std::unordered\_set\ <\doxymbox{\hyperlink{classawh_1_1_log_ac47fa480590728980fc1ce7b4a820d57}{mode\_t}}>\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}}()\ const\ noexcept;}
+\DoxyCodeLine{00525\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}}(const\ std::unordered\_set\ <\doxymbox{\hyperlink{classawh_1_1_log_ac47fa480590728980fc1ce7b4a820d57}{mode\_t}}>\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}})\ noexcept;}
+\DoxyCodeLine{00526\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00532\ \ \ \ \ \ \ \ \ \ \ \ \ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}()\ const\ noexcept;}
+\DoxyCodeLine{00538\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a850d015fa46ea91368c5c0b537bcd261}{format}})\ noexcept;}
+\DoxyCodeLine{00539\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00545\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a443e9ff3343a5fe9755a3ec9908836ca}{async}}(const\ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{classawh_1_1_log_a5792cec6dade18d77639296b0cc38685}{mode}})\ noexcept;}
+\DoxyCodeLine{00551\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a234daa7c527158928c14c2f84c7c18f4}{name}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a234daa7c527158928c14c2f84c7c18f4}{name}})\ noexcept;}
+\DoxyCodeLine{00557\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a70facfdd01c13fb23875d043f6565bc9}{maxSize}}(const\ \textcolor{keywordtype}{float}\ size)\ noexcept;}
+\DoxyCodeLine{00563\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_aaa7a7b48e3b45276221a3bc03389df06}{sepSize}}(const\ \textcolor{keywordtype}{size\_t}\ size)\ noexcept;}
+\DoxyCodeLine{00569\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a4d1f93f5f8f89d742012a3ec00d4321f}{level}}(const\ \doxymbox{\hyperlink{classawh_1_1_log_a1f628eeaf9e58b0f8c7cba9032bb87ff}{level\_t}}\ \doxymbox{\hyperlink{classawh_1_1_log_a4d1f93f5f8f89d742012a3ec00d4321f}{level}})\ noexcept;}
+\DoxyCodeLine{00575\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_adcf0cf434e7ce7e05035019ba8ff09f8}{separator}}(const\ \doxymbox{\hyperlink{classawh_1_1_log_ab935ea4600f18bb58372f16d08496d53}{separator\_t}}\ sep)\ noexcept;}
+\DoxyCodeLine{00581\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_a28290df62626304e9b216a35d1f2436f}{filename}}(const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a28290df62626304e9b216a35d1f2436f}{filename}})\ noexcept;}
+\DoxyCodeLine{00582\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00588\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{classawh_1_1_log_af17751ca3c4f20e20005607525d84892}{subscribe}}(function\ <\textcolor{keywordtype}{void}\ (const\ \doxymbox{\hyperlink{classawh_1_1_log_a56b3af9da81fa516645d232ab9f75bca}{flag\_t}},\ const\ \textcolor{keywordtype}{string}\ \&)>\ callback)\ noexcept;}
+\DoxyCodeLine{00589\ \ \ \ \ \ \ \ \ public:}
+\DoxyCodeLine{00596\ \ \ \ \ \ \ \ \ \ \ \ \ explicit\ \doxymbox{\hyperlink{classawh_1_1_log_afcbd6e0e1e43ce15312246fcf66e9027}{Log}}(const\ \doxymbox{\hyperlink{namespaceawh_a640a690b1644c41287f30c7b1b8187b8}{fmk\_t}}\ *\ fmk,\ const\ \textcolor{keywordtype}{string}\ \&\ \doxymbox{\hyperlink{classawh_1_1_log_a28290df62626304e9b216a35d1f2436f}{filename}}\ =\ \textcolor{stringliteral}{"{}"{}})\ noexcept;}
+\DoxyCodeLine{00601\ \ \ \ \ \ \ \ \ \ \ \ \ \string~\doxymbox{\hyperlink{classawh_1_1_log_afcbd6e0e1e43ce15312246fcf66e9027}{Log}}()\ noexcept;}
+\DoxyCodeLine{00602\ \ \ \ \ \}\ \doxymbox{\hyperlink{namespaceawh_a9518ca7f7ec587518558938a6ed0598d}{log\_t}};}
+\DoxyCodeLine{00603\ \};}
+\DoxyCodeLine{00604\ }
+\DoxyCodeLine{00605\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_AWH\_LOG\_\_}}
 
 \end{DoxyCode}

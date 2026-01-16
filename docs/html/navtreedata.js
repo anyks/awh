@@ -65,7 +65,7 @@ var NAVTREEINDEX =
 "d6/d45/classawh_1_1_i_o.html#ac089cce08b4297e9a6e7f76123bec1e1",
 "d8/d55/namespaceawh_1_1net.html#a9dc62d0cc36eb6a08092ae307727f588",
 "da/d23/classawh_1_1_screen.html#a7aee5f294f594e73280f32b1ab6fa815",
-"de/d84/structawh_1_1net_1_1_address_m_a_c.html"
+"de/d51/structawh_1_1net_1_1_server_callbacks.html#ab04cbbf87a010c9e5b3758a37b8da522"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
