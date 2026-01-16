@@ -77,6 +77,8 @@ if (${GTest_FOUND})
 
         # Если нужно собрать тесты для работы с адресами
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_ADDR_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с сетевыми адресами
+            message(STATUS "Build tests ADDR module: Yes")
             # Дополняем список источников тестами для модуля работы с сетевыми адресами
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 addr/addr.cpp
@@ -87,6 +89,8 @@ if (${GTest_FOUND})
 
         # Если нужно собрать тесты для парсинга сетевых протоколов
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_NWT_TEST})
+            # Выводим сообщение о сборке тестов для модуля парсинга сетевых протоколов
+            message(STATUS "Build tests NWT module: Yes")
             # Дополняем список источников тестами для парсинга сетевых протоколов
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 nwt/nwt.cpp
@@ -97,6 +101,8 @@ if (${GTest_FOUND})
 
         # Если нужно собрать тесты для работы с файловыми дескрипторами
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FDS_TEST})
+            # Выводим сообщение о сборке тестов для работы с файловыми дескрипторами
+            message(STATUS "Build tests FDS module: Yes")
             # Дополняем список источников тестами для работы с файловыми дескрипторами
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 fds/fds.cpp
@@ -106,6 +112,8 @@ if (${GTest_FOUND})
 
         # Если нужно собрать тесты для работы с Ethernet
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_ETH_TEST})
+            # Выводим сообщение о сборке тестов для работы с Ethernet
+            message(STATUS "Build tests ETH module: Yes")
             # Дополняем список источников тестами для работы с Ethernet
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 eth/eth.cpp
@@ -115,6 +123,8 @@ if (${GTest_FOUND})
 
         # Если нужно собрать тесты для работы с модулем ввода-вывода
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_IO_TEST})
+            # Выводим сообщение о сборке тестов для работы с модулем ввода-вывода
+            message(STATUS "Build tests IO module: Yes")
             # Дополняем список источников тестами для работы с модулем ввода-вывода
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 io/io.cpp
