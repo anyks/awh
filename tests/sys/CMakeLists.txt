@@ -84,7 +84,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с ОС
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с операционной системой
-            message(STATUS "Build tests OS module: Yes")
+            message(STATUS "Build tests OS module: Yes\n")
             # Дополняем список источников тестами для модуля работы с операционной системой
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 os/os.cpp
@@ -95,7 +95,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с фреймворком
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с фреймворком
-            message(STATUS "Build tests FMK module: Yes")
+            message(STATUS "Build tests FMK module: Yes\n")
             # Дополняем список источников тестами для модуля работы с фреймворком
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 fmk/fmk.cpp
@@ -107,7 +107,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с логированием
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с логированием
-            message(STATUS "Build tests LOG module: Yes")
+            message(STATUS "Build tests LOG module: Yes\n")
             # Дополняем список источников тестами для модуля работы с логированием
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 log/log.cpp
@@ -119,7 +119,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с регулярными выражениями
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с регулярными выражениями
-            message(STATUS "Build tests REG module: Yes")
+            message(STATUS "Build tests REG module: Yes\n")
             # Дополняем список источников тестами для модуля работы с регулярными выражениями
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 reg/reg.cpp
@@ -131,7 +131,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с очередями
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с очередями
-            message(STATUS "Build tests QUEUE module: Yes")
+            message(STATUS "Build tests QUEUE module: Yes\n")
             # Дополняем список источников тестами для модуля работы с очередями
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 queue/queue.cpp
@@ -143,7 +143,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с буферами
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с буферами
-            message(STATUS "Build tests BUFFER module: Yes")
+            message(STATUS "Build tests BUFFER module: Yes\n")
             # Дополняем список источников тестами для модуля работы с буферами
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 buffer/buffer.cpp
@@ -155,7 +155,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с датой и временем
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с датой и временем
-            message(STATUS "Build tests CHRONO module: Yes")
+            message(STATUS "Build tests CHRONO module: Yes\n")
             # Дополняем список источников тестами для модуля работы с датой и временем
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 chrono/chrono.cpp
@@ -166,7 +166,7 @@ if(${GTest_FOUND})
         # Если нужно собрать тесты для работы с пуллам потоков
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с пуллам потоков
-            message(STATUS "Build tests THREADPOOL module: Yes")
+            message(STATUS "Build tests THREADPOOL module: Yes\n")
             # Дополняем список источников тестами для модуля работы с пуллам потоков
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 threadpool/threadpool.cpp
