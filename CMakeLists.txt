@@ -360,6 +360,8 @@ if(Doxygen_FOUND)
 
     # Проверяем, что файл существует
     if(EXISTS ${DOXYFILE_PATH})
+        # Выводим сообщение, что мы нашли файл для генерации документации Doxyfile
+        message(STATUS "Doxyfile found at ${DOXYFILE_PATH}\n")
         # Создаём кастомную цель
         add_custom_target(doc
             COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_PATH}
@@ -595,6 +597,9 @@ if (${CMAKE_BUILD_SAMPLES})
     endif()
 endif (${CMAKE_BUILD_SAMPLES})
 
+# Инициализируем флаги для операционной системы Windows
+SET(WINFLAGS "")
+
 # Если сборка производится под операционную систему Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
@@ -662,7 +667,7 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample DIR filesystem: Yes\n")
+        message(STATUS "Build sample DIR (File System): Yes\n")
         # Выполняем создание приложения работы с каталогами
         add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
     endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -670,7 +675,7 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с файлами
     if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample FILE filesystem: Yes\n")
+        message(STATUS "Build sample FILE (File System): Yes\n")
         # Выполняем создание приложения работы с файлами
         add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
     endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
@@ -853,1485 +858,695 @@ endif()
 
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
-    # Если сборка производится под операционную систему Windows
-    if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        # Выполняем сборку динамической библиотеки
-        target_link_libraries(
-            ${AWH_LIB_NAME}
-            PRIVATE
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${WINFLAGS}
-        )
-
-        # Если необходимо собрать семплы
-        if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать семплы для работы с ОС
-            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-                # Выполняем сборку приложения работы с IP-адресами
-                target_link_libraries(
-                    ${IP_APP_NET_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-                # Выполняем сборку приложения даты и времени
-                target_link_libraries(
-                    ${DATE_APP_SYS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с каталогами
-            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с каталогами
-                target_link_libraries(
-                    ${DIR_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с файлами
-            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с файлами
-                target_link_libraries(
-                    ${FILE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пингами (ICMP)
-            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с пингами (ICMP)
-                target_link_libraries(
-                    ${PING_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с таймером
-            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-                # Выполняем сборку приложения таймера
-                target_link_libraries(
-                    ${TIMER_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пользовательскими событиями
-            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-                # Выполняем сборку приложения пользовательских событий
-                target_link_libraries(
-                    ${EVENTS_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
-            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
-                target_link_libraries(
-                    ${IPC_PIPE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
-                target_link_libraries(
-                    ${IPC_STREAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
-                target_link_libraries(
-                    ${IPC_DATAGRAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
-                target_link_libraries(
-                    ${IPC_SEQPACKET_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента с подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_CONN_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента сценарий 1
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 1
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента сценарий 3
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 3
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
-            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента UDS-TCP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера UDS-TCP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента UDS-UDP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера UDS-UDP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента работы с TLS
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_WEB_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_MULTI_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-        endif (${CMAKE_BUILD_SAMPLES})
-    # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
-    else()
-        # Выполняем сборку динамической библиотеки
-        target_link_libraries(
-            ${AWH_LIB_NAME}
-            PRIVATE
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-        )
-
-        # Если необходимо собрать семплы
-        if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать семплы для работы с ОС
-            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-                # Выполняем сборку приложения работы с IP-адресами
-                target_link_libraries(
-                    ${IP_APP_NET_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-                # Выполняем сборку приложения даты и времени
-                target_link_libraries(
-                    ${DATE_APP_SYS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с каталогами
-            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с каталогами
-                target_link_libraries(
-                    ${DIR_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с файлами
-            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с файлами
-                target_link_libraries(
-                    ${FILE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пингами (ICMP)
-            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с пингами (ICMP)
-                target_link_libraries(
-                    ${PING_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с таймером
-            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-                # Выполняем сборку приложения таймера
-                target_link_libraries(
-                    ${TIMER_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пользовательскими событиями
-            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-                # Выполняем сборку приложения пользовательских событий
-                target_link_libraries(
-                    ${EVENTS_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
-            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
-                target_link_libraries(
-                    ${IPC_PIPE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
-                target_link_libraries(
-                    ${IPC_STREAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
-                target_link_libraries(
-                    ${IPC_DATAGRAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
-                target_link_libraries(
-                    ${IPC_SEQPACKET_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента с подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_CONN_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента сценарий 1
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 1
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента сценарий 3
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 3
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
-            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента UDS-TCP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера UDS-TCP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента UDS-UDP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера UDS-UDP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента работы с TLS
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_WEB_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_MULTI_NAME}
-                    ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-
-            # Если сборка производится под операционную систему FreeBSD или Linux
-            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-                # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
-                if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
-                    # Выполняем сборку приложения клиента работы с TLS
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_TLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с TLS
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_TLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с DTLS
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_DTLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с DTLS
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_DTLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с SCTP - AUTH
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_AUTH_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с SCTP - AUTH
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_AUTH_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с SCTP - STREAM
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_STREAM_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с SCTP - STREAM
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_STREAM_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
-                        ${AWH_LIB_NAME}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-                endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
-            endif()
-        endif (${CMAKE_BUILD_SAMPLES})
-    endif()
+    # Выполняем сборку динамической библиотеки
+    target_link_libraries(
+        ${AWH_LIB_NAME}
+        PRIVATE
+        ${DEPEND_LIBRARY}
+        ${TCMALLOC_LIBRARIES}
+        ${WINFLAGS}
+    )
+
+    # Если необходимо собрать семплы
+    if (${CMAKE_BUILD_SAMPLES})
+        # Если нужно собрать семплы для работы с ОС
+        if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+            # Выполняем сборку приложения работы с IP-адресами
+            target_link_libraries(
+                ${IP_APP_NET_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с датой и временем
+        if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения даты и времени
+            target_link_libraries(
+                ${DATE_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с каталогами
+        if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с каталогами
+            target_link_libraries(
+                ${DIR_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с файлами
+        if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с файлами
+            target_link_libraries(
+                ${FILE_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с пингами (ICMP)
+        if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с пингами (ICMP)
+            target_link_libraries(
+                ${PING_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с таймером
+        if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+            # Выполняем сборку приложения таймера
+            target_link_libraries(
+                ${TIMER_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с пользовательскими событиями
+        if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+            # Выполняем сборку приложения пользовательских событий
+            target_link_libraries(
+                ${EVENTS_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
+        if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+            target_link_libraries(
+                ${IPC_PIPE_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+            target_link_libraries(
+                ${IPC_STREAM_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+            target_link_libraries(
+                ${IPC_DATAGRAM_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+            target_link_libraries(
+                ${IPC_SEQPACKET_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+        if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+        if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента с подключением
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDP_CONN_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+        if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_BROADCAST_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_BROADCAST_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+        if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+            # Выполняем сборку приложения клиента сценарий 1
+            target_link_libraries(
+                ${CLIENT_APP_NET_MULTICAST1_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера сценарий 1
+            target_link_libraries(
+                ${SERVER_APP_NET_MULTICAST1_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента сценарий 3
+            target_link_libraries(
+                ${CLIENT_APP_NET_MULTICAST3_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера сценарий 3
+            target_link_libraries(
+                ${SERVER_APP_NET_MULTICAST3_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+        if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_SPLICE_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_SPLICE_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+        if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+            # Выполняем сборку приложения клиента UDS-TCP
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDS_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера UDS-TCP
+            target_link_libraries(
+                ${SERVER_APP_NET_UDS_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента UDS-UDP
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDS_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера UDS-UDP
+            target_link_libraries(
+                ${SERVER_APP_NET_UDS_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+        if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+        if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+            # Выполняем сборку приложения клиента работы с TLS
+            target_link_libraries(
+                ${CLIENT_APP_NET_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера работы с TLS
+            target_link_libraries(
+                ${SERVER_APP_NET_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
+            target_link_libraries(
+                ${CLIENT_APP_NET_TLS_WEB_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
+            target_link_libraries(
+                ${SERVER_APP_NET_TLS_MULTI_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+    endif (${CMAKE_BUILD_SAMPLES})
 # Если нужно собрать и статическую библиотеку
 else (CMAKE_SHARED_BUILD_LIB)
-    # Если сборка производится под операционную систему Windows
-    if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        # Если необходимо собрать семплы
-        if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать семплы для работы с ОС
-            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-                # Выполняем сборку приложения работы с IP-адресами
-                target_link_libraries(
-                    ${IP_APP_NET_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-                # Выполняем сборку приложения даты и времени
-                target_link_libraries(
-                    ${DATE_APP_SYS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с каталогами
-            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с каталогами
-                target_link_libraries(
-                    ${DIR_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с файлами
-            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с файлами
-                target_link_libraries(
-                    ${FILE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пингами (ICMP)
-            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с пингами (ICMP)
-                target_link_libraries(
-                    ${PING_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с таймером
-            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-                # Выполняем сборку приложения таймера
-                target_link_libraries(
-                    ${TIMER_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пользовательскими событиями
-            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-                # Выполняем сборку приложения пользовательских событий
-                target_link_libraries(
-                    ${EVENTS_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
-            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
-                target_link_libraries(
-                    ${IPC_PIPE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
-                target_link_libraries(
-                    ${IPC_STREAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
-                target_link_libraries(
-                    ${IPC_DATAGRAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
-                target_link_libraries(
-                    ${IPC_SEQPACKET_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента с подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_CONN_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента сценарий 1
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 1
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента сценарий 3
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 3
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
-            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента UDS-TCP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера UDS-TCP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента UDS-UDP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера UDS-UDP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента работы с TLS
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_WEB_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_MULTI_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                    ${WINFLAGS}
-                )
-            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-        endif (${CMAKE_BUILD_SAMPLES})
-    # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
-    else()
-        # Если необходимо собрать семплы
-        if (${CMAKE_BUILD_SAMPLES})
-            # Если нужно собрать семплы для работы с ОС
-            if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-                # Выполняем сборку приложения работы с IP-адресами
-                target_link_libraries(
-                    ${IP_APP_NET_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с датой и временем
-            if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-                # Выполняем сборку приложения даты и времени
-                target_link_libraries(
-                    ${DATE_APP_SYS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с каталогами
-            if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с каталогами
-                target_link_libraries(
-                    ${DIR_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с файлами
-            if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с файлами
-                target_link_libraries(
-                    ${FILE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пингами (ICMP)
-            if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с пингами (ICMP)
-                target_link_libraries(
-                    ${PING_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с таймером
-            if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-                # Выполняем сборку приложения таймера
-                target_link_libraries(
-                    ${TIMER_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с пользовательскими событиями
-            if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-                # Выполняем сборку приложения пользовательских событий
-                target_link_libraries(
-                    ${EVENTS_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
-            if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
-                target_link_libraries(
-                    ${IPC_PIPE_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
-                target_link_libraries(
-                    ${IPC_STREAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
-                target_link_libraries(
-                    ${IPC_DATAGRAM_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
-                target_link_libraries(
-                    ${IPC_SEQPACKET_APP_IO_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TCP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента с подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDP_CONN_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_BROADCAST_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
-            if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-                # Выполняем сборку приложения клиента сценарий 1
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 1
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST1_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента сценарий 3
-                target_link_libraries(
-                    ${CLIENT_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера сценарий 3
-                target_link_libraries(
-                    ${SERVER_APP_NET_MULTICAST3_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
-            if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_SPLICE_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с UDS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента UDS-TCP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера UDS-TCP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_TCP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента UDS-UDP
-                target_link_libraries(
-                    ${CLIENT_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера UDS-UDP
-                target_link_libraries(
-                    ${SERVER_APP_NET_UDS_UDP_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента
-                target_link_libraries(
-                    ${CLIENT_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера
-                target_link_libraries(
-                    ${SERVER_APP_NET_DTLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
-
-            # Если нужно собрать семплы для работы с TLS (клиент и сервер)
-            if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-                # Выполняем сборку приложения клиента работы с TLS
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
-                target_link_libraries(
-                    ${CLIENT_APP_NET_TLS_WEB_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-
-                # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
-                target_link_libraries(
-                    ${SERVER_APP_NET_TLS_MULTI_NAME}
-                    ${AWH_LIB_NAME}
-                    ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
-                )
-            endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
-
-            # Если сборка производится под операционную систему FreeBSD или Linux
-            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-                # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
-                if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
-                    # Выполняем сборку приложения клиента работы с TLS
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_TLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с TLS
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_TLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с DTLS
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_DTLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с DTLS
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_DTLS_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с SCTP - AUTH
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_AUTH_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с SCTP - AUTH
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_AUTH_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с SCTP - STREAM
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_STREAM_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с SCTP - STREAM
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_STREAM_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
-                    target_link_libraries(
-                        ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-
-                    # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
-                    target_link_libraries(
-                        ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
-                        ${AWH_LIB_NAME}
-                        ${DEPEND_LIBRARY}
-                        ${TCMALLOC_LIBRARIES}
-                    )
-                endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
-            endif()
-        endif (${CMAKE_BUILD_SAMPLES})
-    endif()
+    # Если необходимо собрать семплы
+    if (${CMAKE_BUILD_SAMPLES})
+        # Если нужно собрать семплы для работы с ОС
+        if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+            # Выполняем сборку приложения работы с IP-адресами
+            target_link_libraries(
+                ${IP_APP_NET_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с датой и временем
+        if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения даты и времени
+            target_link_libraries(
+                ${DATE_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с каталогами
+        if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с каталогами
+            target_link_libraries(
+                ${DIR_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с файлами
+        if (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с файлами
+            target_link_libraries(
+                ${FILE_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с пингами (ICMP)
+        if (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с пингами (ICMP)
+            target_link_libraries(
+                ${PING_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с таймером
+        if (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+            # Выполняем сборку приложения таймера
+            target_link_libraries(
+                ${TIMER_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с пользовательскими событиями
+        if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+            # Выполняем сборку приложения пользовательских событий
+            target_link_libraries(
+                ${EVENTS_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
+        if (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
+            target_link_libraries(
+                ${IPC_PIPE_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
+            target_link_libraries(
+                ${IPC_STREAM_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
+            target_link_libraries(
+                ${IPC_DATAGRAM_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
+            target_link_libraries(
+                ${IPC_SEQPACKET_APP_IO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с TCP (клиент и сервер)
+        if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP (клиент и сервер)
+        if (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента с подключением
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDP_CONN_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
+        if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_BROADCAST_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_BROADCAST_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
+        if (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+            # Выполняем сборку приложения клиента сценарий 1
+            target_link_libraries(
+                ${CLIENT_APP_NET_MULTICAST1_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера сценарий 1
+            target_link_libraries(
+                ${SERVER_APP_NET_MULTICAST1_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента сценарий 3
+            target_link_libraries(
+                ${CLIENT_APP_NET_MULTICAST3_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера сценарий 3
+            target_link_libraries(
+                ${SERVER_APP_NET_MULTICAST3_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
+        if (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_SPLICE_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_SPLICE_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с UDS (клиент и сервер)
+        if (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+            # Выполняем сборку приложения клиента UDS-TCP
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDS_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера UDS-TCP
+            target_link_libraries(
+                ${SERVER_APP_NET_UDS_TCP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента UDS-UDP
+            target_link_libraries(
+                ${CLIENT_APP_NET_UDS_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера UDS-UDP
+            target_link_libraries(
+                ${SERVER_APP_NET_UDS_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
+        if (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+            # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с TLS (клиент и сервер)
+        if (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+            # Выполняем сборку приложения клиента работы с TLS
+            target_link_libraries(
+                ${CLIENT_APP_NET_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера работы с TLS
+            target_link_libraries(
+                ${SERVER_APP_NET_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
+            target_link_libraries(
+                ${CLIENT_APP_NET_TLS_WEB_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+
+            # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
+            target_link_libraries(
+                ${SERVER_APP_NET_TLS_MULTI_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+    endif (${CMAKE_BUILD_SAMPLES})
 endif (CMAKE_SHARED_BUILD_LIB)
 
 # Если необходимо собрать семплы
