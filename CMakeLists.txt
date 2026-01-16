@@ -370,13 +370,13 @@ if(Doxygen_FOUND)
     # Если файл не найден
     else()
         # Выводим сообщение об отсутствии Doxyfile
-        message(STATUS "\nDoxyfile not found at ${DOXYFILE_PATH} — doc target skipped\n")
+        message(STATUS "Doxyfile not found at ${DOXYFILE_PATH} — doc target skipped\n")
     # Конец проверки файла
     endif()
 # Если Doxygen не найден
 else()
     # Выводим сообщение об отсутствии Doxygen
-    message(STATUS "\nDoxygen not found — 'doc' target will not be available\n")
+    message(STATUS "Doxygen not found — 'doc' target will not be available\n")
 endif()
 
 # Выполняем подключение хидеров
