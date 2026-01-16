@@ -17,6 +17,8 @@
 #include <iostream>
 #include <cinttypes>
 #include <algorithm>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <netinet/ip.h>
 
 /**
