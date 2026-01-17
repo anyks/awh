@@ -85,6 +85,10 @@ if (${GTest_FOUND})
                 addr/static.cpp
                 addr/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с адресами
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с сетевыми адресами
+            message(STATUS "Build tests ADDR module: No\n")
         endif(${CMAKE_BUILD_${UNIT_TEST_NAME}_ADDR_TEST})
 
         # Если нужно собрать тесты для парсинга сетевых протоколов
@@ -97,6 +101,10 @@ if (${GTest_FOUND})
                 nwt/static.cpp
                 nwt/parameterized.cpp
             )
+        # Если не нужно собрать тесты для парсинга сетевых протоколов
+        else()
+            # Выводим сообщение о сборке тестов для модуля парсинга сетевых протоколов
+            message(STATUS "Build tests NWT module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_NWT_TEST})
 
         # Если нужно собрать тесты для работы с файловыми дескрипторами
@@ -108,6 +116,10 @@ if (${GTest_FOUND})
                 fds/fds.cpp
                 fds/static.cpp
             )
+        # Если не нужно собрать тесты для работы с файловыми дескрипторами
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с файловыми дескрипторами
+            message(STATUS "Build tests FDS module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_FDS_TEST})
 
         # Если нужно собрать тесты для работы с Ethernet
@@ -119,6 +131,10 @@ if (${GTest_FOUND})
                 eth/eth.cpp
                 eth/static.cpp
             )
+        # Если не нужно собрать тесты для работы с Ethernet
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с Ethernet
+            message(STATUS "Build tests ETH module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_ETH_TEST})
 
         # Если нужно собрать тесты для работы с модулем ввода-вывода
@@ -131,6 +147,10 @@ if (${GTest_FOUND})
                 io/static.cpp
                 io/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с модулем ввода-вывода
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с модулем ввода-вывода
+            message(STATUS "Build tests IO module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_IO_TEST})
 
         # Библиотеки GTest для линковки
@@ -191,5 +211,9 @@ if (${GTest_FOUND})
 
         # Включаем флаги компиляции для сбора статистики покрытия кода
         target_compile_options(${PROJECT_NAME}${POSTFIX} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+    # Если не нужно собрать тесты
+    else()
+        # Выводим сообщение о сборке тестов для модуля работы с фреймворком
+        message(STATUS "Build tests ${NAME} module: No\n")
     endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS})
 endif()

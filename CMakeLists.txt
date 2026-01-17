@@ -662,6 +662,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample DATE: Yes\n")
         # Выполняем создание приложения работы с датой и временем
         add_sample(${DATE_APP_SYS_NAME} sample/sys/date.cpp sys)
+    # Если не нужно собирать семплы для работы с датой и временем
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample DATE: No\n")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами
@@ -670,6 +674,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample DIR (File System): Yes\n")
         # Выполняем создание приложения работы с каталогами
         add_sample(${DIR_APP_IO_NAME} sample/io/dir.cpp io)
+    # Если не нужно собирать семплы для работы с каталогами
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample DIR (File System): No\n")
     endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с файлами
@@ -678,6 +686,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample FILE (File System): Yes\n")
         # Выполняем создание приложения работы с файлами
         add_sample(${FILE_APP_IO_NAME} sample/io/file.cpp io)
+    # Если не нужно собирать семплы для работы с файлами
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample FILE (File System): No\n")
     endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с пингами (ICMP)
@@ -686,6 +698,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample PING (ICMP): Yes\n")
         # Выполняем создание приложения работы с пингами (ICMP)
         add_sample(${PING_APP_IO_NAME} sample/io/ping.cpp io)
+    # Если не нужно собирать семплы для работы с пингами (ICMP)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample PING (ICMP): No\n")
     endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с таймером
@@ -694,6 +710,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample TIMER: Yes\n")
         # Выполняем создание приложения работы с таймером
         add_sample(${TIMER_APP_IO_NAME} sample/io/timer.cpp io)
+    # Если не нужно собирать семплы для работы с таймером
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TIMER: No\n")
     endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с пользовательскими событиями
@@ -702,6 +722,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample USER EVENTS: Yes\n")
         # Выполняем создание приложения работы с пользовательскими событиями
         add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
+    # Если не нужно собирать семплы для работы с пользовательскими событиями
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample USER EVENTS: No\n")
     endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
     
     # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
@@ -716,6 +740,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${IPC_DATAGRAM_APP_IO_NAME} sample/ipc/datagram.cpp ipc)
         # Выполняем создание приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
         add_sample(${IPC_SEQPACKET_APP_IO_NAME} sample/ipc/seqpacket.cpp ipc)
+    # Если не нужно собирать семплы для работы с межпроцессорным взаимодействием
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample IPC: No\n")
     endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с ОС
@@ -724,6 +752,10 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample IP network: Yes\n")
         # Выполняем создание приложения работы с IP-адресами
         add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
+    # Если не нужно собирать семплы для работы с ОС
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample IP network: No\n")
     endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с TCP (клиент и сервер)
@@ -734,6 +766,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_TCP_NAME} sample/net/tcp/client.cpp net/tcp)
         # Выполняем создание приложения работы с TCP сервер
         add_sample(${SERVER_APP_NET_TCP_NAME} sample/net/tcp/server.cpp net/tcp)
+    # Если не нужно собирать семплы для работы с TCP (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TCP Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDP (клиент и сервер)
@@ -746,6 +782,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_UDP_CONN_NAME} sample/net/udp/client-conn.cpp net/udp)
         # Выполняем создание приложения работы с UDP сервер
         add_sample(${SERVER_APP_NET_UDP_NAME} sample/net/udp/server.cpp net/udp)
+    # Если не нужно собирать семплы для работы с UDP (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UDP Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
@@ -756,6 +796,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_BROADCAST_NAME} sample/net/broadcast/client.cpp net/broadcast)
         # Выполняем создание приложения работы с UDP Broadcast сервер
         add_sample(${SERVER_APP_NET_BROADCAST_NAME} sample/net/broadcast/server.cpp net/broadcast)
+    # Если не нужно собирать семплы для работы с UDP Broadcast (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UDP Broadcast Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDP Multicast (клиент и сервер)
@@ -770,6 +814,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_MULTICAST3_NAME} sample/net/multicast/client3.cpp net/multicast)
         # Выполняем создание приложения работы с UDP Multicast сервер сценарий 3
         add_sample(${SERVER_APP_NET_MULTICAST3_NAME} sample/net/multicast/server3.cpp net/multicast)
+    # Если не нужно собирать семплы для работы с UDP Multicast (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UDP Multicast Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDP Splice (клиент и сервер)
@@ -780,6 +828,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_SPLICE_NAME} sample/net/splice/client.cpp net/splice)
         # Выполняем создание приложения работы с UDP Splice сервер
         add_sample(${SERVER_APP_NET_SPLICE_NAME} sample/net/splice/server.cpp net/splice)
+    # Если не нужно собирать семплы для работы с UDP Splice (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UDP Splice Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDS (клиент и сервер)
@@ -794,6 +846,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_UDS_UDP_NAME} sample/net/uds/client-udp.cpp net/uds)
         # Выполняем создание приложения работы с UDS-UDP сервер
         add_sample(${SERVER_APP_NET_UDS_UDP_NAME} sample/net/uds/server-udp.cpp net/uds)
+    # Если не нужно собирать семплы для работы с UDS (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UDS TCP/UDP Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с DTLS (клиент и сервер)
@@ -804,6 +860,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_DTLS_NAME} sample/net/dtls/client.cpp net/dtls)
         # Выполняем создание приложения работы с DTLS сервер
         add_sample(${SERVER_APP_NET_DTLS_NAME} sample/net/dtls/server.cpp net/dtls)
+    # Если не нужно собирать семплы для работы с DTLS (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample DTLS Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с TLS (клиент и сервер)
@@ -818,6 +878,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_NET_TLS_WEB_NAME} sample/net/tls/client-web.cpp net/tls)
         # Выполняем создание приложения работы с TLS сервер и мультисертификатом
         add_sample(${SERVER_APP_NET_TLS_MULTI_NAME} sample/net/tls/server-multi.cpp net/tls)
+    # Если не нужно собирать семплы для работы с TLS (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TLS Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
 
     # Если сборка производится под операционную систему FreeBSD или Linux
@@ -846,6 +910,10 @@ if (${CMAKE_BUILD_SAMPLES})
             add_sample(${CLIENT_APP_NET_SCTP_SEQPACKET_NAME} sample/net/sctp/client-seqpacket.cpp net/sctp)
             # Выполняем создание приложения работы с SCTP сервер - SEQPACKET
             add_sample(${SERVER_APP_NET_SCTP_SEQPACKET_NAME} sample/net/sctp/server-seqpacket.cpp net/sctp)
+        # Если не нужно собирать семплы для работы с SCTP (клиент и сервер)
+        else()
+            # Выводим сообщение о сборке семпла
+            message(STATUS "Build sample SCTP Client/Server: No\n")
         endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
     endif()
 endif (${CMAKE_BUILD_SAMPLES})

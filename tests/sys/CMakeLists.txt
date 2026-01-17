@@ -90,6 +90,10 @@ if(${GTest_FOUND})
                 os/os.cpp
                 os/static.cpp
             )
+        # Если не нужно собрать тесты для работы с ОС
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с операционной системой
+            message(STATUS "Build tests OS module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
 
         # Если нужно собрать тесты для работы с фреймворком
@@ -102,6 +106,10 @@ if(${GTest_FOUND})
                 fmk/static.cpp
                 fmk/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с фреймворком
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с фреймворком
+            message(STATUS "Build tests FMK module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST})
 
         # Если нужно собрать тесты для работы с логированием
@@ -114,6 +122,10 @@ if(${GTest_FOUND})
                 log/static.cpp
                 log/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с логированием
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с логированием
+            message(STATUS "Build tests LOG module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST})
 
         # Если нужно собрать тесты для работы с регулярными выражениями
@@ -126,6 +138,10 @@ if(${GTest_FOUND})
                 reg/static.cpp
                 reg/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с регулярными выражениями
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с регулярными выражениями
+            message(STATUS "Build tests REG module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST})
 
         # Если нужно собрать тесты для работы с очередями
@@ -138,6 +154,10 @@ if(${GTest_FOUND})
                 queue/static.cpp
                 queue/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с очередями
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с очередями
+            message(STATUS "Build tests QUEUE module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
 
         # Если нужно собрать тесты для работы с буферами
@@ -150,6 +170,10 @@ if(${GTest_FOUND})
                 buffer/static.cpp
                 buffer/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с буферами
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с буферами
+            message(STATUS "Build tests BUFFER module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST})
 
         # Если нужно собрать тесты для работы с датой и временем
@@ -161,6 +185,10 @@ if(${GTest_FOUND})
                 chrono/chrono.cpp
                 chrono/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с датой и временем
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с датой и временем
+            message(STATUS "Build tests CHRONO module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
 
         # Если нужно собрать тесты для работы с пуллам потоков
@@ -173,6 +201,10 @@ if(${GTest_FOUND})
                 threadpool/static.cpp
                 threadpool/parameterized.cpp
             )
+        # Если не нужно собрать тесты для работы с пуллам потоков
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с пуллам потоков
+            message(STATUS "Build tests THREADPOOL module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})
 
         # Библиотеки GTest для линковки
@@ -233,5 +265,9 @@ if(${GTest_FOUND})
 
         # Включаем флаги компиляции для сбора статистики покрытия кода
         target_compile_options(${PROJECT_NAME}${POSTFIX} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+    # Если не нужно собрать тесты
+    else()
+        # Выводим сообщение о сборке тестов для модуля работы с фреймворком
+        message(STATUS "Build tests ${NAME} module: No\n")
     endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS})
 endif()
