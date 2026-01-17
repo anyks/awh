@@ -1188,6 +1188,82 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${WINFLAGS}
             )
         endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+        # Если сборка производится под операционную систему FreeBSD или Linux
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента работы с TLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с DTLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с DTLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с SCTP - AUTH
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_AUTH_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с SCTP - AUTH
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_AUTH_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с SCTP - STREAM
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_STREAM_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с SCTP - STREAM
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_STREAM_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+        endif()
     endif (${CMAKE_BUILD_SAMPLES})
 # Если нужно собрать и статическую библиотеку
 else (CMAKE_SHARED_BUILD_LIB)
@@ -1546,6 +1622,92 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${WINFLAGS}
             )
         endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
+
+        # Если сборка производится под операционную систему FreeBSD или Linux
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Если нужно собрать семплы для работы с SCTP (клиент и сервер)
+            if (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+                # Выполняем сборку приложения клиента работы с TLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с TLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_TLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с DTLS
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с DTLS
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_DTLS_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с SCTP - AUTH
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_AUTH_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с SCTP - AUTH
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_AUTH_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с SCTP - STREAM
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_STREAM_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с SCTP - STREAM
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_STREAM_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+            endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
+        endif()
     endif (${CMAKE_BUILD_SAMPLES})
 endif (CMAKE_SHARED_BUILD_LIB)
 
