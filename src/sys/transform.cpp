@@ -104,11 +104,11 @@ template <typename T>
  * @brief Функция хэширования текста
  *
  * @param text   текст для хэширования
- * @param type   тип хэш-суммы
+ * @param hash   тип хэш-суммы
  * @param result результат хэширования
  * @param log    объект для работы с логами
  */
-static void hashing(const string & text, const awh::transform_t::type_t type, T & result, const awh::log_t * log) noexcept {
+static void hashing(const string & text, const awh::transform_t::hash_t hash, T & result, const awh::log_t * log) noexcept {
 	// Если текст для хэширования передан
 	if(!text.empty()){
 		/**
@@ -122,9 +122,9 @@ static void hashing(const string & text, const awh::transform_t::type_t type, T 
 			/**
 			 * Определяем тип хэш-суммы
 			 */
-			switch(static_cast <uint8_t> (type)){
+			switch(static_cast <uint8_t> (hash)){
 				// Если тип хэш-суммы указан как MD5
-				case static_cast <uint8_t> (awh::transform_t::type_t::MD5): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::MD5): {
 					// Создаем контекст
 					::MD5_CTX ctx;
 					// Выполняем инициализацию контекста
@@ -145,7 +145,7 @@ static void hashing(const string & text, const awh::transform_t::type_t type, T 
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как SHA1
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA1): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA1): {
 					// Создаем контекст
 					::SHA_CTX ctx;
 					// Выполняем инициализацию контекста
@@ -166,7 +166,7 @@ static void hashing(const string & text, const awh::transform_t::type_t type, T 
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как SHA224
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA224): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA224): {
 					// Создаем контекст
 					::SHA256_CTX ctx;
 					// Выполняем инициализацию контекста
@@ -187,7 +187,7 @@ static void hashing(const string & text, const awh::transform_t::type_t type, T 
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как SHA256
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA256): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA256): {
 					// Создаем контекст
 					::SHA256_CTX ctx;
 					// Выполняем инициализацию контекста
@@ -208,7 +208,7 @@ static void hashing(const string & text, const awh::transform_t::type_t type, T 
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как SHA384
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA384): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA384): {
 					// Создаем контекст
 					::SHA512_CTX ctx;
 					// Выполняем инициализацию контекста
@@ -229,7 +229,7 @@ static void hashing(const string & text, const awh::transform_t::type_t type, T 
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как SHA512
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA512): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA512): {
 					// Создаем контекст
 					::SHA512_CTX ctx;
 					// Выполняем инициализацию контекста
@@ -272,11 +272,11 @@ template <typename T>
  *
  * @param key    ключ для подписи
  * @param text   текст для хэширования
- * @param type   тип хэш-суммы
+ * @param hash   тип хэш-суммы
  * @param result результат хэширования
  * @param log    объект для работы с логами
  */
-static void hmac(const string & key, const string & text, const awh::transform_t::type_t type, T & result, const awh::log_t * log) noexcept {
+static void hmac(const string & key, const string & text, const awh::transform_t::hash_t hash, T & result, const awh::log_t * log) noexcept {
 	// Если ключ и текст для хэширования переданы
 	if(!key.empty() && !text.empty()){
 		/**
@@ -288,9 +288,9 @@ static void hmac(const string & key, const string & text, const awh::transform_t
 			/**
 			 * Определяем тип хэш-суммы
 			 */
-			switch(static_cast <uint8_t> (type)){
+			switch(static_cast <uint8_t> (hash)){
 				// Если тип хэш-суммы указан как HMAC_MD5
-				case static_cast <uint8_t> (awh::transform_t::type_t::MD5): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::MD5): {
 					// Выделяем память для буфера данных
 					result.resize(33, 0);
 					// Выполняем получение подписи
@@ -303,7 +303,7 @@ static void hmac(const string & key, const string & text, const awh::transform_t
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как HMAC_SHA1
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA1): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA1): {
 					// Выделяем память для буфера данных
 					result.resize(41, 0);
 					// Выполняем получение подписи
@@ -316,7 +316,7 @@ static void hmac(const string & key, const string & text, const awh::transform_t
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как HMAC_SHA224
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA224): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA224): {
 					// Выделяем память для буфера данных
 					result.resize(57, 0);
 					// Выполняем получение подписи
@@ -329,7 +329,7 @@ static void hmac(const string & key, const string & text, const awh::transform_t
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как HMAC_SHA256
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA256): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA256): {
 					// Выделяем память для буфера данных
 					result.resize(65, 0);
 					// Выполняем получение подписи
@@ -342,7 +342,7 @@ static void hmac(const string & key, const string & text, const awh::transform_t
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как HMAC_SHA384
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA384): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA384): {
 					// Выделяем память для буфера данных
 					result.resize(97, 0);
 					// Выполняем получение подписи
@@ -355,7 +355,7 @@ static void hmac(const string & key, const string & text, const awh::transform_t
 					result.pop_back();
 				} break;
 				// Если тип хэш-суммы указан как HMAC_SHA512
-				case static_cast <uint8_t> (awh::transform_t::type_t::SHA512): {
+				case static_cast <uint8_t> (awh::transform_t::hash_t::SHA512): {
 					// Выделяем память для буфера данных
 					result.resize(129, 0);
 					// Выполняем получение подписи
@@ -2569,16 +2569,16 @@ template <typename T>
  * @brief Метод хэширования текста
  *
  * @param text текст для хэширования
- * @param type тип хэш-суммы
+ * @param hash тип хэш-суммы
  * @return     результат хэширования
  */
-auto awh::Transform::hashing(const string & text, const type_t type) const noexcept -> T {
+auto awh::Transform::hashing(const string & text, const hash_t hash) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	// Если текст передан
 	if(!text.empty())
 		// Выполняем хэширование
-		this->hashing(text, type, result);
+		this->hashing(text, hash, result);
 	// Выводим результат
 	return result;
 }
@@ -2586,24 +2586,24 @@ auto awh::Transform::hashing(const string & text, const type_t type) const noexc
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в строку
  *
  */
-template string awh::Transform::hashing <string> (const string &, const type_t) const noexcept;
+template string awh::Transform::hashing <string> (const string &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в буфер
  *
  */
-template vector <char> awh::Transform::hashing <vector <char>> (const string &, const type_t) const noexcept;
+template vector <char> awh::Transform::hashing <vector <char>> (const string &, const hash_t) const noexcept;
 /**
  * @brief Метод хэширования текста
  *
  * @param text   текст для хэширования
- * @param type   тип хэш-суммы
+ * @param hash   тип хэш-суммы
  * @param result строка куда следует положить результат
  */
-void awh::Transform::hashing(const string & text, const type_t type, string & result) const noexcept {
+void awh::Transform::hashing(const string & text, const hash_t hash, string & result) const noexcept {
 	// Если текст для хэширования передан
 	if(!text.empty()){
 		// Выполняем хэширование
-		::hashing(text, type, result, this->_log);
+		::hashing(text, hash, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty())
 			// Выводим сообщение об ошибке
@@ -2614,14 +2614,14 @@ void awh::Transform::hashing(const string & text, const type_t type, string & re
  * @brief Метод хэширования текста
  *
  * @param text   текст для хэширования
- * @param type   тип хэш-суммы
+ * @param hash   тип хэш-суммы
  * @param result буфер куда следует положить результат
  */
-void awh::Transform::hashing(const string & text, const type_t type, vector <char> & result) const noexcept {
+void awh::Transform::hashing(const string & text, const hash_t hash, vector <char> & result) const noexcept {
 	// Если текст для хэширования передан
 	if(!text.empty()){
 		// Выполняем хэширование
-		::hashing(text, type, result, this->_log);
+		::hashing(text, hash, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty())
 			// Выводим сообщение об ошибке
@@ -2639,16 +2639,16 @@ template <typename T>
  *
  * @param key  ключ для подписи
  * @param text текст для хэширования
- * @param type тип хэш-суммы
+ * @param hash тип хэш-суммы
  * @return     результат хэширования
  */
-auto awh::Transform::hmac(const string & key, const string & text, const type_t type) const noexcept -> T {
+auto awh::Transform::hmac(const string & key, const string & text, const hash_t hash) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	// Если текст передан
 	if(!text.empty())
 		// Выполняем хэширование
-		this->hmac(key, text, type, result);
+		this->hmac(key, text, hash, result);
 	// Выводим результат
 	return result;
 }
@@ -2656,25 +2656,25 @@ auto awh::Transform::hmac(const string & key, const string & text, const type_t 
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в строку
  *
  */
-template string awh::Transform::hmac(const string &, const string &, const type_t) const noexcept;
+template string awh::Transform::hmac(const string &, const string &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Transform::hmac(const string &, const string &, const type_t) const noexcept;
+template vector <char> awh::Transform::hmac(const string &, const string &, const hash_t) const noexcept;
 /**
  * @brief Метод хэширования текста с ключом
  *
  * @param key    ключ для подписи
  * @param text   текст для хэширования
- * @param type   тип хэш-суммы
+ * @param hash   тип хэш-суммы
  * @param result строка куда следует положить результат
  */
-void awh::Transform::hmac(const string & key, const string & text, const type_t type, string & result) const noexcept {
+void awh::Transform::hmac(const string & key, const string & text, const hash_t hash, string & result) const noexcept {
 	// Если ключ и текст для хэширования переданы
 	if(!key.empty() && !text.empty()){
 		// Выполняем хэширование
-		::hmac(key, text, type, result, this->_log);
+		::hmac(key, text, hash, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty())
 			// Выводим сообщение об ошибке
@@ -2686,14 +2686,14 @@ void awh::Transform::hmac(const string & key, const string & text, const type_t 
  *
  * @param key    ключ для подписи
  * @param text   текст для хэширования
- * @param type   тип хэш-суммы
+ * @param hash   тип хэш-суммы
  * @param result буфер куда следует положить результат
  */
-void awh::Transform::hmac(const string & key, const string & text, const type_t type, vector <char> & result) const noexcept {
+void awh::Transform::hmac(const string & key, const string & text, const hash_t hash, vector <char> & result) const noexcept {
 	// Если ключ и текст для хэширования переданы
 	if(!key.empty() && !text.empty()){
 		// Выполняем хэширование
-		::hmac(key, text, type, result, this->_log);
+		::hmac(key, text, hash, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty())
 			// Выводим сообщение об ошибке
@@ -2970,18 +2970,18 @@ template <typename T>
 /**
  * @brief Метод компрессии данных
  *
- * @param buffer буфер данных для компрессии
- * @param size   размер данных для компрессии
- * @param method метод компрессии
- * @return       результат компрессии
+ * @param buffer     буфер данных для компрессии
+ * @param size       размер данных для компрессии
+ * @param compressor метод компрессии
+ * @return           результат компрессии
  */
-auto awh::Transform::compress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
+auto awh::Transform::compress(const char * buffer, const size_t size, const compressor_t compressor) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем кодирование
-		this->compress(buffer, size, method, result);
+		this->compress(buffer, size, compressor, result);
 	// Выводим результат
 	return result;
 }
@@ -2989,29 +2989,29 @@ auto awh::Transform::compress(const char * buffer, const size_t size, const meth
  * @brief Явный специализированный шаблон метода компрессии данных с выводом результата в строку
  *
  */
-template string awh::Transform::compress(const char *, const size_t, const method_t) const noexcept;
+template string awh::Transform::compress(const char *, const size_t, const compressor_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода компрессии данных с выводом результата в буфер
  *
  */
-template vector <char> awh::Transform::compress(const char *, const size_t, const method_t) const noexcept;
+template vector <char> awh::Transform::compress(const char *, const size_t, const compressor_t) const noexcept;
 /**
  * @brief Метод компрессии данных
  *
- * @param buffer буфер данных для компрессии
- * @param size   размер данных для компрессии
- * @param method метод компрессии
- * @param result строка куда следует положить результат
+ * @param buffer     буфер данных для компрессии
+ * @param size       размер данных для компрессии
+ * @param compressor метод компрессии
+ * @param result     строка куда следует положить результат
  */
-void awh::Transform::compress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept {
+void awh::Transform::compress(const char * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Определяем метод компрессии данных
 		 */
-		switch(static_cast <uint8_t> (method)){
+		switch(static_cast <uint8_t> (compressor)){
 			// Если метод компрессии установлен Lz4
-			case static_cast <uint8_t> (method_t::LZ4): {
+			case static_cast <uint8_t> (compressor_t::LZ4): {
 				// Выполняем компрессию данных методом Lz4
 				::lz4(buffer, size, this->_level[0], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3020,7 +3020,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("LZ4: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен LZMA
-			case static_cast <uint8_t> (method_t::LZMA): {
+			case static_cast <uint8_t> (compressor_t::LZMA): {
 				// Выполняем компрессию данных методом LZMA
 				::lzma(buffer, size, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3029,7 +3029,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("LZMA: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Zstandard
-			case static_cast <uint8_t> (method_t::ZSTD): {
+			case static_cast <uint8_t> (compressor_t::ZSTD): {
 				// Выполняем компрессию данных методом Zstandard
 				::zstd(buffer, size, this->_level[2], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3038,7 +3038,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен GZip
-			case static_cast <uint8_t> (method_t::GZIP): {
+			case static_cast <uint8_t> (compressor_t::GZIP): {
 				// Выполняем компрессию данных методом GZip
 				::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3047,7 +3047,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("GZip: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Bzip2
-			case static_cast <uint8_t> (method_t::BZIP2): {
+			case static_cast <uint8_t> (compressor_t::BZIP2): {
 				// Выполняем компрессию данных методом Bzip2
 				::bzip2(buffer, size, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3056,7 +3056,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Bzip2: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Brotli
-			case static_cast <uint8_t> (method_t::BROTLI): {
+			case static_cast <uint8_t> (compressor_t::BROTLI): {
 				// Выполняем компрессию данных методом Brotli
 				::brotli(buffer, size, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3065,7 +3065,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Brotli: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Deflate
-			case static_cast <uint8_t> (method_t::DEFLATE): {
+			case static_cast <uint8_t> (compressor_t::DEFLATE): {
 				// Выполняем компрессию данных методом Deflate
 				::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.compress.load(std::memory_order_acquire), std::any_cast <z_stream &> (this->_gzip.buffer.compress), event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3074,7 +3074,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Deflate: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии не установлен
-			case static_cast <uint8_t> (method_t::NONE):
+			case static_cast <uint8_t> (compressor_t::NONE):
 				// Выводим переданный буфер данных
 				result.assign(buffer, buffer + size);
 			break;
@@ -3084,20 +3084,20 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 /**
  * @brief Метод компрессии данных
  *
- * @param buffer буфер данных для компрессии
- * @param size   размер данных для компрессии
- * @param method метод компрессии
- * @param result буфер куда следует положить результат
+ * @param buffer     буфер данных для компрессии
+ * @param size       размер данных для компрессии
+ * @param compressor метод компрессии
+ * @param result     буфер куда следует положить результат
  */
-void awh::Transform::compress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept {
+void awh::Transform::compress(const char * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Определяем метод компрессии данных
 		 */
-		switch(static_cast <uint8_t> (method)){
+		switch(static_cast <uint8_t> (compressor)){
 			// Если метод компрессии установлен Z4
-			case static_cast <uint8_t> (method_t::LZ4): {
+			case static_cast <uint8_t> (compressor_t::LZ4): {
 				// Выполняем компрессию данных методом LZ4
 				::lz4(buffer, size, this->_level[0], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3106,7 +3106,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("LZ4: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен LZMA
-			case static_cast <uint8_t> (method_t::LZMA): {
+			case static_cast <uint8_t> (compressor_t::LZMA): {
 				// Выполняем компрессию данных методом LZMA
 				::lzma(buffer, size, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3115,7 +3115,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("LZMA: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Zstandard
-			case static_cast <uint8_t> (method_t::ZSTD): {
+			case static_cast <uint8_t> (compressor_t::ZSTD): {
 				// Выполняем компрессию данных методом Zstandard
 				::zstd(buffer, size, this->_level[2], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3124,7 +3124,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен GZip
-			case static_cast <uint8_t> (method_t::GZIP): {
+			case static_cast <uint8_t> (compressor_t::GZIP): {
 				// Выполняем компрессию данных методом GZip
 				::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3133,7 +3133,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("GZip: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Bzip2
-			case static_cast <uint8_t> (method_t::BZIP2): {
+			case static_cast <uint8_t> (compressor_t::BZIP2): {
 				// Выполняем компрессию данных методом Bzip2
 				::bzip2(buffer, size, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3142,7 +3142,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Bzip2: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Brotli
-			case static_cast <uint8_t> (method_t::BROTLI): {
+			case static_cast <uint8_t> (compressor_t::BROTLI): {
 				// Выполняем компрессию данных методом Brotli
 				::brotli(buffer, size, event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3151,7 +3151,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Brotli: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии установлен Deflate
-			case static_cast <uint8_t> (method_t::DEFLATE): {
+			case static_cast <uint8_t> (compressor_t::DEFLATE): {
 				// Выполняем компрессию данных методом Deflate
 				::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.compress.load(std::memory_order_acquire), std::any_cast <z_stream &> (this->_gzip.buffer.compress), event_t::ENCODE, result, this->_log);
 				// Если результат не получен
@@ -3160,7 +3160,7 @@ void awh::Transform::compress(const char * buffer, const size_t size, const meth
 					this->_log->print("Deflate: %s", log_t::flag_t::WARNING, "compress failed");
 			} break;
 			// Если метод компрессии не установлен
-			case static_cast <uint8_t> (method_t::NONE):
+			case static_cast <uint8_t> (compressor_t::NONE):
 				// Выводим переданный буфер данных
 				result.assign(buffer, buffer + size);
 			break;
@@ -3176,18 +3176,18 @@ template <typename T>
 /**
  * @brief Метод декомпрессии данных
  *
- * @param buffer буфер данных для декомпрессии
- * @param size   размер данных для декомпрессии
- * @param method метод компрессии
- * @return       результат декомпрессии
+ * @param buffer     буфер данных для декомпрессии
+ * @param size       размер данных для декомпрессии
+ * @param compressor метод компрессии
+ * @return           результат декомпрессии
  */
-auto awh::Transform::decompress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
+auto awh::Transform::decompress(const char * buffer, const size_t size, const compressor_t compressor) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем декомпрессию
-		this->decompress(buffer, size, method, result);
+		this->decompress(buffer, size, compressor, result);
 	// Выводим результат
 	return result;
 }
@@ -3195,29 +3195,29 @@ auto awh::Transform::decompress(const char * buffer, const size_t size, const me
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в строку
  *
  */
-template string awh::Transform::decompress(const char *, const size_t, const method_t) const noexcept;
+template string awh::Transform::decompress(const char *, const size_t, const compressor_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в буфер
  *
  */
-template vector <char> awh::Transform::decompress(const char *, const size_t, const method_t) const noexcept;
+template vector <char> awh::Transform::decompress(const char *, const size_t, const compressor_t) const noexcept;
 /**
  * @brief Метод декомпрессии данных
  *
- * @param buffer буфер данных для декомпрессии
- * @param size   размер данных для декомпрессии
- * @param method метод компрессии
- * @param result строка куда следует положить результат
+ * @param buffer     буфер данных для декомпрессии
+ * @param size       размер данных для декомпрессии
+ * @param compressor метод компрессии
+ * @param result     строка куда следует положить результат
  */
-void awh::Transform::decompress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept {
+void awh::Transform::decompress(const char * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Определяем метод декомпрессии данных
 		 */
-		switch(static_cast <uint8_t> (method)){
+		switch(static_cast <uint8_t> (compressor)){
 			// Если метод декомпрессии установлен LZ4
-			case static_cast <uint8_t> (method_t::LZ4): {
+			case static_cast <uint8_t> (compressor_t::LZ4): {
 				// Выполняем декомпрессию данных методом LZ4
 				::lz4(buffer, size, this->_level[0], event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3226,7 +3226,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("LZ4: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен LZMA
-			case static_cast <uint8_t> (method_t::LZMA): {
+			case static_cast <uint8_t> (compressor_t::LZMA): {
 				// Выполняем декомпрессию данных методом LZMA
 				::lzma(buffer, size, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3235,7 +3235,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("LZMA: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Zstandard
-			case static_cast <uint8_t> (method_t::ZSTD): {
+			case static_cast <uint8_t> (compressor_t::ZSTD): {
 				// Выполняем декомпрессию данных методом Zstandard
 				::zstd(buffer, size, this->_level[2], event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3244,7 +3244,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен GZip
-			case static_cast <uint8_t> (method_t::GZIP): {
+			case static_cast <uint8_t> (compressor_t::GZIP): {
 				// Выполняем декомпрессию данных методом GZip
 				::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3253,7 +3253,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("GZip: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Bzip2
-			case static_cast <uint8_t> (method_t::BZIP2): {
+			case static_cast <uint8_t> (compressor_t::BZIP2): {
 				// Выполняем декомпрессию данных методом Bzip2
 				::bzip2(buffer, size, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3262,7 +3262,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Bzip2: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Brotli
-			case static_cast <uint8_t> (method_t::BROTLI): {
+			case static_cast <uint8_t> (compressor_t::BROTLI): {
 				// Выполняем декомпрессию данных методом Brotli
 				::brotli(buffer, size, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3271,7 +3271,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Brotli: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Deflate
-			case static_cast <uint8_t> (method_t::DEFLATE): {
+			case static_cast <uint8_t> (compressor_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
 				::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.decompress.load(std::memory_order_acquire), std::any_cast <z_stream &> (this->_gzip.buffer.decompress), event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3280,7 +3280,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Deflate: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии не установлен
-			case static_cast <uint8_t> (method_t::NONE):
+			case static_cast <uint8_t> (compressor_t::NONE):
 				// Выводим переданный буфер данных
 				result.assign(buffer, buffer + size);
 			break;
@@ -3290,20 +3290,20 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 /**
  * @brief Метод декомпрессии данных
  *
- * @param buffer буфер данных для декомпрессии
- * @param size   размер данных для декомпрессии
- * @param method метод компрессии
- * @param result буфер куда следует положить результат
+ * @param buffer     буфер данных для декомпрессии
+ * @param size       размер данных для декомпрессии
+ * @param compressor метод компрессии
+ * @param result     буфер куда следует положить результат
  */
-void awh::Transform::decompress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept {
+void awh::Transform::decompress(const char * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Определяем метод декомпрессии данных
 		 */
-		switch(static_cast <uint8_t> (method)){
+		switch(static_cast <uint8_t> (compressor)){
 			// Если метод декомпрессии установлен LZ4
-			case static_cast <uint8_t> (method_t::LZ4): {
+			case static_cast <uint8_t> (compressor_t::LZ4): {
 				// Выполняем декомпрессию данных методом LZ4
 				::lz4(buffer, size, this->_level[0], event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3312,7 +3312,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("LZ4: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен LZMA
-			case static_cast <uint8_t> (method_t::LZMA): {
+			case static_cast <uint8_t> (compressor_t::LZMA): {
 				// Выполняем декомпрессию данных методом LZMA
 				::lzma(buffer, size, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3321,7 +3321,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("LZMA: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Zstandard
-			case static_cast <uint8_t> (method_t::ZSTD): {
+			case static_cast <uint8_t> (compressor_t::ZSTD): {
 				// Выполняем декомпрессию данных методом Zstandard
 				::zstd(buffer, size, this->_level[2], event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3330,7 +3330,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен GZip
-			case static_cast <uint8_t> (method_t::GZIP): {
+			case static_cast <uint8_t> (compressor_t::GZIP): {
 				// Выполняем декомпрессию данных методом GZip
 				::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3339,7 +3339,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("GZip: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Bzip2
-			case static_cast <uint8_t> (method_t::BZIP2): {
+			case static_cast <uint8_t> (compressor_t::BZIP2): {
 				// Выполняем декомпрессию данных методом Bzip2
 				::bzip2(buffer, size, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3348,7 +3348,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Bzip2: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Brotli
-			case static_cast <uint8_t> (method_t::BROTLI): {
+			case static_cast <uint8_t> (compressor_t::BROTLI): {
 				// Выполняем декомпрессию данных методом Brotli
 				::brotli(buffer, size, event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3357,7 +3357,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Brotli: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии установлен Deflate
-			case static_cast <uint8_t> (method_t::DEFLATE): {
+			case static_cast <uint8_t> (compressor_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
 				::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.decompress.load(std::memory_order_acquire), std::any_cast <z_stream &> (this->_gzip.buffer.decompress), event_t::DECODE, result, this->_log);
 				// Если результат не получен
@@ -3366,7 +3366,7 @@ void awh::Transform::decompress(const char * buffer, const size_t size, const me
 					this->_log->print("Deflate: %s", log_t::flag_t::WARNING, "decompress failed");
 			} break;
 			// Если метод декомпрессии не установлен
-			case static_cast <uint8_t> (method_t::NONE):
+			case static_cast <uint8_t> (compressor_t::NONE):
 				// Выводим переданный буфер данных
 				result.assign(buffer, buffer + size);
 			break;

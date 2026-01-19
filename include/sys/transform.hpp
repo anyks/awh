@@ -76,24 +76,10 @@ namespace awh {
 				AES256 = 256  // Размер шифрования 256 бит
 			};
 			/**
-			 * @brief Методы компрессии
-			 *
-			 */
-			enum class method_t : uint8_t {
-				NONE    = 0x00, // Метод сжатия не установлен
-				LZ4     = 0x01, // Метод сжатия Lz4
-				LZMA    = 0x02, // Метод сжатия LZma
-				ZSTD    = 0x03, // Метод сжатия Zstandard
-				GZIP    = 0x04, // Метод сжатия GZip
-				BZIP2   = 0x05, // Метод сжания BZip2
-				BROTLI  = 0x06, // Метод сжатия Brotli
-				DEFLATE = 0x07  // Метод сжатия Deflate
-			};
-			/**
 			 * @brief Тип хэш-суммы
 			 *
 			 */
-			enum class type_t : uint8_t {
+			enum class hash_t : uint8_t {
 				NONE   = 0x00, // Не установлено
 				MD5    = 0x01, // Хэш MD5
 				SHA1   = 0x02, // Хэш SHA1
@@ -101,6 +87,20 @@ namespace awh {
 				SHA256 = 0x04, // Хэш SHA256
 				SHA384 = 0x05, // Хэш SHA384
 				SHA512 = 0x06  // Хэш SHA512
+			};
+			/**
+			 * @brief Типы компрессоров
+			 *
+			 */
+			enum class compressor_t : uint8_t {
+				NONE    = 0x00, // Компрессор не установлен
+				LZ4     = 0x01, // Компрессор Lz4
+				LZMA    = 0x02, // Компрессор LZma
+				ZSTD    = 0x03, // Компрессор Zstandard
+				GZIP    = 0x04, // Компрессор GZip
+				BZIP2   = 0x05, // Компрессор BZip2
+				BROTLI  = 0x06, // Компрессор Brotli
+				DEFLATE = 0x07  // Компрессор Deflate
 			};
 		public:
 			/**
@@ -400,26 +400,26 @@ namespace awh {
 			 * @brief Метод хэширования текста
 			 *
 			 * @param text текст для хэширования
-			 * @param type тип хэш-суммы
+			 * @param hash тип хэш-суммы
 			 * @return     результат хэширования
 			 */
-			auto hashing(const string & text, const type_t type) const noexcept -> T;
+			auto hashing(const string & text, const hash_t hash) const noexcept -> T;
 			/**
 			 * @brief Метод хэширования текста
 			 *
 			 * @param text   текст для хэширования
-			 * @param type   тип хэш-суммы
+			 * @param hash   тип хэш-суммы
 			 * @param result строка куда следует положить результат
 			 */
-			void hashing(const string & text, const type_t type, string & result) const noexcept;
+			void hashing(const string & text, const hash_t hash, string & result) const noexcept;
 			/**
 			 * @brief Метод хэширования текста
 			 *
 			 * @param text   текст для хэширования
-			 * @param type   тип хэш-суммы
+			 * @param hash   тип хэш-суммы
 			 * @param result буфер куда следует положить результат
 			 */
-			void hashing(const string & text, const type_t type, vector <char> & result) const noexcept;
+			void hashing(const string & text, const hash_t hash, vector <char> & result) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
@@ -432,28 +432,28 @@ namespace awh {
 			 *
 			 * @param key  ключ для подписи
 			 * @param text текст для хэширования
-			 * @param type тип хэш-суммы
+			 * @param hash тип хэш-суммы
 			 * @return     результат хэширования
 			 */
-			auto hmac(const string & key, const string & text, const type_t type) const noexcept -> T;
+			auto hmac(const string & key, const string & text, const hash_t hash) const noexcept -> T;
 			/**
 			 * @brief Метод хэширования текста с ключом
 			 *
 			 * @param key    ключ для подписи
 			 * @param text   текст для хэширования
-			 * @param type   тип хэш-суммы
+			 * @param hash   тип хэш-суммы
 			 * @param result строка куда следует положить результат
 			 */
-			void hmac(const string & key, const string & text, const type_t type, string & result) const noexcept;
+			void hmac(const string & key, const string & text, const hash_t hash, string & result) const noexcept;
 			/**
 			 * @brief Метод хэширования текста с ключом
 			 *
 			 * @param key    ключ для подписи
 			 * @param text   текст для хэширования
-			 * @param type   тип хэш-суммы
+			 * @param hash   тип хэш-суммы
 			 * @param result буфер куда следует положить результат
 			 */
-			void hmac(const string & key, const string & text, const type_t type, vector <char> & result) const noexcept;
+			void hmac(const string & key, const string & text, const hash_t hash, vector <char> & result) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода кодирования
@@ -532,30 +532,30 @@ namespace awh {
 			/**
 			 * @brief Метод компрессии данных
 			 *
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param method метод компрессии
-			 * @return       результат компрессии
+			 * @param buffer     буфер данных для компрессии
+			 * @param size       размер данных для компрессии
+			 * @param compressor метод компрессии
+			 * @return           результат компрессии
 			 */
-			auto compress(const char * buffer, const size_t size, const method_t method) const noexcept -> T;
+			auto compress(const char * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
 			/**
 			 * @brief Метод компрессии данных
 			 *
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param method метод компрессии
-			 * @param result строка куда следует положить результат
+			 * @param buffer     буфер данных для компрессии
+			 * @param size       размер данных для компрессии
+			 * @param compressor метод компрессии
+			 * @param result     строка куда следует положить результат
 			 */
-			void compress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept;
+			void compress(const char * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept;
 			/**
 			 * @brief Метод компрессии данных
 			 *
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param method метод компрессии
-			 * @param result буфер куда следует положить результат
+			 * @param buffer     буфер данных для компрессии
+			 * @param size       размер данных для компрессии
+			 * @param compressor метод компрессии
+			 * @param result     буфер куда следует положить результат
 			 */
-			void compress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
+			void compress(const char * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода декомпрессии данных
@@ -566,30 +566,30 @@ namespace awh {
 			/**
 			 * @brief Метод декомпрессии данных
 			 *
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @param method метод компрессии
-			 * @return       результат декомпрессии
+			 * @param buffer     буфер данных для декомпрессии
+			 * @param size       размер данных для декомпрессии
+			 * @param compressor метод компрессии
+			 * @return           результат декомпрессии
 			 */
-			auto decompress(const char * buffer, const size_t size, const method_t method) const noexcept -> T;
+			auto decompress(const char * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
 			/**
 			 * @brief Метод декомпрессии данных
 			 *
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @param method метод компрессии
-			 * @param result строка куда следует положить результат
+			 * @param buffer     буфер данных для декомпрессии
+			 * @param size       размер данных для декомпрессии
+			 * @param compressor метод компрессии
+			 * @param result     строка куда следует положить результат
 			 */
-			void decompress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept;
+			void decompress(const char * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept;
 			/**
 			 * @brief Метод декомпрессии данных
 			 *
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @param method метод компрессии
-			 * @param result буфер куда следует положить результат
+			 * @param buffer     буфер данных для декомпрессии
+			 * @param size       размер данных для декомпрессии
+			 * @param compressor метод компрессии
+			 * @param result     буфер куда следует положить результат
 			 */
-			void decompress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
+			void decompress(const char * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
