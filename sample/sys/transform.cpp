@@ -164,6 +164,84 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << "Decompressed data DENSITY: " << decompressed << ", SIZE=" << decompressed.size() << endl;
 	// Выводим пустую строку
 	cout << endl;
+	// Выводим заголовок компрессии AES256
+	cout << " ======== AES256 ======== " << endl;
+	// Устанавливаем количество раундов шифрования
+	transform.roundAES(10);
+	// Устанавливаем соль шифрования
+	transform.salt("anyks_salt");
+	// Устанавливаем пароль шифрования
+	transform.password("anyks_password");
+	// Выполняем кодирование текста
+	compressed = transform.encode <string> (data, transform_t::cipher_t::AES256);
+	// Выводим результат хэширования
+	cout << "Encoded data AES256: " << compressed << ", SIZE=" << compressed.size() << endl;
+	// Выполняем декомпрессию данных
+	decompressed = transform.decode <string> (compressed, transform_t::cipher_t::AES256);
+	// Выводим результат хэширования
+	cout << "Decoded data AES256: " << decompressed << ", SIZE=" << decompressed.size() << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии BASE64
+	cout << " ======== BASE64 ======== " << endl;
+	// Выполняем кодирование текста
+	compressed = transform.encode <string> (data, transform_t::cipher_t::BASE64);
+	// Выводим результат хэширования
+	cout << "Encoded data BASE64: " << compressed << ", SIZE=" << compressed.size() << endl;
+	// Выполняем декомпрессию данных
+	decompressed = transform.decode <string> (compressed, transform_t::cipher_t::BASE64);
+	// Выводим результат хэширования
+	cout << "Decoded data BASE64: " << decompressed << ", SIZE=" << decompressed.size() << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии HASH SHA256
+	cout << " ======== HASH SHA256 ======== " << endl;
+	// Выполняем кодирование текста
+	compressed = transform.hashing <string> (data, transform_t::hash_t::SHA256);
+	// Выводим результат хэширования
+	cout << "Encoded data SHA256: " << compressed << ", SIZE=" << compressed.size() << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии HASH MD5
+	cout << " ======== HASH MD5 ======== " << endl;
+	// Выполняем кодирование текста
+	compressed = transform.hashing <string> (data, transform_t::hash_t::MD5);
+	// Выводим результат хэширования
+	cout << "Encoded data MD5: " << compressed << ", SIZE=" << compressed.size() << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии HASH HMAC SHA256
+	cout << " ======== HASH HMAC SHA256 ======== " << endl;
+	// Выполняем кодирование текста
+	compressed = transform.hmac <string> ("test", data, transform_t::hash_t::SHA256);
+	// Выводим результат хэширования
+	cout << "Encoded data SHA256: " << compressed << ", SIZE=" << compressed.size() << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии HASH HMAC MD5
+	cout << " ======== HASH HMAC MD5 ======== " << endl;
+	// Выполняем кодирование текста
+	compressed = transform.hmac <string> ("test", data, transform_t::hash_t::MD5);
+	// Выводим результат хэширования
+	cout << "Encoded data MD5: " << compressed << ", SIZE=" << compressed.size() << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии HASH 32-BIT
+	cout << " ======== HASH 32-BIT ======== " << endl;
+	// Выполняем кодирование текста
+	uint32_t value1 = transform.hashing <uint32_t> (data);
+	// Выводим результат хэширования
+	cout << "Encoded data 32-BIT: " << value1 << ", SIZE=" << sizeof(value1) << endl;
+	// Выводим пустую строку
+	cout << endl;
+	// Выводим заголовок компрессии HASH 64-BIT
+	cout << " ======== HASH 64-BIT ======== " << endl;
+	// Выполняем кодирование текста
+	uint64_t value2 = transform.hashing <uint64_t> (data);
+	// Выводим результат хэширования
+	cout << "Encoded data 64-BIT: " << value2 << ", SIZE=" << sizeof(value2) << endl;
+	// Выводим пустую строку
+	cout << endl;
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

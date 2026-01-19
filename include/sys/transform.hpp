@@ -231,6 +231,7 @@ namespace awh {
 			 * @return       результат инициализации
 			 */
 			bool cipher(const cipher_t cipher) noexcept;
+		public:
 			/**
 			 * @brief Метод установки количества раундов шифрования
 			 *
