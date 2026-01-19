@@ -640,7 +640,7 @@ namespace driver {
 						if(::lzma_index_buffer_decode(&index, &memlimit, nullptr, reinterpret_cast <uint8_t *> (ptr), &inpos, size - (ptr - buffer)) != LZMA_OK)
 							// Переходим к выводу ошибки
 							goto Error;
-						// Сбрасываем иозицию во входящем буфере
+						// Сбрасываем позицию во входящем буфере
 						inpos = 0;
 						// Сбрасываем лимит доступной памяти
 						memlimit = 0x8000000;
@@ -657,6 +657,8 @@ namespace driver {
 						}
 						// Устанавливаем метку вывода ошибки
 						Error:
+						// Выполняем закрытие индекса компрессора LZma
+						::lzma_index_end(index, nullptr);
 						// Выполняем очистку результата
 						result.clear();
 						// Выводим сообщение об ошибке в лог
@@ -784,7 +786,7 @@ namespace driver {
 							if((actual - stream.total_out_lo32) == 0){
 								// Увеличиваем буфер исходящих данных в два раза
 								actual *= 2;
-								// Выделяем пмять для буфера извлечения данных
+								// Выделяем память для буфера извлечения данных
 								result.resize(actual, 0);
 							}
 							// Устанавливаем буфер для получения результата
@@ -1945,7 +1947,7 @@ void awh::Transform::level(const level_t level) noexcept {
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_MAX_CLEVEL;
 		} break;
-		// Выполняем установку уровень компрессии на максимальную производительность
+		// Выполняем установку уровня компрессии на максимальную производительность
 		case static_cast <uint8_t> (level_t::SPEED): {
 			// Выполняем установку уровня максимальной компрессии Lz4
 			this->_level[0] = 3;
@@ -2803,7 +2805,7 @@ auto awh::Transform::hashing(const string & text, const T seed1, const T seed2) 
 			// Копируем результат в выходной буфер
 			::memcpy(&result, &hash, sizeof(hash));
 		} break;
-		// Если необходимо вернут1ь 128 битный хэш
+		// Если необходимо вернуть 128 битный хэш
 		case 16: {
 			// 128-битный ключевой буфер
 			uint128 key;
@@ -2878,7 +2880,7 @@ auto awh::Transform::hashing(const vector <char> & buffer, const T seed1, const 
 			// Копируем результат в выходной буфер
 			::memcpy(&result, &hash, sizeof(hash));
 		} break;
-		// Если необходимо вернут1ь 128 битный хэш
+		// Если необходимо вернуть 128 битный хэш
 		case 16: {
 			// 128-битный ключевой буфер
 			uint128 key;
@@ -2953,7 +2955,7 @@ auto awh::Transform::hashing(const vector <uint8_t> & buffer, const T seed1, con
 			// Копируем результат в выходной буфер
 			::memcpy(&result, &hash, sizeof(hash));
 		} break;
-		// Если необходимо вернут1ь 128 битный хэш
+		// Если необходимо вернуть 128 битный хэш
 		case 16: {
 			// 128-битный ключевой буфер
 			uint128 key;
@@ -3029,7 +3031,7 @@ auto awh::Transform::hashing(const void * buffer, const size_t size, const T see
 			// Копируем результат в выходной буфер
 			::memcpy(&result, &hash, sizeof(hash));
 		} break;
-		// Если необходимо вернут1ь 128 битный хэш
+		// Если необходимо вернуть 128 битный хэш
 		case 16: {
 			// 128-битный ключевой буфер
 			uint128 key;
@@ -4023,7 +4025,7 @@ void awh::Transform::compress(const void * buffer, const size_t size, const comp
 		 * Определяем метод компрессии данных
 		 */
 		switch(static_cast <uint8_t> (compressor)){
-			// Если метод компрессии установлен Z4
+			// Если метод компрессии установлен LZ4
 			case static_cast <uint8_t> (compressor_t::LZ4): {
 				// Выполняем компрессию данных методом LZ4
 				driver::lz4(reinterpret_cast <const char *> (buffer), size, this->_level[0], event_t::ENCODE, result, this->_log);
