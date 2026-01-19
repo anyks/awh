@@ -104,6 +104,12 @@ if (CMAKE_MAX_MEMORY_BUFFER)
     message(STATUS "Build with max memory buffer usage size: ${CMAKE_MAX_MEMORY_BUFFER}\n")
 endif (CMAKE_MAX_MEMORY_BUFFER)
 
+# Если активирован флаг установки размера буфера чанка модуля трансформации
+if (CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE)
+    add_compile_definitions(AWH_TRANSFORM_CHUNK_BUFFER_SIZE=${CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE})
+    message(STATUS "Build with transform module chunk buffer size: ${CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE}\n")
+endif (CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE)
+
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 

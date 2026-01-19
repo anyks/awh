@@ -29,6 +29,7 @@
  */
 #include "fmk.hpp"
 #include "log.hpp"
+#include "locker.hpp"
 
 /**
  * @brief основное пространство имён
@@ -45,6 +46,14 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT Transform {
 		public:
+			/**
+			 * @brief Режимы событий
+			 *
+			 */
+			enum class mode_t : uint8_t {
+				ENABLED  = 0x00, // Режим включён
+				DISABLED = 0x01  // Режим отключён
+			};
 			/**
 			 * @brief События выполнения операции
 			 *
@@ -93,14 +102,17 @@ namespace awh {
 			 *
 			 */
 			enum class compressor_t : uint8_t {
-				NONE    = 0x00, // Компрессор не установлен
-				LZ4     = 0x01, // Компрессор Lz4
-				LZMA    = 0x02, // Компрессор LZma
-				ZSTD    = 0x03, // Компрессор Zstandard
-				GZIP    = 0x04, // Компрессор GZip
-				BZIP2   = 0x05, // Компрессор BZip2
-				BROTLI  = 0x06, // Компрессор Brotli
-				DEFLATE = 0x07  // Компрессор Deflate
+				NONE    = 0x00, // Метод сжатия не установлен
+				LZ4     = 0x01, // Метод сжатия Lz4
+				LZMA    = 0x02, // Метод сжатия LZma
+				ZSTD    = 0x03, // Метод сжатия ZStd
+				GZIP    = 0x04, // Метод сжатия GZip
+				BZIP2   = 0x05, // Метод сжания BZip2
+				BROTLI  = 0x06, // Метод сжатия Brotli
+				LIZARD  = 0x07, // Метод сжатия Lizard
+				SNAPPY  = 0x08, // Метод сжатия Snappy
+				DEFLATE = 0x09, // Метод сжатия Deflate
+				DENSITY = 0x0A  // Метод сжатия Density
 			};
 		public:
 			/**
@@ -192,12 +204,15 @@ namespace awh {
 			} crypto_t;
 		private:
 			// Уровни компрессии
-			uint32_t _level[3];
+			uint32_t _level[4];
 		private:
 			// Структура GZip
 			mutable gzip_t _gzip;
 			// Структура криптографии
 			mutable crypto_t _crypto;
+		private:
+			// Локер для потокобезопасной работы
+			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Объект работы с логами
 			const log_t * _log;
@@ -235,6 +250,13 @@ namespace awh {
 			 * @param password пароль шифрования
 			 */
 			void password(const string & password) noexcept;
+		public:
+			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode режим безопасности потоков
+			 */
+			void threadSafety(const mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод установки размера скользящего окна

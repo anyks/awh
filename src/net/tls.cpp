@@ -62,7 +62,7 @@ using namespace std;
 	 * Определяем разделитель алгоритмов шифрования
 	 */
 	#define __AWH_TLS_CIPHER_SEPARATOR__ ":"
-#endif // __AWH_TLS_CIPHER_SEPARATOR__
+#endif
 
 /**
  * Если максимальный размер SSL буфера не определён
