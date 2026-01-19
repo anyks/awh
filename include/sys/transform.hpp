@@ -316,6 +316,19 @@ namespace awh {
 			 * @brief Метод хэширования текста
 			 *
 			 * @param buffer буфер данных для хэширования
+			 * @return       результат хэширования
+			 */
+			auto hashing(const vector <uint8_t> & buffer) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста
+			 *
+			 * @param buffer буфер данных для хэширования
 			 * @param size   размер данных для хэширования
 			 * @return       результат хэширования
 			 */
@@ -349,6 +362,20 @@ namespace awh {
 			 * @return       результат хэширования
 			 */
 			auto hashing(const vector <char> & buffer, const T seed) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста c ключом
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста c ключом
+			 *
+			 * @param buffer буфер данных для хэширования
+			 * @param seed   ключ для хэширования
+			 * @return       результат хэширования
+			 */
+			auto hashing(const vector <uint8_t> & buffer, const T seed) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода хэширования текста c ключом
 			 *
@@ -405,6 +432,21 @@ namespace awh {
 			 * @brief Метод хэширования текста c ключом
 			 *
 			 * @param buffer буфер данных для хэширования
+			 * @param seed1  первый ключ для хэширования
+			 * @param seed2  второй ключ для хэширования
+			 * @return       результат хэширования
+			 */
+			auto hashing(const vector <uint8_t> & buffer, const T seed1, const T seed2) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста c ключом
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста c ключом
+			 *
+			 * @param buffer буфер данных для хэширования
 			 * @param size   размер данных для хэширования
 			 * @param seed1  первый ключ для хэширования
 			 * @param seed2  второй ключ для хэширования
@@ -442,6 +484,14 @@ namespace awh {
 			 * @param result буфер куда следует положить результат
 			 */
 			void hashing(const string & text, const hash_t hash, vector <char> & result) const noexcept;
+			/**
+			 * @brief Метод хэширования текста
+			 *
+			 * @param text   текст для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @param result буфер куда следует положить результат
+			 */
+			void hashing(const string & text, const hash_t hash, vector <uint8_t> & result) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
@@ -476,7 +526,31 @@ namespace awh {
 			 * @param result буфер куда следует положить результат
 			 */
 			void hmac(const string & key, const string & text, const hash_t hash, vector <char> & result) const noexcept;
+			/**
+			 * @brief Метод хэширования текста с ключом
+			 *
+			 * @param key    ключ для подписи
+			 * @param text   текст для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @param result буфер куда следует положить результат
+			 */
+			void hmac(const string & key, const string & text, const hash_t hash, vector <uint8_t> & result) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода кодирования
+			 *
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
+			 */
+			template <typename A, typename B>
+			/**
+			 * @brief Метод кодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto encode(const B & buffer, const cipher_t cipher) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода кодирования
 			 *
@@ -491,7 +565,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto encode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
+			auto encode(const void * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
 			/**
 			 * @brief Метод кодирования
 			 *
@@ -500,7 +574,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result строка куда следует положить результат
 			 */
-			void encode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
+			void encode(const void * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
 			/**
 			 * @brief Метод кодирования
 			 *
@@ -509,8 +583,32 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result буфер куда следует положить результат
 			 */
-			void encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
+			void encode(const void * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
+			/**
+			 * @brief Метод кодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @param result буфер куда следует положить результат
+			 */
+			void encode(const void * buffer, const size_t size, const cipher_t cipher, vector <uint8_t> & result) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода декодирования
+			 *
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
+			 */
+			template <typename A, typename B>
+			/**
+			 * @brief Метод декодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto decode(const B & buffer, const cipher_t cipher) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода декодирования
 			 *
@@ -525,7 +623,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
+			auto decode(const void * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
 			/**
 			 * @brief Метод декодирования
 			 *
@@ -534,7 +632,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result строка куда следует положить результат
 			 */
-			void decode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
+			void decode(const void * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
 			/**
 			 * @brief Метод декодирования
 			 *
@@ -543,8 +641,32 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result буфер куда следует положить результат
 			 */
-			void decode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
+			void decode(const void * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
+			/**
+			 * @brief Метод декодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @param result буфер куда следует положить результат
+			 */
+			void decode(const void * buffer, const size_t size, const cipher_t cipher, vector <uint8_t> & result) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода компрессии данных
+			 *
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
+			 */
+			template <typename A, typename B>
+			/**
+			 * @brief Метод компрессии данных
+			 *
+			 * @param buffer     буфер данных для компрессии
+			 * @param compressor метод компрессии
+			 * @return           результат компрессии
+			 */
+			auto compress(const B & buffer, const compressor_t compressor) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода компрессии данных
 			 *
@@ -559,7 +681,7 @@ namespace awh {
 			 * @param compressor метод компрессии
 			 * @return           результат компрессии
 			 */
-			auto compress(const char * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
+			auto compress(const void * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
 			/**
 			 * @brief Метод компрессии данных
 			 *
@@ -568,7 +690,7 @@ namespace awh {
 			 * @param compressor метод компрессии
 			 * @param result     строка куда следует положить результат
 			 */
-			void compress(const char * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept;
+			void compress(const void * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept;
 			/**
 			 * @brief Метод компрессии данных
 			 *
@@ -577,8 +699,32 @@ namespace awh {
 			 * @param compressor метод компрессии
 			 * @param result     буфер куда следует положить результат
 			 */
-			void compress(const char * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept;
+			void compress(const void * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept;
+			/**
+			 * @brief Метод компрессии данных
+			 *
+			 * @param buffer     буфер данных для компрессии
+			 * @param size       размер данных для компрессии
+			 * @param compressor метод компрессии
+			 * @param result     буфер куда следует положить результат
+			 */
+			void compress(const void * buffer, const size_t size, const compressor_t compressor, vector <uint8_t> & result) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода декомпрессии данных
+			 *
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
+			 */
+			template <typename A, typename B>
+			/**
+			 * @brief Метод декомпрессии данных
+			 *
+			 * @param buffer     буфер данных для декомпрессии
+			 * @param compressor метод компрессии
+			 * @return           результат декомпрессии
+			 */
+			auto decompress(const B & buffer, const compressor_t compressor) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода декомпрессии данных
 			 *
@@ -593,7 +739,7 @@ namespace awh {
 			 * @param compressor метод компрессии
 			 * @return           результат декомпрессии
 			 */
-			auto decompress(const char * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
+			auto decompress(const void * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
 			/**
 			 * @brief Метод декомпрессии данных
 			 *
@@ -602,7 +748,7 @@ namespace awh {
 			 * @param compressor метод компрессии
 			 * @param result     строка куда следует положить результат
 			 */
-			void decompress(const char * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept;
+			void decompress(const void * buffer, const size_t size, const compressor_t compressor, string & result) const noexcept;
 			/**
 			 * @brief Метод декомпрессии данных
 			 *
@@ -611,7 +757,16 @@ namespace awh {
 			 * @param compressor метод компрессии
 			 * @param result     буфер куда следует положить результат
 			 */
-			void decompress(const char * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept;
+			void decompress(const void * buffer, const size_t size, const compressor_t compressor, vector <char> & result) const noexcept;
+			/**
+			 * @brief Метод декомпрессии данных
+			 *
+			 * @param buffer     буфер данных для декомпрессии
+			 * @param size       размер данных для декомпрессии
+			 * @param compressor метод компрессии
+			 * @param result     буфер куда следует положить результат
+			 */
+			void decompress(const void * buffer, const size_t size, const compressor_t compressor, vector <uint8_t> & result) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
