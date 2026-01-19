@@ -471,6 +471,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с датой и временем
     option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
 
+    # Устанавливаем имя приложения работы с трансформацией данных
+    SET(TRANSFORM_APP_SYS_NAME sys-transform)
+    # Указываем что нужно собрать приложение работы с трансформацией данных
+    option(CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE "Build Transform app sample" ON)
+
     # Устанавливаем имя приложения работы с каталогами
     SET(DIR_APP_IO_NAME io-dir)
     # Указываем что нужно собрать приложение работы с каталогами
@@ -674,6 +679,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample DATE: No\n")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с трансформацией данных
+    if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TRANSFORM: Yes\n")
+        # Выполняем создание приложения работы с трансформацией данных
+        add_sample(${TRANSFORM_APP_SYS_NAME} sample/sys/transform.cpp sys)
+    # Если не нужно собирать семплы для работы с трансформацией данных
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TRANSFORM: No\n")
+    endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -965,6 +982,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${WINFLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с трансформацией данных
+        if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения трансформации данных
+            target_link_libraries(
+                ${TRANSFORM_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с каталогами
         if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -1367,6 +1395,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${WINFLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с трансформацией данных
+        if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения трансформации данных
+            target_link_libraries(
+                ${TRANSFORM_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с каталогами
         if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -1812,6 +1852,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с трансформацией данных
+            if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения трансформации данных
+                add_custom_command(TARGET "${TRANSFORM_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TRANSFORM_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${TRANSFORM_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с каталогами
@@ -2086,6 +2136,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${DATE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с трансформацией данных
+            if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения трансформации данных
+                pvs_studio_add_target(TARGET ${TRANSFORM_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TRANSFORM_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
                 # Выполняем анализ приложения работы с каталогами
@@ -2324,6 +2380,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с датой и временем
         install(TARGETS ${DATE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с трансформацией данных
+    if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с трансформацией данных
+        install(TARGETS ${TRANSFORM_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})

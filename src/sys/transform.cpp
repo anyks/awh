@@ -81,6 +81,7 @@
 #include <cstdio>
 #include <cstring>
 #include <csignal>
+#include <iostream>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -571,7 +572,7 @@ namespace driver {
 	 */
 	static void lzma(const char * buffer, const size_t size, const awh::transform_t::event_t event, T & result, const awh::log_t * log) noexcept {
 		// Если буфер данных передан
-		if((buffer != nullptr) && (size > 80)){
+		if((buffer != nullptr) && (size > 0)){
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -702,10 +703,8 @@ namespace driver {
 			try {
 				// Выполняем очистку блока с результатом
 				result.clear();
-				// Результат выполнения компрессии
-				int32_t rv = BZ_OK;
 				// Выполняем создание объекта потока
-				bz_stream stream;
+				bz_stream stream{};
 				// Выполняем зануление параметров потока
 				stream.bzfree  = nullptr;
 				stream.opaque  = nullptr;
@@ -723,41 +722,62 @@ namespace driver {
 							// Выходим из функции
 							return;
 						}
+						/**
+						 * Начальный размер выходного буфера: bzip2 может увеличить данные!
+						 * Согласно документации: worst case = input + 1% + 600 bytes
+						 */
+						size_t capacity = (size + (size / 100) + 600);
+						// Минимальный размер буфера должен быть не менее 1024 байт
+						if(capacity < 1024)
+							// Устанавливаем минимальный размер буфера
+							capacity = 1024;
 						// Выделяем память на результирующий буфер
-						result.resize(size, 0);
-						// Указываем размер входного буфера
-						stream.avail_in = static_cast <uint32_t> (size);
+						result.resize(capacity, 0);
 						// Заполняем входные данные буфера
 						stream.next_in = const_cast <char *> (buffer);
+						// Указываем размер входного буфера
+						stream.avail_in = static_cast <uint32_t> (size);
 						// Устанавливаем буфер для получения результата
 						stream.next_out = reinterpret_cast <char *> (result.data());
 						// Устанавливаем максимальный размер буфера
 						stream.avail_out = static_cast <uint32_t> (result.size());
+						// Результат выполнения компрессии
+						int32_t ret = BZ_OK;
+						// Переменная подсчёта сжатых данных
+						size_t produced = 0;
 						/**
-						 * Выполняем компрессию буфера бинарных данных
+						 * Выполняем компрессию до завершения данных
 						 */
-						while((rv = ::BZ2_bzCompress(&stream, BZ_FINISH)) != BZ_STREAM_END){
-							// Выполняем ещё одну попытку компрессии
-							rv = ::BZ2_bzCompress(&stream, BZ_FINISH);
+						do {
+							// Выполняем компрессию ещё одной порции данных
+							ret = ::BZ2_bzCompress(&stream, BZ_FINISH);
+							// Если нужно больше места для данных
+							if(ret == BZ_FINISH_OK){
+								// Нужно больше места — расширяем буфер
+								produced = static_cast <uint32_t> (stream.total_out_lo32);
+								// Увеличиваем буфер в два раза
+								result.resize(result.size() * 2);
+								// Устанавливаем максимальный размер буфера
+								stream.avail_out = static_cast <uint32_t> (result.size() - produced);
+								// Устанавливаем буфер для получения результата
+								stream.next_out = reinterpret_cast <char *> (result.data() + produced);
 							// Если произошла ошибка компрессии
-							if((rv != BZ_FINISH_OK) && (rv != BZ_STREAM_END)){
+							} else if(ret != BZ_STREAM_END) {
+								// Выполняем очистку буфера данных
+								result.clear();
+								// Настоящая ошибка
+								::BZ2_bzCompressEnd(&stream);
 								// Выводим сообщение об ошибке в лог
 								log->print("Bzip2: Error during data compression", awh::log_t::flag_t::WARNING);
-								// Выходим из цикла
-								break;
+								// Выходим из функции
+								return;
 							}
-						}
-						// Если данные обработаны удачно
-						if((rv == BZ_FINISH_OK) || (rv == BZ_STREAM_END))
-							// Добавляем оставшиеся данные в список
-							result.erase(result.begin() + (result.size() - stream.avail_out), result.end());
-						// Если произошла ошибка компрессии
-						else {
-							// Выполняем очистку буфера данных
-							result.clear();
-							// Выводим сообщение об ошибке в лог
-							log->print("Bzip2: Error during data compression", awh::log_t::flag_t::WARNING);
-						}
+						/**
+						 * Если данные ещё не сжаты
+						 */
+						} while(ret == BZ_FINISH_OK);
+						// Обрезаем до реального размера
+						result.resize(static_cast <uint32_t> (stream.total_out_lo32));
 						// Выполняем очистку объекта потока
 						::BZ2_bzCompressEnd(&stream);
 					} break;
@@ -774,49 +794,43 @@ namespace driver {
 						stream.next_in = const_cast <char *> (buffer);
 						// Указываем размер входного буфера
 						stream.avail_in = static_cast <uint32_t> (size);
-						// Размер буфера извлечённых данных
-						uint32_t actual = (static_cast <uint32_t> (size) * 2);
+						// Начальный размер буфера — эвристика
+						const size_t capacity = ::max <size_t> (1024, size * 2);
 						// Выделяем память на результирующий буфер
-						result.resize(actual, 0);
+						result.resize(capacity, 0);
+						// Результат выполнения компрессии
+						int32_t ret = BZ_OK;
 						/**
 						 * Выполняем компрессию всех данных
 						 */
 						do {
-							// Если место для извлечения данных закончилось
-							if((actual - stream.total_out_lo32) == 0){
-								// Увеличиваем буфер исходящих данных в два раза
-								actual *= 2;
-								// Выделяем память для буфера извлечения данных
-								result.resize(actual, 0);
-							}
+							// Убедимся, что есть место для записи
+							if(static_cast <size_t> (stream.total_out_lo32) >= result.size())
+								// Увеличиваем буфер в два раза
+								result.resize(result.size() * 2);
 							// Устанавливаем буфер для получения результата
 							stream.next_out = reinterpret_cast <char *> (result.data() + stream.total_out_lo32);
 							// Устанавливаем максимальный размер буфера
-							stream.avail_out = (actual - stream.total_out_lo32);
+							stream.avail_out = static_cast <uint32_t> (result.size() - stream.total_out_lo32);
 							// Выполняем декомпрессию
-							rv = ::BZ2_bzDecompress(&stream);
+							ret = ::BZ2_bzDecompress(&stream);
 							// Если мы завершили сбор данных
-							if((rv == BZ_STREAM_END) || (rv == BZ_FINISH_OK)){
+							if((ret != BZ_OK) && (ret != BZ_STREAM_END)){
+								// Выполняем очистку буфера данных
+								result.clear();
+								// Выполняем очистку объекта потока
+								::BZ2_bzDecompressEnd(&stream);
 								// Выводим сообщение об ошибке в лог
 								log->print("Bzip2: Error during data decompression", awh::log_t::flag_t::WARNING);
-								// Выходим из цикла
-								break;
+								// Выходим из функции
+								return;
 							}
 						/**
 						 * Если данные ещё не извлечены
 						 */
-						} while(rv == BZ_OK);
-						// Если данные обработаны удачно
-						if((rv == BZ_FINISH_OK) || (rv == BZ_STREAM_END))
-							// Добавляем оставшиеся данные в список
-							result.erase(result.begin() + (result.size() - stream.avail_out), result.end());
-						// Если произошла ошибка декомпрессии
-						else {
-							// Выполняем очистку буфера данных
-							result.clear();
-							// Выводим сообщение об ошибке в лог
-							log->print("Bzip2: Error during data decompression", awh::log_t::flag_t::WARNING);
-						}
+						} while(ret != BZ_STREAM_END);
+						// Обрезаем до фактически распакованного размера
+						result.resize(static_cast <size_t> (stream.total_out_lo32));
 						// Выполняем очистку объекта потока
 						::BZ2_bzDecompressEnd(&stream);
 					} break;
@@ -1022,10 +1036,11 @@ namespace driver {
 	 *
 	 * @param buffer буфер данных для компрессии
 	 * @param size   размер данных для компрессии
+	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 */
-	static void density(const char * buffer, const size_t size, const awh::transform_t::event_t event, T & result, const awh::log_t * log) noexcept {
+	static void density(const char * buffer, const size_t size, const uint32_t level, const awh::transform_t::event_t event, T & result, const awh::log_t * log) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1034,6 +1049,8 @@ namespace driver {
 			try {
 				// Выполняем очистку блока с результатом
 				result.clear();
+				// Максимальный размер выходного буфера
+				constexpr uint64_t MAX_OUTPUT_SIZE = 1ULL << 30; // 1 GiB — разумный лимит
 				/**
 				 * Определяем событие выполнения операции
 				 */
@@ -1043,18 +1060,18 @@ namespace driver {
 						// Выполняем получение размер результирующего буфера
 						const uint_fast64_t actual = ::density_compress_safe_size(size);
 						// Если размер выделен
-						if(actual == 0){
+						if((actual == 0) || (actual > MAX_OUTPUT_SIZE)){
 							// Выводим сообщение об ошибке в лог
-							log->print("Density: Error during data compression", awh::log_t::flag_t::WARNING);
+							log->print("Density: Invalid compression size", awh::log_t::flag_t::WARNING);
 							// Выходим из функции
 							return;
 						}
 						// Выделяем буфер памяти нужного нам размера
-						result.resize(actual, 0);
+						result.resize(static_cast <size_t> (actual), 0);
 						// Выполняем компрессию буфера данных
-						const auto & status = ::density_compress(reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), actual, DENSITY_ALGORITHM_CHAMELEON);
+						const auto & status = ::density_compress(reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), actual, static_cast <DENSITY_ALGORITHM> (level));
 						// Если мы получили ошибку
-						if(!status.state){
+						if(status.bytesWritten == 0){
 							// Выполняем очистку блока с результатом
 							result.clear();
 							// Выводим сообщение об ошибке в лог
@@ -1063,25 +1080,25 @@ namespace driver {
 							return;
 						}
 						// Корректируем размер результирующего буфера
-						result.resize(status.bytesWritten);
+						result.resize(static_cast <size_t> (status.bytesWritten));
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (awh::transform_t::event_t::DECODE): {
 						// Выполняем получение размер результирующего буфера
 						const uint_fast64_t actual = ::density_decompress_safe_size(size);
 						// Если размер выделен
-						if(actual == 0){
+						if((actual == 0) || (actual > MAX_OUTPUT_SIZE)){
 							// Выводим сообщение об ошибке в лог
-							log->print("Density: Error during data decompression", awh::log_t::flag_t::WARNING);
+							log->print("Density: Invalid decompression size", awh::log_t::flag_t::WARNING);
 							// Выходим из функции
 							return;
 						}
 						// Выделяем буфер памяти нужного нам размера
-						result.resize(actual, 0);
+						result.resize(static_cast <size_t> (actual), 0);
 						// Выполняем компрессию буфера данных
 						const auto & status = ::density_decompress(reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), actual);
 						// Если мы получили ошибку
-						if(!status.state){
+						if(status.bytesWritten == 0){
 							// Выполняем очистку блока с результатом
 							result.clear();
 							// Выводим сообщение об ошибке в лог
@@ -1135,18 +1152,18 @@ namespace driver {
 					// Если необходимо выполнить компрессию данных
 					case static_cast <uint8_t> (awh::transform_t::event_t::ENCODE): {
 						// Выполняем получение размер результирующего буфера
-						int32_t actual = ::Lizard_compressBound(size);
+						int32_t actual = ::Lizard_compressBound(static_cast <int32_t> (size));
 						// Если размер выделен
-						if(actual == 0){
+						if((actual <= 0) || (static_cast <size_t> (actual) > (1ULL << 30))){
 							// Выводим сообщение об ошибке в лог
-							log->print("Lizard: Error during data compression", awh::log_t::flag_t::WARNING);
+							log->print("Lizard: Invalid input size", awh::log_t::flag_t::WARNING);
 							// Выходим из функции
 							return;
 						}
 						// Выделяем буфер памяти нужного нам размера
-						result.resize(actual, 0);
+						result.resize(static_cast <size_t> (actual), 0);
 						// Выполняем компрессию буфера данных
-						actual = ::Lizard_compress(buffer, reinterpret_cast <char *> (result.data()), size, actual, level);
+						actual = ::Lizard_compress(buffer, reinterpret_cast <char *> (result.data()), static_cast <int32_t> (size), actual, level);
 						// Если мы получили ошибку
 						if(actual <= 0){
 							// Выполняем очистку блока с результатом
@@ -1157,7 +1174,7 @@ namespace driver {
 							return;
 						}
 						// Корректируем размер результирующего буфера
-						result.resize(actual);
+						result.resize(static_cast <size_t> (actual));
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (awh::transform_t::event_t::DECODE): {
@@ -1170,7 +1187,7 @@ namespace driver {
 							// Выделяем буфер памяти нужного нам размера
 							result.resize(size * factor, 0);
 							// Выполняем получение размер результирующего буфера
-							int32_t actual = result.size();
+							int32_t actual = static_cast <int32_t> (result.size());
 							// Выполняем декомпрессию буфера бинарных данных
 							actual = ::Lizard_decompress_safe(buffer, reinterpret_cast <char *> (result.data()), size, actual);
 							// Если компрессия не выполнена из-за отсутствия памяти
@@ -1946,6 +1963,8 @@ void awh::Transform::level(const level_t level) noexcept {
 			this->_level[2] = 100;
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_MAX_CLEVEL;
+			// Выполняем установку уровня компрессии Cheetah (Density)
+			this->_level[4] = DENSITY_ALGORITHM_CHEETAH;
 		} break;
 		// Выполняем установку уровня компрессии на максимальную производительность
 		case static_cast <uint8_t> (level_t::SPEED): {
@@ -1957,6 +1976,8 @@ void awh::Transform::level(const level_t level) noexcept {
 			this->_level[2] = ZSTD_CLEVEL_DEFAULT;
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_MIN_CLEVEL;
+			// Выполняем установку уровня компрессии LION (Density)
+			this->_level[4] = DENSITY_ALGORITHM_LION;
 		} break;
 		// Выполняем установку нормального уровня компрессии
 		case static_cast <uint8_t> (level_t::NORMAL): {
@@ -1968,6 +1989,8 @@ void awh::Transform::level(const level_t level) noexcept {
 			this->_level[2] = 22;
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_DEFAULT_CLEVEL;
+			// Выполняем установку уровня компрессии Chameleon (Density)
+			this->_level[4] = DENSITY_ALGORITHM_CHAMELEON;
 		} break;
 	}
 }
@@ -3976,7 +3999,7 @@ void awh::Transform::compress(const void * buffer, const size_t size, const comp
 			// Если метод компрессии установлен Density
 			case static_cast <uint8_t> (compressor_t::DENSITY): {
 				// Выполняем компрессию данных методом Density
-				driver::density(reinterpret_cast <const char *> (buffer), size, event_t::ENCODE, result, this->_log);
+				driver::density(reinterpret_cast <const char *> (buffer), size, this->_level[4], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -4091,7 +4114,7 @@ void awh::Transform::compress(const void * buffer, const size_t size, const comp
 			// Если метод компрессии установлен Density
 			case static_cast <uint8_t> (compressor_t::DENSITY): {
 				// Выполняем компрессию данных методом Density
-				driver::density(reinterpret_cast <const char *> (buffer), size, event_t::ENCODE, result, this->_log);
+				driver::density(reinterpret_cast <const char *> (buffer), size, this->_level[4], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -4206,7 +4229,7 @@ void awh::Transform::compress(const void * buffer, const size_t size, const comp
 			// Если метод компрессии установлен Density
 			case static_cast <uint8_t> (compressor_t::DENSITY): {
 				// Выполняем компрессию данных методом Density
-				driver::density(reinterpret_cast <const char *> (buffer), size, event_t::ENCODE, result, this->_log);
+				driver::density(reinterpret_cast <const char *> (buffer), size, this->_level[4], event_t::ENCODE, result, this->_log);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -4429,7 +4452,7 @@ void awh::Transform::decompress(const void * buffer, const size_t size, const co
 			// Если метод декомпрессии установлен Density
 			case static_cast <uint8_t> (compressor_t::DENSITY): {
 				// Выполняем декомпрессию данных методом Density
-				driver::density(reinterpret_cast <const char *> (buffer), size, event_t::DECODE, result, this->_log);
+				driver::density(reinterpret_cast <const char *> (buffer), size, this->_level[4], event_t::DECODE, result, this->_log);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -4544,7 +4567,7 @@ void awh::Transform::decompress(const void * buffer, const size_t size, const co
 			// Если метод декомпрессии установлен Density
 			case static_cast <uint8_t> (compressor_t::DENSITY): {
 				// Выполняем декомпрессию данных методом Density
-				driver::density(reinterpret_cast <const char *> (buffer), size, event_t::DECODE, result, this->_log);
+				driver::density(reinterpret_cast <const char *> (buffer), size, this->_level[4], event_t::DECODE, result, this->_log);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -4659,7 +4682,7 @@ void awh::Transform::decompress(const void * buffer, const size_t size, const co
 			// Если метод декомпрессии установлен Density
 			case static_cast <uint8_t> (compressor_t::DENSITY): {
 				// Выполняем декомпрессию данных методом Density
-				driver::density(reinterpret_cast <const char *> (buffer), size, event_t::DECODE, result, this->_log);
+				driver::density(reinterpret_cast <const char *> (buffer), size, this->_level[4], event_t::DECODE, result, this->_log);
 				// Если результат не получен
 				if(result.empty())
 					// Выводим сообщение об ошибке
@@ -4699,7 +4722,13 @@ void awh::Transform::decompress(const void * buffer, const size_t size, const co
  * @param log объект для работы с логами
  */
 awh::Transform::Transform(const log_t * log) noexcept :
- _level{1, Z_DEFAULT_COMPRESSION, ZSTD_CLEVEL_DEFAULT, LIZARD_DEFAULT_CLEVEL}, _log(log) {
+ _level{
+	1,
+	Z_DEFAULT_COMPRESSION,
+	ZSTD_CLEVEL_DEFAULT,
+	LIZARD_DEFAULT_CLEVEL,
+	DENSITY_ALGORITHM_LION
+}, _log(log) {
 	// Объявляем структуру буфера GZip компрессии
 	this->_gzip.buffer.compress = z_stream{};
 	// Объявляем структуру буфера GZip декомпрессии

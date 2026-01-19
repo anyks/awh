@@ -204,7 +204,7 @@ namespace awh {
 			} crypto_t;
 		private:
 			// Уровни компрессии
-			uint32_t _level[4];
+			uint32_t _level[5];
 		private:
 			// Структура GZip
 			mutable gzip_t _gzip;
@@ -468,6 +468,7 @@ namespace awh {
 			 * @return     результат хэширования
 			 */
 			auto hashing(const string & text, const hash_t hash) const noexcept -> T;
+		public:
 			/**
 			 * @brief Метод хэширования текста
 			 *
@@ -508,6 +509,7 @@ namespace awh {
 			 * @return     результат хэширования
 			 */
 			auto hmac(const string & key, const string & text, const hash_t hash) const noexcept -> T;
+		public:
 			/**
 			 * @brief Метод хэширования текста с ключом
 			 *
@@ -566,6 +568,7 @@ namespace awh {
 			 * @return       результат кодирования
 			 */
 			auto encode(const void * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
+		public:
 			/**
 			 * @brief Метод кодирования
 			 *
@@ -624,6 +627,7 @@ namespace awh {
 			 * @return       результат кодирования
 			 */
 			auto decode(const void * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
+		public:
 			/**
 			 * @brief Метод декодирования
 			 *
@@ -682,6 +686,7 @@ namespace awh {
 			 * @return           результат компрессии
 			 */
 			auto compress(const void * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
+		public:
 			/**
 			 * @brief Метод компрессии данных
 			 *
@@ -740,6 +745,7 @@ namespace awh {
 			 * @return           результат декомпрессии
 			 */
 			auto decompress(const void * buffer, const size_t size, const compressor_t compressor) const noexcept -> T;
+		public:
 			/**
 			 * @brief Метод декомпрессии данных
 			 *
