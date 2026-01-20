@@ -66,8 +66,11 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <openssl/aes.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <openssl/err.h>
 #include <openssl/hmac.h>
 
 /**
@@ -4711,6 +4714,858 @@ void awh::Transform::decompress(const void * buffer, const size_t size, const co
 	}
 }
 /**
+ * @brief Метод генерации публичного ключа RSA (2048 бит)
+ *
+ * @return результат генерации ключа
+ */
+bool awh::Transform::generatePublicKeyRSA() const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если приватный ключ ещё не сгенерирован
+		if(this->_keysRSA.priv == nullptr){
+			// Выводим сообщение об ошибке
+			this->_log->print("RSA: Private key is not generated", log_t::flag_t::WARNING);
+			// Выводим результат
+			return result;
+		// Если приватный ключ уже сгенерирован
+		} else {
+			// Получаем приватный ключ
+			EVP_PKEY * privateKey = reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv);
+			// Если тип ключа не RSA
+			if(EVP_PKEY_base_id(privateKey) != EVP_PKEY_RSA){
+				// Выводим сообщение об ошибке
+				this->_log->print("RSA: Private key is not RSA", log_t::flag_t::WARNING);
+				// Выводим результат
+				return result;
+			}
+			// Получаем RSA структуру из приватного ключа
+			RSA * rsaPrivate = ::EVP_PKEY_get1_RSA(privateKey);
+			// Параметры для публичного ключа
+			const BIGNUM * n = nullptr, * e = nullptr;
+			// Извлекаем параметры ключа
+			::RSA_get0_key(rsaPrivate, &n, &e, nullptr);
+			// Создаём новую RSA структуру для публичного ключа
+			RSA * rsaPublic = ::RSA_new();
+			// Устанавливаем параметры публичного ключа
+			::RSA_set0_key(rsaPublic, ::BN_dup(n), ::BN_dup(e), nullptr);
+			// Создаём новый EVP_PKEY для публичного ключа
+			EVP_PKEY * pubKey = ::EVP_PKEY_new();
+			// Присваиваем RSA структуру публичному ключу
+			::EVP_PKEY_assign_RSA(pubKey, rsaPublic);
+			// Освобождаем RSA структуру приватного ключа
+			::RSA_free(rsaPrivate);
+			// Запоминаем публичный ключ
+			this->_keysRSA.pub = reinterpret_cast <void *> (pubKey);
+			// Формируем итоговый результат
+			result = (this->_keysRSA.pub != nullptr);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод генерации приватного ключа RSA (2048 бит)
+ *
+ * @return результат генерации ключа
+ */
+bool awh::Transform::generatePrivateKeyRSA() const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем генерацию ключа RSA
+		EVP_PKEY * privKey = ::EVP_RSA_gen(2048);
+		// Если ключ не получен
+		if(privKey == nullptr){
+			// Выводим сообщение об ошибке
+			this->_log->print("RSA: Private key generation failed", log_t::flag_t::CRITICAL);
+			// Выводим результат
+			return result;
+		}
+		// Выполняем блокировку потоков
+		const locker_t <> lock(this->_mtx);
+		// Запоминаем приватный ключ
+		this->_keysRSA.priv = reinterpret_cast <void *> (privKey);
+		// Формируем итоговый результат
+		result = (this->_keysRSA.priv != nullptr);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод загрузки публичного ключа RSA из файла
+ *
+ * @param path путь к файлу с публичным ключом
+ * @return     результат загрузки ключа
+ */
+bool awh::Transform::loadPublicKeyRSA(const string & path) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty()){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Открываем файл с публичным ключом
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем публичный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если публичный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если публичный ключ уже сгенерирован
+						if(this->_keysRSA.pub != nullptr)
+							// Освобождаем публичный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub));
+						// Запоминаем публичный ключ
+						this->_keysRSA.pub = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_keysRSA.pub != nullptr);
+					// Выводим сообщение об ошибке
+					} else this->_log->print("RSA: Public key reading failed", log_t::flag_t::CRITICAL);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Public key file opening failed", log_t::flag_t::WARNING);
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Открываем файл с публичным ключом
+				FILE * file = ::fopen(path.c_str(), "rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем публичный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если публичный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если публичный ключ уже сгенерирован
+						if(this->_keysRSA.pub != nullptr)
+							// Освобождаем публичный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub));
+						// Запоминаем публичный ключ
+						this->_keysRSA.pub = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_keysRSA.pub != nullptr);
+					// Выводим сообщение об ошибке
+					} else this->_log->print("RSA: Public key reading failed", log_t::flag_t::CRITICAL);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Public key file opening failed", log_t::flag_t::WARNING);
+			#endif
+		// Если путь к файлу не передан
+		} else {
+			// Выводим сообщение об ошибке
+			this->_log->print("RSA: Invalid path for public key", log_t::flag_t::WARNING);
+			// Выводим результат
+			return result;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод загрузки приватного ключа RSA из файла
+ *
+ * @param path путь к файлу с приватным ключом
+ * @return     результат загрузки ключа
+ */
+bool awh::Transform::loadPrivateKeyRSA(const string & path) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty()){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Открываем файл с приватным ключом
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем приватный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если приватный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если приватный ключ уже сгенерирован
+						if(this->_keysRSA.priv != nullptr)
+							// Освобождаем приватный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv));
+						// Запоминаем приватный ключ
+						this->_keysRSA.priv = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_keysRSA.priv != nullptr);
+					// Выводим сообщение об ошибке
+					} else this->_log->print("RSA: Private key reading failed", log_t::flag_t::CRITICAL);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Private key file opening failed", log_t::flag_t::WARNING);
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Открываем файл с приватным ключом
+				FILE * file = ::fopen(path.c_str(), "rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем приватный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если приватный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если приватный ключ уже сгенерирован
+						if(this->_keysRSA.priv != nullptr)
+							// Освобождаем приватный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv));
+						// Запоминаем приватный ключ
+						this->_keysRSA.priv = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_keysRSA.priv != nullptr);
+					// Выводим сообщение об ошибке
+					} else this->_log->print("RSA: Private key reading failed", log_t::flag_t::CRITICAL);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Private key file opening failed", log_t::flag_t::WARNING);
+			#endif
+		// Если путь к файлу не передан
+		} else {
+			// Выводим сообщение об ошибке
+			this->_log->print("RSA: Invalid path for private key", log_t::flag_t::WARNING);
+			// Выводим результат
+			return result;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод сохранения публичного ключа RSA в файл
+ *
+ * @param path путь к файлу для сохранения публичного ключа
+ * @return     результат сохранения ключа
+ */
+bool awh::Transform::savePublicKeyRSA(const string & path) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty() && (this->_keysRSA.pub != nullptr)){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Сохраняем публичный ключ
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"wb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Выполняем запись публичного ключа в файл
+					if(!(result = (::PEM_write_PUBKEY(file, reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub)) == 1)))
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Public key saving failed", log_t::flag_t::CRITICAL);
+					// Закрываем файл
+					::fclose(file);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Public key file opening failed", log_t::flag_t::WARNING);
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Сохраняем публичный ключ
+				FILE * file = ::fopen(path.c_str(), "wb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Выполняем запись публичного ключа в файл
+					if(!(result = (::PEM_write_PUBKEY(file, reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub)) == 1)))
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Public key saving failed", log_t::flag_t::CRITICAL);
+					// Закрываем файл
+					::fclose(file);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Public key file opening failed", log_t::flag_t::WARNING);
+			#endif
+		// Если путь к файлу не передан или приватный ключ не сгенерирован
+		} else {
+			// Выводим сообщение об ошибке
+			this->_log->print("RSA: Invalid path or public key is not generated", log_t::flag_t::WARNING);
+			// Выводим результат
+			return result;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод сохранения приватного ключа RSA в файл
+ *
+ * @param path путь к файлу для сохранения приватного ключа
+ * @return     результат сохранения ключа
+ */
+bool awh::Transform::savePrivateKeyRSA(const string & path) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty() && (this->_keysRSA.priv != nullptr)){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Сохраняем приватный ключ
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"wb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Если файл не открыт
+					if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv), nullptr, nullptr, 0, nullptr, nullptr) == 1)))
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Private key saving failed", log_t::flag_t::CRITICAL);
+					// Закрываем файл
+					::fclose(file);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Private key file opening failed", log_t::flag_t::WARNING);
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Сохраняем приватный ключ
+				FILE * file = ::fopen(path.c_str(), "wb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Если файл не открыт
+					if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv), nullptr, nullptr, 0, nullptr, nullptr) == 1)))
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Private key saving failed", log_t::flag_t::CRITICAL);
+					// Закрываем файл
+					::fclose(file);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("RSA: Private key file opening failed", log_t::flag_t::WARNING);
+			#endif
+		// Если путь к файлу не передан или приватный ключ не сгенерирован
+		} else {
+			// Выводим сообщение об ошибке
+			this->_log->print("RSA: Invalid path or private key is not generated", log_t::flag_t::WARNING);
+			// Выводим результат
+			return result;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод подписания данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для подписи
+ * @param result буфер куда следует положить результат
+ */
+void awh::Transform::signWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
+	// Вызываем метод подписания данных приватным ключом RSA
+	this->signWithPrivateKey(buffer.data(), buffer.size(), result);
+}
+/**
+ * @brief Метод подписания данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для подписи
+ * @param size   размер данных для подписи
+ * @param result буфер куда следует положить результат
+ */
+void awh::Transform::signWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0)){
+			// Если приватный ключ сгенерирован
+			if(this->_keysRSA.priv != nullptr){
+				// Создаём контекст для подписи
+				EVP_MD_CTX * ctx = ::EVP_MD_CTX_new();
+				// Если контекст для подписи не создан
+				if(ctx == nullptr)
+					// Выводим сообщение об ошибке
+					this->_log->print("RSA: context allocation failed", log_t::flag_t::CRITICAL);
+				// Если контекст для подписи создан
+				else {
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Инициализируем подпись данных
+					if(::EVP_DigestSignInit(ctx, nullptr, ::EVP_sha256(), nullptr, reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv)) != 1){
+						// Освобождаем контекст для подписи
+						::EVP_MD_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Digest signature init failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Обновляем подпись данными из буфера
+					if(::EVP_DigestSignUpdate(ctx, buffer, size) != 1){
+						// Освобождаем контекст для подписи
+						::EVP_MD_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Digest signature update failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Размер подписи в байтах
+					size_t length = 0;
+					// Получаем размер подписи
+					if(::EVP_DigestSignFinal(ctx, nullptr, &length) != 1){
+						// Освобождаем контекст для подписи
+						::EVP_MD_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Digest signature final (get length) failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Очищаем объект результата
+					result.clear();
+					// Выделяем память под подпись
+					result.resize(length, 0);
+					// Получаем подпись данных
+					if(::EVP_DigestSignFinal(ctx, result.data(), &length) != 1){
+						// Освобождаем контекст для подписи
+						::EVP_MD_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Digest signature final (get signature) failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Изменяем размер буфера под фактический размер подписи
+					result.resize(length);
+					// Освобождаем контекст для подписи
+					::EVP_MD_CTX_free(ctx);
+				}
+			// Выводим сообщение об ошибке
+			} else this->_log->print("RSA: Private key is not generated", log_t::flag_t::WARNING);
+		// Если буфер данных или размер данных переданы неправильно
+		} else this->_log->print("RSA: Invalid buffer or size for signing", log_t::flag_t::WARNING);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод шифрования данных публичным ключом RSA
+ *
+ * @param buffer буфер данных для шифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Transform::encryptWithPublicKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
+	// Вызываем метод шифрования данных публичным ключом RSA
+	this->encryptWithPublicKey(buffer.data(), buffer.size(), result);
+}
+/**
+ * @brief Метод шифрования данных публичным ключом RSA
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Transform::encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0)){
+			// Если публичный ключ сгенерирован
+			if(this->_keysRSA.pub != nullptr){
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Создаём контекст для шифрования
+				EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub), nullptr);
+				// Если контекст для подписи не создан
+				if(ctx == nullptr)
+					// Выводим сообщение об ошибке
+					this->_log->print("RSA: context allocation failed", log_t::flag_t::CRITICAL);
+				// Если контекст для подписи создан
+				else {
+					// Если контекст для шифрования не инициализирован
+					if((::EVP_PKEY_encrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Encrypt init failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Размер подписи в байтах
+					size_t length = 0;
+					// Получаем размер зашифрованных данных
+					if(::EVP_PKEY_encrypt(ctx, nullptr, &length, buffer, size) <= 0){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Get encrypted data size failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Очищаем объект результата
+					result.clear();
+					// Выделяем память под подпись
+					result.resize(length, 0);
+					// Получаем зашифрованные данные
+					if(::EVP_PKEY_encrypt(ctx, result.data(), &length, buffer, size) <= 0){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Encrypt data failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Изменяем размер буфера под фактический размер зашифрованных данных
+					result.resize(length);
+					// Освобождаем контекст для шифрования
+					::EVP_PKEY_CTX_free(ctx);
+				}
+			// Выводим сообщение об ошибке
+			} else this->_log->print("RSA: Public key is not generated", log_t::flag_t::WARNING);
+		// Если буфер данных или размер данных переданы неправильно
+		} else this->_log->print("RSA: Invalid buffer or size for encryption", log_t::flag_t::WARNING);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод дешифрования данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для дешифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Transform::decryptWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
+	// Вызываем метод дешифрования данных приватным ключом RSA
+	this->decryptWithPrivateKey(buffer.data(), buffer.size(), result);
+}
+/**
+ * @brief Метод дешифрования данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для дешифрования
+ * @param size   размер данных для дешифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Transform::decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0)){
+			// Если приватный ключ сгенерирован
+			if(this->_keysRSA.priv != nullptr){
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Создаём контекст для шифрования
+				EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv), nullptr);
+				// Если контекст для подписи не создан
+				if(ctx == nullptr)
+					// Выводим сообщение об ошибке
+					this->_log->print("RSA: context allocation failed", log_t::flag_t::CRITICAL);
+				// Если контекст для подписи создан
+				else {
+					// Если контекст для дешифрования не инициализирован
+					if((::EVP_PKEY_decrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)){
+						// Освобождаем контекст для дешифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Decrypt init failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Размер подписи в байтах
+					size_t length = 0;
+					// Получаем размер дешифрованных данных
+					if(::EVP_PKEY_decrypt(ctx, nullptr, &length, buffer, size) <= 0){
+						// Освобождаем контекст для дешифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Get decrypted data size failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Очищаем объект результата
+					result.clear();
+					// Выделяем память под подпись
+					result.resize(length, 0);
+					// Получаем дешифрованные данные
+					if(::EVP_PKEY_decrypt(ctx, result.data(), &length, buffer, size) <= 0){
+						// Освобождаем контекст для дешифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Выводим сообщение об ошибке
+						this->_log->print("RSA: Decrypt data failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
+					// Изменяем размер буфера под фактический размер дешифрованных данных
+					result.resize(length);
+					// Освобождаем контекст для дешифрования
+					::EVP_PKEY_CTX_free(ctx);
+				}
+			// Выводим сообщение об ошибке
+			} else this->_log->print("RSA: Private key is not generated", log_t::flag_t::WARNING);
+		// Если буфер данных или размер данных переданы неправильно
+		} else this->_log->print("RSA: Invalid buffer or size for decryption", log_t::flag_t::WARNING);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод верификации данных публичным ключом RSA
+ *
+ * @param buffer    буфер данных для верификации
+ * @param signature буфер с подписью данных
+ * @return          результат верификации
+ */
+bool awh::Transform::verifyWithPublicKey(const vector <uint8_t> & buffer, const vector <uint8_t> & signature) const noexcept {
+	// Вызываем метод верификации данных публичным ключом RSA
+	return this->verifyWithPublicKey(buffer.data(), buffer.size(), signature);
+}
+/**
+ * @brief Метод верификации данных публичным ключом RSA
+ *
+ * @param buffer    буфер данных для верификации
+ * @param size      размер данных для верификации
+ * @param signature буфер с подписью данных
+ * @return          результат верификации
+ */
+bool awh::Transform::verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0) && !signature.empty()){
+			// Если публичный ключ сгенерирован
+			if(this->_keysRSA.pub != nullptr){
+				// Создаём контекст для верификации
+				EVP_MD_CTX * ctx = ::EVP_MD_CTX_new();
+				// Если контекст для подписи не создан
+				if(ctx == nullptr)
+					// Выводим сообщение об ошибке
+					this->_log->print("RSA: context allocation failed", log_t::flag_t::CRITICAL);
+				// Если контекст для подписи создан
+				else {
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Инициализируем верификацию данных
+					if((::EVP_DigestVerifyInit(ctx, nullptr, ::EVP_sha256(), nullptr, reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub)) == 1) &&
+					   (::EVP_DigestVerifyUpdate(ctx, buffer, size) == 1))
+						// Выполняем верификацию данных
+						result = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
+					// Освобождаем контекст для верификации
+					::EVP_MD_CTX_free(ctx);
+				}
+			// Выводим сообщение об ошибке
+			} else this->_log->print("RSA: Public key is not generated", log_t::flag_t::WARNING);
+		// Если буфер данных или размер данных переданы неправильно
+		} else this->_log->print("RSA: Invalid buffer or size for verification signature", log_t::flag_t::WARNING);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Конструктор
  *
  * @param log объект для работы с логами
@@ -4735,6 +5590,14 @@ awh::Transform::Transform(const log_t * log) noexcept :
  *
  */
 awh::Transform::~Transform() noexcept {
+	// Если приватный ключ уже сгенерирован
+	if(this->_keysRSA.priv != nullptr)
+		// Освобождаем приватный ключ
+		::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.priv));
+	// Если публичный ключ уже сгенерирован
+	if(this->_keysRSA.pub != nullptr)
+		// Освобождаем публичный ключ
+		::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_keysRSA.pub));
 	// Если выделена память для компрессора
 	if(this->_gzip.takeover.compress.load(std::memory_order_acquire))
 		// Завершаем работу компрессора GZip

@@ -242,6 +242,49 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << "Encoded data 64-BIT: " << value2 << ", SIZE=" << sizeof(value2) << endl;
 	// Выводим пустую строку
 	cout << endl;
+	// Выводим заголовок компрессии ENCRYPTION
+	cout << " ======== ENCRYPTION ======== " << endl;
+	// Генерируем пару ключей RSA
+	if(transform.generatePrivateKeyRSA()){
+		// Если генерация ключа прошла успешно
+		if(transform.generatePublicKeyRSA()){
+			// Сохраняем публичный ключ в файл
+			if(transform.savePublicKeyRSA("public_key.pem")){
+				// Сохраняем приватный ключ в файл
+				if(transform.savePrivateKeyRSA("private_key.pem")){
+					// Загружаем публичный ключ из файла
+					if(transform.loadPublicKeyRSA("public_key.pem")){
+						// Загружаем приватный ключ из файла
+						if(transform.loadPrivateKeyRSA("private_key.pem")){
+							// Буфер данных для подписи
+							vector <uint8_t> signature;
+							// Буфер данных для шифрования
+							vector <uint8_t> buffer(data.begin(), data.end());
+							// Подписываем данные приватным ключом RSA
+							transform.signWithPrivateKey(buffer, signature);
+							// Выполняем верификацию данных публичным ключом RSA
+							if(transform.verifyWithPublicKey(buffer, signature)){
+								// Шифруем данные публичным ключом RSA
+								transform.encryptWithPublicKey(buffer, signature);
+								// Формируем строку из зашифрованных данных
+								const_cast <string &> (data).assign(signature.begin(), signature.end());
+								// Выводим результат
+								cout << "Encrypted data RSA: " << data << ", SIZE=" << data.size() << endl;
+								// Расшифровываем данные приватным ключом RSA
+								transform.decryptWithPrivateKey(signature, buffer);
+								// Формируем строку из расшифрованных данных
+								const_cast <string &> (data).assign(buffer.begin(), buffer.end());
+								// Выводим результат
+								cout << "Decrypted data RSA: " << data << ", SIZE=" << data.size() << endl;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	// Выводим пустую строку
+	cout << endl;
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

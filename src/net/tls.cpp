@@ -3760,7 +3760,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат по умолчанию
 	return false;
 }
 /**
@@ -4387,7 +4387,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат по умолчанию
 	return false;
 }
 /**

@@ -136,7 +136,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				CryptoState() noexcept : num(0), ivec{0} {}
+				explicit CryptoState() noexcept : num(0), ivec{0} {}
 			} crypto_state_t;
 		private:
 			/**
@@ -162,7 +162,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Takeover() noexcept :
+				explicit Takeover() noexcept :
 				 compress(false), decompress(false) {}
 			} takeover_t;
 			/**
@@ -180,8 +180,24 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				GZip() noexcept : wbits(0) {}
+				explicit GZip() noexcept : wbits(0) {}
 			} gzip_t;
+			/**
+			 * @brief Структура ключей RSA
+			 *
+			 */
+			typedef struct Keys {
+				// Публичный ключ RSA
+				void * pub;
+				// Приватный ключ RSA
+				void * priv;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Keys() noexcept :
+				 pub(nullptr), priv(nullptr) {}
+			} keys_rsa_t;
 			/**
 			 * @brief Структура криптографии
 			 *
@@ -199,7 +215,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Crypto() noexcept :
+				explicit Crypto() noexcept :
 				 rounds(5), salt{""}, password{""} {}
 			} crypto_t;
 		private:
@@ -210,6 +226,8 @@ namespace awh {
 			mutable gzip_t _gzip;
 			// Структура криптографии
 			mutable crypto_t _crypto;
+			// Структура ключей RSA
+			mutable keys_rsa_t _keysRSA;
 		private:
 			// Локер для потокобезопасной работы
 			mutable lock_state_t <std::mutex> _mtx;
@@ -774,6 +792,115 @@ namespace awh {
 			 * @param result     буфер куда следует положить результат
 			 */
 			void decompress(const void * buffer, const size_t size, const compressor_t compressor, vector <uint8_t> & result) const noexcept;
+		public:
+			/**
+			 * @brief Метод генерации публичного ключа RSA (2048 бит)
+			 *
+			 * @return результат генерации ключа
+			 */
+			bool generatePublicKeyRSA() const noexcept;
+			/**
+			 * @brief Метод генерации приватного ключа RSA (2048 бит)
+			 *
+			 * @return результат генерации ключа
+			 */
+			bool generatePrivateKeyRSA() const noexcept;
+		public:
+			/**
+			 * @brief Метод загрузки публичного ключа RSA из файла
+			 *
+			 * @param path путь к файлу с публичным ключом
+			 * @return     результат загрузки ключа
+			 */
+			bool loadPublicKeyRSA(const string & path) noexcept;
+			/**
+			 * @brief Метод загрузки приватного ключа RSA из файла
+			 *
+			 * @param path путь к файлу с приватным ключом
+			 * @return     результат загрузки ключа
+			 */
+			bool loadPrivateKeyRSA(const string & path) noexcept;
+		public:
+			/**
+			 * @brief Метод сохранения публичного ключа RSA в файл
+			 *
+			 * @param path путь к файлу для сохранения публичного ключа
+			 * @return     результат сохранения ключа
+			 */
+			bool savePublicKeyRSA(const string & path) const noexcept;
+			/**
+			 * @brief Метод сохранения приватного ключа RSA в файл
+			 *
+			 * @param path путь к файлу для сохранения приватного ключа
+			 * @return     результат сохранения ключа
+			 */
+			bool savePrivateKeyRSA(const string & path) const noexcept;
+		public:
+			/**
+			 * @brief Метод подписания данных приватным ключом RSA
+			 *
+			 * @param buffer буфер данных для подписи
+			 * @param result буфер куда следует положить результат
+			 */
+			void signWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
+			/**
+			 * @brief Метод подписания данных приватным ключом RSA
+			 *
+			 * @param buffer буфер данных для подписи
+			 * @param size   размер данных для подписи
+			 * @param result буфер куда следует положить результат
+			 */
+			void signWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
+		public:
+			/**
+			 * @brief Метод шифрования данных публичным ключом RSA
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param result буфер куда следует положить результат
+			 */
+			void encryptWithPublicKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
+			/**
+			 * @brief Метод шифрования данных публичным ключом RSA
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param result буфер куда следует положить результат
+			 */
+			void encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
+		public:
+			/**
+			 * @brief Метод дешифрования данных приватным ключом RSA
+			 *
+			 * @param buffer буфер данных для дешифрования
+			 * @param result буфер куда следует положить результат
+			 */
+			void decryptWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
+			/**
+			 * @brief Метод дешифрования данных приватным ключом RSA
+			 *
+			 * @param buffer буфер данных для дешифрования
+			 * @param size   размер данных для дешифрования
+			 * @param result буфер куда следует положить результат
+			 */
+			void decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
+		public:
+			/**
+			 * @brief Метод верификации данных публичным ключом RSA
+			 *
+			 * @param buffer    буфер данных для верификации
+			 * @param signature буфер с подписью данных
+			 * @return          результат верификации
+			 */
+			bool verifyWithPublicKey(const vector <uint8_t> & buffer, const vector <uint8_t> & signature) const noexcept;
+			/**
+			 * @brief Метод верификации данных публичным ключом RSA
+			 *
+			 * @param buffer    буфер данных для верификации
+			 * @param size      размер данных для верификации
+			 * @param signature буфер с подписью данных
+			 * @return          результат верификации
+			 */
+			bool verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
