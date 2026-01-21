@@ -176,10 +176,18 @@ int32_t main(int32_t argc, char * argv[]){
 							cout << "Signature verified successfully!" << endl;
 						// Если верификация не удалась
 						else cout << "Signature verification failed!" << endl;
-						// Выводим публичный ключ RSA
-						cout << "Public Key:" << endl << crypto.getPublicKeyRSA() << endl;
+						// Получаем приватный ключ RSA
+						const string prikey = crypto.getPrivateKeyRSA();
 						// Выводим приватный ключ RSA
-						cout << "Private Key:" << endl << crypto.getPrivateKeyRSA() << endl;
+						cout << "Private Key:" << endl << prikey << endl;
+						// Устанавливаем приватный ключ RSA
+						crypto.setPrivateKeyRSA(prikey);
+						// Получаем публичный ключ RSA
+						const string pubkey = crypto.getPublicKeyRSA();
+						// Выводим публичный ключ RSA
+						cout << "Public Key:" << endl << pubkey << endl;
+						// Устанавливаем публичный ключ RSA
+						crypto.setPublicKeyRSA(pubkey);
 					}
 				}
 			}

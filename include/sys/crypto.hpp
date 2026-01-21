@@ -429,11 +429,27 @@ namespace awh {
 			 */
 			string getPublicKeyRSA() const noexcept;
 			/**
+			 * @brief Метод установки публичного ключа RSA
+			 *
+			 * @param key публичный ключ RSA
+			 * @return    результат установки ключа
+			 */
+			bool setPublicKeyRSA(const string & key) noexcept;
+		public:
+			/**
+			 * @brief Метод установки приватного ключа RSA
+			 *
+			 * @param key приватный ключ RSA
+			 * @return    результат установки ключа
+			 */
+			bool setPrivateKeyRSA(const string & key) noexcept;
+			/**
 			 * @brief Метод получения приватного ключа RSA
 			 *
-			 * @return приватный ключ RSA
+			 * @param cipher тип шифрования приватного ключа
+			 * @return       приватный ключ RSA
 			 */
-			string getPrivateKeyRSA() const noexcept;
+			string getPrivateKeyRSA(const cipher_t cipher = cipher_t::NONE) const noexcept;
 		public:
 			/**
 			 * @brief Метод загрузки публичного ключа RSA из файла

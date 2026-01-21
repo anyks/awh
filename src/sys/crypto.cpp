@@ -2326,11 +2326,194 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 	return result;
 }
 /**
+ * @brief Метод установки публичного ключа RSA
+ *
+ * @param key публичный ключ RSA
+ * @return    результат установки ключа
+ */
+bool awh::Crypto::setPublicKeyRSA(const string & key) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если публичный ключ передан
+	if(!key.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем парсинг ключа
+			BIO * bio = ::BIO_new_mem_buf(key.c_str(), static_cast <int32_t> (key.size()));
+			// Если объект BIO создан успешно
+			if(bio != nullptr){
+				// Читаем публичный ключ из буфера
+				EVP_PKEY * pkey = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+				// Освобождаем объект BIO
+				::BIO_free(bio);
+				// Если публичный ключ получен
+				if(pkey != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Если публичный ключ уже сгенерирован
+					if(this->_key.ctx != nullptr)
+						// Освобождаем публичный ключ
+						::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+					// Устанавливаем тип ключа
+					this->_key.type = key_type_t::PUBLIC;
+					// Запоминаем публичный ключ
+					this->_key.ctx = reinterpret_cast <void *> (pkey);
+					// Формируем итоговый результат
+					result = (this->_key.ctx != nullptr);
+				// Если публичный ключ не получен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Public key import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Public key import failed", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			// Если объект BIO не создан
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Public key BIO import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Public key BIO import failed", log_t::flag_t::CRITICAL);
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки приватного ключа RSA
+ *
+ * @param key приватный ключ RSA
+ * @return    результат установки ключа
+ */
+bool awh::Crypto::setPrivateKeyRSA(const string & key) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если публичный ключ передан
+	if(!key.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем парсинг ключа
+			BIO * bio = ::BIO_new_mem_buf(key.c_str(), static_cast <int32_t> (key.size()));
+			// Если объект BIO создан успешно
+			if(bio != nullptr){
+				// Читаем приватный ключ из буфера
+				EVP_PKEY * pkey = ::PEM_read_bio_PrivateKey(bio, nullptr, nullptr, this->_password.empty() ? nullptr : reinterpret_cast <void *> (this->_password.data()));
+				// Освобождаем объект BIO
+				::BIO_free(bio);
+				// Если приватный ключ получен
+				if(pkey != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Если приватный ключ уже сгенерирован
+					if(this->_key.ctx != nullptr)
+						// Освобождаем приватный ключ
+						::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+					// Устанавливаем тип ключа
+					this->_key.type = key_type_t::PRIVATE;
+					// Запоминаем приватный ключ
+					this->_key.ctx = reinterpret_cast <void *> (pkey);
+					// Формируем итоговый результат
+					result = (this->_key.ctx != nullptr);
+				// Если публичный ключ не получен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Private key import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Private key import failed", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			// Если объект BIO не создан
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Private key BIO import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Private key BIO import failed", log_t::flag_t::CRITICAL);
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Метод получения приватного ключа RSA
  *
- * @return приватный ключ RSA
+ * @param cipher тип шифрования приватного ключа
+ * @return       приватный ключ RSA
  */
-string awh::Crypto::getPrivateKeyRSA() const noexcept {
+string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2347,21 +2530,63 @@ string awh::Crypto::getPrivateKeyRSA() const noexcept {
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если объект BIO создан успешно
 				if(bio != nullptr){
-					// Если файл не может быть записан
-					if(::PEM_write_bio_PrivateKey(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) != 1){
+					// Если пароль не установлен
+					if(this->_password.empty()){
+						// Если файл не может быть записан
+						if(::PEM_write_bio_PrivateKey(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) != 1){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Private key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Private key export failed", log_t::flag_t::CRITICAL);
+							#endif
+						}
+					// Если пароль установлен
+					} else {
+						// Тип шифрования AES
+						const EVP_CIPHER * evp = ::EVP_enc_null();
 						/**
-						 * Если включён режим отладки
+						 * Определяем длину шифрования
 						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Private key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Private key export failed", log_t::flag_t::CRITICAL);
-						#endif
+						switch(static_cast <uint16_t> (cipher)){
+							// Устанавливаем шифрование в 128
+							case static_cast <uint16_t> (cipher_t::AES128):
+								// Устанавливаем функцию шифрования
+								evp = ::EVP_aes_128_cbc();
+							break;
+							// Устанавливаем шифрование в 192
+							case static_cast <uint16_t> (cipher_t::AES192):
+								// Устанавливаем функцию шифрования
+								evp = ::EVP_aes_192_cbc();
+							break;
+							// Если ничего не выбрано
+							default:
+								// Устанавливаем функцию шифрования
+								evp = ::EVP_aes_256_cbc();
+						}
+						// Если файл не может быть записан
+						if(::PEM_write_bio_PKCS8PrivateKey(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) != 1){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Private key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Private key export failed", log_t::flag_t::CRITICAL);
+							#endif
+						}
 					}
 					// Получаем указатель на данные из объекта BIO
 					char * buffer = nullptr;
