@@ -104,11 +104,11 @@ if (CMAKE_MAX_MEMORY_BUFFER)
     message(STATUS "Build with max memory buffer usage size: ${CMAKE_MAX_MEMORY_BUFFER}\n")
 endif (CMAKE_MAX_MEMORY_BUFFER)
 
-# Если активирован флаг установки размера буфера чанка модуля трансформации
-if (CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE)
-    add_compile_definitions(AWH_TRANSFORM_CHUNK_BUFFER_SIZE=${CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE})
-    message(STATUS "Build with transform module chunk buffer size: ${CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE}\n")
-endif (CMAKE_TRANSFORM_CHUNK_BUFFER_SIZE)
+# Если активирован флаг установки размера буфера чанка модуля компрессии/декомпрессии
+if (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
+    add_compile_definitions(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE=${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE})
+    message(STATUS "Build with compressor module chunk buffer size: ${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE}\n")
+endif (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
 
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
@@ -415,7 +415,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/transform.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/compressor.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/tls.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
@@ -477,10 +477,10 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с шифрованием и хэшированием
     option(CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE "Build Crypto app sample" ON)
 
-    # Устанавливаем имя приложения работы с трансформацией данных
-    SET(TRANSFORM_APP_SYS_NAME sys-transform)
-    # Указываем что нужно собрать приложение работы с трансформацией данных
-    option(CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE "Build Transform app sample" ON)
+    # Устанавливаем имя приложения работы с компрессией данных
+    SET(COMPRESSOR_APP_SYS_NAME sys-compressor)
+    # Указываем что нужно собрать приложение работы с компрессией данных
+    option(CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE "Build Compressor app sample" ON)
 
     # Устанавливаем имя приложения работы с каталогами
     SET(DIR_APP_IO_NAME io-dir)
@@ -698,17 +698,17 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample CRYPTO: No\n")
     endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
-    # Если нужно собрать семплы для работы с трансформацией данных
-    if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+    # Если нужно собрать семплы для работы с компрессией данных
+    if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample TRANSFORM: Yes\n")
-        # Выполняем создание приложения работы с трансформацией данных
-        add_sample(${TRANSFORM_APP_SYS_NAME} sample/sys/transform.cpp sys)
-    # Если не нужно собирать семплы для работы с трансформацией данных
+        message(STATUS "Build sample COMPRESSOR: Yes\n")
+        # Выполняем создание приложения работы с компрессией данных
+        add_sample(${COMPRESSOR_APP_SYS_NAME} sample/sys/compressor.cpp sys)
+    # Если не нужно собирать семплы для работы с компрессией данных
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample TRANSFORM: No\n")
-    endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+        message(STATUS "Build sample COMPRESSOR: No\n")
+    endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -1012,16 +1012,16 @@ if (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
-        # Если нужно собрать семплы для работы с трансформацией данных
-        if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
-            # Выполняем сборку приложения трансформации данных
+        # Если нужно собрать семплы для работы с компрессией данных
+        if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения компрессии данных
             target_link_libraries(
-                ${TRANSFORM_APP_SYS_NAME}
+                ${COMPRESSOR_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${WINFLAGS}
             )
-        endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с каталогами
         if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -1437,17 +1437,17 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
-        # Если нужно собрать семплы для работы с трансформацией данных
-        if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
-            # Выполняем сборку приложения трансформации данных
+        # Если нужно собрать семплы для работы с компрессией данных
+        if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения компрессии данных
             target_link_libraries(
-                ${TRANSFORM_APP_SYS_NAME}
+                ${COMPRESSOR_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${WINFLAGS}
             )
-        endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с каталогами
         if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -1903,15 +1903,15 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
-            # Если нужно собрать семплы для работы с трансформацией данных
-            if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
-                # Выполняем сборку приложения трансформации данных
-                add_custom_command(TARGET "${TRANSFORM_APP_SYS_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TRANSFORM_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${TRANSFORM_APP_SYS_NAME}\" to enable core dump on MacOS X"
+            # Если нужно собрать семплы для работы с компрессией данных
+            if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения компрессии данных
+                add_custom_command(TARGET "${COMPRESSOR_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${COMPRESSOR_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${COMPRESSOR_APP_SYS_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
-            endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+            endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -2193,11 +2193,11 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${CRYPTO_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CRYPTO_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
-            # Если нужно собрать семплы для работы с трансформацией данных
-            if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
-                # Выполняем анализ приложения трансформации данных
-                pvs_studio_add_target(TARGET ${TRANSFORM_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TRANSFORM_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+            # Если нужно собрать семплы для работы с компрессией данных
+            if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения компрессии данных
+                pvs_studio_add_target(TARGET ${COMPRESSOR_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${COMPRESSOR_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с каталогами
             if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -2444,11 +2444,11 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${CRYPTO_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
-    # Если нужно собрать семплы для работы с трансформацией данных
-    if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
-        # Устанавливаем приложение работы с трансформацией данных
-        install(TARGETS ${TRANSFORM_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    endif (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
+    # Если нужно собрать семплы для работы с компрессией данных
+    if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с компрессией данных
+        install(TARGETS ${COMPRESSOR_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами
     if (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
