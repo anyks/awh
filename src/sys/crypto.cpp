@@ -4371,6 +4371,8 @@ awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_state = state_t();
 	// Инициализируем ключевые данные
 	this->_key = key_rsa_t();
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
 }
 /**
  * @brief Деструктор

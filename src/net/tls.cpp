@@ -134,6 +134,11 @@ namespace {
 	 *
 	 */
 	int32_t __awh_ssl_index__[6] = {-1, -1, -1, -1, -1, -1};
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	static awh::event::mode_t threadSafety = awh::event::mode_t::DISABLED;
 };
 
 /**
@@ -4948,10 +4953,10 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 						member->proto = cts->proto;
 						// Устанавливаем объект состояния
 						member->state = cts->state;
-						// Отключаем режим безопасности потоков по умолчанию
-						member->mtx.enabled = false;
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
+						// Отключаем режим безопасности потоков по умолчанию
+						member->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
 						// Выполняем получение идентификатора контекста TLS
 						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
@@ -5133,10 +5138,10 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
 						member->proto = cts->proto;
 						// Устанавливаем объект состояния
 						member->state = cts->state;
-						// Отключаем режим безопасности потоков по умолчанию
-						member->mtx.enabled = false;
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
+						// Отключаем режим безопасности потоков по умолчанию
+						member->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
 						// Выполняем получение идентификатора контекста TLS
 						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
@@ -5342,12 +5347,12 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::context(const eve
 		member->node = node;
 		// Устанавливаем тип протокола события
 		member->proto = proto;
-		// Отключаем режим безопасности потоков по умолчанию
-		member->mtx.enabled = false;
 		// Сохраняем итератор уровня защищённых сокетов
 		member->iterator = ret.first;
 		// Устанавливаем режим проверки сертификата
 		member->state |= state::CERTIFICATE_VERIFY;
+		// Отключаем режим безопасности потоков по умолчанию
+		member->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
 		// Выполняем получение идентификатора контекста TLS
 		result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 		/**
@@ -6529,8 +6534,10 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Устанавливаем режим безопасности работы потоков
+			::threadSafety = mode;
 			// Устанавливаем глобальный режим безопасности потоков
-			::__awh_ssl_members_mtx__.enabled = (mode == event::mode_t::ENABLED);
+			::__awh_ssl_members_mtx__.enabled = (::threadSafety == event::mode_t::ENABLED);
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -6538,12 +6545,12 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
 				// Если уровень является шаблонным контекстом безопасности
 				case static_cast <uint8_t> (layer_t::CTS):
 					// Устанавливаем режим безопасности потоков
-					reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (mode == event::mode_t::ENABLED);
+					reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
 				break;
 				// Если уровень является транспортной передачей данных
 				case static_cast <uint8_t> (layer_t::CTL):
 					// Устанавливаем режим безопасности потоков
-					reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (mode == event::mode_t::ENABLED);
+					reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
 				break;
 			}
 		}
@@ -8661,6 +8668,8 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
+		// Деактивируем мьютекс глобального режим безопасности потоков
+		::__awh_ssl_members_mtx__.enabled = (::threadSafety == event::mode_t::ENABLED);
 		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
 		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL

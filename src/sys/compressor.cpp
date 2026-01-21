@@ -2935,6 +2935,8 @@ awh::Compressor::Compressor(const log_t * log) noexcept :
 	LIZARD_DEFAULT_CLEVEL,
 	DENSITY_ALGORITHM_LION
 }, _log(log) {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
 	// Объявляем структуру буфера GZip компрессии
 	this->_gzip.buffer.compress = z_stream{};
 	// Объявляем структуру буфера GZip декомпрессии

@@ -767,35 +767,43 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * Объект пула потоков
+	 * @brief Объект пула потоков
+	 *
 	 */
 	thr_t __awh_thr__;
 	/**
-	 * Мьютекс для синхронизации потоков
+	 * @brief Мьютекс для синхронизации потоков
+	 *
 	 */
 	lock_state_t <mutex> __awh_mtx__;
 	/**
-	 * Идентификатор текущего процесса
+	 * @brief Идентификатор текущего процесса
+	 *
 	 */
 	const pid_t __awh_pid__ = ::getpid();
 	/**
-	 * Сокет связи с ядром операционной системы
+	 * @brief Сокет связи с ядром операционной системы
+	 *
 	 */
 	net::socket_t __awh_kq__ = net::invalid_socket_t;
 	/**
-	 * Глобальный массив активных событий kqueue
+	 * @brief Глобальный массив активных событий kqueue
+	 *
 	 */
 	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
 	/**
-	 * Глобальная переменная списка обработанных событий
+	 * @brief Глобальная переменная списка обработанных событий
+	 *
 	 */
 	unordered_set <event::id_t> __awh_processed__;
 	/**
-	 * Глобальная переменная списка узлов событий
+	 * @brief Глобальная переменная списка узлов событий
+	 *
 	 */
 	unordered_map <event::id_t, unique_ptr <net::node_t>> __awh_nodes__;
 	/**
-	 * Глобальная переменная списка сессий инициаторов запросов
+	 * @brief Глобальная переменная списка сессий инициаторов запросов
+	 *
 	 */
 	unordered_map <origin_id_t, ::io::origin_t *, origin_id_hash_t> __awh_origin_sessions__;
 };
@@ -905,23 +913,28 @@ namespace local {
 	using guard_t = GuardTransportLayerNode;
 
 	/**
-	 * Мьютекс для синхронизации потоков
+	 * @brief Мьютекс для синхронизации потоков
+	 *
 	 */
 	static lock_state_t <mutex> mtx;
 	/**
-	 * Глобальный массив временных событий ожидающих активации
+	 * @brief Глобальный массив временных событий ожидающих активации
+	 *
 	 */
 	static vector <struct kevent> change;
 	/**
-	 * Глобальный массив результата активации временных событий
+	 * @brief Глобальный массив результата активации временных событий
+	 *
 	 */
 	static vector <struct kevent> result;
 	/**
-	 * Режим работы пула потоков
+	 * @brief Режим работы пула потоков
+	 *
 	 */
 	static event::mode_t threadPool = event::mode_t::DISABLED;
 	/**
-	 * Режим безопасности работы потоков
+	 * @brief Режим безопасности работы потоков
+	 *
 	 */
 	static event::mode_t threadSafety = event::mode_t::DISABLED;
 };
@@ -38891,7 +38904,12 @@ void awh::IO::on(const event::id_t id, const event::callback::rebirth_t & cb) no
 awh::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
  engine_t(fmk, log),
  whitelist(event::control_list_t::WHITE, fmk, log),
- blacklist(event::control_list_t::BLACK, fmk, log) {}
+ blacklist(event::control_list_t::BLACK, fmk, log) {
+	// Активируем или деактивируем работу мютексов для временных структур
+	::local::mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+	// Активируем или деактивируем работу мютексов для основного потока
+	::__awh_mtx__.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+}
 /**
  * @brief Деструктор
  *
