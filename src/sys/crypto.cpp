@@ -2693,7 +2693,7 @@ bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Читаем приватный ключ из файла
-					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, this->_password.empty() ? nullptr : reinterpret_cast <void *> (this->_password.data()));
 					// Закрываем файл
 					::fclose(file);
 					// Если приватный ключ получен
@@ -2948,21 +2948,42 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path) const noexcept {
 					if(file != nullptr){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
-						// Если файл не может быть записан
-						if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
-							#endif
+						// Если пароль не установлен
+						if(this->_password.empty()){
+							// Если файл не может быть записан
+							if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+								#endif
+							}
+						// Если пароль установлен
+						} else {
+							// Если файл не может быть записан
+							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), ::EVP_aes_256_cbc(), this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+								#endif
+							}
 						}
 						// Закрываем файл
 						::fclose(file);
@@ -2992,21 +3013,42 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path) const noexcept {
 					if(file != nullptr){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
-						// Если файл не может быть записан
-						if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
-							#endif
+						// Если пароль не установлен
+						if(this->_password.empty()){
+							// Если файл не может быть записан
+							if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+								#endif
+							}
+						// Если пароль установлен
+						} else {
+							// Если файл не может быть записан
+							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), ::EVP_aes_256_cbc(), this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+								#endif
+							}
 						}
 						// Закрываем файл
 						::fclose(file);
