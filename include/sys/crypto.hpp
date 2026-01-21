@@ -18,6 +18,7 @@
 /**
  * Стандартные модули
  */
+#include <any>
 #include <array>
 #include <string>
 #include <vector>
@@ -100,55 +101,11 @@ namespace awh {
 			 *
 			 */
 			using uint128_t = std::array <uint8_t, 16>;
-		public:
-			/**
-			 * @brief Стейт шифрования
-			 *
-			 */
-			typedef struct State {
-				// Тип хэш-суммы
-				hash_t hash;
-				// Тип шифрования
-				cipher_t cipher;
-				// Контекст выбранного шифра
-				const void * evp;
-				// Контекст шифрования
-				const void * ctx;
-				// Ключ шифрования
-				vector <uint8_t> key;
-				// Вектор инициализации
-				vector <uint8_t> ivec;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit State() noexcept :
-				 hash(hash_t::NONE),
-				 cipher(cipher_t::NONE),
-				 evp(nullptr), ctx(nullptr) {}
-			} state_t;
 		private:
-			/**
-			 * @brief Структура ключа RSA
-			 *
-			 */
-			typedef struct Key {
-				// Контекст RSA ключа
-				void * ctx;
-				// Тип RSA ключа
-				key_type_t type;
-				/**
-				 * @brief Конструктор
-				 *
-				 */
-				explicit Key() noexcept :
-				 ctx(nullptr), type(key_type_t::NONE) {}
-			} key_rsa_t;
-		private:
-			// Стейт AES шифрования
-			state_t _state;
 			// Объект RSA ключа
-			key_rsa_t _key;
+			std::any _key;
+			// Стейт AES шифрования
+			std::any _state;
 		private:
 			// Количество раундов шифрования
 			int32_t _rounds;

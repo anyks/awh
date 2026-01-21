@@ -51,6 +51,55 @@
 using namespace std;
 
 /**
+ * Инкапсулируем статические типы данных в пространство имён
+ */
+namespace {
+	/**
+	 * @brief Структура ключа RSA
+	 *
+	 */
+	typedef struct Key {
+		// Контекст RSA ключа
+		EVP_PKEY * ctx;
+		// Тип RSA ключа
+		awh::crypto_t::key_type_t type;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Key() noexcept :
+		 ctx(nullptr),
+		 type(awh::crypto_t::key_type_t::NONE) {}
+	} key_rsa_t;
+	/**
+	 * @brief Стейт шифрования
+	 *
+	 */
+	typedef struct State {
+		// Контекст выбранного шифра
+		const EVP_CIPHER * evp;
+		// Контекст шифрования
+		const EVP_CIPHER_CTX * ctx;
+		// Тип хэш-суммы
+		awh::crypto_t::hash_t hash;
+		// Тип шифрования
+		awh::crypto_t::cipher_t cipher;
+		// Ключ шифрования
+		vector <uint8_t> key;
+		// Вектор инициализации
+		vector <uint8_t> ivec;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit State() noexcept :
+		 evp(nullptr), ctx(nullptr),
+		 hash(awh::crypto_t::hash_t::NONE),
+		 cipher(awh::crypto_t::cipher_t::NONE) {}
+	} state_t;
+};
+
+/**
  * @brief пространство имён драйвера
  *
  */
@@ -358,7 +407,7 @@ namespace driver {
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
 	 */
-	static void hashing(const char * buffer, const size_t size, const awh::crypto_t::cipher_t cipher, const awh::crypto_t::event_t event, awh::crypto_t::state_t & state, T & result, const awh::log_t * log) noexcept {
+	static void hashing(const char * buffer, const size_t size, const awh::crypto_t::cipher_t cipher, const awh::crypto_t::event_t event, state_t & state, T & result, const awh::log_t * log) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -484,7 +533,7 @@ namespace driver {
 								// Если производится кодирование данных
 								case static_cast <uint8_t> (awh::crypto_t::event_t::ENCODE):
 									// Выполняем инициализацию контекста шифрования
-									if(::EVP_CipherInit_ex(ctx, reinterpret_cast <const EVP_CIPHER *> (state.evp), nullptr, state.key.data(), state.ivec.data(), AES_ENCRYPT) != 1){
+									if(::EVP_CipherInit_ex(ctx, state.evp, nullptr, state.key.data(), state.ivec.data(), AES_ENCRYPT) != 1){
 										// Освобождаем контекст шифрования
 										::EVP_CIPHER_CTX_free(ctx);
 										/**
@@ -507,7 +556,7 @@ namespace driver {
 								// Если производится декодирование данных
 								case static_cast <uint8_t> (awh::crypto_t::event_t::DECODE):
 									// Выполняем инициализацию контекста шифрования
-									if(::EVP_CipherInit_ex(ctx, reinterpret_cast <const EVP_CIPHER *> (state.evp), nullptr, state.key.data(), state.ivec.data(), AES_DECRYPT) != 1){
+									if(::EVP_CipherInit_ex(ctx, state.evp, nullptr, state.key.data(), state.ivec.data(), AES_DECRYPT) != 1){
 										// Освобождаем контекст шифрования
 										::EVP_CIPHER_CTX_free(ctx);
 										/**
@@ -595,7 +644,7 @@ namespace driver {
 							// Обрабатываем весь входной буфер за один вызов (рекомендуется)
 							int32_t length = 0;
 							// Выполняем обновление шифрования
-							if(::EVP_CipherUpdate(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (state.ctx)), reinterpret_cast <uint8_t *> (result.data()), &length, reinterpret_cast <const uint8_t *> (buffer), static_cast <int32_t> (size)) != 1){
+							if(::EVP_CipherUpdate(const_cast <EVP_CIPHER_CTX *> (state.ctx), reinterpret_cast <uint8_t *> (result.data()), &length, reinterpret_cast <const uint8_t *> (buffer), static_cast <int32_t> (size)) != 1){
 								// Очищаем выходной буфер
 								result.clear();
 								/**
@@ -653,7 +702,7 @@ namespace driver {
 	 * @param log    объект для работы с логами
 	 * @return       результат инициализации
 	 */
-	static bool cipher(const awh::crypto_t::cipher_t cipher, const awh::crypto_t::hash_t hash, const string & pass, const string & salt, const int32_t rounds, awh::crypto_t::state_t & state, const awh::log_t * log) noexcept {
+	static bool cipher(const awh::crypto_t::cipher_t cipher, const awh::crypto_t::hash_t hash, const string & pass, const string & salt, const int32_t rounds, state_t & state, const awh::log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если пароль для шифрования не пустой
@@ -796,12 +845,12 @@ namespace driver {
 					#endif
 				// Если инициализация произошла успешно
 				} else {
+					// Устанавливаем контекст шифрования в стейт
+					state.evp = evp;
 					// Устанавливаем тип хэш-суммы в стейт
 					state.hash = hash;
 					// Устанавливаем тип шифрования в стейт
 					state.cipher = cipher;
-					// Устанавливаем контекст шифрования в стейт
-					state.evp = reinterpret_cast <const void *> (evp);
 					// Копируем данные ключа в наш стейт
 					std::copy(buffer, buffer + state.key.size(), state.key.begin());
 					// Копируем данные IVEC в наш стейт
@@ -1644,8 +1693,10 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Получаем состояние объекта
+		state_t & state = std::any_cast <state_t &> (this->_state);
 		// Если контекст шифрования уже создан
-		if((result = (this->_state.ctx != nullptr))){
+		if((result = (state.ctx != nullptr))){
 			// Если результат не пустой
 			if(!buffer.empty()){
 				// Размер обработанных данных
@@ -1655,11 +1706,11 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 				// Расширяем буфер под результат
 				buffer.resize(length + AES_BLOCK_SIZE, 0);
 				// Финализация (в CFB обычно ничего не добавляет, но нужна)
-				if(!(result = (::EVP_CipherFinal_ex(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), reinterpret_cast <uint8_t *> (buffer.data() + length), &offset) == 1))){
+				if(!(result = (::EVP_CipherFinal_ex(const_cast <EVP_CIPHER_CTX *> (state.ctx), reinterpret_cast <uint8_t *> (buffer.data() + length), &offset) == 1))){
 					// Очищаем выходной буфер
 					buffer.clear();
 					// Освобождаем контекст шифрования
-					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1680,9 +1731,9 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 				buffer.resize(static_cast <size_t> (length + offset));
 			}
 			// Освобождаем контекст шифрования
-			::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+			::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
 			// Зануляем контекст шифрования
-			this->_state.ctx = nullptr;
+			state.ctx = nullptr;
 		}
 	/**
 	 * Если возникает ошибка
@@ -1737,12 +1788,14 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 	try {
 		// Если пароль установлен
 		if(!this->_password.empty()){
+			// Получаем состояние объекта
+			state_t & state = std::any_cast <state_t &> (this->_state);
 			// Если контекст шифрования не создан
-			if(this->_state.ctx == nullptr){
+			if(state.ctx == nullptr){
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
 				// Если инициализация ключей не выполнена
-				if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <crypto_t *> (this)->_state, this->_log)){
+				if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, state, this->_log)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1760,13 +1813,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					return result;
 				}
 				// Если контекст шифрования уже создан
-				if(this->_state.ctx != nullptr)
+				if(state.ctx != nullptr)
 					// Освобождаем контекст шифрования
-					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
 				// Создаем контекст шифрования
-				this->_state.ctx = reinterpret_cast <void *> (::EVP_CIPHER_CTX_new());
+				state.ctx = ::EVP_CIPHER_CTX_new();
 				// Если контекст не создан
-				if(this->_state.ctx == nullptr){
+				if(state.ctx == nullptr){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1790,11 +1843,11 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					// Если производится кодирование данных
 					case static_cast <uint8_t> (event_t::ENCODE):
 						// Выполняем инициализацию контекста шифрования
-						if(!(result = (::EVP_CipherInit_ex(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), reinterpret_cast <const EVP_CIPHER *> (this->_state.evp), nullptr, this->_state.key.data(), this->_state.ivec.data(), AES_ENCRYPT) == 1))){
+						if(!(result = (::EVP_CipherInit_ex(const_cast <EVP_CIPHER_CTX *> (state.ctx), state.evp, nullptr, state.key.data(), state.ivec.data(), AES_ENCRYPT) == 1))){
 							// Освобождаем контекст шифрования
-							::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+							::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
 							// Зануляем контекст шифрования
-							this->_state.ctx = nullptr;
+							state.ctx = nullptr;
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1815,11 +1868,11 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					// Если производится декодирование данных
 					case static_cast <uint8_t> (event_t::DECODE):
 						// Выполняем инициализацию контекста шифрования
-						if(!(result = (::EVP_CipherInit_ex(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), reinterpret_cast <const EVP_CIPHER *> (this->_state.evp), nullptr, this->_state.key.data(), this->_state.ivec.data(), AES_DECRYPT) == 1))){
+						if(!(result = (::EVP_CipherInit_ex(const_cast <EVP_CIPHER_CTX *> (state.ctx), state.evp, nullptr, state.key.data(), state.ivec.data(), AES_DECRYPT) == 1))){
 							// Освобождаем контекст шифрования
-							::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+							::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
 							// Зануляем контекст шифрования
-							this->_state.ctx = nullptr;
+							state.ctx = nullptr;
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1839,7 +1892,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					break;
 				}
 				// Отключаем padding (обязательно для CFB)
-				::EVP_CIPHER_CTX_set_padding(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), 0);
+				::EVP_CIPHER_CTX_set_padding(const_cast <EVP_CIPHER_CTX *> (state.ctx), 0);
 			}
 		}
 	/**
@@ -1955,8 +2008,10 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 			case static_cast <uint8_t> (cipher_t::BASE64): {
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
+				// Получаем состояние объекта
+				const state_t & state = std::any_cast <const state_t &> (this->_state);
 				// Выполняем кодирование строки BASE64
-				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 				// Если кодирование не вышло
 				if(result.empty()){
 					/**
@@ -1982,14 +2037,16 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 			case static_cast <uint8_t> (cipher_t::AES256): {
 				// Если пароль установлен
 				if(!this->_password.empty()){
+					// Получаем состояние объекта
+					const state_t & state = std::any_cast <const state_t &> (this->_state);
 					// Если контекст шифрования не создан
-					if(this->_state.ctx == nullptr){
+					if(state.ctx == nullptr){
 						// Проверяем текущее состояние
-						if((this->_state.hash != hash) || (this->_state.cipher != cipher)){
+						if((state.hash != hash) || (state.cipher != cipher)){
 							// Выполняем блокировку потоков
 							const locker_t <> lock(this->_mtx);
 							// Если инициализация ключей не выполнена
-							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <crypto_t *> (this)->_state, this->_log)){
+							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <state_t &> (state), this->_log)){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -2010,13 +2067,13 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем шифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем шифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, this->_state.cipher, event_t::ENCODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 					}
 				}
 				// Если кодирование не вышло
@@ -2150,8 +2207,10 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 			case static_cast <uint8_t> (cipher_t::BASE64): {
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
+				// Получаем состояние объекта
+				const state_t & state = std::any_cast <const state_t &> (this->_state);
 				// Выполняем декодирование строки BASE64
-				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 				// Если декодирование не вышло
 				if(result.empty()){
 					/**
@@ -2177,14 +2236,16 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 			case static_cast <uint8_t> (cipher_t::AES256): {
 				// Если пароль установлен
 				if(!this->_password.empty()){
+					// Получаем состояние объекта
+					const state_t & state = std::any_cast <const state_t &> (this->_state);
 					// Если контекст шифрования не создан
-					if(this->_state.ctx == nullptr){
+					if(state.ctx == nullptr){
 						// Проверяем текущее состояние
-						if((this->_state.hash != hash) || (this->_state.cipher != cipher)){
+						if((state.hash != hash) || (state.cipher != cipher)){
 							// Выполняем блокировку потоков
 							const locker_t <> lock(this->_mtx);
 							// Если инициализация ключей не выполнена
-							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <crypto_t *> (this)->_state, this->_log)){
+							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <state_t &> (state), this->_log)){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -2205,13 +2266,13 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем дешифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем дешифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, this->_state.cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 					}
 				}
 				// Если дешифрование не вышло
@@ -2288,12 +2349,14 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 		}
 		// Выполняем блокировку потоков
 		const locker_t <> lock(this->_mtx);
+		// Получаем ссылку на объект ключа RSA
+		key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 		// Устанавливаем тип ключа
-		this->_key.type = key_type_t::PRIVATE;
+		key.type = key_type_t::PRIVATE;
 		// Запоминаем приватный ключ
-		this->_key.ctx = reinterpret_cast <void *> (privKey);
+		key.ctx = privKey;
 		// Формируем итоговый результат
-		result = (this->_key.ctx != nullptr);
+		result = (key.ctx != nullptr);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2327,8 +2390,10 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Получаем ссылку на объект ключа RSA
+		const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 		// Если путь к файлу передан правильно
-		if(this->_key.ctx != nullptr){
+		if(key.ctx != nullptr){
 			// Выполняем блокировку потоков
 			const locker_t <> lock(this->_mtx);
 			// Создаём объект BIO для записи публичного ключа
@@ -2336,7 +2401,7 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 			// Если объект BIO создан успешно
 			if(bio != nullptr){
 				// Если файл не может быть записан
-				if(::PEM_write_bio_PUBKEY(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) != 1){
+				if(::PEM_write_bio_PUBKEY(bio, key.ctx) != 1){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2441,16 +2506,18 @@ bool awh::Crypto::setPublicKeyRSA(const string & key) noexcept {
 				if(pkey != nullptr){
 					// Выполняем блокировку потоков
 					const locker_t <> lock(this->_mtx);
+					// Получаем ссылку на объект ключа RSA
+					key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 					// Если публичный ключ уже сгенерирован
-					if(this->_key.ctx != nullptr)
+					if(key.ctx != nullptr)
 						// Освобождаем публичный ключ
-						::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
-					// Устанавливаем тип ключа
-					this->_key.type = key_type_t::PUBLIC;
+						::EVP_PKEY_free(key.ctx);
 					// Запоминаем публичный ключ
-					this->_key.ctx = reinterpret_cast <void *> (pkey);
+					key.ctx = pkey;
+					// Устанавливаем тип ключа
+					key.type = key_type_t::PUBLIC;
 					// Формируем итоговый результат
-					result = (this->_key.ctx != nullptr);
+					result = (key.ctx != nullptr);
 				// Если публичный ключ не получен
 				} else {
 					/**
@@ -2532,16 +2599,18 @@ bool awh::Crypto::setPrivateKeyRSA(const string & key) noexcept {
 				if(pkey != nullptr){
 					// Выполняем блокировку потоков
 					const locker_t <> lock(this->_mtx);
+					// Получаем ссылку на объект ключа RSA
+					key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 					// Если приватный ключ уже сгенерирован
-					if(this->_key.ctx != nullptr)
+					if(key.ctx != nullptr)
 						// Освобождаем приватный ключ
-						::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
-					// Устанавливаем тип ключа
-					this->_key.type = key_type_t::PRIVATE;
+						::EVP_PKEY_free(key.ctx);
 					// Запоминаем приватный ключ
-					this->_key.ctx = reinterpret_cast <void *> (pkey);
+					key.ctx = pkey;
+					// Устанавливаем тип ключа
+					key.type = key_type_t::PRIVATE;
 					// Формируем итоговый результат
-					result = (this->_key.ctx != nullptr);
+					result = (key.ctx != nullptr);
 				// Если приватный ключ не получен
 				} else {
 					/**
@@ -2609,10 +2678,12 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Получаем ссылку на объект ключа RSA
+		const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 		// Если путь к файлу передан правильно
-		if(this->_key.ctx != nullptr){
+		if(key.ctx != nullptr){
 			// Если ключ является приватным
-			if(this->_key.type == key_type_t::PRIVATE){
+			if(key.type == key_type_t::PRIVATE){
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
 				// Создаём объект BIO для записи приватного ключа
@@ -2622,7 +2693,7 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 					// Если пароль не установлен
 					if(this->_password.empty()){
 						// Если файл не может быть записан
-						if(::PEM_write_bio_PrivateKey(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) != 1){
+						if(::PEM_write_bio_PrivateKey(bio, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) != 1){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -2661,7 +2732,7 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 								evp = ::EVP_aes_256_cbc();
 						}
 						// Если файл не может быть записан
-						if(::PEM_write_bio_PKCS8PrivateKey(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) != 1){
+						if(::PEM_write_bio_PKCS8PrivateKey(bio, key.ctx, evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) != 1){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -2787,16 +2858,18 @@ bool awh::Crypto::loadPublicKeyRSA(const string & path) noexcept {
 					if(pkey != nullptr){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
+						// Получаем ссылку на объект ключа RSA
+						key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 						// Если публичный ключ уже сгенерирован
-						if(this->_key.ctx != nullptr)
+						if(key.ctx != nullptr)
 							// Освобождаем публичный ключ
-							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
-						// Устанавливаем тип ключа
-						this->_key.type = key_type_t::PUBLIC;
+							::EVP_PKEY_free(key.ctx);
 						// Запоминаем публичный ключ
-						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						key.ctx = pkey;
+						// Устанавливаем тип ключа
+						key.type = key_type_t::PUBLIC;
 						// Формируем итоговый результат
-						result = (this->_key.ctx != nullptr);
+						result = (key.ctx != nullptr);
 					// Если публичный ключ не получен
 					} else {
 						/**
@@ -2845,16 +2918,18 @@ bool awh::Crypto::loadPublicKeyRSA(const string & path) noexcept {
 					if(pkey != nullptr){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
+						// Получаем ссылку на объект ключа RSA
+						key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 						// Если публичный ключ уже сгенерирован
-						if(this->_key.ctx != nullptr)
+						if(key.ctx != nullptr)
 							// Освобождаем публичный ключ
-							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
-						// Устанавливаем тип ключа
-						this->_key.type = key_type_t::PUBLIC;
+							::EVP_PKEY_free(key.ctx);
 						// Запоминаем публичный ключ
-						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						key.ctx = pkey;
+						// Устанавливаем тип ключа
+						key.type = key_type_t::PUBLIC;
 						// Формируем итоговый результат
-						result = (this->_key.ctx != nullptr);
+						result = (key.ctx != nullptr);
 					// Если публичный ключ не получен
 					} else {
 						/**
@@ -2956,16 +3031,18 @@ bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
 					if(pkey != nullptr){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
+						// Получаем ссылку на объект ключа RSA
+						key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 						// Если приватный ключ уже сгенерирован
-						if(this->_key.ctx != nullptr)
+						if(key.ctx != nullptr)
 							// Освобождаем приватный ключ
-							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
-						// Устанавливаем тип ключа
-						this->_key.type = key_type_t::PRIVATE;
+							::EVP_PKEY_free(key.ctx);
 						// Запоминаем приватный ключ
-						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						key.ctx = pkey;
+						// Устанавливаем тип ключа
+						key.type = key_type_t::PRIVATE;
 						// Формируем итоговый результат
-						result = (this->_key.ctx != nullptr);
+						result = (key.ctx != nullptr);
 					// Если публичный ключ не получен
 					} else {
 						/**
@@ -3014,16 +3091,18 @@ bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
 					if(pkey != nullptr){
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
+						// Получаем ссылку на объект ключа RSA
+						key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 						// Если приватный ключ уже сгенерирован
-						if(this->_key.ctx != nullptr)
+						if(key.ctx != nullptr)
 							// Освобождаем приватный ключ
-							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
-						// Устанавливаем тип ключа
-						this->_key.type = key_type_t::PRIVATE;
+							::EVP_PKEY_free(key.ctx);
 						// Запоминаем приватный ключ
-						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						key.ctx = pkey;
+						// Устанавливаем тип ключа
+						key.type = key_type_t::PRIVATE;
 						// Формируем итоговый результат
-						result = (this->_key.ctx != nullptr);
+						result = (key.ctx != nullptr);
 					// Если публичный ключ не получен
 					} else {
 						/**
@@ -3107,8 +3186,10 @@ bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Получаем ссылку на объект ключа RSA
+		const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 		// Если путь к файлу передан правильно
-		if(!path.empty() && (this->_key.ctx != nullptr)){
+		if(!path.empty() && (key.ctx != nullptr)){
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -3120,7 +3201,7 @@ bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
 					// Выполняем блокировку потоков
 					const locker_t <> lock(this->_mtx);
 					// Если файл не может быть записан
-					if(!(result = (::PEM_write_PUBKEY(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) == 1))){
+					if(!(result = (::PEM_write_PUBKEY(file, key.ctx) == 1))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3164,7 +3245,7 @@ bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
 					// Выполняем блокировку потоков
 					const locker_t <> lock(this->_mtx);
 					// Если файл не может быть записан
-					if(!(result = (::PEM_write_PUBKEY(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) == 1))){
+					if(!(result = (::PEM_write_PUBKEY(file, key.ctx) == 1))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3249,10 +3330,12 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) 
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Получаем ссылку на объект ключа RSA
+		const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 		// Если путь к файлу передан правильно
-		if(!path.empty() && (this->_key.ctx != nullptr)){
+		if(!path.empty() && (key.ctx != nullptr)){
 			// Если ключ является приватным
-			if(this->_key.type == key_type_t::PRIVATE){
+			if(key.type == key_type_t::PRIVATE){
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -3266,7 +3349,7 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) 
 						// Если пароль не установлен
 						if(this->_password.empty()){
 							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
+							if(!(result = (::PEM_write_PrivateKey(file, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) == 1))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3305,7 +3388,7 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) 
 									evp = ::EVP_aes_256_cbc();
 							}
 							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
+							if(!(result = (::PEM_write_PKCS8PrivateKey(file, key.ctx, evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3352,7 +3435,7 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) 
 						// Если пароль не установлен
 						if(this->_password.empty()){
 							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
+							if(!(result = (::PEM_write_PrivateKey(file, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) == 1))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3391,7 +3474,7 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) 
 									evp = ::EVP_aes_256_cbc();
 							}
 							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
+							if(!(result = (::PEM_write_PKCS8PrivateKey(file, key.ctx, evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3503,12 +3586,14 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 	try {
 		// Если буфер данных и размер данных переданы правильно
 		if((buffer != nullptr) && (size != 0)){
+			// Получаем ссылку на объект ключа RSA
+			const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 			// Если публичный ключ сгенерирован
-			if(this->_key.ctx != nullptr){
+			if(key.ctx != nullptr){
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
 				// Создаём контекст для шифрования
-				EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr);
+				EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(key.ctx, nullptr);
 				// Если контекст для подписи не создан
 				if(ctx == nullptr){
 					/**
@@ -3672,14 +3757,16 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 	try {
 		// Если буфер данных и размер данных переданы правильно
 		if((buffer != nullptr) && (size != 0)){
+			// Получаем ссылку на объект ключа RSA
+			const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 			// Если приватный ключ сгенерирован
-			if(this->_key.ctx != nullptr){
+			if(key.ctx != nullptr){
 				// Если ключ является приватным
-				if(this->_key.type == key_type_t::PRIVATE){
+				if(key.type == key_type_t::PRIVATE){
 					// Выполняем блокировку потоков
 					const locker_t <> lock(this->_mtx);
 					// Создаём контекст для шифрования
-					EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr);
+					EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(key.ctx, nullptr);
 					// Если контекст для подписи не создан
 					if(ctx == nullptr){
 						/**
@@ -3861,10 +3948,12 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 	try {
 		// Если буфер данных и размер данных переданы правильно
 		if((buffer != nullptr) && (size != 0)){
+			// Получаем ссылку на объект ключа RSA
+			const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 			// Если приватный ключ сгенерирован
-			if(this->_key.ctx != nullptr){
+			if(key.ctx != nullptr){
 				// Если ключ является приватным
-				if(this->_key.type == key_type_t::PRIVATE){
+				if(key.type == key_type_t::PRIVATE){
 					// Создаём контекст для подписи
 					EVP_MD_CTX * ctx = ::EVP_MD_CTX_new();
 					// Если контекст для подписи не создан
@@ -3942,7 +4031,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							}
 						}
 						// Инициализируем подпись данных
-						if(::EVP_DigestSignInit(ctx, nullptr, md, nullptr, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) != 1){
+						if(::EVP_DigestSignInit(ctx, nullptr, md, nullptr, key.ctx) != 1){
 							// Освобождаем контекст для подписи
 							::EVP_MD_CTX_free(ctx);
 							/**
@@ -4129,8 +4218,10 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 	try {
 		// Если буфер данных и размер данных переданы правильно
 		if((buffer != nullptr) && (size != 0) && !signature.empty()){
+			// Получаем ссылку на объект ключа RSA
+			const key_rsa_t & key = std::any_cast <const key_rsa_t &> (this->_key);
 			// Если публичный ключ сгенерирован
-			if(this->_key.ctx != nullptr){
+			if(key.ctx != nullptr){
 				// Создаём контекст для верификации
 				EVP_MD_CTX * ctx = ::EVP_MD_CTX_new();
 				// Если контекст для подписи не создан
@@ -4208,7 +4299,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 						}
 					}
 					// Инициализируем верификацию данных
-					if((::EVP_DigestVerifyInit(ctx, nullptr, md, nullptr, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) == 1) &&
+					if((::EVP_DigestVerifyInit(ctx, nullptr, md, nullptr, key.ctx) == 1) &&
 					   (::EVP_DigestVerifyUpdate(ctx, buffer, size) == 1))
 						// Выполняем верификацию данных
 						result = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
@@ -4275,14 +4366,21 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
  * @param log объект для работы с логами
  */
 awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept :
- _rounds(5), _salt{""}, _password{""}, _fmk(fmk), _log(log) {}
+ _rounds(5), _salt{""}, _password{""}, _fmk(fmk), _log(log) {
+	// Инициализируем стейт шифрования
+	this->_state = state_t();
+	// Инициализируем ключевые данные
+	this->_key = key_rsa_t();
+}
 /**
  * @brief Деструктор
  *
  */
 awh::Crypto::~Crypto() noexcept {
+	// Получаем ссылку на объект ключа RSA
+	key_rsa_t & key = std::any_cast <key_rsa_t &> (this->_key);
 	// Если ключ уже установлен
-	if(this->_key.ctx != nullptr)
+	if(key.ctx != nullptr)
 		// Освобождаем память выделенную под ключ
-		::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+		::EVP_PKEY_free(key.ctx);
 }
