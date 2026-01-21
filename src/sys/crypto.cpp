@@ -1,0 +1,3889 @@
+/**
+ * @file: crypto.cpp
+ * @date: 2026-01-20
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+	
+/**
+ * Подключаем OpenSSL
+ */
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+#include <openssl/bio.h>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#include <openssl/hmac.h>
+
+/**
+ * Подключаем CityHash
+ */
+#include <cityhash/city.h>
+
+/**
+ * Стандартные модули
+ */
+#include <cstdio>
+#include <cstring>
+#include <csignal>
+#include <iostream>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+/**
+ * Подключаем заголовочный файл
+ */
+#include <sys/crypto.hpp>
+
+/**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief пространство имён драйвера
+ *
+ */
+namespace driver {
+	/**
+	 * @brief Шаблон функции хэширования текста
+	 *
+	 * @tparam T сигнатура функции
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция хэширования текста
+	 *
+	 * @param text   текст для хэширования
+	 * @param hash   тип хэш-суммы
+	 * @param result результат хэширования
+	 * @param log    объект для работы с логами
+	 */
+	static void hashing(const string & text, const awh::crypto_t::hash_t hash, T & result, const awh::log_t * log) noexcept {
+		// Если текст для хэширования передан
+		if(!text.empty()){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				// Буфер промежуточных значений
+				vector <uint8_t> digest;
+				/**
+				 * Определяем тип хэш-суммы
+				 */
+				switch(static_cast <uint8_t> (hash)){
+					// Если тип хэш-суммы указан как MD5
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::MD5): {
+						// Создаем контекст
+						::MD5_CTX ctx;
+						// Выполняем инициализацию контекста
+						::MD5_Init(&ctx);
+						// Выделяем память для промежуточных значений
+						digest.resize(16, 0);
+						// Выделяем память для буфера данных
+						result.resize(33, 0);
+						// Выполняем расчет суммы
+						::MD5_Update(&ctx, text.c_str(), text.length());
+						// Копируем полученные данные
+						::MD5_Final(digest.data(), &ctx);
+						// Заполняем строку данными MD5
+						for(uint8_t i = 0; i < 16; i++)
+							// Формируем данные MD5-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как SHA1
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA1): {
+						// Создаем контекст
+						::SHA_CTX ctx;
+						// Выполняем инициализацию контекста
+						::SHA1_Init(&ctx);
+						// Выделяем память для промежуточных значений
+						digest.resize(20, 0);
+						// Выделяем память для буфера данных
+						result.resize(41, 0);
+						// Выполняем расчет суммы
+						::SHA1_Update(&ctx, text.c_str(), text.length());
+						// Копируем полученные данные
+						::SHA1_Final(digest.data(), &ctx);
+						// Заполняем строку данными SHA1
+						for(uint8_t i = 0; i < 20; i++)
+							// Формируем данные SHA1-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как SHA224
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA224): {
+						// Создаем контекст
+						::SHA256_CTX ctx;
+						// Выполняем инициализацию контекста
+						::SHA224_Init(&ctx);
+						// Выделяем память для промежуточных значений
+						digest.resize(28, 0);
+						// Выделяем память для буфера данных
+						result.resize(57, 0);
+						// Выполняем расчет суммы
+						::SHA224_Update(&ctx, text.c_str(), text.length());
+						// Копируем полученные данные
+						::SHA224_Final(digest.data(), &ctx);
+						// Заполняем строку данными SHA224
+						for(uint8_t i = 0; i < 28; i++)
+							// Формируем данные SHA224-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как SHA256
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA256): {
+						// Создаем контекст
+						::SHA256_CTX ctx;
+						// Выполняем инициализацию контекста
+						::SHA256_Init(&ctx);
+						// Выделяем память для промежуточных значений
+						digest.resize(32, 0);
+						// Выделяем память для буфера данных
+						result.resize(65, 0);
+						// Выполняем расчет суммы
+						::SHA256_Update(&ctx, text.c_str(), text.length());
+						// Копируем полученные данные
+						::SHA256_Final(digest.data(), &ctx);
+						// Заполняем строку данными SHA256
+						for(uint8_t i = 0; i < 32; i++)
+							// Формируем данные SHA256-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как SHA384
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA384): {
+						// Создаем контекст
+						::SHA512_CTX ctx;
+						// Выполняем инициализацию контекста
+						::SHA384_Init(&ctx);
+						// Выделяем память для промежуточных значений
+						digest.resize(48, 0);
+						// Выделяем память для буфера данных
+						result.resize(97, 0);
+						// Выполняем расчет суммы
+						::SHA384_Update(&ctx, text.c_str(), text.length());
+						// Копируем полученные данные
+						::SHA384_Final(digest.data(), &ctx);
+						// Заполняем строку данными SHA384
+						for(uint8_t i = 0; i < 48; i++)
+							// Формируем данные SHA384-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как SHA512
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA512): {
+						// Создаем контекст
+						::SHA512_CTX ctx;
+						// Выполняем инициализацию контекста
+						::SHA512_Init(&ctx);
+						// Выделяем память для промежуточных значений
+						digest.resize(64, 0);
+						// Выделяем память для буфера данных
+						result.resize(129, 0);
+						// Выполняем расчет суммы
+						::SHA512_Update(&ctx, text.c_str(), text.length());
+						// Копируем полученные данные
+						::SHA512_Final(digest.data(), &ctx);
+						// Заполняем строку данными SHA512
+						for(uint8_t i = 0; i < 64; i++)
+							// Формируем данные SHA512-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				// Выводим сообщение об ошибке в лог
+				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+			}
+		}
+	}
+	/**
+	 * @brief Шаблон функции хэширования текста с ключом
+	 *
+	 * @tparam T сигнатура функции
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция хэширования текста с ключом
+	 *
+	 * @param key    ключ для подписи
+	 * @param text   текст для хэширования
+	 * @param hash   тип хэш-суммы
+	 * @param result результат хэширования
+	 * @param log    объект для работы с логами
+	 */
+	static void hmac(const string & key, const string & text, const awh::crypto_t::hash_t hash, T & result, const awh::log_t * log) noexcept {
+		// Если ключ и текст для хэширования переданы
+		if(!key.empty() && !text.empty()){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				/**
+				 * Определяем тип хэш-суммы
+				 */
+				switch(static_cast <uint8_t> (hash)){
+					// Если тип хэш-суммы указан как HMAC_MD5
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::MD5): {
+						// Выделяем память для буфера данных
+						result.resize(33, 0);
+						// Выполняем получение подписи
+						const uint8_t * digest = ::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
+						// Заполняем строку данными MD5
+						for(uint8_t i = 0; i < 16; i++)
+							// Формируем данные MD5-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как HMAC_SHA1
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA1): {
+						// Выделяем память для буфера данных
+						result.resize(41, 0);
+						// Выполняем получение подписи
+						const uint8_t * digest = ::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
+						// Заполняем строку данными SHA1
+						for(uint8_t i = 0; i < 20; i++)
+							// Формируем данные SHA1-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как HMAC_SHA224
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA224): {
+						// Выделяем память для буфера данных
+						result.resize(57, 0);
+						// Выполняем получение подписи
+						const uint8_t * digest = ::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
+						// Заполняем строку данными SHA224
+						for(uint8_t i = 0; i < 28; i++)
+							// Формируем данные SHA224-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как HMAC_SHA256
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA256): {
+						// Выделяем память для буфера данных
+						result.resize(65, 0);
+						// Выполняем получение подписи
+						const uint8_t * digest = ::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
+						// Заполняем строку данными SHA256
+						for(uint8_t i = 0; i < 32; i++)
+							// Формируем данные SHA256-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как HMAC_SHA384
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA384): {
+						// Выделяем память для буфера данных
+						result.resize(97, 0);
+						// Выполняем получение подписи
+						const uint8_t * digest = ::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
+						// Заполняем строку данными SHA384
+						for(uint8_t i = 0; i < 48; i++)
+							// Формируем данные SHA384-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+					// Если тип хэш-суммы указан как HMAC_SHA512
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA512): {
+						// Выделяем память для буфера данных
+						result.resize(129, 0);
+						// Выполняем получение подписи
+						const uint8_t * digest = ::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (text.data()), text.size(), nullptr, nullptr);
+						// Заполняем строку данными SHA512
+						for(uint8_t i = 0; i < 64; i++)
+							// Формируем данные SHA512-хэша
+							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
+						// Удаляем последний символ
+						result.pop_back();
+					} break;
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				// Выводим сообщение об ошибке в лог
+				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+			}
+		}
+	}
+	/**
+	 * @brief Шаблон функции хэширования данных
+	 *
+	 * @tparam T сигнатура функции
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция хэширования данных
+	 *
+	 * @param buffer буфер данных для шифрования
+	 * @param size   размер данных для шифрования
+	 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+	 * @param state  объект стейта шифрования
+	 * @param result строка куда следует положить результат
+	 * @param log    объект для работы с логами
+	 */
+	static void hashing(const char * buffer, const size_t size, const awh::crypto_t::cipher_t cipher, const awh::crypto_t::event_t event, awh::crypto_t::state_t & state, T & result, const awh::log_t * log) noexcept {
+		// Если буфер данных передан
+		if((buffer != nullptr) && (size > 0)){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				/**
+				 * Определяем тип шифрования
+				 */
+				switch(static_cast <uint8_t> (cipher)){
+					// Если производится работы с BASE64
+					case static_cast <uint8_t> (awh::crypto_t::cipher_t::BASE64): {
+						// Инициализируем объект BASE64
+						BIO * b64 = ::BIO_new(::BIO_f_base64());
+						// Если объект BASE64 инициализирован
+						if(b64 != nullptr){
+							// Инициализируем объект BIO
+							BIO * bio = ::BIO_new(::BIO_s_mem());
+							// Если объект BIO инициализирован
+							if(bio != nullptr){
+								// Размер обработанных данных
+								ssize_t length = 0;
+								// Устанавливаем флаги
+								::BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+								// Записываем параметры
+								::BIO_push(b64, bio);
+								/**
+								 * Определяем событие кодирование или декодирование
+								 */
+								switch(static_cast <uint8_t> (event)){
+									// Если производится кодирование данных
+									case static_cast <uint8_t> (awh::crypto_t::event_t::ENCODE): {
+										// Выполняем кодирование в BASE64
+										length = ::BIO_write(b64, buffer, size);
+										// Выполняем очистку объекта
+										BIO_flush(b64);
+										// Если запись выполнена
+										if(length > 0){
+											// Выделяем память под запрошенный результат
+											result.resize((4 * ((length + 2) / 3)) + 1, 0);
+											// Выполняем чтение полученного результата
+											length = ::BIO_read(bio, result.data(), result.size());
+										}
+									} break;
+									// Если производится декодирование данных
+									case static_cast <uint8_t> (awh::crypto_t::event_t::DECODE): {
+										// Выполняем декодирование из BASE64
+										length = ::BIO_write(bio, buffer, size);
+										// Выполняем очистку объекта
+										BIO_flush(bio);
+										// Если запись выполнена
+										if(length > 0){
+											// Выделяем память под запрошенный результат
+											result.resize((3 * length / 4) + 1, 0);
+											// Выполняем чтение полученного результата
+											length = ::BIO_read(b64, result.data(), result.size());
+										}
+									} break;
+								}
+								// Если получение хэша произведено успешно
+								if(length > 0)
+									// Удаляем все лишние символы
+									result.erase(result.begin() + length, result.end());
+								// Если получение хэша не удалось
+								else {
+									// Выполняем сброс результата
+									result.clear();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("Error during data decoding", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("Error during data decoding", awh::log_t::flag_t::WARNING);
+									#endif
+								}
+								// Очищаем всю выделенную память
+								::BIO_free_all(bio);
+							}
+							// Очищаем объект BASE64
+							::BIO_free(b64);
+						}
+					} break;
+					// Если производится работы с AES128
+					case static_cast <uint8_t> (awh::crypto_t::cipher_t::AES128):
+					// Если производится работы с AES192
+					case static_cast <uint8_t> (awh::crypto_t::cipher_t::AES192):
+					// Если производится работы с AES256
+					case static_cast <uint8_t> (awh::crypto_t::cipher_t::AES256): {
+						// Если контекст шифрования не создан
+						if(state.ctx == nullptr){
+							// Создаем контекст шифрования
+							EVP_CIPHER_CTX * ctx = ::EVP_CIPHER_CTX_new();
+							// Если контекст не создан
+							if(ctx == nullptr){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Error during AES context creation", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Error during AES context creation", awh::log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из функции
+								return;
+							}
+							/**
+							 * Определяем событие кодирование или декодирование
+							 */
+							switch(static_cast <uint8_t> (event)){
+								// Если производится кодирование данных
+								case static_cast <uint8_t> (awh::crypto_t::event_t::ENCODE):
+									// Выполняем инициализацию контекста шифрования
+									if(::EVP_CipherInit_ex(ctx, reinterpret_cast <const EVP_CIPHER *> (state.evp), nullptr, state.key.data(), state.ivec.data(), AES_ENCRYPT) != 1){
+										// Освобождаем контекст шифрования
+										::EVP_CIPHER_CTX_free(ctx);
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("Error during AES context initialization", awh::log_t::flag_t::CRITICAL);
+										#endif
+										// Выходим из функции
+										return;
+									}
+								break;
+								// Если производится декодирование данных
+								case static_cast <uint8_t> (awh::crypto_t::event_t::DECODE):
+									// Выполняем инициализацию контекста шифрования
+									if(::EVP_CipherInit_ex(ctx, reinterpret_cast <const EVP_CIPHER *> (state.evp), nullptr, state.key.data(), state.ivec.data(), AES_DECRYPT) != 1){
+										// Освобождаем контекст шифрования
+										::EVP_CIPHER_CTX_free(ctx);
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("Error during AES context initialization", awh::log_t::flag_t::CRITICAL);
+										#endif
+										// Выходим из функции
+										return;
+									}
+								break;
+							}
+							// Отключаем padding (обязательно для CFB)
+							::EVP_CIPHER_CTX_set_padding(ctx, 0);
+							// Очищаем выходной буфер
+							result.clear();
+							// Буфер для выходных данных (на 1 блок больше — стандартная практика)
+							result.resize(AES_BLOCK_SIZE + size, 0);
+							// Обрабатываем весь входной буфер за один вызов (рекомендуется)
+							int32_t length = 0;
+							// Выполняем обновление шифрования
+							if(::EVP_CipherUpdate(ctx, reinterpret_cast <uint8_t *> (result.data()), &length, reinterpret_cast <const uint8_t *> (buffer), static_cast <int32_t> (size)) != 1){
+								// Очищаем выходной буфер
+								result.clear();
+								// Освобождаем контекст шифрования
+								::EVP_CIPHER_CTX_free(ctx);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Error cipher update", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Error cipher update", awh::log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из функции
+								return;
+							}
+							// Размер обработанных данных
+							int32_t offset = 0;
+							// Финализация (в CFB обычно ничего не добавляет, но нужна)
+							if(::EVP_CipherFinal_ex(ctx, reinterpret_cast <uint8_t *> (result.data() + length), &offset) != 1){
+								// Очищаем выходной буфер
+								result.clear();
+								// Освобождаем контекст шифрования
+								::EVP_CIPHER_CTX_free(ctx);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Error cipher final", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Error cipher final", awh::log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из функции
+								return;
+							}
+							// Изменяем размер результата на фактический размер данных
+							result.resize(static_cast <size_t> (length + offset));
+							// Освобождаем контекст
+							::EVP_CIPHER_CTX_free(ctx);
+						// Если контекст шифрования создан
+						} else {
+							// Очищаем выходной буфер
+							result.clear();
+							// Буфер для выходных данных (на 1 блок больше — стандартная практика)
+							result.resize(AES_BLOCK_SIZE + size, 0);
+							// Обрабатываем весь входной буфер за один вызов (рекомендуется)
+							int32_t length = 0;
+							// Выполняем обновление шифрования
+							if(::EVP_CipherUpdate(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (state.ctx)), reinterpret_cast <uint8_t *> (result.data()), &length, reinterpret_cast <const uint8_t *> (buffer), static_cast <int32_t> (size)) != 1){
+								// Очищаем выходной буфер
+								result.clear();
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Error cipher update", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("Error cipher update", awh::log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из функции
+								return;
+							}
+							// Изменяем размер результата на фактический размер данных
+							result.resize(static_cast <size_t> (length));
+						}
+					} break;
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+	}
+	/**
+	 * @brief Функция инициализации AES шифрования
+	 *
+	 * @param cipher тип шифрования (AES128, AES192, AES256)
+	 * @param hash   тип хэш-суммы
+	 * @param pass   пароль для шифрования
+	 * @param salt   соль для шифрования
+	 * @param rounds количество раундов шифрования
+	 * @param state  стейт шифрования AES
+	 * @param log    объект для работы с логами
+	 * @return       результат инициализации
+	 */
+	static bool cipher(const awh::crypto_t::cipher_t cipher, const awh::crypto_t::hash_t hash, const string & pass, const string & salt, const int32_t rounds, awh::crypto_t::state_t & state, const awh::log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Если пароль для шифрования не пустой
+		if(!pass.empty()){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Обнуляем массив ключа
+				state.key.clear();
+				// Обнуляем массив IVEC
+				state.ivec.clear();
+				// Устанавливаем размер массива IVEC
+				state.ivec.resize(AES_BLOCK_SIZE, 0);
+				// Выбираем шифр AES
+				const EVP_CIPHER * evp = ::EVP_enc_null();
+				/**
+				 * Определяем длину шифрования
+				 */
+				switch(static_cast <uint16_t> (cipher)){
+					// Устанавливаем шифрование в 128
+					case static_cast <uint16_t> (awh::crypto_t::cipher_t::AES128): {
+						// Устанавливаем размер массива KEY
+						state.key.resize(16, 0);
+						// Устанавливаем функцию шифрования
+						evp = ::EVP_aes_128_cfb128();
+					} break;
+					// Устанавливаем шифрование в 192
+					case static_cast <uint16_t> (awh::crypto_t::cipher_t::AES192): {
+						// Устанавливаем размер массива KEY
+						state.key.resize(24, 0);
+						// Устанавливаем функцию шифрования
+						evp = ::EVP_aes_192_cfb128();
+					} break;
+					// Устанавливаем шифрование в 256
+					case static_cast <uint16_t> (awh::crypto_t::cipher_t::AES256): {
+						// Устанавливаем размер массива KEY
+						state.key.resize(32, 0);
+						// Устанавливаем функцию шифрования
+						evp = ::EVP_aes_256_cfb128();
+					} break;
+					// Если ничего не выбрано
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("Unsupported cipher type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							log->print("Unsupported cipher type", awh::log_t::flag_t::CRITICAL);
+						#endif
+						// Возвращаем результат работы функции
+						return result;
+					}
+				}
+				// Выбираем хэш-функцию
+				const EVP_MD * md = nullptr;
+				/**
+				 * Определяем тип хэш-суммы
+				 */
+				switch(static_cast <uint8_t> (hash)){
+					// Если тип хэш-суммы указан как MD5
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::MD5):
+						// Устанавливаем функцию хэширования
+						md = ::EVP_md5();
+					break;
+					// Если тип хэш-суммы указан как SHA1
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA1):
+						// Устанавливаем функцию хэширования
+						md = ::EVP_sha1();
+					break;
+					// Если тип хэш-суммы указан как SHA224
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA224):
+						// Устанавливаем функцию хэширования
+						md = ::EVP_sha224();
+					break;
+					// Если тип хэш-суммы указан как SHA256
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA256):
+						// Устанавливаем функцию хэширования
+						md = ::EVP_sha256();
+					break;
+					// Если тип хэш-суммы указан как SHA384
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA384):
+						// Устанавливаем функцию хэширования
+						md = ::EVP_sha384();
+					break;
+					// Если тип хэш-суммы указан как SHA512
+					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA512):
+						// Устанавливаем функцию хэширования
+						md = ::EVP_sha512();
+					break;
+					// Если ничего не выбрано
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							log->print("Unsupported hash type", awh::log_t::flag_t::CRITICAL);
+						#endif
+						// Возвращаем результат работы функции
+						return result;
+					}
+				}
+				// Временный буфер
+				uint8_t buffer[32 + AES_BLOCK_SIZE] = {0};
+				// Генерация ключа и IV через PBKDF2
+				result = (::PKCS5_PBKDF2_HMAC(
+					pass.c_str(),
+					static_cast <int32_t> (pass.length()),
+					(salt.empty() ? nullptr : reinterpret_cast <const uint8_t *> (salt.c_str())),
+					static_cast <int32_t> (salt.length()),
+					rounds, md, sizeof(buffer), buffer
+				) == 1);
+				// Если инициализация не произошла
+				if(!result){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("Generate key and IV failed", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("Generate key and IV failed", awh::log_t::flag_t::CRITICAL);
+					#endif
+				// Если инициализация произошла успешно
+				} else {
+					// Устанавливаем тип хэш-суммы в стейт
+					state.hash = hash;
+					// Устанавливаем тип шифрования в стейт
+					state.cipher = cipher;
+					// Устанавливаем контекст шифрования в стейт
+					state.evp = reinterpret_cast <const void *> (evp);
+					// Копируем данные ключа в наш стейт
+					std::copy(buffer, buffer + state.key.size(), state.key.begin());
+					// Копируем данные IVEC в наш стейт
+					std::copy(buffer + state.key.size(), buffer + (state.key.size() + state.ivec.size()), state.ivec.begin());
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+		// Возвращаем результат работы функции
+		return result;
+	}
+};
+
+/**
+ * @brief Метод установки количества раундов шифрования
+ *
+ * @param round количество раундов шифрования
+ */
+void awh::Crypto::roundAES(const int32_t round) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потоков
+		const locker_t <> lock(this->_mtx);
+		// Устанавливаем количество раундов шифрования
+		this->_rounds = round;
+		// Сбрасываем стейт шифрования
+		this->_state = state_t();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(round), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки соли шифрования
+ *
+ * @param salt соль для шифрования
+ */
+void awh::Crypto::salt(const string & salt) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потоков
+		const locker_t <> lock(this->_mtx);
+		// Устанавливаем соль для шифрования
+		this->_salt = salt;
+		// Сбрасываем стейт шифрования
+		this->_state = state_t();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(salt), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки пароля шифрования
+ *
+ * @param password пароль шифрования
+ */
+void awh::Crypto::password(const string & password) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потоков
+		const locker_t <> lock(this->_mtx);
+		// Устанавливаем пароль шифрования
+		this->_password = password;
+		// Сбрасываем стейт шифрования
+		this->_state = state_t();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(password), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode режим безопасности потоков
+ */
+void awh::Crypto::threadSafety(const mode_t mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	this->_mtx.enabled = (mode == mode_t::ENABLED);
+}
+/**
+ * @brief Метод преобразования 128-битного хэша в 64-битный
+ *
+ * @param hash 128-битный хэш
+ * @return     64-битный хэш
+ */
+uint64_t awh::Crypto::hash128to64(const uint128_t & hash) const noexcept {
+	// Буфер для хранения 128-битного хэша
+	uint128 buffer;
+	// Копируем первую часть результата в выходной буфер
+	::memcpy(&buffer.first, &hash[0], 8);
+	// Копируем вторую часть результата в выходной буфер
+	::memcpy(&buffer.second, &hash[8], 8);
+	// Возвращаем 64-битный хэш
+	return ::Hash128to64(buffer);
+}
+/**
+ * @brief @brief Шаблон метода хэширования текста
+ *
+ * @tparam A тип возвращаемого результата
+ * @tparam B тип буфера данных
+ */
+template <typename A, typename B>
+/**
+ * @brief Метод хэширования текста
+ *
+ * @param text текст для хэширования
+ * @return     результат хэширования
+ */
+auto awh::Crypto::hashing(const B & text) const noexcept -> A {
+	// Вызываем хэширование текста
+	return this->hashing <A> (text.data(), text.size());
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashing <uint32_t, string> (const string &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashing <uint64_t, string> (const string &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashing <uint128, string> (const string &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashing <uint32_t, vector <char>> (const vector <char> &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashing <uint64_t, vector <char>> (const vector <char> &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashing <uint128, vector <char>> (const vector <char> &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashing <uint32_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashing <uint64_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashing <uint128, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+/**
+ * @brief Шаблон метода хэширования текста
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста
+ *
+ * @param buffer буфер данных для хэширования
+ * @param size   размер данных для хэширования
+ * @return       результат хэширования
+ */
+auto awh::Crypto::hashing(const void * buffer, const size_t size) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем размер типа возвращаемого результата
+		 */
+		switch(sizeof(T)){
+			// Если необходимо вернуть 32 битный хэш
+			case 4: {
+				// Возвращаем 32 битный хэш
+				const auto & hash = ::CityHash32(static_cast <const char *> (buffer), size);
+				// Копируем результат в выходной буфер
+				::memcpy(&result, &hash, sizeof(hash));
+			} break;
+			// Если необходимо вернуть 64 битный хэш
+			case 8: {
+				// Возвращаем 64 битный хэш
+				const auto & hash = ::CityHash64(static_cast <const char *> (buffer), size);
+				// Копируем результат в выходной буфер
+				::memcpy(&result, &hash, sizeof(hash));
+			} break;
+			// Если необходимо вернуть 128 битный хэш
+			case 16: {
+				// Возвращаем 128 битный хэш
+				const auto & hash = ::CityHash128(static_cast <const char *> (buffer), size);
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(reinterpret_cast <char *> (&result), &hash.first, sizeof(hash.first));
+				// Копируем вторую часть результата в выходной буфер
+				::memcpy(reinterpret_cast <char *> (&result) + 8, &hash.second, sizeof(hash.second));
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashing <uint32_t> (const void *, const size_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashing <uint64_t> (const void *, const size_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashing <uint128> (const void *, const size_t) const noexcept;
+/**
+ * @brief @brief Шаблон метода хэширования текста c ключом
+ *
+ * @tparam A тип возвращаемого результата
+ * @tparam B тип буфера данных
+ */
+template <typename A, typename B>
+/**
+ * @brief Метод хэширования текста c ключом
+ *
+ * @param text текст для хэширования
+ * @param seed ключ для хэширования
+ * @return     результат хэширования
+ */
+auto awh::Crypto::hashingWithSeed(const B & text, const A seed) const noexcept -> A {
+	// Вызываем хэширование текста с ключом
+	return this->hashingWithSeed <A> (text.data(), text.size(), seed);
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeed <uint32_t, string> (const string &, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeed <uint64_t, string> (const string &, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeed <uint128, string> (const string &, const uint128) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeed <uint32_t, vector <char>> (const vector <char> &, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeed <uint64_t, vector <char>> (const vector <char> &, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeed <uint128, vector <char>> (const vector <char> &, const uint128) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeed <uint32_t, vector <uint8_t>> (const vector <uint8_t> &, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeed <uint64_t, vector <uint8_t>> (const vector <uint8_t> &, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeed <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128) const noexcept;
+/**
+ * @brief Шаблон метода хэширования текста c ключом
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста c ключом
+ *
+ * @param buffer буфер данных для хэширования
+ * @param size   размер данных для хэширования
+ * @param seed   ключ для хэширования
+ * @return       результат хэширования
+ */
+auto awh::Crypto::hashingWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем размер типа возвращаемого результата
+		 */
+		switch(sizeof(T)){
+			// Если необходимо вернуть 32 битный хэш
+			case 4: {
+				// Возвращаем 32 битный хэш
+				const auto & hash = ::CityHash32(static_cast <const char *> (buffer), size);
+				// Копируем результат в выходной буфер
+				::memcpy(&result, &hash, sizeof(hash));
+			} break;
+			// Если необходимо вернуть 64 битный хэш
+			case 8: {
+				// 64-битный ключевой буфер
+				uint64_t key = 0;
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(&key, &seed, 8);
+				// Возвращаем 64 битный хэш
+				const auto & hash = ::CityHash64WithSeed(static_cast <const char *> (buffer), size, key);
+				// Копируем результат в выходной буфер
+				::memcpy(&result, &hash, sizeof(hash));
+			} break;
+			// Если необходимо вернуть 128 битный хэш
+			case 16: {
+				// 128-битный ключевой буфер
+				uint128 key;
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(&key.first, reinterpret_cast <const char *> (&seed), 8);
+				// Копируем вторую часть результата в выходной буфер
+				::memcpy(&key.second, reinterpret_cast <const char *> (&seed) + 8, 8);
+				// Возвращаем 128 битный хэш
+				const auto & hash = ::CityHash128WithSeed(static_cast <const char *> (buffer), size, key);
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(reinterpret_cast <char *> (&result), &hash.first, sizeof(hash.first));
+				// Копируем вторую часть результата в выходной буфер
+				::memcpy(reinterpret_cast <char *> (&result) + 8, &hash.second, sizeof(hash.second));
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeed <uint32_t> (const void *, const size_t, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeed <uint64_t> (const void *, const size_t, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeed <uint128> (const void *, const size_t, const uint128) const noexcept;
+/**
+ * @brief @brief Шаблон метода хэширования текста c несколькими ключами
+ *
+ * @tparam A тип возвращаемого результата
+ * @tparam B тип буфера данных
+ */
+template <typename A, typename B>
+/**
+ * @brief Метод хэширования текста c несколькими ключами
+ *
+ * @param text  текст для хэширования
+ * @param seed1 первый ключ для хэширования
+ * @param seed2 второй ключ для хэширования
+ * @return      результат хэширования
+ */
+auto awh::Crypto::hashingWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A {
+	// Вызываем хэширование текста с несколькими ключами
+	return this->hashingWithSeeds <A> (text.data(), text.size(), seed1, seed2);
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeeds <uint32_t, string> (const string &, const uint32_t, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeeds <uint64_t, string> (const string &, const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeeds <uint128, string> (const string &, const uint128, const uint128) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeeds <uint32_t, vector <char>> (const vector <char> &, const uint32_t, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeeds <uint64_t, vector <char>> (const vector <char> &, const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeeds <uint128, vector <char>> (const vector <char> &, const uint128, const uint128) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeeds <uint32_t, vector <uint8_t>> (const vector <uint8_t> &, const uint32_t, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeeds <uint64_t, vector <uint8_t>> (const vector <uint8_t> &, const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeeds <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128, const uint128) const noexcept;
+/**
+ * @brief Шаблон метода хэширования текста c несколькими ключами
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста c несколькими ключами
+ *
+ * @param buffer буфер данных для хэширования
+ * @param size   размер данных для хэширования
+ * @param seed1  первый ключ для хэширования
+ * @param seed2  второй ключ для хэширования
+ * @return       результат хэширования
+ */
+auto awh::Crypto::hashingWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем размер типа возвращаемого результата
+		 */
+		switch(sizeof(T)){
+			// Если необходимо вернуть 32 битный хэш
+			case 4: {
+				// Возвращаем 32 битный хэш
+				const auto & hash = ::CityHash32(reinterpret_cast <const char *> (buffer), size);
+				// Копируем результат в выходной буфер
+				::memcpy(&result, &hash, sizeof(hash));
+			} break;
+			// Если необходимо вернуть 64 битный хэш
+			case 8: {
+				// 64-битный ключевой буфер
+				uint64_t key1 = 0, key2 = 0;
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(&key1, &seed1, 8);
+				// Копируем вторую часть результата в выходной буфер
+				::memcpy(&key2, &seed2, 8);
+				// Возвращаем 64 битный хэш
+				const auto & hash = ::CityHash64WithSeeds(reinterpret_cast <const char *> (buffer), size, key1, key2);
+				// Копируем результат в выходной буфер
+				::memcpy(&result, &hash, sizeof(hash));
+			} break;
+			// Если необходимо вернуть 128 битный хэш
+			case 16: {
+				// 128-битный ключевой буфер
+				uint128 key;
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(&key.first, reinterpret_cast <const char *> (&seed1), 8);
+				// Копируем вторую часть результата в выходной буфер
+				::memcpy(&key.second, reinterpret_cast <const char *> (&seed1) + 8, 8);
+				// Возвращаем 128 битный хэш
+				const auto & hash = ::CityHash128WithSeed(reinterpret_cast <const char *> (buffer), size, key);
+				// Копируем первую часть результата в выходной буфер
+				::memcpy(reinterpret_cast <char *> (&result), &hash.first, sizeof(hash.first));
+				// Копируем вторую часть результата в выходной буфер
+				::memcpy(reinterpret_cast <char *> (&result) + 8, &hash.second, sizeof(hash.second));
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
+ *
+ */
+template uint32_t awh::Crypto::hashingWithSeeds <uint32_t> (const void *, const size_t, const uint32_t, const uint32_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
+ *
+ */
+template uint64_t awh::Crypto::hashingWithSeeds <uint64_t> (const void *, const size_t, const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
+ *
+ */
+template uint128 awh::Crypto::hashingWithSeeds <uint128> (const void *, const size_t, const uint128, const uint128) const noexcept;
+/**
+ * @brief Шаблон метода хэширования текста
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста
+ *
+ * @param text текст для хэширования
+ * @param hash тип хэш-суммы
+ * @return     результат хэширования
+ */
+auto awh::Crypto::hashing(const string & text, const hash_t hash) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если текст передан
+	if(!text.empty()){
+		// Выполняем хэширование
+		driver::hashing(text, hash, result, this->_log);
+		// Если хэширование не вышло
+		if(result.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Text hashing \"%s\" could not be performed", __PRETTY_FUNCTION__, std::make_tuple(text, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING, text.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Text hashing \"%s\" could not be performed", log_t::flag_t::WARNING, text.c_str());
+			#endif
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в строку
+ *
+ */
+template string awh::Crypto::hashing <string> (const string &, const hash_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::hashing <vector <char>> (const string &, const hash_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::hashing <vector <uint8_t>> (const string &, const hash_t) const noexcept;
+/**
+ * @brief Шаблон метода хэширования текста с ключом
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста с ключом
+ *
+ * @param key  ключ для подписи
+ * @param text текст для хэширования
+ * @param hash тип хэш-суммы
+ * @return     результат хэширования
+ */
+auto awh::Crypto::hmac(const string & key, const string & text, const hash_t hash) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если текст передан
+	if(!text.empty()){
+		// Выполняем хэширование
+		driver::hmac(key, text, hash, result, this->_log);
+		// Если хэширование не вышло
+		if(result.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Key \"%s\" and text \"%s\" hashing  could not be performed", __PRETTY_FUNCTION__, std::make_tuple(key, text, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING, key.c_str(), text.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Key \"%s\" and text \"%s\" hashing  could not be performed", log_t::flag_t::WARNING, key.c_str(), text.c_str());
+			#endif
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в строку
+ *
+ */
+template string awh::Crypto::hmac(const string &, const string &, const hash_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::hmac(const string &, const string &, const hash_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::hmac(const string &, const string &, const hash_t) const noexcept;
+/**
+ * @brief Шаблон метода кодирования
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод финализации контекста шифрования
+ *
+ * @param buffer буфер куда следует положить результат
+ * @return       результат финализации
+ */
+bool awh::Crypto::finalize(T & buffer) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если контекст шифрования уже создан
+		if((result = (this->_state.ctx != nullptr))){
+			// Если результат не пустой
+			if(!buffer.empty()){
+				// Размер обработанных данных
+				int32_t offset = 0;
+				// Получаем текущий размер результата
+				const size_t length = buffer.size();
+				// Расширяем буфер под результат
+				buffer.resize(length + AES_BLOCK_SIZE, 0);
+				// Финализация (в CFB обычно ничего не добавляет, но нужна)
+				if(!(result = (::EVP_CipherFinal_ex(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), reinterpret_cast <uint8_t *> (buffer.data() + length), &offset) == 1))){
+					// Очищаем выходной буфер
+					buffer.clear();
+					// Освобождаем контекст шифрования
+					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Error cipher final", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Error cipher final", log_t::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
+				// Изменяем размер результата на фактический размер данных
+				buffer.resize(static_cast <size_t> (length + offset));
+			}
+			// Освобождаем контекст шифрования
+			::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+			// Зануляем контекст шифрования
+			this->_state.ctx = nullptr;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода финализации контекста шифрования
+ *
+ */
+template bool awh::Crypto::finalize(string &) noexcept;
+/**
+ * @brief Явный специализированный шаблон метода финализации контекста шифрования
+ *
+ */
+template bool awh::Crypto::finalize(vector <char> &) noexcept;
+/**
+ * @brief Явный специализированный шаблон метода финализации контекста шифрования
+ *
+ */
+template bool awh::Crypto::finalize(vector <uint8_t> &) noexcept;
+/**
+ * @brief Метод инициализации контекста шифрования
+ *
+ * @param event  событие шифрования (ENCODE, DECODE)
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат инициализации
+ */
+bool awh::Crypto::initialize(const event_t event, const hash_t hash, const cipher_t cipher) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если пароль установлен
+		if(!this->_password.empty()){
+			// Если контекст шифрования не создан
+			if(this->_state.ctx == nullptr){
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Если инициализация ключей не выполнена
+				if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <crypto_t *> (this)->_state, this->_log)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
+				// Если контекст шифрования уже создан
+				if(this->_state.ctx != nullptr)
+					// Освобождаем контекст шифрования
+					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+				// Создаем контекст шифрования
+				this->_state.ctx = reinterpret_cast <void *> (::EVP_CIPHER_CTX_new());
+				// Если контекст не создан
+				if(this->_state.ctx == nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Error during AES context creation", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Error during AES context creation", log_t::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
+				/**
+				 * Определяем событие кодирование или декодирование
+				 */
+				switch(static_cast <uint8_t> (event)){
+					// Если производится кодирование данных
+					case static_cast <uint8_t> (event_t::ENCODE):
+						// Выполняем инициализацию контекста шифрования
+						if(!(result = (::EVP_CipherInit_ex(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), reinterpret_cast <const EVP_CIPHER *> (this->_state.evp), nullptr, this->_state.key.data(), this->_state.ivec.data(), AES_ENCRYPT) == 1))){
+							// Освобождаем контекст шифрования
+							::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+							// Зануляем контекст шифрования
+							this->_state.ctx = nullptr;
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Error during AES context initialization", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return result;
+						}
+					break;
+					// Если производится декодирование данных
+					case static_cast <uint8_t> (event_t::DECODE):
+						// Выполняем инициализацию контекста шифрования
+						if(!(result = (::EVP_CipherInit_ex(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), reinterpret_cast <const EVP_CIPHER *> (this->_state.evp), nullptr, this->_state.key.data(), this->_state.ivec.data(), AES_DECRYPT) == 1))){
+							// Освобождаем контекст шифрования
+							::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)));
+							// Зануляем контекст шифрования
+							this->_state.ctx = nullptr;
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Error during AES context initialization", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return result;
+						}
+					break;
+				}
+				// Отключаем padding (обязательно для CFB)
+				::EVP_CIPHER_CTX_set_padding(const_cast <EVP_CIPHER_CTX *> (reinterpret_cast <const EVP_CIPHER_CTX *> (this->_state.ctx)), 0);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Шаблон метода кодирования
+ *
+ * @tparam A тип возвращаемого результата
+ * @tparam B тип буфера данных
+ */
+template <typename A, typename B>
+/**
+ * @brief Метод кодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Crypto::encode(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
+	// Выполняем кодирование
+	return this->encode <A> (buffer.data(), buffer.size(), hash, cipher);
+}
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из строки с выводом результата в строку
+ *
+ */
+template string awh::Crypto::encode(const string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из буфера с выводом результата в строку
+ *
+ */
+template string awh::Crypto::encode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из бинарного буфера с выводом результата в строку
+ *
+ */
+template string awh::Crypto::encode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из строки с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::encode(const string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из буфера с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::encode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из бинарного буфера с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::encode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из строки с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::encode(const string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из буфера с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::encode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования данных из бинарного буфера с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::encode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Шаблон метода кодирования
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод кодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Определяем тип шифрования
+		 */
+		switch(static_cast <uint8_t> (cipher)){
+			// Если производится работы с BASE64
+			case static_cast <uint8_t> (cipher_t::BASE64): {
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Выполняем кодирование строки BASE64
+				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+				// Если кодирование не вышло
+				if(result.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to encode \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to encode \"%s\" string data into BASE64 format", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+					#endif
+				}
+			} break;
+			// Если производится работы с AES128
+			case static_cast <uint8_t> (cipher_t::AES128):
+			// Если производится работы с AES192
+			case static_cast <uint8_t> (cipher_t::AES192):
+			// Если производится работы с AES256
+			case static_cast <uint8_t> (cipher_t::AES256): {
+				// Если пароль установлен
+				if(!this->_password.empty()){
+					// Если контекст шифрования не создан
+					if(this->_state.ctx == nullptr){
+						// Проверяем текущее состояние
+						if((this->_state.hash != hash) || (this->_state.cipher != cipher)){
+							// Выполняем блокировку потоков
+							const locker_t <> lock(this->_mtx);
+							// Если инициализация ключей не выполнена
+							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <crypto_t *> (this)->_state, this->_log)){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из метода
+								return result;
+							}
+						}
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Выполняем шифрование данных
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+					// Если контекст шифрования уже создан
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Выполняем шифрование данных
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, this->_state.cipher, event_t::ENCODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+					}
+				}
+				// Если кодирование не вышло
+				if(result.empty()){
+					// Выводим тот же самый буфер как он был передан
+					result.assign(reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to encode data into AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to encode data into AES", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в строку
+ *
+ */
+template string awh::Crypto::encode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::encode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::encode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Шаблон метода декодирования
+ *
+ * @tparam A тип возвращаемого результата
+ * @tparam B тип буфера данных
+ */
+template <typename A, typename B>
+/**
+ * @brief Метод декодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Crypto::decode(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
+	// Выполняем декодирование
+	return this->decode <A> (buffer.data(), buffer.size(), hash, cipher);
+}
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из строки с выводом результата в строку
+ *
+ */
+template string awh::Crypto::decode(const string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из буфера с выводом результата в строку
+ *
+ */
+template string awh::Crypto::decode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из бинарного буфера с выводом результата в строку
+ *
+ */
+template string awh::Crypto::decode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из строки с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::decode(const string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из буфера с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::decode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из бинарного буфера с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::decode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из строки с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::decode(const string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из буфера с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::decode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования данных из бинарного буфера с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::decode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Шаблон метода декодирования
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод декодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Определяем тип шифрования
+		 */
+		switch(static_cast <uint8_t> (cipher)){
+			// Если производится работы с BASE64
+			case static_cast <uint8_t> (cipher_t::BASE64): {
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Выполняем декодирование строки BASE64
+				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+				// Если декодирование не вышло
+				if(result.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to extract data from BASE64 encoded \"%s\" hash", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to extract data from BASE64 encoded \"%s\" hash", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+					#endif
+				}
+			} break;
+			// Если производится работы с AES128
+			case static_cast <uint8_t> (cipher_t::AES128):
+			// Если производится работы с AES192
+			case static_cast <uint8_t> (cipher_t::AES192):
+			// Если производится работы с AES256
+			case static_cast <uint8_t> (cipher_t::AES256): {
+				// Если пароль установлен
+				if(!this->_password.empty()){
+					// Если контекст шифрования не создан
+					if(this->_state.ctx == nullptr){
+						// Проверяем текущее состояние
+						if((this->_state.hash != hash) || (this->_state.cipher != cipher)){
+							// Выполняем блокировку потоков
+							const locker_t <> lock(this->_mtx);
+							// Если инициализация ключей не выполнена
+							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <crypto_t *> (this)->_state, this->_log)){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из метода
+								return result;
+							}
+						}
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Выполняем шифрование данных
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+					// Если контекст шифрования уже создан
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Выполняем шифрование данных
+						driver::hashing(reinterpret_cast <const char *> (buffer), size, this->_state.cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
+					}
+				}
+				// Если кодирование не вышло
+				if(result.empty()){
+					// Выводим тот же самый буфер как он был передан
+					result.assign(reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to decode data from AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to decode data from AES", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в строку
+ *
+ */
+template string awh::Crypto::decode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Crypto::decode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Crypto::decode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Метод генерации приватного ключа RSA
+ *
+ * @param size размер ключа в битах (2048, 3072, 4096)
+ * @return     результат генерации ключа
+ */
+bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем генерацию ключа RSA
+		EVP_PKEY * privKey = ::EVP_RSA_gen(size == 0 ? 2048 : size);
+		// Если ключ не получен
+		if(privKey == nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Private key generation failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Private key generation failed", log_t::flag_t::CRITICAL);
+			#endif
+			// Выводим результат
+			return result;
+		}
+		// Выполняем блокировку потоков
+		const locker_t <> lock(this->_mtx);
+		// Устанавливаем тип ключа
+		this->_key.type = key_type_t::PRIVATE;
+		// Запоминаем приватный ключ
+		this->_key.ctx = reinterpret_cast <void *> (privKey);
+		// Формируем итоговый результат
+		result = (this->_key.ctx != nullptr);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения публичного ключа RSA
+ *
+ * @return публичный ключ RSA
+ */
+string awh::Crypto::getPublicKeyRSA() const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(this->_key.ctx != nullptr){
+			// Выполняем блокировку потоков
+			const locker_t <> lock(this->_mtx);
+			// Создаём объект BIO для записи срока действия сертификата
+			BIO * bio = ::BIO_new(::BIO_s_mem());
+			// Если объект BIO создан успешно
+			if(bio != nullptr){
+				// Если файл не может быть записан
+				if(::PEM_write_bio_PUBKEY(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) != 1){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Public key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Public key export failed", log_t::flag_t::CRITICAL);
+					#endif
+				}
+				// Получаем указатель на данные из объекта BIO
+				char * buffer = nullptr;
+				// Получаем размер данных из объекта BIO
+				const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
+				// Если данные получены успешно
+				if((buffer != nullptr) && (size > 0))
+					// Записываем данные в результат
+					result.assign(buffer, size);
+				// Освобождаем объект BIO
+				::BIO_free_all(bio);
+			// Если объект BIO не создан
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Public key BIO creation failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Public key BIO creation failed", log_t::flag_t::CRITICAL);
+				#endif
+			}
+		// Если путь к файлу не передан или публичный ключ не загружен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Public key is not loaded", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Public key is not loaded", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения приватного ключа RSA
+ *
+ * @return приватный ключ RSA
+ */
+string awh::Crypto::getPrivateKeyRSA() const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(this->_key.ctx != nullptr){
+			// Если ключ является приватным
+			if(this->_key.type == key_type_t::PRIVATE){
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Создаём объект BIO для записи срока действия сертификата
+				BIO * bio = ::BIO_new(::BIO_s_mem());
+				// Если объект BIO создан успешно
+				if(bio != nullptr){
+					// Если файл не может быть записан
+					if(::PEM_write_bio_PrivateKey(bio, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) != 1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key export failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+					// Получаем указатель на данные из объекта BIO
+					char * buffer = nullptr;
+					// Получаем размер данных из объекта BIO
+					const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
+					// Если данные получены успешно
+					if((buffer != nullptr) && (size > 0))
+						// Записываем данные в результат
+						result.assign(buffer, size);
+					// Освобождаем объект BIO
+					::BIO_free_all(bio);
+				// Если объект BIO не создан
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Private key BIO creation failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Private key BIO creation failed", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			// Если путь к файлу не передан или публичный ключ не загружен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Private key is not loaded", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Private key is not loaded", log_t::flag_t::WARNING);
+				#endif
+			}
+		// Если ключ не является приватным
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Key cannot be export because it is not private", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Key cannot be export because it is not private", log_t::flag_t::CRITICAL);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод загрузки публичного ключа RSA из файла
+ *
+ * @param path путь к файлу с публичным ключом
+ * @return     результат загрузки ключа
+ */
+bool awh::Crypto::loadPublicKeyRSA(const string & path) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty()){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Открываем файл с публичным ключом
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем публичный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если публичный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если публичный ключ уже сгенерирован
+						if(this->_key.ctx != nullptr)
+							// Освобождаем публичный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+						// Устанавливаем тип ключа
+						this->_key.type = key_type_t::PUBLIC;
+						// Запоминаем публичный ключ
+						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_key.ctx != nullptr);
+					// Если публичный ключ не получен
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Public key reading failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				// Если файл не открыт
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+					#endif
+				}
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Открываем файл с публичным ключом
+				FILE * file = ::fopen(path.c_str(), "rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем публичный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если публичный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если публичный ключ уже сгенерирован
+						if(this->_key.ctx != nullptr)
+							// Освобождаем публичный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+						// Устанавливаем тип ключа
+						this->_key.type = key_type_t::PUBLIC;
+						// Запоминаем публичный ключ
+						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_key.ctx != nullptr);
+					// Если публичный ключ не получен
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Public key reading failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				// Если файл не открыт
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+					#endif
+				}
+			#endif
+		// Если путь к файлу не передан
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid path for public key", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid path for public key", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод загрузки приватного ключа RSA из файла
+ *
+ * @param path путь к файлу с приватным ключом
+ * @return     результат загрузки ключа
+ */
+bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty()){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Открываем файл с приватным ключом
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем приватный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если приватный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если приватный ключ уже сгенерирован
+						if(this->_key.ctx != nullptr)
+							// Освобождаем приватный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+						// Устанавливаем тип ключа
+						this->_key.type = key_type_t::PRIVATE;
+						// Запоминаем приватный ключ
+						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_key.ctx != nullptr);
+					// Если публичный ключ не получен
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key reading failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				// Если файл не открыт
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+					#endif
+				}
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Открываем файл с приватным ключом
+				FILE * file = ::fopen(path.c_str(), "rb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Читаем приватный ключ из файла
+					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+					// Закрываем файл
+					::fclose(file);
+					// Если приватный ключ получен
+					if(pkey != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если приватный ключ уже сгенерирован
+						if(this->_key.ctx != nullptr)
+							// Освобождаем приватный ключ
+							::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+						// Устанавливаем тип ключа
+						this->_key.type = key_type_t::PRIVATE;
+						// Запоминаем приватный ключ
+						this->_key.ctx = reinterpret_cast <void *> (pkey);
+						// Формируем итоговый результат
+						result = (this->_key.ctx != nullptr);
+					// Если публичный ключ не получен
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key reading failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				// Если файл не открыт
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+					#endif
+				}
+			#endif
+		// Если путь к файлу не передан
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid path for private key", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid path for private key", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод сохранения публичного ключа RSA в файл
+ *
+ * @param path путь к файлу для сохранения публичного ключа
+ * @return     результат сохранения ключа
+ */
+bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty() && (this->_key.ctx != nullptr)){
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Сохраняем публичный ключ
+				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"wb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Если файл не может быть записан
+					if(!(result = (::PEM_write_PUBKEY(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) == 1))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Public key saving failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+					// Закрываем файл
+					::fclose(file);
+				// Если файл не открыт
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+					#endif
+				}
+			/**
+			 * Для других операционных систем
+			 */
+			#else
+				// Сохраняем публичный ключ
+				FILE * file = ::fopen(path.c_str(), "wb");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Если файл не может быть записан
+					if(!(result = (::PEM_write_PUBKEY(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) == 1))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Public key saving failed", log_t::flag_t::CRITICAL);
+						#endif
+					}
+					// Закрываем файл
+					::fclose(file);
+				// Если файл не открыт
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+					#endif
+				}
+			#endif
+		// Если путь к файлу не передан или публичный ключ не загружен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid path or public key is not loaded", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid path or public key is not loaded", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод сохранения приватного ключа RSA в файл
+ *
+ * @param path путь к файлу для сохранения приватного ключа
+ * @return     результат сохранения ключа
+ */
+bool awh::Crypto::savePrivateKeyRSA(const string & path) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если путь к файлу передан правильно
+		if(!path.empty() && (this->_key.ctx != nullptr)){
+			// Если ключ является приватным
+			if(this->_key.type == key_type_t::PRIVATE){
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Сохраняем приватный ключ
+					FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"wb");
+					// Если файл открыт удачно
+					if(file != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если файл не может быть записан
+						if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+							#endif
+						}
+						// Закрываем файл
+						::fclose(file);
+					// Если файл не открыт
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+						#endif
+					}
+				/**
+				 * Для других операционных систем
+				 */
+				#else
+					// Сохраняем приватный ключ
+					FILE * file = ::fopen(path.c_str(), "wb");
+					// Если файл открыт удачно
+					if(file != nullptr){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Если файл не может быть записан
+						if(!(result = (::PEM_write_PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr, nullptr, 0, nullptr, nullptr) == 1))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+							#endif
+						}
+						// Закрываем файл
+						::fclose(file);
+					// Если файл не открыт
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+						#endif
+					}
+				#endif
+			// Если ключ не является приватным
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Key cannot be saved because it is not private", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Key cannot be saved because it is not private", log_t::flag_t::CRITICAL);
+				#endif
+			}
+		// Если путь к файлу не передан или приватный ключ не сгенерирован
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid path or private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid path or private key is not generated", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод шифрования данных публичным ключом RSA
+ *
+ * @param buffer буфер данных для шифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Crypto::encryptWithPublicKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
+	// Вызываем метод шифрования данных публичным ключом RSA
+	this->encryptWithPublicKey(buffer.data(), buffer.size(), result);
+}
+/**
+ * @brief Метод шифрования данных публичным ключом RSA
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0)){
+			// Если публичный ключ сгенерирован
+			if(this->_key.ctx != nullptr){
+				// Выполняем блокировку потоков
+				const locker_t <> lock(this->_mtx);
+				// Создаём контекст для шифрования
+				EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr);
+				// Если контекст для подписи не создан
+				if(ctx == nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+					#endif
+				// Если контекст для подписи создан
+				} else {
+					// Если контекст для шифрования не инициализирован
+					if((::EVP_PKEY_encrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Encrypt init failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Encrypt init failed", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода
+						return;
+					}
+					// Размер подписи в байтах
+					size_t length = 0;
+					// Получаем размер зашифрованных данных
+					if(::EVP_PKEY_encrypt(ctx, nullptr, &length, buffer, size) <= 0){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Get encrypted data size failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Get encrypted data size failed", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода
+						return;
+					}
+					// Очищаем объект результата
+					result.clear();
+					// Выделяем память под подпись
+					result.resize(length, 0);
+					// Получаем зашифрованные данные
+					if(::EVP_PKEY_encrypt(ctx, result.data(), &length, buffer, size) <= 0){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Encrypt data failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Encrypt data failed", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода
+						return;
+					}
+					// Изменяем размер буфера под фактический размер зашифрованных данных
+					result.resize(length);
+					// Освобождаем контекст для шифрования
+					::EVP_PKEY_CTX_free(ctx);
+				}
+			// Если публичный ключ не сгенерирован или не загружен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Public or private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Public or private key is not generated", log_t::flag_t::WARNING);
+				#endif
+			}
+		// Если буфер данных или размер данных переданы неправильно
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid buffer or size for encryption", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid buffer or size for encryption", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод дешифрования данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для дешифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Crypto::decryptWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
+	// Вызываем метод дешифрования данных приватным ключом RSA
+	this->decryptWithPrivateKey(buffer.data(), buffer.size(), result);
+}
+/**
+ * @brief Метод дешифрования данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для дешифрования
+ * @param size   размер данных для дешифрования
+ * @param result буфер куда следует положить результат
+ */
+void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0)){
+			// Если приватный ключ сгенерирован
+			if(this->_key.ctx != nullptr){
+				// Если ключ является приватным
+				if(this->_key.type == key_type_t::PRIVATE){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Создаём контекст для шифрования
+					EVP_PKEY_CTX * ctx = ::EVP_PKEY_CTX_new(reinterpret_cast <EVP_PKEY *> (this->_key.ctx), nullptr);
+					// Если контекст для подписи не создан
+					if(ctx == nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+						#endif
+					// Если контекст для подписи создан
+					} else {
+						// Если контекст для дешифрования не инициализирован
+						if((::EVP_PKEY_decrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)){
+							// Освобождаем контекст для дешифрования
+							::EVP_PKEY_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Decrypt init failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Decrypt init failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Размер подписи в байтах
+						size_t length = 0;
+						// Получаем размер дешифрованных данных
+						if(::EVP_PKEY_decrypt(ctx, nullptr, &length, buffer, size) <= 0){
+							// Освобождаем контекст для дешифрования
+							::EVP_PKEY_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Get decrypted data size failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Get decrypted data size failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Очищаем объект результата
+						result.clear();
+						// Выделяем память под подпись
+						result.resize(length, 0);
+						// Получаем дешифрованные данные
+						if(::EVP_PKEY_decrypt(ctx, result.data(), &length, buffer, size) <= 0){
+							// Освобождаем контекст для дешифрования
+							::EVP_PKEY_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Decrypt data failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Decrypt data failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Изменяем размер буфера под фактический размер дешифрованных данных
+						result.resize(length);
+						// Освобождаем контекст для дешифрования
+						::EVP_PKEY_CTX_free(ctx);
+					}
+				// Если ключ не является приватным
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to decrypt because the key is not private", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to decrypt because the key is not private", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			// Если приватный ключ не сгенерирован или не загружен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Private key is not generated", log_t::flag_t::WARNING);
+				#endif
+			}
+		// Если буфер данных или размер данных переданы неправильно
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid buffer or size for decryption", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid buffer or size for decryption", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод подписания данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для подписи
+ * @param hash   тип хэш-суммы
+ * @param result буфер куда следует положить результат
+ */
+void awh::Crypto::signWithPrivateKey(const vector <uint8_t> & buffer, const hash_t hash, vector <uint8_t> & result) const noexcept {
+	// Вызываем метод подписания данных приватным ключом RSA
+	this->signWithPrivateKey(buffer.data(), buffer.size(), hash, result);
+}
+/**
+ * @brief Метод подписания данных приватным ключом RSA
+ *
+ * @param buffer буфер данных для подписи
+ * @param size   размер данных для подписи
+ * @param hash   тип хэш-суммы
+ * @param result буфер куда следует положить результат
+ */
+void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0)){
+			// Если приватный ключ сгенерирован
+			if(this->_key.ctx != nullptr){
+				// Если ключ является приватным
+				if(this->_key.type == key_type_t::PRIVATE){
+					// Создаём контекст для подписи
+					EVP_MD_CTX * ctx = ::EVP_MD_CTX_new();
+					// Если контекст для подписи не создан
+					if(ctx == nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+						#endif
+					// Если контекст для подписи создан
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t <> lock(this->_mtx);
+						// Выбираем хэш-функцию
+						const EVP_MD * md = nullptr;
+						/**
+						 * Определяем тип хэш-суммы
+						 */
+						switch(static_cast <uint8_t> (hash)){
+							// Если тип хэш-суммы указан как MD5
+							case static_cast <uint8_t> (hash_t::MD5):
+								// Устанавливаем функцию хэширования
+								md = ::EVP_md5();
+							break;
+							// Если тип хэш-суммы указан как SHA1
+							case static_cast <uint8_t> (hash_t::SHA1):
+								// Устанавливаем функцию хэширования
+								md = ::EVP_sha1();
+							break;
+							// Если тип хэш-суммы указан как SHA224
+							case static_cast <uint8_t> (hash_t::SHA224):
+								// Устанавливаем функцию хэширования
+								md = ::EVP_sha224();
+							break;
+							// Если тип хэш-суммы указан как SHA256
+							case static_cast <uint8_t> (hash_t::SHA256):
+								// Устанавливаем функцию хэширования
+								md = ::EVP_sha256();
+							break;
+							// Если тип хэш-суммы указан как SHA384
+							case static_cast <uint8_t> (hash_t::SHA384):
+								// Устанавливаем функцию хэширования
+								md = ::EVP_sha384();
+							break;
+							// Если тип хэш-суммы указан как SHA512
+							case static_cast <uint8_t> (hash_t::SHA512):
+								// Устанавливаем функцию хэширования
+								md = ::EVP_sha512();
+							break;
+							// Если ничего не выбрано
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из метода
+								return;
+							}
+						}
+						// Инициализируем подпись данных
+						if(::EVP_DigestSignInit(ctx, nullptr, md, nullptr, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) != 1){
+							// Освобождаем контекст для подписи
+							::EVP_MD_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Digest signature init failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Digest signature init failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Обновляем подпись данными из буфера
+						if(::EVP_DigestSignUpdate(ctx, buffer, size) != 1){
+							// Освобождаем контекст для подписи
+							::EVP_MD_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Digest signature update failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Digest signature update failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Размер подписи в байтах
+						size_t length = 0;
+						// Получаем размер подписи
+						if(::EVP_DigestSignFinal(ctx, nullptr, &length) != 1){
+							// Освобождаем контекст для подписи
+							::EVP_MD_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Digest signature final (get length) failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Digest signature final (get length) failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Очищаем объект результата
+						result.clear();
+						// Выделяем память под подпись
+						result.resize(length, 0);
+						// Получаем подпись данных
+						if(::EVP_DigestSignFinal(ctx, result.data(), &length) != 1){
+							// Освобождаем контекст для подписи
+							::EVP_MD_CTX_free(ctx);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Digest signature final (get signature) failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return;
+						}
+						// Изменяем размер буфера под фактический размер подписи
+						result.resize(length);
+						// Освобождаем контекст для подписи
+						::EVP_MD_CTX_free(ctx);
+					}
+				// Если ключ не является приватным
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to sign because the key is not private", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to sign because the key is not private", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			// Если приватный ключ не сгенерирован или не загружен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Private key is not generated", log_t::flag_t::WARNING);
+				#endif
+			}
+		// Если буфер данных или размер данных переданы неправильно
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid buffer or size for signing", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid buffer or size for signing", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод верификации данных публичным ключом RSA
+ *
+ * @param buffer    буфер данных для верификации
+ * @param signature буфер с подписью данных
+ * @param hash      тип хэш-суммы
+ * @return          результат верификации
+ */
+bool awh::Crypto::verifyWithPublicKey(const vector <uint8_t> & buffer, const vector <uint8_t> & signature, const hash_t hash) const noexcept {
+	// Вызываем метод верификации данных публичным ключом RSA
+	return this->verifyWithPublicKey(buffer.data(), buffer.size(), signature, hash);
+}
+/**
+ * @brief Метод верификации данных публичным ключом RSA
+ *
+ * @param buffer    буфер данных для верификации
+ * @param size      размер данных для верификации
+ * @param signature буфер с подписью данных
+ * @param hash      тип хэш-суммы
+ * @return          результат верификации
+ */
+bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если буфер данных и размер данных переданы правильно
+		if((buffer != nullptr) && (size != 0) && !signature.empty()){
+			// Если публичный ключ сгенерирован
+			if(this->_key.ctx != nullptr){
+				// Создаём контекст для верификации
+				EVP_MD_CTX * ctx = ::EVP_MD_CTX_new();
+				// Если контекст для подписи не создан
+				if(ctx == nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+					#endif
+				// Если контекст для подписи создан
+				} else {
+					// Выполняем блокировку потоков
+					const locker_t <> lock(this->_mtx);
+					// Выбираем хэш-функцию
+					const EVP_MD * md = nullptr;
+					/**
+					 * Определяем тип хэш-суммы
+					 */
+					switch(static_cast <uint8_t> (hash)){
+						// Если тип хэш-суммы указан как MD5
+						case static_cast <uint8_t> (hash_t::MD5):
+							// Устанавливаем функцию хэширования
+							md = ::EVP_md5();
+						break;
+						// Если тип хэш-суммы указан как SHA1
+						case static_cast <uint8_t> (hash_t::SHA1):
+							// Устанавливаем функцию хэширования
+							md = ::EVP_sha1();
+						break;
+						// Если тип хэш-суммы указан как SHA224
+						case static_cast <uint8_t> (hash_t::SHA224):
+							// Устанавливаем функцию хэширования
+							md = ::EVP_sha224();
+						break;
+						// Если тип хэш-суммы указан как SHA256
+						case static_cast <uint8_t> (hash_t::SHA256):
+							// Устанавливаем функцию хэширования
+							md = ::EVP_sha256();
+						break;
+						// Если тип хэш-суммы указан как SHA384
+						case static_cast <uint8_t> (hash_t::SHA384):
+							// Устанавливаем функцию хэширования
+							md = ::EVP_sha384();
+						break;
+						// Если тип хэш-суммы указан как SHA512
+						case static_cast <uint8_t> (hash_t::SHA512):
+							// Устанавливаем функцию хэширования
+							md = ::EVP_sha512();
+						break;
+						// Если ничего не выбрано
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+							#endif
+							// Выходим из метода
+							return result;
+						}
+					}
+					// Инициализируем верификацию данных
+					if((::EVP_DigestVerifyInit(ctx, nullptr, md, nullptr, reinterpret_cast <EVP_PKEY *> (this->_key.ctx)) == 1) &&
+					   (::EVP_DigestVerifyUpdate(ctx, buffer, size) == 1))
+						// Выполняем верификацию данных
+						result = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
+					// Освобождаем контекст для верификации
+					::EVP_MD_CTX_free(ctx);
+				}
+			// Если публичный ключ не сгенерирован или не загружен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Public key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Public key is not generated", log_t::flag_t::WARNING);
+				#endif
+			}
+		// Если буфер данных или размер данных переданы неправильно
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Invalid buffer or size for verification signature", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Invalid buffer or size for verification signature", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept :
+ _rounds(5), _salt{""}, _password{""}, _fmk(fmk), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Crypto::~Crypto() noexcept {
+	// Если ключ уже установлен
+	if(this->_key.ctx != nullptr)
+		// Освобождаем память выделенную под ключ
+		::EVP_PKEY_free(reinterpret_cast <EVP_PKEY *> (this->_key.ctx));
+}

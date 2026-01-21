@@ -414,6 +414,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/transform.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/tls.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
@@ -470,6 +471,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
     option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
+
+    # Устанавливаем имя приложения работы с шифрованием и хэшированием
+    SET(CRYPTO_APP_SYS_NAME sys-crypto)
+    # Указываем что нужно собрать приложение работы с шифрованием и хэшированием
+    option(CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE "Build Crypto app sample" ON)
 
     # Устанавливаем имя приложения работы с трансформацией данных
     SET(TRANSFORM_APP_SYS_NAME sys-transform)
@@ -679,6 +685,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample DATE: No\n")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с шифрованием и хэшированием
+    if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CRYPTO: Yes\n")
+        # Выполняем создание приложения работы с шифрованием и хэшированием
+        add_sample(${CRYPTO_APP_SYS_NAME} sample/sys/crypto.cpp sys)
+    # Если не нужно собирать семплы для работы с шифрованием и хэшированием
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CRYPTO: No\n")
+    endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с трансформацией данных
     if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
@@ -982,6 +1000,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${WINFLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с шифрованием и хэшированием
+        if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения шифрования и хэширования
+            target_link_libraries(
+                ${CRYPTO_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с трансформацией данных
         if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
@@ -1395,6 +1424,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${WINFLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с шифрованием и хэшированием
+        if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения шифрования и хэширования
+            target_link_libraries(
+                ${CRYPTO_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${WINFLAGS}
+            )
+        endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с трансформацией данных
         if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
@@ -1852,6 +1893,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с шифрованием и хэшированием
+            if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения шифрования и хэширования
+                add_custom_command(TARGET "${CRYPTO_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CRYPTO_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CRYPTO_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с трансформацией данных
             if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения трансформации данных
@@ -2136,6 +2187,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${DATE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с шифрованием и хэшированием
+            if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения даты и времени
+                pvs_studio_add_target(TARGET ${CRYPTO_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CRYPTO_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с трансформацией данных
             if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения трансформации данных
@@ -2380,6 +2437,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с датой и временем
         install(TARGETS ${DATE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с шифрованием и хэшированием
+    if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с шифрованием и хэшированием
+        install(TARGETS ${CRYPTO_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с трансформацией данных
     if (${CMAKE_BUILD_TRANSFORM_SYS_APP_SAMPLE})
