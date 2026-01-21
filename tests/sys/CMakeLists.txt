@@ -78,6 +78,8 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST "Build unit BUFFER test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с датой и временем
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST "Build unit CHRONO test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с криптографией
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST "Build unit CRYPTO test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с пуллам потоков
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST "Build unit THREADPOOL test for ${UNIT_TEST_NAME}" ON)
 
@@ -190,6 +192,21 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с датой и временем
             message(STATUS "Build tests CHRONO module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
+
+        # Если нужно собрать тесты для работы с криптографией
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с криптографией
+            message(STATUS "Build tests CRYPTO module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с криптографией
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                crypto/crypto.cpp
+                crypto/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с криптографией
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с криптографией
+            message(STATUS "Build tests CRYPTO module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})
 
         # Если нужно собрать тесты для работы с пуллам потоков
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})

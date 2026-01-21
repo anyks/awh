@@ -1041,7 +1041,7 @@ template uint64_t awh::Crypto::hash <uint64_t, string> (const string &) const no
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hash <uint128, string> (const string &) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t, string> (const string &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
  *
@@ -1056,7 +1056,7 @@ template uint64_t awh::Crypto::hash <uint64_t, vector <char>> (const vector <cha
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hash <uint128, vector <char>> (const vector <char> &) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t, vector <char>> (const vector <char> &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
  *
@@ -1071,7 +1071,7 @@ template uint64_t awh::Crypto::hash <uint64_t, vector <uint8_t>> (const vector <
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hash <uint128, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста
  *
@@ -1155,7 +1155,7 @@ template uint64_t awh::Crypto::hash <uint64_t> (const void *, const size_t) cons
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hash <uint128> (const void *, const size_t) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t> (const void *, const size_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c ключом
  *
@@ -1188,7 +1188,7 @@ template uint64_t awh::Crypto::hashWithSeed <uint64_t, string> (const string &, 
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeed <uint128, string> (const string &, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_t, string> (const string &, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
  *
@@ -1203,7 +1203,7 @@ template uint64_t awh::Crypto::hashWithSeed <uint64_t, vector <char>> (const vec
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeed <uint128, vector <char>> (const vector <char> &, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_t, vector <char>> (const vector <char> &, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
  *
@@ -1218,7 +1218,7 @@ template uint64_t awh::Crypto::hashWithSeed <uint64_t, vector <uint8_t>> (const 
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeed <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_t, vector <uint8_t>> (const vector <uint8_t> &, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c ключом
  *
@@ -1313,7 +1313,7 @@ template uint64_t awh::Crypto::hashWithSeed <uint64_t> (const void *, const size
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeed <uint128> (const void *, const size_t, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_t> (const void *, const size_t, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c несколькими ключами
  *
@@ -1347,7 +1347,7 @@ template uint64_t awh::Crypto::hashWithSeeds <uint64_t, string> (const string &,
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeeds <uint128, string> (const string &, const uint128, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128_t, string> (const string &, const awh::Crypto::uint128_t, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
  *
@@ -1362,7 +1362,7 @@ template uint64_t awh::Crypto::hashWithSeeds <uint64_t, vector <char>> (const ve
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeeds <uint128, vector <char>> (const vector <char> &, const uint128, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128_t, vector <char>> (const vector <char> &, const awh::Crypto::uint128_t, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
  *
@@ -1377,7 +1377,7 @@ template uint64_t awh::Crypto::hashWithSeeds <uint64_t, vector <uint8_t>> (const
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeeds <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128_t, vector <uint8_t>> (const vector <uint8_t> &, const awh::Crypto::uint128_t, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c несколькими ключами
  *
@@ -1475,7 +1475,7 @@ template uint64_t awh::Crypto::hashWithSeeds <uint64_t> (const void *, const siz
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashWithSeeds <uint128> (const void *, const size_t, const uint128, const uint128) const noexcept;
+template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128_t> (const void *, const size_t, const awh::Crypto::uint128_t, const awh::Crypto::uint128_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста
  *
@@ -1931,55 +1931,55 @@ template <typename A, typename B>
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
  */
-auto awh::Crypto::encode(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
+auto awh::Crypto::encrypt(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
 	// Выполняем кодирование
-	return this->encode <A> (buffer.data(), buffer.size(), hash, cipher);
+	return this->encrypt <A> (buffer.data(), buffer.size(), hash, cipher);
 }
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из строки с выводом результата в строку
  *
  */
-template string awh::Crypto::encode(const string &, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::encrypt(const string &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из буфера с выводом результата в строку
  *
  */
-template string awh::Crypto::encode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::encrypt(const vector <char> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из бинарного буфера с выводом результата в строку
  *
  */
-template string awh::Crypto::encode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::encrypt(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из строки с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::encode(const string &, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::encrypt(const string &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из буфера с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::encode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::encrypt(const vector <char> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из бинарного буфера с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::encode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::encrypt(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из строки с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::encode(const string &, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::encrypt(const string &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из буфера с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::encode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::encrypt(const vector <char> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования данных из бинарного буфера с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::encode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::encrypt(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Шаблон метода кодирования
  *
@@ -1995,7 +1995,7 @@ template <typename T>
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
  */
-auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
+auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	// Если буфер данных передан
@@ -2019,13 +2019,13 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to encode \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to encrypt \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Unable to encode \"%s\" string data into BASE64 format", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->print("Unable to encrypt \"%s\" string data into BASE64 format", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					#endif
 				}
 			} break;
@@ -2085,13 +2085,13 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to encode data into AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Unable to encode data into AES", log_t::flag_t::WARNING);
+						this->_log->print("Unable to encrypt data into AES", log_t::flag_t::WARNING);
 					#endif
 				}
 			} break;
@@ -2104,17 +2104,17 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
  * @brief Явный специализированный шаблон метода кодирования с выводом результата в строку
  *
  */
-template string awh::Crypto::encode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::encrypt(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::encode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::encrypt(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода кодирования с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::encode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::encrypt(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Шаблон метода декодирования
  *
@@ -2130,55 +2130,55 @@ template <typename A, typename B>
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
  */
-auto awh::Crypto::decode(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
+auto awh::Crypto::decrypt(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
 	// Выполняем декодирование
-	return this->decode <A> (buffer.data(), buffer.size(), hash, cipher);
+	return this->decrypt <A> (buffer.data(), buffer.size(), hash, cipher);
 }
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из строки с выводом результата в строку
  *
  */
-template string awh::Crypto::decode(const string &, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::decrypt(const string &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из буфера с выводом результата в строку
  *
  */
-template string awh::Crypto::decode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::decrypt(const vector <char> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из бинарного буфера с выводом результата в строку
  *
  */
-template string awh::Crypto::decode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::decrypt(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из строки с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::decode(const string &, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::decrypt(const string &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из буфера с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::decode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::decrypt(const vector <char> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из бинарного буфера с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::decode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::decrypt(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из строки с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::decode(const string &, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::decrypt(const string &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из буфера с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::decode(const vector <char> &, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::decrypt(const vector <char> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования данных из бинарного буфера с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::decode(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::decrypt(const vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Шаблон метода декодирования
  *
@@ -2194,7 +2194,7 @@ template <typename T>
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
  */
-auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
+auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	// Если буфер данных передан
@@ -2284,13 +2284,13 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to decode data from AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Unable to decode data from AES", log_t::flag_t::WARNING);
+						this->_log->print("Unable to decrypt data from AES", log_t::flag_t::WARNING);
 					#endif
 				}
 			} break;
@@ -2303,17 +2303,17 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
  * @brief Явный специализированный шаблон метода декодирования с выводом результата в строку
  *
  */
-template string awh::Crypto::decode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+template string awh::Crypto::decrypt(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::decode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+template vector <char> awh::Crypto::decrypt(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декодирования с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::decode(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
+template vector <uint8_t> awh::Crypto::decrypt(const void *, const size_t, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Метод генерации приватного ключа RSA
  *

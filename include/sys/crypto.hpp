@@ -322,7 +322,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto encode(const B & buffer, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> A;
+			auto encrypt(const B & buffer, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода кодирования
 			 *
@@ -338,7 +338,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto encode(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
+			auto encrypt(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
 		public:
 			/**
 			 * @brief Шаблон метода декодирования
@@ -355,7 +355,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto decode(const B & buffer, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> A;
+			auto decrypt(const B & buffer, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода декодирования
 			 *
@@ -371,7 +371,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto decode(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
+			auto decrypt(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
 		public:
 			/**
 			 * @brief Метод генерации приватного ключа RSA

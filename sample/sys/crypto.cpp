@@ -53,19 +53,19 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем пароль шифрования
 	crypto.password("anyks_password");
 	// Выполняем кодирование текста
-	string encoded = crypto.encode <string> (data, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
+	string encoded = crypto.encrypt <string> (data, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
 	// Выводим результат хэширования
 	cout << "Encoded1 data AES256: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	string decoded = crypto.decode <string> (encoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
+	string decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
 	// Выводим результат хэширования
 	cout << "Decoded1 data AES256: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
 	// Инициализируем объект криптографии для другого типа хэша
 	crypto.initialize(crypto_t::event_t::ENCODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
 	// Выполняем кодирование текста
-	encoded = crypto.encode <string> (data);
+	encoded = crypto.encrypt <string> (data);
 	// Добавляем ещё один слой шифрования
-	encoded.append(crypto.encode <string> (data));
+	encoded.append(crypto.encrypt <string> (data));
 	// Завершаем процесс шифрования
 	crypto.finalize(encoded);
 	// Выводим результат хэширования
@@ -73,7 +73,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем объект криптографии для другого типа хэша
 	crypto.initialize(crypto_t::event_t::DECODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
 	// Выполняем декомпрессию данных
-	decoded = crypto.decode <string> (encoded);
+	decoded = crypto.decrypt <string> (encoded);
 	// Завершаем процесс дешифрования
 	crypto.finalize(decoded);
 	// Выводим результат хэширования
@@ -83,11 +83,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии BASE64
 	cout << " ======== BASE64 ======== " << endl;
 	// Выполняем кодирование текста
-	encoded = crypto.encode <string> (data, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
+	encoded = crypto.encrypt <string> (data, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
 	// Выводим результат хэширования
 	cout << "Encoded data BASE64: " << encoded << ", SIZE=" << encoded.size() << endl;
 	// Выполняем декомпрессию данных
-	decoded = crypto.decode <string> (encoded, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
+	decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
 	// Выводим результат хэширования
 	cout << "Decoded data BASE64: " << decoded << ", SIZE=" << decoded.size() << endl;
 	// Выводим пустую строку
