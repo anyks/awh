@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <any>
 #include <array>
 #include <string>
 #include <vector>
