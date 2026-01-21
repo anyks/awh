@@ -811,7 +811,7 @@ namespace driver {
 						}
 						// Выделяем буфер памяти нужного нам размера
 						result.resize(static_cast <size_t> (actual), 0);
-						// Выполняем компрессию буфера данных
+						// Выполняем декомпрессию буфера данных
 						const auto & status = ::density_decompress(reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), actual);
 						// Если мы получили ошибку
 						if(status.bytesWritten == 0){
@@ -950,11 +950,11 @@ namespace driver {
 							int32_t actual = static_cast <int32_t> (result.size());
 							// Выполняем декомпрессию буфера бинарных данных
 							actual = ::Lizard_decompress_safe(buffer, reinterpret_cast <char *> (result.data()), size, actual);
-							// Если компрессия не выполнена из-за отсутствия памяти
+							// Если декомпрессия не выполнена из-за отсутствия памяти
 							if(actual < 0)
 								// Выполняем увеличение множителя
 								factor++;
-							// Если компрессия не выполнена
+							// Если декомпрессия не выполнена
 							else if(actual == 0) {
 								// Выполняем очистку блока с результатом
 								result.clear();
@@ -1099,11 +1099,11 @@ namespace driver {
 							int32_t actual = result.size();
 							// Выполняем декомпрессию буфера бинарных данных
 							actual = ::LZ4_decompress_safe(buffer, reinterpret_cast <char *> (result.data()), size, actual);
-							// Если компрессия не выполнена из-за отсутствия памяти
+							// Если декомпрессия не выполнена из-за отсутствия памяти
 							if(actual < 0)
 								// Выполняем увеличение множителя
 								factor++;
-							// Если компрессия не выполнена
+							// Если декомпрессия не выполнена
 							else if(actual == 0){
 								// Выполняем очистку результата
 								result.clear();
@@ -1874,7 +1874,7 @@ namespace driver {
 					case static_cast <uint8_t> (awh::compressor_t::event_t::DECODE): {
 						// Если не используется streaming
 						if(!streaming){
-							// Инициализируем локальный поток для компрессии
+							// Инициализируем локальный поток для декомпрессии
 							local.zalloc = Z_NULL;
 							local.zfree  = Z_NULL;
 							local.opaque = Z_NULL;
@@ -2049,8 +2049,11 @@ void awh::Compressor::threadSafety(const mode_t mode) noexcept {
  * @brief Метод установки размера скользящего окна
  *
  * @param wbits размер скользящего окна
+ * @return      результат установки размера
  */
-void awh::Compressor::wbitsGZip(const int16_t wbits) noexcept {
+bool awh::Compressor::wbitsGZip(const int16_t wbits) noexcept {
+	// Результат работы функции
+	bool result = false;
 	{
 		// Выполняем блокировку потоков
 		const locker_t <> lock(this->_mtx);
@@ -2058,17 +2061,26 @@ void awh::Compressor::wbitsGZip(const int16_t wbits) noexcept {
 		this->_gzip.wbits = wbits;
 	}
 	// Выполняем пересборку контекстов LZ77 для компрессии
-	this->takeoverGZip(event_t::ENCODE, this->_gzip.takeover.compress.load(std::memory_order_acquire));
+	result = this->takeoverGZip(event_t::ENCODE, this->_gzip.takeover.compress.load(std::memory_order_acquire));
+	// Если всё прошло успешно
+	if(result)
+		// Выполняем пересборку контекстов LZ77 для декомпрессии
+		result = this->takeoverGZip(event_t::DECODE, this->_gzip.takeover.decompress.load(std::memory_order_acquire));
 	// Выполняем пересборку контекстов LZ77 для декомпрессии
-	this->takeoverGZip(event_t::DECODE, this->_gzip.takeover.decompress.load(std::memory_order_acquire));
+	else this->takeoverGZip(event_t::DECODE, this->_gzip.takeover.decompress.load(std::memory_order_acquire));
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод включения/отключения флага переиспользования контекста компрессии/декомпрессии
  *
  * @param event событие выполнения операции
  * @param flag  флаг переиспользования контекста компрессии/декомпрессии
+ * @return      результат установки флага
  */
-void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcept {
+bool awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcept {
+	// Результат работы функции
+	bool result = false;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2088,7 +2100,7 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 					// Очищаем выделенную память для компрессора
 					::deflateEnd(&buffer);
 				// Если флаг установлен
-				if(flag){
+				if(!(result = !flag)){
 					// Заполняем его нулями потока для компрессора
 					::memset(&buffer, 0, sizeof(buffer));
 					// Обнуляем структуру потока для компрессора
@@ -2096,7 +2108,7 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 					buffer.zfree  = Z_NULL;
 					buffer.opaque = Z_NULL;
 					// Если поток инициализировать не удалось, выходим
-					if(::deflateInit2(&buffer, this->_level[1], Z_DEFLATED, static_cast <int32_t> (-1 * this->_gzip.wbits), MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK){
+					if(!(result = (::deflateInit2(&buffer, this->_level[1], Z_DEFLATED, static_cast <int32_t> (-1 * this->_gzip.wbits), MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) == Z_OK))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -2110,21 +2122,8 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 							// Выводим сообщение об ошибке
 							this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 						#endif
-						/**
-						 * Для операционной системы не являющейся MS Windows
-						 */
-						#if !_WIN32 && !_WIN64
-							// Выходим из приложения
-							::raise(SIGINT);
-							// Выходим из функции
-							return;
-						/**
-						 * Для операционной системы MS Windows
-						 */
-						#else
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						#endif
+						// Выходим из функции
+						return result;
 					}
 				}
 				// Устанавливаем переданный флаг
@@ -2141,7 +2140,7 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 					// Очищаем выделенную память для декомпрессора
 					::inflateEnd(&buffer);
 				// Если флаг установлен
-				if(flag){
+				if(!(result = !flag)){
 					// Заполняем его нулями потока для декомпрессора
 					::memset(&buffer, 0, sizeof(buffer));
 					// Обнуляем структуру потока для декомпрессора
@@ -2152,7 +2151,7 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 					buffer.opaque  = Z_NULL;
 					buffer.next_in = Z_NULL;
 					// Если поток инициализировать не удалось, выходим
-					if(::inflateInit2(&buffer, static_cast <int32_t> (-1 * this->_gzip.wbits)) != Z_OK){
+					if(!(result = (::inflateInit2(&buffer, static_cast <int32_t> (-1 * this->_gzip.wbits)) == Z_OK))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -2166,21 +2165,8 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 							// Выводим сообщение об ошибке
 							this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 						#endif
-						/**
-						 * Для операционной системы не являющейся MS Windows
-						 */
-						#if !_WIN32 && !_WIN64
-							// Выходим из приложения
-							::raise(SIGINT);
-							// Выходим из функции
-							return;
-						/**
-						 * Для операционной системы MS Windows
-						 */
-						#else
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						#endif
+						// Выходим из функции
+						return result;
 					}
 				}
 				// Устанавливаем переданный флаг
@@ -2205,6 +2191,8 @@ void awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Шаблон метода компрессии данных

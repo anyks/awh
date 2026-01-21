@@ -163,15 +163,17 @@ namespace awh {
 			 * @brief Метод установки размера скользящего окна
 			 *
 			 * @param wbits размер скользящего окна
+			 * @return      результат установки размера
 			 */
-			void wbitsGZip(const int16_t wbits) noexcept;
+			bool wbitsGZip(const int16_t wbits) noexcept;
 			/**
 			 * @brief Метод включения/отключения флага переиспользования контекста компрессии/декомпрессии
 			 *
 			 * @param event событие выполнения операции
 			 * @param flag  флаг переиспользования контекста компрессии/декомпрессии
+			 * @return      результат установки флага
 			 */
-			void takeoverGZip(const event_t event, const bool flag) noexcept;
+			bool takeoverGZip(const event_t event, const bool flag) noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода компрессии данных
