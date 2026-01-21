@@ -46,121 +46,121 @@ int32_t main(int32_t argc, char * argv[]){
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
 	// Выводим заголовок компрессии LZ4
 	cout << " ======== LZ4 ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	string compressed = compressor.compress <string> (data, compressor_t::method_t::LZ4);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data LZ4: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	string decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::LZ4);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data LZ4: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии LZMA
 	cout << " ======== LZMA ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::LZMA);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data LZMA: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::LZMA);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data LZMA: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии ZSTD
 	cout << " ======== ZSTD ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::ZSTD);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data ZSTD: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::ZSTD);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data ZSTD: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии GZIP
 	cout << " ======== GZIP ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::GZIP);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data GZIP: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::GZIP);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data GZIP: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии BZIP2
 	cout << " ======== BZIP2 ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::BZIP2);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data BZIP2: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::BZIP2);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data BZIP2: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии BROTLI
 	cout << " ======== BROTLI ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::BROTLI);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data BROTLI: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::BROTLI);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data BROTLI: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии LIZARD
 	cout << " ======== LIZARD ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::LIZARD);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data LIZARD: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::LIZARD);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data LIZARD: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии SNAPPY
 	cout << " ======== SNAPPY ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::SNAPPY);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data SNAPPY: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::SNAPPY);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data SNAPPY: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии DEFLATE
 	cout << " ======== DEFLATE ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::DEFLATE);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data DEFLATE: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::DEFLATE);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data DEFLATE: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;
 	// Выводим заголовок компрессии DENSITY
 	cout << " ======== DENSITY ======== " << endl << flush;
-	// Выполняем хэширование текста
+	// Выполняем компрессию данных
 	compressed = compressor.compress <string> (data, compressor_t::method_t::DENSITY);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Compressed data DENSITY: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	decompressed = compressor.decompress <string> (compressed, compressor_t::method_t::DENSITY);
-	// Выводим результат хэширования
+	// Выводим результат работы компрессора
 	cout << "Decompressed data DENSITY: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Выводим пустую строку
 	cout << endl << flush;

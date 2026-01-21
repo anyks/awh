@@ -1,0 +1,37 @@
+/**
+ * @file: compressor.cpp
+ * @date: 2026-01-21
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Подключаем заголовочный файлы проекта
+ */
+#include "compressor.hpp"
+
+/**
+ * @brief Метод инициализации тестовой среды
+ *
+ */
+void CompressorFixture::SetUp(){
+	// Создаём объект фреймворка
+	this->_fmk = std::make_unique <awh::fmk_t> ();
+	// Создаём объект логгера
+	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
+	// Создаём объект компрессии
+	this->_compressor = std::make_unique <awh::compressor_t> (this->_log.get());
+}
+
+/**
+ * @brief Метод очистки тестовой среды
+ *
+ */
+void CompressorFixture::TearDown() {}
