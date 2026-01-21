@@ -95,7 +95,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии HASH SHA256
 	cout << " ======== HASH SHA256 ======== " << endl;
 	// Выполняем кодирование текста
-	encoded = crypto.hashing <string> (data, crypto_t::hash_t::SHA256);
+	encoded = crypto.hash <string> (data, crypto_t::hash_t::SHA256);
 	// Выводим результат хэширования
 	cout << "Encoded data SHA256: " << encoded << ", SIZE=" << encoded.size() << endl;
 	// Выводим пустую строку
@@ -103,7 +103,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии HASH MD5
 	cout << " ======== HASH MD5 ======== " << endl;
 	// Выполняем кодирование текста
-	encoded = crypto.hashing <string> (data, crypto_t::hash_t::MD5);
+	encoded = crypto.hash <string> (data, crypto_t::hash_t::MD5);
 	// Выводим результат хэширования
 	cout << "Encoded data MD5: " << encoded << ", SIZE=" << encoded.size() << endl;
 	// Выводим пустую строку
@@ -127,7 +127,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии HASH 32-BIT
 	cout << " ======== HASH 32-BIT ======== " << endl;
 	// Выполняем кодирование текста
-	uint32_t value1 = crypto.hashing <uint32_t> (data);
+	uint32_t value1 = crypto.hash <uint32_t> (data);
 	// Выводим результат хэширования
 	cout << "Encoded data 32-BIT: " << value1 << ", SIZE=" << sizeof(value1) << endl;
 	// Выводим пустую строку
@@ -135,7 +135,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии HASH 64-BIT
 	cout << " ======== HASH 64-BIT ======== " << endl;
 	// Выполняем кодирование текста
-	uint64_t value2 = crypto.hashing <uint64_t> (data);
+	uint64_t value2 = crypto.hash <uint64_t> (data);
 	// Выводим результат хэширования
 	cout << "Encoded data 64-BIT: " << value2 << ", SIZE=" << sizeof(value2) << endl;
 	// Выводим пустую строку

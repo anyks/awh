@@ -267,7 +267,7 @@ namespace awh {
 							// Выполняем копирование данных имени
 							::memcpy(&result, name.data(), name.size());
 						// Получаем идентификатор обратного вызова
-						else return this->_crypto.hashing <id_t> (name);
+						else return this->_crypto.hash <id_t> (name);
 					}
 				/**
 				 * Если возникает ошибка

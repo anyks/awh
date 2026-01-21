@@ -171,7 +171,7 @@ namespace awh {
 			 * @param text текст для хэширования
 			 * @return     результат хэширования
 			 */
-			auto hashing(const B & text) const noexcept -> A;
+			auto hash(const B & text) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода хэширования текста
 			 *
@@ -185,7 +185,7 @@ namespace awh {
 			 * @param size   размер данных для хэширования
 			 * @return       результат хэширования
 			 */
-			auto hashing(const void * buffer, const size_t size) const noexcept -> T;
+			auto hash(const void * buffer, const size_t size) const noexcept -> T;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста c ключом
@@ -201,7 +201,7 @@ namespace awh {
 			 * @param seed ключ для хэширования
 			 * @return     результат хэширования
 			 */
-			auto hashingWithSeed(const B & text, const A seed) const noexcept -> A;
+			auto hashWithSeed(const B & text, const A seed) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода хэширования текста c ключом
 			 *
@@ -216,7 +216,7 @@ namespace awh {
 			 * @param seed   ключ для хэширования
 			 * @return       результат хэширования
 			 */
-			auto hashingWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T;
+			auto hashWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста c несколькими ключами
@@ -233,7 +233,7 @@ namespace awh {
 			 * @param seed2 второй ключ для хэширования
 			 * @return      результат хэширования
 			 */
-			auto hashingWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A;
+			auto hashWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода хэширования текста c несколькими ключами
 			 *
@@ -249,7 +249,7 @@ namespace awh {
 			 * @param seed2  второй ключ для хэширования
 			 * @return       результат хэширования
 			 */
-			auto hashingWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T;
+			auto hashWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста
@@ -265,7 +265,7 @@ namespace awh {
 			 * @param hash   тип хэш-суммы
 			 * @return       результат хэширования
 			 */
-			auto hashing(const B & buffer, const hash_t hash) const noexcept -> A;
+			auto hash(const B & buffer, const hash_t hash) const noexcept -> A;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом

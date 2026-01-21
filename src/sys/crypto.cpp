@@ -119,7 +119,7 @@ namespace driver {
 	 * @param result результат хэширования
 	 * @param log    объект для работы с логами
 	 */
-	static void hashing(const B & buffer, const awh::crypto_t::hash_t hash, A & result, const awh::log_t * log) noexcept {
+	static void hash(const B & buffer, const awh::crypto_t::hash_t hash, A & result, const awh::log_t * log) noexcept {
 		// Если буфер для хэширования передан
 		if(!buffer.empty()){
 			/**
@@ -407,7 +407,7 @@ namespace driver {
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
 	 */
-	static void hashing(const char * buffer, const size_t size, const awh::crypto_t::cipher_t cipher, const awh::crypto_t::event_t event, state_t & state, T & result, const awh::log_t * log) noexcept {
+	static void hash(const char * buffer, const size_t size, const awh::crypto_t::cipher_t cipher, const awh::crypto_t::event_t event, state_t & state, T & result, const awh::log_t * log) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1023,55 +1023,55 @@ template <typename A, typename B>
  * @param text текст для хэширования
  * @return     результат хэширования
  */
-auto awh::Crypto::hashing(const B & text) const noexcept -> A {
+auto awh::Crypto::hash(const B & text) const noexcept -> A {
 	// Вызываем хэширование текста
-	return this->hashing <A> (text.data(), text.size());
+	return this->hash <A> (text.data(), text.size());
 }
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashing <uint32_t, string> (const string &) const noexcept;
+template uint32_t awh::Crypto::hash <uint32_t, string> (const string &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashing <uint64_t, string> (const string &) const noexcept;
+template uint64_t awh::Crypto::hash <uint64_t, string> (const string &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashing <uint128, string> (const string &) const noexcept;
+template uint128 awh::Crypto::hash <uint128, string> (const string &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashing <uint32_t, vector <char>> (const vector <char> &) const noexcept;
+template uint32_t awh::Crypto::hash <uint32_t, vector <char>> (const vector <char> &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashing <uint64_t, vector <char>> (const vector <char> &) const noexcept;
+template uint64_t awh::Crypto::hash <uint64_t, vector <char>> (const vector <char> &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashing <uint128, vector <char>> (const vector <char> &) const noexcept;
+template uint128 awh::Crypto::hash <uint128, vector <char>> (const vector <char> &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashing <uint32_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+template uint32_t awh::Crypto::hash <uint32_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashing <uint64_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+template uint64_t awh::Crypto::hash <uint64_t, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashing <uint128, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
+template uint128 awh::Crypto::hash <uint128, vector <uint8_t>> (const vector <uint8_t> &) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста
  *
@@ -1085,7 +1085,7 @@ template <typename T>
  * @param size   размер данных для хэширования
  * @return       результат хэширования
  */
-auto awh::Crypto::hashing(const void * buffer, const size_t size) const noexcept -> T {
+auto awh::Crypto::hash(const void * buffer, const size_t size) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	/**
@@ -1145,17 +1145,17 @@ auto awh::Crypto::hashing(const void * buffer, const size_t size) const noexcept
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashing <uint32_t> (const void *, const size_t) const noexcept;
+template uint32_t awh::Crypto::hash <uint32_t> (const void *, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashing <uint64_t> (const void *, const size_t) const noexcept;
+template uint64_t awh::Crypto::hash <uint64_t> (const void *, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashing <uint128> (const void *, const size_t) const noexcept;
+template uint128 awh::Crypto::hash <uint128> (const void *, const size_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c ключом
  *
@@ -1170,55 +1170,55 @@ template <typename A, typename B>
  * @param seed ключ для хэширования
  * @return     результат хэширования
  */
-auto awh::Crypto::hashingWithSeed(const B & text, const A seed) const noexcept -> A {
+auto awh::Crypto::hashWithSeed(const B & text, const A seed) const noexcept -> A {
 	// Вызываем хэширование текста с ключом
-	return this->hashingWithSeed <A> (text.data(), text.size(), seed);
+	return this->hashWithSeed <A> (text.data(), text.size(), seed);
 }
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeed <uint32_t, string> (const string &, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeed <uint32_t, string> (const string &, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeed <uint64_t, string> (const string &, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeed <uint64_t, string> (const string &, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeed <uint128, string> (const string &, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeed <uint128, string> (const string &, const uint128) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeed <uint32_t, vector <char>> (const vector <char> &, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeed <uint32_t, vector <char>> (const vector <char> &, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeed <uint64_t, vector <char>> (const vector <char> &, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeed <uint64_t, vector <char>> (const vector <char> &, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeed <uint128, vector <char>> (const vector <char> &, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeed <uint128, vector <char>> (const vector <char> &, const uint128) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeed <uint32_t, vector <uint8_t>> (const vector <uint8_t> &, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeed <uint32_t, vector <uint8_t>> (const vector <uint8_t> &, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeed <uint64_t, vector <uint8_t>> (const vector <uint8_t> &, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeed <uint64_t, vector <uint8_t>> (const vector <uint8_t> &, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeed <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeed <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c ключом
  *
@@ -1233,7 +1233,7 @@ template <typename T>
  * @param seed   ключ для хэширования
  * @return       результат хэширования
  */
-auto awh::Crypto::hashingWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T {
+auto awh::Crypto::hashWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	/**
@@ -1303,17 +1303,17 @@ auto awh::Crypto::hashingWithSeed(const void * buffer, const size_t size, const 
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeed <uint32_t> (const void *, const size_t, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeed <uint32_t> (const void *, const size_t, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeed <uint64_t> (const void *, const size_t, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeed <uint64_t> (const void *, const size_t, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeed <uint128> (const void *, const size_t, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeed <uint128> (const void *, const size_t, const uint128) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c несколькими ключами
  *
@@ -1329,55 +1329,55 @@ template <typename A, typename B>
  * @param seed2 второй ключ для хэширования
  * @return      результат хэширования
  */
-auto awh::Crypto::hashingWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A {
+auto awh::Crypto::hashWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A {
 	// Вызываем хэширование текста с несколькими ключами
-	return this->hashingWithSeeds <A> (text.data(), text.size(), seed1, seed2);
+	return this->hashWithSeeds <A> (text.data(), text.size(), seed1, seed2);
 }
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeeds <uint32_t, string> (const string &, const uint32_t, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeeds <uint32_t, string> (const string &, const uint32_t, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeeds <uint64_t, string> (const string &, const uint64_t, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeeds <uint64_t, string> (const string &, const uint64_t, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeeds <uint128, string> (const string &, const uint128, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeeds <uint128, string> (const string &, const uint128, const uint128) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeeds <uint32_t, vector <char>> (const vector <char> &, const uint32_t, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeeds <uint32_t, vector <char>> (const vector <char> &, const uint32_t, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeeds <uint64_t, vector <char>> (const vector <char> &, const uint64_t, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeeds <uint64_t, vector <char>> (const vector <char> &, const uint64_t, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeeds <uint128, vector <char>> (const vector <char> &, const uint128, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeeds <uint128, vector <char>> (const vector <char> &, const uint128, const uint128) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeeds <uint32_t, vector <uint8_t>> (const vector <uint8_t> &, const uint32_t, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeeds <uint32_t, vector <uint8_t>> (const vector <uint8_t> &, const uint32_t, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeeds <uint64_t, vector <uint8_t>> (const vector <uint8_t> &, const uint64_t, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeeds <uint64_t, vector <uint8_t>> (const vector <uint8_t> &, const uint64_t, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeeds <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeeds <uint128, vector <uint8_t>> (const vector <uint8_t> &, const uint128, const uint128) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста c несколькими ключами
  *
@@ -1393,7 +1393,7 @@ template <typename T>
  * @param seed2  второй ключ для хэширования
  * @return       результат хэширования
  */
-auto awh::Crypto::hashingWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T {
+auto awh::Crypto::hashWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T {
 	// Результат работы функции
 	T result;
 	/**
@@ -1465,17 +1465,17 @@ auto awh::Crypto::hashingWithSeeds(const void * buffer, const size_t size, const
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 32 бит
  *
  */
-template uint32_t awh::Crypto::hashingWithSeeds <uint32_t> (const void *, const size_t, const uint32_t, const uint32_t) const noexcept;
+template uint32_t awh::Crypto::hashWithSeeds <uint32_t> (const void *, const size_t, const uint32_t, const uint32_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 64 бит
  *
  */
-template uint64_t awh::Crypto::hashingWithSeeds <uint64_t> (const void *, const size_t, const uint64_t, const uint64_t) const noexcept;
+template uint64_t awh::Crypto::hashWithSeeds <uint64_t> (const void *, const size_t, const uint64_t, const uint64_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в число 128 бит
  *
  */
-template uint128 awh::Crypto::hashingWithSeeds <uint128> (const void *, const size_t, const uint128, const uint128) const noexcept;
+template uint128 awh::Crypto::hashWithSeeds <uint128> (const void *, const size_t, const uint128, const uint128) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста
  *
@@ -1490,13 +1490,13 @@ template <typename A, typename B>
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
  */
-auto awh::Crypto::hashing(const B & buffer, const hash_t hash) const noexcept -> A {
+auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A {
 	// Результат работы функции
 	A result;
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hashing(buffer, hash, result, this->_log);
+		driver::hash(buffer, hash, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -1505,7 +1505,7 @@ auto awh::Crypto::hashing(const B & buffer, const hash_t hash) const noexcept ->
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug(
-					"Text hashing \"%s\" could not be performed",
+					"Text hash \"%s\" could not be performed",
 					__PRETTY_FUNCTION__, std::make_tuple(
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
@@ -1518,7 +1518,7 @@ auto awh::Crypto::hashing(const B & buffer, const hash_t hash) const noexcept ->
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print(
-					"Text hashing \"%s\" could not be performed",
+					"Text hash \"%s\" could not be performed",
 					log_t::flag_t::WARNING,
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
 				);
@@ -1532,47 +1532,47 @@ auto awh::Crypto::hashing(const B & buffer, const hash_t hash) const noexcept ->
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в строку
  *
  */
-template string awh::Crypto::hashing <string> (const string &, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (const string &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в строку
  *
  */
-template string awh::Crypto::hashing <string> (const vector <char> &, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (const vector <char> &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в строку
  *
  */
-template string awh::Crypto::hashing <string> (const vector <uint8_t> &, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (const vector <uint8_t> &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hashing <vector <char>> (const string &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (const string &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hashing <vector <char>> (const vector <char> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (const vector <char> &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hashing <vector <char>> (const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (const vector <uint8_t> &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hashing <vector <uint8_t>> (const string &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const string &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hashing <vector <uint8_t>> (const vector <char> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <char> &, const hash_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hashing <vector <uint8_t>> (const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <uint8_t> &, const hash_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста с ключом
  *
@@ -1603,7 +1603,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug(
-					"Key \"%s\" and text \"%s\" hashing  could not be performed",
+					"Key \"%s\" and text \"%s\" hash  could not be performed",
 					__PRETTY_FUNCTION__, std::make_tuple(
 						key,
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
@@ -1618,7 +1618,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print(
-					"Key \"%s\" and text \"%s\" hashing  could not be performed",
+					"Key \"%s\" and text \"%s\" hash  could not be performed",
 					log_t::flag_t::WARNING,
 					key.c_str(),
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
@@ -2011,7 +2011,7 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 				// Получаем состояние объекта
 				const state_t & state = std::any_cast <const state_t &> (this->_state);
 				// Выполняем кодирование строки BASE64
-				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
+				driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 				// Если кодирование не вышло
 				if(result.empty()){
 					/**
@@ -2067,13 +2067,13 @@ auto awh::Crypto::encode(const void * buffer, const size_t size, const hash_t ha
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем шифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
+						driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем шифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
+						driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 					}
 				}
 				// Если кодирование не вышло
@@ -2210,7 +2210,7 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 				// Получаем состояние объекта
 				const state_t & state = std::any_cast <const state_t &> (this->_state);
 				// Выполняем декодирование строки BASE64
-				driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
+				driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 				// Если декодирование не вышло
 				if(result.empty()){
 					/**
@@ -2266,13 +2266,13 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем дешифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
+						driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
 						// Выполняем дешифрование данных
-						driver::hashing(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
+						driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 					}
 				}
 				// Если дешифрование не вышло
