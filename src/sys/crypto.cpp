@@ -1505,7 +1505,7 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A 
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug(
-					"Text hash \"%s\" could not be performed",
+					"Text hashing \"%s\" could not be performed",
 					__PRETTY_FUNCTION__, std::make_tuple(
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
@@ -1518,7 +1518,7 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A 
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print(
-					"Text hash \"%s\" could not be performed",
+					"Text hashing \"%s\" could not be performed",
 					log_t::flag_t::WARNING,
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
 				);
@@ -1603,7 +1603,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug(
-					"Key \"%s\" and text \"%s\" hash  could not be performed",
+					"Key \"%s\" and text \"%s\" hashing could not be performed",
 					__PRETTY_FUNCTION__, std::make_tuple(
 						key,
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
@@ -1618,7 +1618,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print(
-					"Key \"%s\" and text \"%s\" hash  could not be performed",
+					"Key \"%s\" and text \"%s\" hashing could not be performed",
 					log_t::flag_t::WARNING,
 					key.c_str(),
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
