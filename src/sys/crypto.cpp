@@ -642,7 +642,7 @@ namespace driver {
 		}
 	}
 	/**
-	 * @brief Функция инициализации AES шифрования
+	 * @brief Функция инициализации контекста шифрования
 	 *
 	 * @param cipher тип шифрования (AES128, AES192, AES256)
 	 * @param hash   тип хэш-суммы
@@ -962,7 +962,7 @@ uint64_t awh::Crypto::hash128to64(const uint128_t & hash) const noexcept {
 	return ::Hash128to64(buffer);
 }
 /**
- * @brief @brief Шаблон метода хэширования текста
+ * @brief Шаблон метода хэширования текста
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
@@ -1108,7 +1108,7 @@ template uint64_t awh::Crypto::hashing <uint64_t> (const void *, const size_t) c
  */
 template uint128 awh::Crypto::hashing <uint128> (const void *, const size_t) const noexcept;
 /**
- * @brief @brief Шаблон метода хэширования текста c ключом
+ * @brief Шаблон метода хэширования текста c ключом
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
@@ -1266,7 +1266,7 @@ template uint64_t awh::Crypto::hashingWithSeed <uint64_t> (const void *, const s
  */
 template uint128 awh::Crypto::hashingWithSeed <uint128> (const void *, const size_t, const uint128) const noexcept;
 /**
- * @brief @brief Шаблон метода хэширования текста c несколькими ключами
+ * @brief Шаблон метода хэширования текста c несколькими ключами
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
@@ -2204,17 +2204,17 @@ auto awh::Crypto::decode(const void * buffer, const size_t size, const hash_t ha
 						}
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
-						// Выполняем шифрование данных
+						// Выполняем дешифрование данных
 						driver::hashing(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						// Выполняем блокировку потоков
 						const locker_t <> lock(this->_mtx);
-						// Выполняем шифрование данных
+						// Выполняем дешифрование данных
 						driver::hashing(reinterpret_cast <const char *> (buffer), size, this->_state.cipher, event_t::DECODE, const_cast <crypto_t *> (this)->_state, result, this->_log);
 					}
 				}
-				// Если кодирование не вышло
+				// Если дешифрование не вышло
 				if(result.empty()){
 					// Выводим тот же самый буфер как он был передан
 					result.assign(reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
@@ -2331,7 +2331,7 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 		if(this->_key.ctx != nullptr){
 			// Выполняем блокировку потоков
 			const locker_t <> lock(this->_mtx);
-			// Создаём объект BIO для записи срока действия сертификата
+			// Создаём объект BIO для записи публичного ключа
 			BIO * bio = ::BIO_new(::BIO_s_mem());
 			// Если объект BIO создан успешно
 			if(bio != nullptr){
@@ -2514,7 +2514,7 @@ bool awh::Crypto::setPublicKeyRSA(const string & key) noexcept {
 bool awh::Crypto::setPrivateKeyRSA(const string & key) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если публичный ключ передан
+	// Если приватный ключ передан
 	if(!key.empty()){
 		/**
 		 * Выполняем перехват ошибок
@@ -2542,7 +2542,7 @@ bool awh::Crypto::setPrivateKeyRSA(const string & key) noexcept {
 					this->_key.ctx = reinterpret_cast <void *> (pkey);
 					// Формируем итоговый результат
 					result = (this->_key.ctx != nullptr);
-				// Если публичный ключ не получен
+				// Если приватный ключ не получен
 				} else {
 					/**
 					 * Если включён режим отладки
@@ -2615,7 +2615,7 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 			if(this->_key.type == key_type_t::PRIVATE){
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
-				// Создаём объект BIO для записи срока действия сертификата
+				// Создаём объект BIO для записи приватного ключа
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если объект BIO создан успешно
 				if(bio != nullptr){

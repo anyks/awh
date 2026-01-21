@@ -202,7 +202,7 @@ namespace awh {
 			uint64_t hash128to64(const uint128_t & hash) const noexcept;
 		public:
 			/**
-			 * @brief @brief Шаблон метода хэширования текста
+			 * @brief Шаблон метода хэширования текста
 			 *
 			 * @tparam A тип возвращаемого результата
 			 * @tparam B тип буфера данных
@@ -231,7 +231,7 @@ namespace awh {
 			auto hashing(const void * buffer, const size_t size) const noexcept -> T;
 		public:
 			/**
-			 * @brief @brief Шаблон метода хэширования текста c ключом
+			 * @brief Шаблон метода хэширования текста c ключом
 			 *
 			 * @tparam A тип возвращаемого результата
 			 * @tparam B тип буфера данных
@@ -262,7 +262,7 @@ namespace awh {
 			auto hashingWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T;
 		public:
 			/**
-			 * @brief @brief Шаблон метода хэширования текста c несколькими ключами
+			 * @brief Шаблон метода хэширования текста c несколькими ключами
 			 *
 			 * @tparam A тип возвращаемого результата
 			 * @tparam B тип буфера данных
