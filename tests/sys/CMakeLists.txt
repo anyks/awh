@@ -84,6 +84,10 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_COMPRESSOR_TEST "Build unit COMPRESSOR test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с пуллам потоков
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST "Build unit THREADPOOL test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с функциями обратного вызова
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST "Build unit CALLBACK test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с функциями обратного вызова
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST "Build unit CALLBACK test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для работы с ОС
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
@@ -240,6 +244,22 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с пуллам потоков
             message(STATUS "Build tests THREADPOOL module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})
+
+        # Если нужно собрать тесты для работы с функциями обратного вызова
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с функциями обратного вызова
+            message(STATUS "Build tests CALLBACK module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с функциями обратного вызова
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                callback/callback.cpp
+                callback/static.cpp
+                callback/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с функциями обратного вызова
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с функциями обратного вызова
+            message(STATUS "Build tests CALLBACK module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
