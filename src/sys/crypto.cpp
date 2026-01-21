@@ -666,7 +666,7 @@ namespace driver {
 				state.ivec.clear();
 				// Устанавливаем размер массива IVEC
 				state.ivec.resize(AES_BLOCK_SIZE, 0);
-				// Выбираем шифр AES
+				// Тип шифрования AES
 				const EVP_CIPHER * evp = ::EVP_enc_null();
 				/**
 				 * Определяем длину шифрования
@@ -2924,10 +2924,11 @@ bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
 /**
  * @brief Метод сохранения приватного ключа RSA в файл
  *
- * @param path путь к файлу для сохранения приватного ключа
- * @return     результат сохранения ключа
+ * @param path   путь к файлу для сохранения приватного ключа
+ * @param cipher тип шифрования приватного ключа
+ * @return       результат сохранения ключа
  */
-bool awh::Crypto::savePrivateKeyRSA(const string & path) const noexcept {
+bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2968,8 +2969,29 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path) const noexcept {
 							}
 						// Если пароль установлен
 						} else {
+							// Тип шифрования AES
+							const EVP_CIPHER * evp = ::EVP_enc_null();
+							/**
+							 * Определяем длину шифрования
+							 */
+							switch(static_cast <uint16_t> (cipher)){
+								// Устанавливаем шифрование в 128
+								case static_cast <uint16_t> (cipher_t::AES128):
+									// Устанавливаем функцию шифрования
+									evp = ::EVP_aes_128_cbc();
+								break;
+								// Устанавливаем шифрование в 192
+								case static_cast <uint16_t> (cipher_t::AES192):
+									// Устанавливаем функцию шифрования
+									evp = ::EVP_aes_192_cbc();
+								break;
+								// Если ничего не выбрано
+								default:
+									// Устанавливаем функцию шифрования
+									evp = ::EVP_aes_256_cbc();
+							}
 							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), ::EVP_aes_256_cbc(), this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
+							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3033,8 +3055,29 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path) const noexcept {
 							}
 						// Если пароль установлен
 						} else {
+							// Тип шифрования AES
+							const EVP_CIPHER * evp = ::EVP_enc_null();
+							/**
+							 * Определяем длину шифрования
+							 */
+							switch(static_cast <uint16_t> (cipher)){
+								// Устанавливаем шифрование в 128
+								case static_cast <uint16_t> (cipher_t::AES128):
+									// Устанавливаем функцию шифрования
+									evp = ::EVP_aes_128_cbc();
+								break;
+								// Устанавливаем шифрование в 192
+								case static_cast <uint16_t> (cipher_t::AES192):
+									// Устанавливаем функцию шифрования
+									evp = ::EVP_aes_192_cbc();
+								break;
+								// Если ничего не выбрано
+								default:
+									// Устанавливаем функцию шифрования
+									evp = ::EVP_aes_256_cbc();
+							}
 							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), ::EVP_aes_256_cbc(), this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
+							if(!(result = (::PEM_write_PKCS8PrivateKey(file, reinterpret_cast <EVP_PKEY *> (this->_key.ctx), evp, this->_password.c_str(), static_cast <int32_t> (this->_password.size()), nullptr, nullptr) == 1))){
 								/**
 								 * Если включён режим отладки
 								 */

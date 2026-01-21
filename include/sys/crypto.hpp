@@ -460,10 +460,11 @@ namespace awh {
 			/**
 			 * @brief Метод сохранения приватного ключа RSA в файл
 			 *
-			 * @param path путь к файлу для сохранения приватного ключа
-			 * @return     результат сохранения ключа
+			 * @param path   путь к файлу для сохранения приватного ключа
+			 * @param cipher тип шифрования приватного ключа
+			 * @return       результат сохранения ключа
 			 */
-			bool savePrivateKeyRSA(const string & path) const noexcept;
+			bool savePrivateKeyRSA(const string & path, const cipher_t cipher = cipher_t::NONE) const noexcept;
 		public:
 			/**
 			 * @brief Метод шифрования данных публичным ключом RSA
