@@ -297,33 +297,35 @@ namespace awh {
 			/**
 			 * @brief Шаблон метода хэширования текста
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
 			 */
-			template <typename T>
+			template <typename A, typename B>
 			/**
 			 * @brief Метод хэширования текста
 			 *
-			 * @param text текст для хэширования
-			 * @param hash тип хэш-суммы
-			 * @return     результат хэширования
+			 * @param buffer буфер данных для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @return       результат хэширования
 			 */
-			auto hashing(const string & text, const hash_t hash) const noexcept -> T;
+			auto hashing(const B & buffer, const hash_t hash) const noexcept -> A;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
 			 */
-			template <typename T>
+			template <typename A, typename B>
 			/**
 			 * @brief Метод хэширования текста с ключом
 			 *
-			 * @param key  ключ для подписи
-			 * @param text текст для хэширования
-			 * @param hash тип хэш-суммы
-			 * @return     результат хэширования
+			 * @param key    ключ для подписи
+			 * @param buffer буфер данных для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @return       результат хэширования
 			 */
-			auto hmac(const string & key, const string & text, const hash_t hash) const noexcept -> T;
+			auto hmac(const string & key, const B & buffer, const hash_t hash) const noexcept -> A;
 		public:
 			/**
 			 * @brief Шаблон метода кодирования
