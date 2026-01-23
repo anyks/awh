@@ -2868,6 +2868,216 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод конвертирования строки utf-8 в строку
+ *
+ * @param str строка utf-8 для конвертирования
+ * @return    обычная строка
+ */
+string awh::Framework::convert(const wchar_t * str) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если строка передана
+		if(str != nullptr){
+			// Если используется BOOST
+			#ifdef USE_BOOST_CONVERT
+				// Объявляем конвертер
+				using boost::locale::conv::utf_to_utf;
+				// Выполняем конвертирование в utf-8 строку
+				result = utf_to_utf <char> (str, str + ::wcslen(str));
+			// Если нужно использовать стандартную библиотеку
+			#else
+				// Устанавливаем тип для конвертера UTF-8
+				using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
+				// Объявляем конвертер
+				wstring_convert <convert_type, wchar_t> conv;
+				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+				// Выполняем конвертирование в utf-8 строку
+				result = conv.to_bytes(str);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const range_error & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод конвертирования строки в строку utf-8
+ *
+ * @param str строка для конвертирования
+ * @return    строка в utf-8
+ */
+wstring awh::Framework::convert(const char * str) const noexcept {
+	// Результат работы функции
+	wstring result = L"";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если строка передана
+		if(str != nullptr){
+			// Если используется BOOST
+			#ifdef USE_BOOST_CONVERT
+				// Объявляем конвертер
+				using boost::locale::conv::utf_to_utf;
+				// Выполняем конвертирование в utf-8 строку
+				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
+			// Если нужно использовать стандартную библиотеку
+			#else
+				// Объявляем конвертер
+				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
+				// Выполняем конвертирование в utf-8 строку
+				result = conv.from_bytes(str);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const range_error & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief функции определения точного размера, сколько занимает число байт
  *
  * @tparam T тип данных с которым работает функция

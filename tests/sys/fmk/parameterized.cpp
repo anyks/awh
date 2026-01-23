@@ -730,8 +730,12 @@ class FmkConvertParameterizedFixture : public FmkFixture, public ::testing::With
 TEST_P(FmkConvertParameterizedFixture, FmkConvertTest){
 	// Тестируем конвертацию из однобайтовой кодировки в многобайтовую
 	ASSERT_EQ(this->_parameter.text2, this->_fmk->convert(this->_parameter.text1));
+	// Тестируем конвертацию из однобайтовой кодировки в многобайтовую
+	ASSERT_EQ(this->_parameter.text2.c_str(), this->_fmk->convert(this->_parameter.text1.c_str()));
 	// Тестируем конвертацию из многобайтовой кодировки в однобайтовую
 	ASSERT_EQ(this->_parameter.text1, this->_fmk->convert(this->_parameter.text2));
+	// Тестируем конвертацию из многобайтовой кодировки в однобайтовую
+	ASSERT_EQ(this->_parameter.text1.c_str(), this->_fmk->convert(this->_parameter.text2.c_str()));
 }
 
 /**

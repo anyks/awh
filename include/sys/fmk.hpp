@@ -452,6 +452,20 @@ namespace awh {
 			 * @return    строка в utf-8
 			 */
 			wstring convert(const string & str) const noexcept;
+			/**
+			 * @brief Метод конвертирования строки utf-8 в строку
+			 *
+			 * @param str строка utf-8 для конвертирования
+			 * @return    обычная строка
+			 */
+			string convert(const wchar_t * str) const noexcept;
+			/**
+			 * @brief Метод конвертирования строки в строку utf-8
+			 *
+			 * @param str строка для конвертирования
+			 * @return    строка в utf-8
+			 */
+			wstring convert(const char * str) const noexcept;
 		public:
 			/**
 			 * @brief функции определения точного размера, сколько занимает число байт

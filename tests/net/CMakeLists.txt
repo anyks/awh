@@ -162,6 +162,29 @@ if (${GTest_FOUND})
         # Указывает каталог для ВСЕХ исполняемых файлов
         SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/unit-tests)
 
+        # Обнуляем флаги для сборки семплов
+        SET(AWH_FLAGS "")
+
+        # Если сборка производится под операционную систему Windows
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+            # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
+            # Устанавливаем необходимые зависимости для MS Windows
+            SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+
+            # Устанавливаем иконку для windows под MinGW.
+            SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
+            SET(CMAKE_RC_COMPILER_INIT windres)
+            ENABLE_LANGUAGE(RC)
+            SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
+        # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
+        else()
+            # Если сборка производится под операционную систему MacOS X
+            if (APPLE AND NOT IOS)
+                # Устанавливаем необходимые зависимости для MacOS X
+                SET(AWH_FLAGS "-framework Foundation")
+            endif()
+        endif()
+
         # Сборка бинарного приложения тестов
         add_executable(
             ${PROJECT_NAME}${POSTFIX}
@@ -182,6 +205,7 @@ if (${GTest_FOUND})
                 ${GCC_COVERAGE_LIBS}
                 ${OPENSSL_LIBRARIES}
                 ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
             )
         # Если нужно собрать и статическую библиотеку
         else (CMAKE_SHARED_BUILD_LIB)
@@ -194,6 +218,7 @@ if (${GTest_FOUND})
                     ${GCC_COVERAGE_LIBS}
                     ${OPENSSL_LIBRARIES}
                     ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
                 )
             # Если режим отладки активирован
             else()
@@ -205,12 +230,23 @@ if (${GTest_FOUND})
                     ${GCC_COVERAGE_LIBS}
                     ${OPENSSL_LIBRARIES}
                     ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
                 )
             endif()
         endif (CMAKE_SHARED_BUILD_LIB)
 
-        # Включаем флаги компиляции для сбора статистики покрытия кода
-        target_compile_options(${PROJECT_NAME}${POSTFIX} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+        # Если сборка производится под операционную систему MacOS X
+        if (APPLE AND NOT IOS)
+            # Включаем флаги компиляции для сбора статистики покрытия кода
+            target_compile_options(
+            ${PROJECT_NAME}${POSTFIX} PRIVATE
+            ${GCC_COVERAGE_COMPILE_FLAGS} -x objective-c++ -fobjc-arc
+        )
+        # Если сборка производится под операционную систему Windows
+        else()
+            # Включаем флаги компиляции для сбора статистики покрытия кода
+            target_compile_options(${PROJECT_NAME}${POSTFIX} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+        endif()
     # Если не нужно собрать тесты
     else()
         # Выводим сообщение о сборке тестов для модуля работы с фреймворком

@@ -408,6 +408,7 @@ endif()
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
     "${CMAKE_SOURCE_DIR}/src/sys/os.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
@@ -450,8 +451,33 @@ endif (CMAKE_SHARED_BUILD_LIB)
 if (CMAKE_BUILD_TESTS)
     # Собираем библиотеку с флагами gcov для сбора статистики покрытия тестами
     add_library(${AWH_LIB_GCOV_NAME} STATIC ${SOURCE_FILES})
-    # Включаем флаги компиляции для сбора статистики покрытия кода
-    target_compile_options(${AWH_LIB_GCOV_NAME} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+    # Если сборка производится под операционную систему MacOS X
+    if (APPLE AND NOT IOS)
+        # Устанавливаем свойства компиляции для файловой системы
+        target_compile_options(
+            ${AWH_LIB_NAME} PRIVATE
+            -x objective-c++ -fobjc-arc
+        )
+        # Устанавливаем свойства компиляции для файловой системы
+        target_compile_options(
+            ${AWH_LIB_GCOV_NAME} PRIVATE
+            ${GCC_COVERAGE_COMPILE_FLAGS} -x objective-c++ -fobjc-arc
+        )
+    # Если сборка производится под операционную систему Windows
+    else()
+        # Включаем флаги компиляции для сбора статистики покрытия кода
+        target_compile_options(${AWH_LIB_GCOV_NAME} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+    endif()
+# Если сборка производится не для сбора тестов
+else()
+    # Если сборка производится под операционную систему MacOS X
+    if (APPLE AND NOT IOS)
+        # Устанавливаем свойства компиляции для файловой системы
+        target_compile_options(
+            ${AWH_LIB_NAME} PRIVATE
+            -x objective-c++ -fobjc-arc
+        )
+    endif()
 endif (CMAKE_BUILD_TESTS)
 
 # Указываем что нужно собрать семплы
@@ -471,6 +497,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
     option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
+
+    # Устанавливаем имя приложения работы с файловой системой
+    SET(FILESYSTEM_APP_SYS_NAME sys-filesystem)
+    # Указываем что нужно собрать приложение работы с файловой системой
+    option(CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE "Build Filesystem app sample" ON)
 
     # Устанавливаем имя приложения работы с шифрованием и хэшированием
     SET(CRYPTO_APP_SYS_NAME sys-crypto)
@@ -615,14 +646,14 @@ if (${CMAKE_BUILD_SAMPLES})
     endif()
 endif (${CMAKE_BUILD_SAMPLES})
 
-# Инициализируем флаги для операционной системы Windows
-SET(WINFLAGS "")
+# Обнуляем флаги для сборки семплов
+SET(AWH_FLAGS "")
 
 # Если сборка производится под операционную систему Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
-    SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+    SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
@@ -651,6 +682,12 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     endif (${CMAKE_BUILD_SAMPLES})
 # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
 else()
+    # Если сборка производится под операционную систему MacOS X
+    if (APPLE AND NOT IOS)
+        # Устанавливаем необходимые зависимости для MacOS X
+        SET(AWH_FLAGS "-framework Foundation")
+    endif()
+
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
         ##
@@ -685,6 +722,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample DATE: No\n")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с файловой системой
+    if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample FILESYSTEM: Yes\n")
+        # Выполняем создание приложения работы с файловой системой
+        add_sample(${FILESYSTEM_APP_SYS_NAME} sample/sys/fs.cpp sys)
+    # Если не нужно собирать семплы для работы с файловой системой
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample FILESYSTEM: No\n")
+    endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
     if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -974,7 +1023,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         PRIVATE
         ${DEPEND_LIBRARY}
         ${TCMALLOC_LIBRARIES}
-        ${WINFLAGS}
+        ${AWH_FLAGS}
     )
 
     # Если необходимо собрать семплы
@@ -986,7 +1035,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${IP_APP_NET_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
@@ -997,9 +1046,20 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${DATE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с файловой системой
+        if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения файловой системы
+            target_link_libraries(
+                ${FILESYSTEM_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
         if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -1008,7 +1068,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CRYPTO_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
@@ -1019,7 +1079,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${COMPRESSOR_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
@@ -1030,7 +1090,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${DIR_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
@@ -1041,7 +1101,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${FILE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
@@ -1052,7 +1112,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${PING_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
@@ -1063,7 +1123,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${TIMER_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
@@ -1074,7 +1134,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${EVENTS_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
@@ -1085,7 +1145,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_PIPE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
@@ -1093,7 +1153,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_STREAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
@@ -1101,7 +1161,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_DATAGRAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
@@ -1109,7 +1169,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_SEQPACKET_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
@@ -1120,7 +1180,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1128,7 +1188,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
 
@@ -1139,7 +1199,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента с подключением
@@ -1147,7 +1207,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDP_CONN_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1155,7 +1215,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
 
@@ -1166,7 +1226,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1174,7 +1234,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
 
@@ -1185,7 +1245,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера сценарий 1
@@ -1193,7 +1253,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента сценарий 3
@@ -1201,7 +1261,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера сценарий 3
@@ -1209,7 +1269,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
 
@@ -1220,7 +1280,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1228,7 +1288,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
 
@@ -1239,7 +1299,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера UDS-TCP
@@ -1247,7 +1307,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента UDS-UDP
@@ -1255,7 +1315,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера UDS-UDP
@@ -1263,7 +1323,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
 
@@ -1274,7 +1334,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1282,7 +1342,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
 
@@ -1293,7 +1353,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера работы с TLS
@@ -1301,7 +1361,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
@@ -1309,7 +1369,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TLS_WEB_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
@@ -1317,7 +1377,7 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TLS_MULTI_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
 
@@ -1409,7 +1469,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
@@ -1421,9 +1481,21 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с файловой системой
+        if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения файловой системы
+            target_link_libraries(
+                ${FILESYSTEM_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
         if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -1433,7 +1505,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
@@ -1445,7 +1517,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
@@ -1457,7 +1529,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
 
@@ -1469,7 +1541,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
 
@@ -1481,7 +1553,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
 
@@ -1493,7 +1565,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
 
@@ -1505,7 +1577,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
 
@@ -1517,7 +1589,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
@@ -1526,7 +1598,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
@@ -1535,7 +1607,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
@@ -1544,7 +1616,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
@@ -1556,7 +1628,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1565,7 +1637,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
 
@@ -1577,7 +1649,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента с подключением
@@ -1586,7 +1658,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1595,7 +1667,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
 
@@ -1607,7 +1679,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1616,7 +1688,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
 
@@ -1628,7 +1700,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера сценарий 1
@@ -1637,7 +1709,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента сценарий 3
@@ -1646,7 +1718,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера сценарий 3
@@ -1655,7 +1727,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
 
@@ -1667,7 +1739,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1676,7 +1748,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
 
@@ -1688,7 +1760,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера UDS-TCP
@@ -1697,7 +1769,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента UDS-UDP
@@ -1706,7 +1778,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера UDS-UDP
@@ -1715,7 +1787,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
 
@@ -1727,7 +1799,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера
@@ -1736,7 +1808,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
 
@@ -1748,7 +1820,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера работы с TLS
@@ -1757,7 +1829,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения клиента работы с TLS и HTTP/1.1 подключением
@@ -1766,7 +1838,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
 
             # Выполняем сборку приложения сервера работы с TLS и мультисертификатом
@@ -1775,7 +1847,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
-                ${WINFLAGS}
+                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
 
@@ -1892,6 +1964,16 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с файловой системой
+            if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения файловой системы
+                add_custom_command(TARGET "${FILESYSTEM_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${FILESYSTEM_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${FILESYSTEM_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с шифрованием и хэшированием
             if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -2187,6 +2269,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${DATE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с файловой системой
+            if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения файловой системы
+                pvs_studio_add_target(TARGET ${FILESYSTEM_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${FILESYSTEM_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с шифрованием и хэшированием
             if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
@@ -2437,6 +2525,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с датой и временем
         install(TARGETS ${DATE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с файловой системой
+    if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с файловой системой
+        install(TARGETS ${FILESYSTEM_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
     if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
