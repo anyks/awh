@@ -1742,7 +1742,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
  */
 bool awh::Framework::compare(const char * first, const char * second) const noexcept {
 	// Если данные для сравшнения не пришли пустыми
-	if((first != nullptr) && (second != nullptr))
+	if((first != nullptr) && ((* first) != '\0') && (second != nullptr) && ((* second) != '\0'))
 		// Выполняем перебор обоих строк
 		return this->compare(string{first}, string{second});
 	// Выводим результат по умолчанию
@@ -1775,8 +1775,12 @@ bool awh::Framework::compare(const string & first, const string & second) const 
  * @return       результат сравнения
  */
 bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) const noexcept {
-	// Выполняем перебор обоих строк
-	return this->compare(wstring{first}, wstring{second});
+	// Если данные для сравшнения не пришли пустыми
+	if((first != nullptr) && ((* first) != L'\0') && (second != nullptr) && ((* second) != L'\0'))
+		// Выполняем перебор обоих строк
+		return this->compare(wstring{first}, wstring{second});
+	// Выводим результат по умолчанию
+	return (first == second);
 }
 /**
  * @brief Метод сравнения двух строк без учёта регистра
@@ -2881,7 +2885,7 @@ string awh::Framework::convert(const wchar_t * str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if(str != nullptr){
+		if((str != nullptr) && ((* str) != L'\0')){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
@@ -2987,7 +2991,7 @@ wstring awh::Framework::convert(const char * str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if(str != nullptr){
+		if((str != nullptr) && ((* str) != '\0')){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
@@ -3608,16 +3612,23 @@ template <typename T>
 T awh::Framework::atoi(const char * value, const size_t length) const noexcept {
 	// Результат работы функции
 	T result;
-	// Если мы получили на вход число
-	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+	// Если данные не переданы
+	if((value == nullptr) || (length == 0) || (* value == '\0'))
 		// Выводим значение по умолчанию
-		result = static_cast <T> (0);
-		// Вызываем метод конвертации
-		auto answer = fast_float::from_chars(value, value + length, result);
-		// Если мы получили ошибку
-		if (answer.ec != std::errc())
+		return static_cast <T> (0);
+	// Если мы получили на вход строку
+	else {
+		// Если мы получили на вход число
+		if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
 			// Выводим значение по умолчанию
 			result = static_cast <T> (0);
+			// Вызываем метод конвертации
+			auto answer = fast_float::from_chars(value, value + length, result);
+			// Если мы получили ошибку
+			if (answer.ec != std::errc())
+				// Выводим значение по умолчанию
+				result = static_cast <T> (0);
+		}
 	}
 	// Выводим результат
 	return result;
@@ -3709,17 +3720,24 @@ template <typename T>
 T awh::Framework::atoi(const char * value, const size_t length, const uint8_t radix) const noexcept {
 	// Результат работы функции
 	T result;
-	// Если данные являются основными
-	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-		// Буфер результата по умолчанию
-		uint8_t buffer[sizeof(T)];
-		// Заполняем нулями буфер данных
-		::memset(buffer, 0, sizeof(T));
-		// Выполняем установку результата по умолчанию
-		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	// Если данные не переданы
+	if((value == nullptr) || (length == 0) || (* value == '\0'))
+		// Выводим значение по умолчанию
+		return static_cast <T> (0);
+	// Если на вход переданы нужные нам данные
+	else {
+		// Если данные являются основными
+		if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+			// Буфер результата по умолчанию
+			uint8_t buffer[sizeof(T)];
+			// Заполняем нулями буфер данных
+			::memset(buffer, 0, sizeof(T));
+			// Выполняем установку результата по умолчанию
+			::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+		}
+		// Выполняем извлечение данных
+		this->atoi(value, length, radix, &result, sizeof(result));
 	}
-	// Выполняем извлечение данных
-	this->atoi(value, length, radix, &result, sizeof(result));
 	// Выводим результат
 	return result;
 }
@@ -4928,7 +4946,7 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если формат передан
-	if(format != nullptr){
+	if((format != nullptr) && (format[0] != '\0')){
 		// Создаем список аргументов
 		va_list args;
 		// Запускаем инициализацию списка аргументов
@@ -5034,7 +5052,7 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если формат передан
-	if(format != nullptr){
+	if((format != nullptr) && (format[0] != L'\0')){
 		// Создаем список аргументов
 		va_list args;
 		// Запускаем инициализацию списка аргументов

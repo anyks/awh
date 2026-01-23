@@ -129,7 +129,7 @@ namespace awh {
 			 * @param addr адрес файла или каталога
 			 * @return     запрашиваемые метаданные
 			 */
-			uint16_t chmod(string_view addr) const noexcept;
+			uint32_t chmod(string_view addr) const noexcept;
 			/**
 			 * @brief Метод изменения прав доступа к файлу или каталогу
 			 *
@@ -137,7 +137,7 @@ namespace awh {
 			 * @param mode метаданные для установки
 			 * @return     результат работы функции
 			 */
-			bool chmod(string_view addr, const uint16_t mode) const noexcept;
+			bool chmod(string_view addr, const uint32_t mode) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки владельца на файл или каталог
@@ -192,16 +192,6 @@ namespace awh {
 			 * @return        количество файлов в каталоге
 			 */
 			uintmax_t count(string_view addr, string_view ext = "", const bool recurse = true) const noexcept;
-		public:
-			/**
-			 * @brief Метод установки позиции в файле
-			 *
-			 * @param file     объект открытого файла
-			 * @param distance дистанцию на которую нужно переместить позицию
-			 * @param position текущая позиция в файле
-			 * @return         перенос позиции в файле
-			 */
-			ssize_t seek(string_view filename, const seek_t seek) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода добавления в файл бинарных данных
