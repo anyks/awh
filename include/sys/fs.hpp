@@ -280,7 +280,17 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param offset   смещение в файле
 			 */
-			void readfile(string_view filename, const seek_t seek, const function <void (const string &)> & callback, const size_t offset = 0) const noexcept;
+			void readfile(string_view filename, const seek_t seek, const function <void (string_view)> & callback, const size_t offset = 0) const noexcept;
+			/**
+			 * @brief Метод рекурсивного получения буфера данных из больших файлов
+			 *
+			 * @param filename адрес файла для чтения
+			 * @param size     размер буфера для чтения файла
+			 * @param seek     тип смещения в файле
+			 * @param callback функция обратного вызова
+			 * @param offset   смещение в файле
+			 */
+			void readfile(string_view filename, const size_t size, const seek_t seek, const function <void (const void *, const size_t)> & callback, const size_t offset = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
@@ -291,9 +301,9 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param resolve  флаг резолвинга символьных ссылок
 			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const string &)> & callback, const bool resolve = true) const noexcept;
+			void readdir(string_view path, string_view ext, const bool recurse, const function <void (string_view)> & callback, const bool resolve = true) const noexcept;
 			/**
-			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах
+			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах построчно
 			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
@@ -301,7 +311,18 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param resolve  флаг резолвинга символьных ссылок
 			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const string &, const string &)> & callback, const bool resolve = true) const noexcept;
+			void readdir(string_view path, string_view ext, const bool recurse, const function <void (string_view, string_view)> & callback, const bool resolve = true) const noexcept;
+			/**
+			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах бинарными блоками
+			 *
+			 * @param path     путь до каталога
+			 * @param ext      расширение файла по которому идет фильтрация
+			 * @param size     размер буфера для чтения файла
+			 * @param recurse  флаг рекурсивного перебора каталогов
+			 * @param callback функция обратного вызова
+			 * @param resolve  флаг резолвинга символьных ссылок
+			 */
+			void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (string_view, const void *, const size_t)> & callback, const bool resolve = true) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
@@ -309,8 +330,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			FileSystem(const fmk_t * fmk, const log_t * log) noexcept :
-			 _os(log), _fmk(fmk), _log(log) {}
+			FileSystem(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

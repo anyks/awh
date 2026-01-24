@@ -333,7 +333,6 @@ awh::FileSystem::type_t awh::FileSystem::type(string_view addr) const noexcept {
 							/**
 							 * Выполняем проверку является ли файл alias-файлом
 							 */
-							/*
 							@autoreleasepool {
 								// Преобразуем путь в NSString
 								NSString * path = [NSString stringWithUTF8String:addr.data()];
@@ -358,7 +357,6 @@ awh::FileSystem::type_t awh::FileSystem::type(string_view addr) const noexcept {
 									// Получаем тип файловой системы
 									result = type_t::LINK;
 							}
-							*/
 						}
 					#endif
 				#endif
@@ -421,8 +419,8 @@ awh::FileSystem::type_t awh::FileSystem::type(string_view addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -438,8 +436,8 @@ awh::FileSystem::type_t awh::FileSystem::type(string_view addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -550,8 +548,8 @@ void awh::FileSystem::symlink(string_view first, string_view second) const noexc
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -567,8 +565,8 @@ void awh::FileSystem::symlink(string_view first, string_view second) const noexc
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -617,8 +615,8 @@ void awh::FileSystem::hardlink(string_view first, string_view second) const noex
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -634,8 +632,8 @@ void awh::FileSystem::hardlink(string_view first, string_view second) const noex
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -854,8 +852,8 @@ int32_t awh::FileSystem::unlink(string_view addr, const bool resolve) const noex
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -871,8 +869,8 @@ int32_t awh::FileSystem::unlink(string_view addr, const bool resolve) const noex
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -996,7 +994,6 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 						/**
 						 * Выполняем проверку является ли файл alias-файлом
 						 */
-						/*
 						@autoreleasepool {
 							// Преобразуем путь в NSString
 							NSString * nsPath = [NSString stringWithUTF8String:buffer];
@@ -1046,7 +1043,6 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 								}
 							}
 						}
-						*/
 					#endif
 				// Если результат не получен и является ссылкой
 				} else if(this->type(result) == type_t::LINK) {
@@ -1074,8 +1070,8 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1091,8 +1087,8 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1137,8 +1133,8 @@ uint32_t awh::FileSystem::chmod(string_view addr) const noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -1185,8 +1181,8 @@ bool awh::FileSystem::chmod(string_view addr, const uint32_t mode) const noexcep
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, mode), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -1231,8 +1227,8 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим в лог сообщение
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -1267,8 +1263,8 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 					// Выводим сообщение об ошибке
 					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
@@ -1320,8 +1316,8 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 					// Выводим сообщение об ошибке
 					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
@@ -1344,8 +1340,8 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 					// Выводим сообщение об ошибке
 					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
@@ -1370,8 +1366,8 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 					// Выводим сообщение об ошибке
 					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
 				/**
-				* Если режим отладки не включён
-				*/
+				 * Если режим отладки не включён
+				 */
 				#else
 					// Выводим сообщение об ошибке
 					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
@@ -1464,8 +1460,8 @@ void awh::FileSystem::mkdir(string_view addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("Memory allocation error", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL);
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
@@ -1483,8 +1479,8 @@ void awh::FileSystem::mkdir(string_view addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1500,8 +1496,8 @@ void awh::FileSystem::mkdir(string_view addr) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1589,8 +1585,8 @@ awh::FileSystem::components_t awh::FileSystem::components(string_view addr, cons
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1606,8 +1602,8 @@ awh::FileSystem::components_t awh::FileSystem::components(string_view addr, cons
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1793,8 +1789,8 @@ uintmax_t awh::FileSystem::size(string_view addr, string_view ext, const bool re
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1810,8 +1806,8 @@ uintmax_t awh::FileSystem::size(string_view addr, string_view ext, const bool re
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1965,8 +1961,8 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1982,8 +1978,8 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1998,8 +1994,8 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 			// Выводим сообщение об ошибке
 			this->_log->debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, addr.data());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("Address name: \"%s\" is not dir", log_t::flag_t::WARNING, addr.data());
@@ -2098,8 +2094,8 @@ void awh::FileSystem::append(string_view filename, const void * buffer, const si
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2115,8 +2111,8 @@ void awh::FileSystem::append(string_view filename, const void * buffer, const si
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2249,16 +2245,16 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
 									// Выводим сообщение об ошибке
 									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, message);
 								/**
-								* Если режим отладки не включён
-								*/
+								 * Если режим отладки не включён
+								 */
 								#else
 									// Выводим сообщение об ошибке
 									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 								#endif
 							}
-							// Выполняем закрытие файла
-							::CloseHandle(file);
 						}
+						// Выполняем закрытие файла
+						::CloseHandle(file);
 					}
 				/**
 				 * Для операционной системы не являющейся MS Windows
@@ -2277,8 +2273,8 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -2292,8 +2288,8 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -2345,8 +2341,8 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение что прочитать файл не удалось
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -2370,8 +2366,8 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2387,8 +2383,8 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2555,8 +2551,8 @@ void awh::FileSystem::write(string_view filename, const void * buffer, const siz
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2572,8 +2568,8 @@ void awh::FileSystem::write(string_view filename, const void * buffer, const siz
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
-			* Если режим отладки не включён
-			*/
+			 * Если режим отладки не включён
+			 */
 			#else
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -2589,8 +2585,602 @@ void awh::FileSystem::write(string_view filename, const void * buffer, const siz
  * @param callback функция обратного вызова
  * @param offset   смещение в файле
  */
-void awh::FileSystem::readfile(string_view filename, const seek_t seek, const function <void (const string &)> & callback, const size_t offset) const noexcept {
-
+void awh::FileSystem::readfile(string_view filename, const seek_t seek, const function <void (string_view)> & callback, const size_t offset) const noexcept {
+	// Если параметры для записи переданы
+	if(!std::empty(filename) && (callback != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем извлечение актуального значения адреса
+			const string & address = this->fullpath(filename, true);
+			// Если адрес получен правильный
+			if(!address.empty()){
+				// Локальный буфер для хранения незавершённой строки
+				string remainder = "";
+				/**
+				 * @brief Функция обработки прочитанных данных
+				 *
+				 * @param data указатель на данные
+				 * @param size размер данных
+				 */
+				auto processFn = [&](const char * data, size_t size) noexcept -> void {
+					// Если размер данных равен нулю
+					if(size == 0)
+						// Выходим из функции обработки
+						return;
+					// Добавляем прочитанные данные к остатку
+					remainder.append(data, size);
+					// Позиция в остатке
+					size_t pos = 0;
+					/**
+					 * Выполняем обработку остатка на наличие полных строк
+					 */
+					while(pos < remainder.length()){
+						// Извлекаем текущий символ
+						char c = remainder[pos];
+						// Если символ является символом новой строки
+						if(c == '\n'){
+							// Создаём представление строки
+							string_view str(remainder.c_str(), pos);
+							// Если строка заканчивается символом возврата каретки
+							if(!str.empty() && (str.back() == '\r'))
+								// Удаляем символ возврата каретки из строки
+								str = str.substr(0, str.size() - 1);
+							// Вызываем функцию обратного вызова с найденной строкой
+							callback(str);
+							// Обновляем остаток
+							remainder = ::move(remainder.substr(pos + 1));
+							// Сбрасываем позицию в остатке
+							pos = 0;
+						// Если символ является символом возврата каретки
+						} else if((c == '\r') && ((pos + 1) < remainder.length()) && (remainder[pos + 1] == '\n')) {
+							// Создаём представление строки
+							string_view str(remainder.c_str(), pos);
+							// Вызываем функцию обратного вызова с найденной строкой
+							callback(str);
+							// Обновляем остаток
+							remainder = ::move(remainder.substr(pos + 2));
+							// Сбрасываем позицию в остатке
+							pos = 0;
+						// Выполняем переход к следующему символу
+						} else pos++;
+					}
+				};
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Создаём объект работы с файлом
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+					// Если открыть файл открыт нормально
+					if(file != INVALID_HANDLE_VALUE){
+						// Создаём объект большого числа
+						LARGE_INTEGER li;
+						// Устанавливаем начальное значение позиции
+						li.QuadPart = static_cast <LONGLONG> (offset);
+						/**
+						 * Определяем тип смещения в файле события
+						 */
+						switch(static_cast <uint8_t> (seek)){
+							// Если смещение от начала файла
+							case static_cast <uint8_t> (seek_t::BEGIN):
+								// Выполняем установку позиции в файле
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
+							break;
+							// Если смещение от текущей позиции в файле
+							case static_cast <uint8_t> (seek_t::CURRENT):
+								// Выполняем установку позиции в файле
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
+							break;
+							// Если смещение от конца файла
+							case static_cast <uint8_t> (seek_t::END):
+								// Выполняем установку позиции в файле
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
+							break;
+							// Если тип смещения не определён
+							default: li.LowPart = 0;
+						}
+						// Если мы получили ошибку установки позиции
+						if((li.LowPart == INVALID_SET_FILE_POINTER) && (::GetLastError() != NO_ERROR))
+							// Сбрасываем значение установленной позиции
+							li.QuadPart = -1;
+						// Если позиция установлена успешно
+						if(li.QuadPart > -1){
+							// Размер файла
+							LARGE_INTEGER length;
+							// Получаем размер файла
+							if(!::GetFileSizeEx(file, &length)){
+								// Создаём буфер сообщения ошибки
+								wchar_t message[256] = {0};
+								// Выполняем формирование текста ошибки
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								#endif
+								// Выполняем закрытие файла
+								::CloseHandle(file);
+								// Выходим из метода
+								return;
+							}
+							// Выполняем создание буфера для чтения файла
+							vector <char> buffer(static_cast <size_t> (::min(length.QuadPart, ::getpagesize())), 0);
+							// Количество прочитанных байт
+							DWORD bytes = 0;
+							/**
+							 * Читаем файл по частям до тех пор, пока не достигнем конца файла
+							 */
+							while(li.QuadPart < length.QuadPart){
+								// Создаём объект перекрытого ввода-вывода
+								OVERLAPPED overlapped = {0};
+								// Устанавливаем смещение для чтения
+								overlapped.Offset = li.LowPart;
+								// Устанавливаем старшее смещение для чтения
+								overlapped.OffsetHigh = li.HighPart;
+								// Выполняем чтение части файла в буфер
+								if(!::ReadFile(file, buffer.data(), static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
+									// Создаём буфер сообщения ошибки
+									wchar_t message[256] = {0};
+									// Выполняем формирование текста ошибки
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									#endif
+									// Выполняем закрытие файла
+									::CloseHandle(file);
+									// Выходим из метода
+									return;
+								}
+								// Если прочитано 0 байт — выходим из цикла
+								if(bytes == 0)
+									// Замыкаем цикл чтения файла
+									break;
+								// Выполняем обработку прочитанного буфера
+								processFn(&buffer[0], static_cast <size_t> (bytes));
+								// Обновляем позицию в файле
+								li.QuadPart += static_cast <LONGLONG> (bytes);
+							}
+						}
+						// Выполняем закрытие файла
+						::CloseHandle(file);
+					}
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Файловый дескриптор файла
+					int32_t fd = -1;
+					// Структура статистики файла
+					struct stat info{};
+					// Если файл не открыт
+					if((fd = ::open(address.c_str(), O_RDONLY)) < 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					// Если файл открыт удачно
+					} else if(::fstat(fd, &info) < 0) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					// Если размер файла изменился
+					} else if(static_cast <size_t> (info.st_size) > offset) {
+						// Позиция в файле
+						off_t position = 0;
+						/**
+						 * Определяем тип смещения в файле события
+						 */
+						switch(static_cast <uint8_t> (seek)){
+							// Если смещение от начала файла
+							case static_cast <uint8_t> (seek_t::BEGIN):
+								// Выполняем расчёт смещения в файле
+								position = static_cast <off_t> (offset);
+							break;
+							// Если смещение от конца файла
+							case static_cast <uint8_t> (seek_t::END):
+								// Выполняем расчёт смещения в файле
+								position = (static_cast <off_t> (info.st_size) - static_cast <off_t> (offset));
+							break;
+						}
+						// Проверяем границы
+						if(position < 0)
+							// Устанавливаем позицию в начало файла
+							position = 0;
+						// Если позиция выше размера файла
+						if(position >= static_cast <off_t> (info.st_size)){
+							// Закрываем файловый дескриптор
+							::close(fd);
+							// Выходим из метода
+							return;
+						}
+						// Определяем размер читаемых данных
+						const off_t length = (static_cast <off_t> (info.st_size) - static_cast <off_t> (position));
+						// Выполняем создание буфера для чтения файла
+						vector <char> buffer(static_cast <size_t> (::min <off_t> (length, ::getpagesize())), 0);
+						// Количество прочитанных байт
+						ssize_t bytes = 0;
+						/**
+						 * Читаем файл по частям до тех пор, пока не достигнем конца файла
+						 */
+						while(position < length){
+							// Читаем часть файла в буфер
+							bytes = ::pread(fd, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
+							// Если прочитать часть файла не удалось
+							if(bytes <= 0)
+								// Выходим из цикла чтения файла
+								break;
+							// Выполняем обработку прочитанного буфера
+							processFn(&buffer[0], static_cast <size_t> (bytes));
+							// Обновляем позицию в файле
+							position += static_cast <off_t> (bytes);
+						}
+					}
+					// Если файл открыт
+					if(fd > -1)
+						// Закрываем файловый дескриптор
+						::close(fd);
+				#endif
+				// Обработка последней строки (если нет \n в конце)
+				if(!remainder.empty()){
+					// Создаём представление строки
+					string_view str(remainder.c_str(), remainder.size());
+					// Если строка заканчивается символом возврата каретки
+					if(!str.empty() && (str.back() == '\r'))
+						// Удаляем символ возврата каретки из строки
+						str = str.substr(0, str.size() - 1);
+					// Вызываем функцию обратного вызова с найденной строкой
+					callback(str);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+}
+/**
+ * @brief Метод рекурсивного получения буфера данных из больших файлов
+ *
+ * @param filename адрес файла для чтения
+ * @param size     размер буфера для чтения файла
+ * @param seek     тип смещения в файле
+ * @param callback функция обратного вызова
+ * @param offset   смещение в файле
+ */
+void awh::FileSystem::readfile(string_view filename, const size_t size, const seek_t seek, const function <void (const void *, const size_t)> & callback, const size_t offset) const noexcept {
+	// Если параметры для записи переданы
+	if(!std::empty(filename) && (callback != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем извлечение актуального значения адреса
+			const string & address = this->fullpath(filename, true);
+			// Если адрес получен правильный
+			if(!address.empty()){
+				// Если размер буфера для чтения равен нулю
+				if(size == 0)
+					// Корректируем размер буфера для чтения
+					const_cast <size_t &> (size) = static_cast <size_t> (::getpagesize());
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Создаём объект работы с файлом
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+					// Если открыть файл открыт нормально
+					if(file != INVALID_HANDLE_VALUE){
+						// Создаём объект большого числа
+						LARGE_INTEGER li;
+						// Устанавливаем начальное значение позиции
+						li.QuadPart = static_cast <LONGLONG> (offset);
+						/**
+						 * Определяем тип смещения в файле события
+						 */
+						switch(static_cast <uint8_t> (seek)){
+							// Если смещение от начала файла
+							case static_cast <uint8_t> (seek_t::BEGIN):
+								// Выполняем установку позиции в файле
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
+							break;
+							// Если смещение от текущей позиции в файле
+							case static_cast <uint8_t> (seek_t::CURRENT):
+								// Выполняем установку позиции в файле
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
+							break;
+							// Если смещение от конца файла
+							case static_cast <uint8_t> (seek_t::END):
+								// Выполняем установку позиции в файле
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
+							break;
+							// Если тип смещения не определён
+							default: li.LowPart = 0;
+						}
+						// Если мы получили ошибку установки позиции
+						if((li.LowPart == INVALID_SET_FILE_POINTER) && (::GetLastError() != NO_ERROR))
+							// Сбрасываем значение установленной позиции
+							li.QuadPart = -1;
+						// Если позиция установлена успешно
+						if(li.QuadPart > -1){
+							// Размер файла
+							LARGE_INTEGER length;
+							// Получаем размер файла
+							if(!::GetFileSizeEx(file, &length)){
+								// Создаём буфер сообщения ошибки
+								wchar_t message[256] = {0};
+								// Выполняем формирование текста ошибки
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								#endif
+								// Выполняем закрытие файла
+								::CloseHandle(file);
+								// Выходим из метода
+								return;
+							}
+							// Выполняем создание буфера для чтения файла
+							vector <char> buffer(static_cast <size_t> (::min(length.QuadPart, static_cast <LONGLONG> (size))), 0);
+							// Количество прочитанных байт
+							DWORD bytes = 0;
+							/**
+							 * Читаем файл по частям до тех пор, пока не достигнем конца файла
+							 */
+							while(li.QuadPart < length.QuadPart){
+								// Создаём объект перекрытого ввода-вывода
+								OVERLAPPED overlapped = {0};
+								// Устанавливаем смещение для чтения
+								overlapped.Offset = li.LowPart;
+								// Устанавливаем старшее смещение для чтения
+								overlapped.OffsetHigh = li.HighPart;
+								// Выполняем чтение части файла в буфер
+								if(!::ReadFile(file, buffer.data(), static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
+									// Создаём буфер сообщения ошибки
+									wchar_t message[256] = {0};
+									// Выполняем формирование текста ошибки
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									#endif
+									// Выполняем закрытие файла
+									::CloseHandle(file);
+									// Выходим из метода
+									return;
+								}
+								// Если прочитано 0 байт — выходим из цикла
+								if(bytes == 0)
+									// Замыкаем цикл чтения файла
+									break;
+								// Выводим функцию обратного вызова
+								callback(&buffer[0], static_cast <size_t> (bytes));
+								// Обновляем позицию в файле
+								li.QuadPart += static_cast <LONGLONG> (bytes);
+							}
+						}
+						// Выполняем закрытие файла
+						::CloseHandle(file);
+					}
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Файловый дескриптор файла
+					int32_t fd = -1;
+					// Структура статистики файла
+					struct stat info{};
+					// Если файл не открыт
+					if((fd = ::open(address.c_str(), O_RDONLY)) < 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					// Если файл открыт удачно
+					} else if(::fstat(fd, &info) < 0) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					// Если размер файла изменился
+					} else if(static_cast <size_t> (info.st_size) > offset) {
+						// Позиция в файле
+						off_t position = 0;
+						/**
+						 * Определяем тип смещения в файле события
+						 */
+						switch(static_cast <uint8_t> (seek)){
+							// Если смещение от начала файла
+							case static_cast <uint8_t> (seek_t::BEGIN):
+								// Выполняем расчёт смещения в файле
+								position = static_cast <off_t> (offset);
+							break;
+							// Если смещение от конца файла
+							case static_cast <uint8_t> (seek_t::END):
+								// Выполняем расчёт смещения в файле
+								position = (static_cast <off_t> (info.st_size) - static_cast <off_t> (offset));
+							break;
+						}
+						// Проверяем границы
+						if(position < 0)
+							// Устанавливаем позицию в начало файла
+							position = 0;
+						// Если позиция выше размера файла
+						if(position >= static_cast <off_t> (info.st_size)){
+							// Закрываем файловый дескриптор
+							::close(fd);
+							// Выходим из метода
+							return;
+						}
+						// Определяем размер читаемых данных
+						const off_t length = (static_cast <off_t> (info.st_size) - static_cast <off_t> (position));
+						// Выполняем создание буфера для чтения файла
+						vector <char> buffer(static_cast <size_t> (::min <off_t> (length, static_cast <off_t> (size))), 0);
+						// Количество прочитанных байт
+						ssize_t bytes = 0;
+						/**
+						 * Читаем файл по частям до тех пор, пока не достигнем конца файла
+						 */
+						while(position < length){
+							// Читаем часть файла в буфер
+							bytes = ::pread(fd, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
+							// Если прочитать часть файла не удалось
+							if(bytes <= 0)
+								// Выходим из цикла чтения файла
+								break;
+							// Выводим функцию обратного вызова
+							callback(&buffer[0], static_cast <size_t> (bytes));
+							// Обновляем позицию в файле
+							position += static_cast <off_t> (bytes);
+						}
+					}
+					// Если файл открыт
+					if(fd > -1)
+						// Закрываем файловый дескриптор
+						::close(fd);
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод рекурсивного получения файлов во всех подкаталогах
@@ -2601,11 +3191,228 @@ void awh::FileSystem::readfile(string_view filename, const seek_t seek, const fu
  * @param callback функция обратного вызова
  * @param resolve  флаг резолвинга символьных ссылок
  */
-void awh::FileSystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const string &)> & callback, const bool resolve) const noexcept {
-
+void awh::FileSystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (string_view)> & callback, const bool resolve) const noexcept {
+	// Если адрес каталога и расширение файлов переданы
+	if(!std::empty(path) && (callback != nullptr) && (this->type(path) == type_t::DIR)){
+		/**
+		 * @brief Прототип функции запроса файлов в каталоге
+		 *
+		 * @param путь до каталога
+		 * @param расширение файла по которому идет фильтрация
+		 * @param флаг рекурсивного перебора каталогов
+		 */
+		function <void (string_view, string_view, const bool)> readFn;
+		/**
+		 * @brief Функция запроса файлов в каталоге
+		 *
+		 * @param path    путь до каталога
+		 * @param ext     расширение файла по которому идет фильтрация
+		 * @param recurse флаг рекурсивного перебора каталогов
+		 */
+		readFn = [&](string_view path, string_view ext, const bool recurse) noexcept -> void {
+			/**
+			 * Выполняем перехват ошибок
+			 */
+			try {
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Открываем указанный каталог
+					_WDIR * dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Открываем указанный каталог
+					DIR * dir = ::opendir(path.data());
+				#endif
+					// Если каталог открыт
+					if(dir != nullptr){
+						/**
+						 * Для операционной системы MS Windows
+						 */
+						#if _WIN32 || _WIN64
+							// Структура проверка статистики
+							struct _stat info{};
+							// Создаем указатель на содержимое каталога
+							struct _wdirent * ptr = nullptr;
+							/**
+							 * Выполняем чтение содержимого каталога
+							 */
+							while((ptr = ::_wreaddir(dir))){
+						/**
+						 * Для операционной системы не являющейся MS Windows
+						 */
+						#else
+							// Структура проверка статистики
+							struct stat info{};
+							// Создаем указатель на содержимое каталога
+							struct dirent * ptr = nullptr;
+							/**
+							 * Выполняем чтение содержимого каталога
+							 */
+							while((ptr = ::readdir(dir))){
+						#endif
+								/**
+								 * Для операционной системы MS Windows
+								 */
+								#if _WIN32 || _WIN64
+									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+									if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+										// Выполняем пропуск каталога
+										continue;
+									// Получаем адрес в виде строки
+									const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+								/**
+								 * Для операционной системы не являющейся MS Windows
+								 */
+								#else
+									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+									if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+										// Выполняем пропуск каталога
+										continue;
+									// Получаем адрес в виде строки
+									const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
+								#endif
+								/**
+								 * Для операционной системы MS Windows
+								 */
+								#if _WIN32 || _WIN64
+									// Если статистика извлечена
+									if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
+								/**
+								 * Для операционной системы не являющейся MS Windows
+								 */
+								#else
+									// Если статистика извлечена
+									if(!::stat(address.c_str(), &info)){
+								#endif
+										// Получаем путь до файла в нижнем регистре
+										string_view path = address;
+										// Если дочерний элемент является дирректорией
+										if(S_ISDIR(info.st_mode)){
+											// Продолжаем обработку следующих каталогов
+											if(recurse)
+												// Выполняем функцию обратного вызова
+												readFn(path, ext, recurse);
+											// Выводим данные каталога как он есть
+											else callback(this->fullpath(path, resolve));
+										// Если дочерний элемент является файлом и расширение файла указано то выводим его
+										} else if(!std::empty(ext)) {
+											// Получаем расширение файла
+											const string & extension = this->_fmk->format(".%s", ext.data());
+											// Если расширение не выше полного адреса
+											if(path.size() > extension.length()){
+												// Если расширение файла найдено
+												if(this->_fmk->compare(path.substr(path.size() - extension.length(), extension.length()).data(), extension))
+													// Выводим полный путь файла
+													callback(this->fullpath(path, resolve));
+											}
+										// Если дочерний элемент является файлом то выводим его
+										} else callback(this->fullpath(path, resolve));
+									// Если статистика не извлечена
+									} else {
+										/**
+										 * Если операционной системой является MacOS X
+										 */
+										#if __APPLE__ || __MACH__
+											// Если адрес является ссылкой
+											if(this->type(address) == type_t::LINK){
+												// Получаем путь до файла в нижнем регистре
+												string_view path = address;
+												// Если дочерний элемент является файлом и расширение файла указано то выводим его
+												if(!std::empty(ext)){
+													// Получаем расширение файла
+													const string & extension = this->_fmk->format(".%s", ext.data());
+													// Если расширение не выше полного адреса
+													if(path.size() > extension.length()){
+														// Если расширение файла найдено
+														if(this->_fmk->compare(path.substr(path.size() - extension.length(), extension.length()).data(), extension))
+															// Выводим полный путь файла
+															callback(this->fullpath(path, resolve));
+													}
+												// Если дочерний элемент является файлом то выводим его
+												} else callback(this->fullpath(path, resolve));
+											}
+										#endif
+									}
+						}
+						/**
+						 * Для операционной системы MS Windows
+						 */
+						#if _WIN32 || _WIN64
+							// Закрываем открытый каталог
+							::_wclosedir(dir);
+						/**
+						 * Для операционной системы не являющейся MS Windows
+						 */
+						#else
+							// Закрываем открытый каталог
+							::closedir(dir);
+						#endif
+					}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const ios_base::failure & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		};
+		// Выполняем извлечение актуального значения адреса
+		const string & address = this->fullpath(path, resolve);
+		// Если адрес получен правильный
+		if(!address.empty())
+			// Запрашиваем данные первого каталога
+			readFn(address, ext, recurse);
+	// Если переданный адрес не является каталогом
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+		#endif
+	}
 }
 /**
- * @brief Метод рекурсивного чтения файлов во всех подкаталогах
+ * @brief Метод рекурсивного чтения файлов во всех подкаталогах построчно
  *
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
@@ -2613,17 +3420,17 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
  * @param callback функция обратного вызова
  * @param resolve  флаг резолвинга символьных ссылок
  */
-void awh::FileSystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const string &, const string &)> & callback, const bool resolve) const noexcept {
+void awh::FileSystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (string_view, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (this->type(path) == type_t::DIR)){
+	if(!std::empty(path) && (callback != nullptr) && (this->type(path) == type_t::DIR)){
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
 		if(!address.empty())
 			// Переходим по всему списку файлов в каталоге
-			this->readdir(address, ext, recurse, [&](const string & filename) noexcept -> void {
+			this->readdir(address, ext, recurse, [&](string_view filename) noexcept -> void {
 				// Выполняем считывание всех строк текста
-				this->readfile(filename, seek_t::BEGIN, [&](const string & text) noexcept -> void {
+				this->readfile(filename, seek_t::BEGIN, [&](string_view text) noexcept -> void {
 					// Если текст получен
 					if(!text.empty())
 						// Выводим функцию обратного вызова
@@ -2639,11 +3446,67 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
 			// Выводим сообщение об ошибке
 			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, path.data());
 		/**
-		* Если режим отладки не включён
-		*/
+		 * Если режим отладки не включён
+		 */
 		#else
 			// Выводим сообщение об ошибке
 			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
 		#endif
 	}
 }
+/**
+ * @brief Метод рекурсивного чтения файлов во всех подкаталогах бинарными блоками
+ *
+ * @param path     путь до каталога
+ * @param ext      расширение файла по которому идет фильтрация
+ * @param size     размер буфера для чтения файла
+ * @param recurse  флаг рекурсивного перебора каталогов
+ * @param callback функция обратного вызова
+ * @param resolve  флаг резолвинга символьных ссылок
+ */
+void awh::FileSystem::readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (string_view, const void *, const size_t)> & callback, const bool resolve) const noexcept {
+	// Если адрес каталога и расширение файлов переданы
+	if(!std::empty(path) && (callback != nullptr) && (this->type(path) == type_t::DIR)){
+		// Выполняем извлечение актуального значения адреса
+		const string & address = this->fullpath(path, resolve);
+		// Если адрес получен правильный
+		if(!address.empty()){
+			// Если размер буфера для чтения равен нулю
+			if(size == 0)
+				// Корректируем размер буфера для чтения
+				const_cast <size_t &> (size) = static_cast <size_t> (::getpagesize());
+			// Переходим по всему списку файлов в каталоге
+			this->readdir(address, ext, recurse, [&](string_view filename) noexcept -> void {
+				// Выполняем считывание всех строк текста
+				this->readfile(filename, size, seek_t::BEGIN, [&](const void * buffer, const size_t size) noexcept -> void {
+					// Буфер данных получен успешно
+					if((buffer != nullptr) && (size > 0))
+						// Выводим функцию обратного вызова
+						callback(filename, buffer, size);
+				});
+			}, resolve);
+		}
+	// Если переданный адрес не является каталогом
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(path, ext, size, recurse, resolve), log_t::flag_t::CRITICAL, path.data());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+		#endif
+	}
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::FileSystem::FileSystem(const fmk_t * fmk, const log_t * log) noexcept : _os(log), _fmk(fmk), _log(log) {}
