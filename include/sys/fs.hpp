@@ -83,9 +83,9 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * @brief Метод определяющая тип файловой системы по адресу
+			 * @brief Метод, определяющий тип файловой системы по адресу
 			 *
-			 * @param addr адрес файловой системы
+			 * @param addr адрес директории или файла
 			 * @return     тип файловой системы
 			 */
 			type_t type(string_view addr) const noexcept;
@@ -363,7 +363,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			FileSystem(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit FileSystem(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

@@ -32,7 +32,6 @@
 #include <codecvt>
 #include <sstream>
 #include <cstdlib>
-#include <iostream>
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/file.h>
@@ -101,6 +100,286 @@ namespace {
 	 * Подписываемся на пространство имён AWH
 	 */
 	using namespace awh;
+
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * @brief Класс для автоматического управления HANDLE (RAII)
+		 *
+		 */
+		typedef_t class HandleGuard {
+			private:
+				// Объект дескриптора
+				HANDLE _handle = INVALID_HANDLE_VALUE;
+			public:
+				/**
+				 * @brief Метод проверки валидности
+				 *
+				 * @return валидность дескриптора
+				 */
+				bool valid() const noexcept {
+					// Возвращаем результат проверки валидности дескриптора
+					return (
+						(this->_handle != nullptr) &&
+						(this->_handle != INVALID_HANDLE_VALUE)
+					);
+				}
+			public:
+				/**
+				 * @brief Оператор приведения к типу
+				 *
+				 * @return объект дескриптора
+				 */
+				operator HANDLE() const noexcept {
+					// Возвращаем объект дескриптора
+					return this->_handle;
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param handle объект дескриптора
+				 */
+				HandleGuard(HANDLE handle) noexcept : _handle(handle) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~HandleGuard() noexcept {
+					// Если дескриптор валиден
+					if(this->valid())
+						// Закрываем дескриптор
+						::CloseHandle(this->_handle);
+				}
+		} handle_guard_t;
+		/**
+		 * @brief Шаблон класса для автоматического управления COM-интерфейсами (RAII)
+		 *
+		 * @tparam T тип интерфейса
+		 */
+		template <typename T>
+		/**
+		 * @brief Класс для автоматического управления COM-интерфейсами (RAII)
+		 *
+		 */
+		typedef class ComGuard {
+			private:
+				// Указатель на COM-интерфейс
+				T * _ptr = nullptr;
+			public:
+				/**
+				 * @brief Метод получения указателя на интерфейс
+				 *
+				 * @return указатель на интерфейс
+				 */
+				T * get() const noexcept {
+					// Возвращаем указатель на интерфейс
+					return this->_ptr;
+				}
+			public:
+				/**
+				 * @brief Метод сброса указателя на интерфейс
+				 *
+				 * @param ptr новый указатель на интерфейс
+				 */
+				void reset(T * ptr = nullptr) noexcept {
+					// Если указатель на интерфейс установлен
+					if(this->_ptr != nullptr)
+						// Выполняем освобождение интерфейса
+						this->_ptr->Release();
+					// Устанавливаем новый указатель на интерфейс
+					this->_ptr = ptr;
+				}
+			public:
+				/**
+				 * @brief Опретор получение адреса указателя (для CoCreateInstance и т.п.)
+				 *
+				 * @return адрес указателя
+				 */
+				T ** operator & () noexcept {
+					// Возвращаем адрес указателя
+					return &this->_ptr;
+				}
+				/**
+				 * @brief Оператор доступа к членам интерфейса
+				 *
+				 * @return указатель на интерфейс
+				 */
+				T * operator -> () const noexcept {
+					// Возвращаем указатель на интерфейс
+					return this->_ptr;
+				}
+			public:
+				/**
+				 * @brief Оператор приведения к типу bool
+				 *
+				 * @return валидность указателя
+				 */
+				explicit operator bool() const noexcept {
+					// Возвращаем результат проверки валидности указателя
+					return (this->_ptr != nullptr);
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param ptr указатель на COM-интерфейс
+				 */
+				ComGuard(T * ptr = nullptr) noexcept : _ptr(ptr) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~ComGuard() noexcept {
+					// Выполняем сброс указателя
+					this->reset();
+				}
+		} com_guard_t;
+		/**
+		 * @brief Класс для автоматического управления каталогом Windows (RAII)
+		 *
+		 */
+		typedef class DirGuard {
+			private:
+				// Объект каталога
+				_WDIR * _dir = nullptr;
+			public:
+				/**
+				 * @brief Оператор приведения к типу
+				 *
+				 * @return объект каталога
+				 */
+				operator _WDIR * () const noexcept {
+					// Возвращаем объект каталога
+					return this->_dir;
+				}
+			public:
+				/**
+				 * @brief Метод проверки валидности
+				 *
+				 * @return валидность каталога
+				 */
+				bool valid() const noexcept {
+					// Возвращаем результат проверки валидности каталога
+					return (this->_dir != nullptr);
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param dir объект каталога
+				 */
+				DirGuard(_WDIR * dir) noexcept : _dir(dir) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~DirGuard() noexcept {
+					// Если каталог валиден
+					if(this->valid())
+						// Закрываем каталог
+						::_wclosedir(this->_dir);
+				}
+		} dir_guard_t;
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		/**
+		 * @brief Класс для автоматического управления файловыми дескрипторами (RAII)
+		 *
+		 */
+		typedef class FdGuard {
+			private:
+				// Файловый дескриптор
+				int32_t _fd = -1;
+			public:
+				/**
+				 * @brief Метод проверки валидности
+				 *
+				 * @return валидность файлового дескриптора
+				 */
+				bool valid() const noexcept {
+					// Возвращаем результат проверки валидности файлового дескриптора
+					return (this->_fd > -1);
+				}
+			public:
+				/**
+				 * @brief Оператор приведения к типу
+				 *
+				 * @return файловый дескриптор
+				 */
+				operator int32_t () const noexcept {
+					// Выводим файловый дескриптор
+					return this->_fd;
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fd файловый дескриптор
+				 */
+				FdGuard(const int32_t fd) noexcept : _fd(fd) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~FdGuard() noexcept {
+					// Если файловый дескриптор валиден
+					if(this->valid())
+						// Закрываем файловый дескриптор
+						::close(this->_fd);
+				}
+		} fd_guard_t;
+		/**
+		 * @brief Класс для автоматического управления каталогом Windows (RAII)
+		 *
+		 */
+		typedef class DirGuard {
+			private:
+				// Объект каталога
+				DIR * _dir = nullptr;
+			public:
+				/**
+				 * @brief Оператор приведения к типу
+				 *
+				 * @return объект каталога
+				 */
+				operator DIR * () const noexcept {
+					// Возвращаем объект каталога
+					return this->_dir;
+				}
+			public:
+				/**
+				 * @brief Метод проверки валидности
+				 *
+				 * @return валидность каталога
+				 */
+				bool valid() const noexcept {
+					// Возвращаем результат проверки валидности каталога
+					return (this->_dir != nullptr);
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param dir объект каталога
+				 */
+				DirGuard(DIR * dir) noexcept : _dir(dir) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~DirGuard() noexcept {
+					// Если каталог валиден
+					if(this->valid())
+						// Закрываем каталог
+						::closedir(this->_dir);
+				}
+		} dir_guard_t;
+	#endif
 
 	/**
 	 * @brief Функция получения полного пути файла или каталога
@@ -242,15 +521,15 @@ namespace {
 };
 
 /**
- * @brief Метод определяющая тип файловой системы по адресу
+ * @brief Метод, определяющий тип файловой системы по адресу
  *
- * @param addr адрес дирректории
+ * @param addr адрес директории или файла
  * @return     тип файловой системы
  */
 awh::FileSystem::type_t awh::FileSystem::type(string_view addr) const noexcept {
 	// Результат работы функции
 	type_t result = type_t::NONE;
-	// Если адрес дирректории передан
+	// Если адрес директории или файла передан
 	if(!std::empty(addr)){
 		/**
 		 * Выполняем перехват ошибок
@@ -379,31 +658,27 @@ awh::FileSystem::type_t awh::FileSystem::type(string_view addr) const noexcept {
 				 * Для операционной системы MS Windows
 				 */
 				#else
-					// Создаём объект проверки наличия ярлыка
-					IShellLinkW * psl = nullptr;
 					// Выполняем инициализацию результата
 					HRESULT hres = ::CoInitialize(nullptr);
+					// Создаём объект проверки наличия ярлыка
+					com_guard_t <IShellLinkW> psl;
 					// Выполняем инициализацию объекта для проверки ярлыков
 					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 					// Если инициализация выполнена
-					if(SUCCEEDED(hres)){
+					if(SUCCEEDED(hres) && psl){
 						// Создаём объект проверки файла
-						IPersistFile * ppf = nullptr;
+						com_guard_t <IPersistFile> ppf;
 						// Выполняем инициализацию объекта для проверки файла
 						hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
 						// Если объект для проверки файла инициализирован
-						if(SUCCEEDED(hres)){
+						if(SUCCEEDED(hres) && ppf){
 							// Выполняем загрузку переданного адреса
 							hres = ppf->Load(address.c_str(), STGM_READ);
 							// Если переданный адрес является ярлыком
 							if(SUCCEEDED(hres))
 								// Получаем тип файловой системы
 								result = type_t::LINK;
-							// Выполняем очистку объекта провверки файла
-							psl->Release();
 						}
-						// Выполняем очистку объекта провверки файла
-						psl->Release();
 					}
 					// Выполняем очистку объекта результата
 					::CoUninitialize();
@@ -478,19 +753,19 @@ void awh::FileSystem::symlink(string_view first, string_view second) const noexc
 					// Выполняем инициализацию результата
 					HRESULT hres = ::CoInitialize(nullptr);
 					// Создаём объект проверки наличия ярлыка
-					IShellLinkW * psl = nullptr;
+					com_guard_t <IShellLinkW> psl;
 					// Выполняем инициализацию объекта для проверки ярлыков
 					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 					// Если инициализация выполнена
-					if(SUCCEEDED(hres)){
+					if(SUCCEEDED(hres) && psl){
 						// Позиция разделителя каталога
 						size_t pos = 0;
 						// Создаём объект проверки файла
-						IPersistFile * ppf = nullptr;
+						com_guard_t <IPersistFile> ppf;
 						// Выполняем инициализацию объекта для проверки файла
 						hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
 						// Если объект для проверки файла инициализирован
-						if(SUCCEEDED(hres)){
+						if(SUCCEEDED(hres) && ppf){
 							// Определяем флаг обратного смещения
 							const uint8_t offset = (filename.back() == '\\' ? 2 : 1);
 							// Выполняем поиск разделителя каталога
@@ -528,11 +803,7 @@ void awh::FileSystem::symlink(string_view first, string_view second) const noexc
 								// Выполняем создание ярлыка в файловой системе
 								hres = ppf->Save(this->_fmk->convert(symlink).c_str(), TRUE);
 							}
-							// Выполняем очистку объекта провверки файла
-							psl->Release();
 						}
-						// Выполняем очистку объекта провверки файла
-						psl->Release();
 					}
 					// Выполняем очистку объекта результата
 					::CoUninitialize();
@@ -673,132 +944,119 @@ bool awh::FileSystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							_WDIR * dir = ::_wopendir(this->_fmk->convert(address).c_str());
+							dir_guard_t dir = ::_wopendir(this->_fmk->convert(address).c_str());
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							DIR * dir = ::opendir(address.c_str());
+							dir_guard_t dir = ::opendir(address.c_str());
 						#endif
-							// Если каталог открыт
-							if((result = (dir != nullptr))){
+						// Если каталог открыт
+						if((result = dir.valid())){
+							/**
+							 * Для операционной системы MS Windows
+							 */
+							#if _WIN32 || _WIN64
+								// Структура проверка статистики
+								struct _stat info{};
+								// Создаем указатель на содержимое каталога
+								struct _wdirent * ptr = nullptr;
 								/**
-								 * Для операционной системы MS Windows
+								 * Выполняем чтение содержимого каталога
 								 */
-								#if _WIN32 || _WIN64
-									// Структура проверка статистики
-									struct _stat info{};
-									// Создаем указатель на содержимое каталога
-									struct _wdirent * ptr = nullptr;
+								while((ptr = ::_wreaddir(dir))){
+							/**
+							 * Для операционной системы не являющейся MS Windows
+							 */
+							#else
+								// Структура проверка статистики
+								struct stat info{};
+								// Создаем указатель на содержимое каталога
+								struct dirent * ptr = nullptr;
+								/**
+								 * Выполняем чтение содержимого каталога
+								 */
+								while((ptr = ::readdir(dir))){
+							#endif
 									/**
-									 * Выполняем чтение содержимого каталога
+									 * Для операционной системы MS Windows
 									 */
-									while((ptr = ::_wreaddir(dir))){
-								/**
-								 * Для операционной системы не являющейся MS Windows
-								 */
-								#else
-									// Структура проверка статистики
-									struct stat info{};
-									// Создаем указатель на содержимое каталога
-									struct dirent * ptr = nullptr;
+									#if _WIN32 || _WIN64
+										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+											// Выполняем пропуск каталога
+											continue;
+										// Получаем адрес в виде строки
+										const string & address = this->_fmk->format("%s%s%s", addr.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
 									/**
-									 * Выполняем чтение содержимого каталога
+									 * Для операционной системы не являющейся MS Windows
 									 */
-									while((ptr = ::readdir(dir))){
-								#endif
-										/**
-										 * Для операционной системы MS Windows
-										 */
-										#if _WIN32 || _WIN64
-											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-											if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
-												// Выполняем пропуск каталога
-												continue;
-											// Получаем адрес в виде строки
-											const string & address = this->_fmk->format("%s%s%s", addr.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
-										/**
-										 * Для операционной системы не являющейся MS Windows
-										 */
-										#else
-											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-											if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
-												// Выполняем пропуск каталога
-												continue;
-											// Получаем адрес каталога
-											const string & address = this->_fmk->format("%s%s%s", addr.data(), AWH_FS_SEPARATOR, ptr->d_name);
-										#endif
-										/**
-										 * Для операционной системы MS Windows
-										 */
-										#if _WIN32 || _WIN64
-											// Конвертируем адрес в формат wstring
-											const wstring & path = this->_fmk->convert(address);
-											// Если статистика извлечена
-											if(!::_wstat(path.c_str(), &info)){
-												// Если дочерний элемент является дирректорией
-												if(S_ISDIR(info.st_mode))
-													// Выполняем удаление подкаталогов
-													result = this->unlink(address, resolve);
-												// Если дочерний элемент является файлом то удаляем его
-												else result = (::_wunlink(path.c_str()) == 0);
-											// Если путь является символьной ссылкой
-											} else if(this->type(address) == type_t::LINK)
-												// Выполняем удаление символьной ссылки
-												result = (::_wunlink(path.c_str()) == 0);
-										/**
-										 * Для операционной системы не являющейся MS Windows
-										 */
-										#else
-											// Если статистика извлечена
-											if(!::stat(address.c_str(), &info)){
-												// Если дочерний элемент является дирректорией
-												if(S_ISDIR(info.st_mode))
-													// Выполняем удаление подкаталогов
-													result = this->unlink(address, resolve);
-												// Если дочерний элемент является файлом то удаляем его
-												else result = (::unlink(address.c_str()) == 0);
-											// Если путь является символьной ссылкой
-											} else if(this->type(address) == type_t::LINK)
-												// Выполняем удаление символьной ссылки
-												result = (::unlink(address.c_str()) == 0);
-										#endif
-										// Если удаление не выполнено
-										if(!result)
-											// Прекращаем выполнение удаления
-											break;
-								}
-								/**
-								 * Для операционной системы MS Windows
-								 */
-								#if _WIN32 || _WIN64
-									// Закрываем открытый каталог
-									::_wclosedir(dir);
-								/**
-								 * Для операционной системы не являющейся MS Windows
-								 */
-								#else
-									// Закрываем открытый каталог
-									::closedir(dir);
-								#endif
+									#else
+										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+										if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+											// Выполняем пропуск каталога
+											continue;
+										// Получаем адрес каталога
+										const string & address = this->_fmk->format("%s%s%s", addr.data(), AWH_FS_SEPARATOR, ptr->d_name);
+									#endif
+									/**
+									 * Для операционной системы MS Windows
+									 */
+									#if _WIN32 || _WIN64
+										// Конвертируем адрес в формат wstring
+										const wstring & path = this->_fmk->convert(address);
+										// Если статистика извлечена
+										if(!::_wstat(path.c_str(), &info)){
+											// Если дочерний элемент является директорией
+											if(S_ISDIR(info.st_mode))
+												// Выполняем удаление подкаталогов
+												result = this->unlink(address, resolve);
+											// Если дочерний элемент является файлом то удаляем его
+											else result = (::_wunlink(path.c_str()) == 0);
+										// Если путь является символьной ссылкой
+										} else if(this->type(address) == type_t::LINK)
+											// Выполняем удаление символьной ссылки
+											result = (::_wunlink(path.c_str()) == 0);
+									/**
+									 * Для операционной системы не являющейся MS Windows
+									 */
+									#else
+										// Если статистика извлечена
+										if(!::stat(address.c_str(), &info)){
+											// Если дочерний элемент является директорией
+											if(S_ISDIR(info.st_mode))
+												// Выполняем удаление подкаталогов
+												result = this->unlink(address, resolve);
+											// Если дочерний элемент является файлом то удаляем его
+											else result = (::unlink(address.c_str()) == 0);
+										// Если путь является символьной ссылкой
+										} else if(this->type(address) == type_t::LINK)
+											// Выполняем удаление символьной ссылки
+											result = (::unlink(address.c_str()) == 0);
+									#endif
+									// Если удаление не выполнено
+									if(!result)
+										// Прекращаем выполнение удаления
+										break;
 							}
-							// Удаляем последний каталог
-							if(result){
-								/**
-								 * Для операционной системы MS Windows
-								 */
-								#if _WIN32 || _WIN64
-									// Получаем количество дочерних элементов
-									result = (::_wrmdir(this->_fmk->convert(address).c_str()) == 0);
-								/**
-								 * Для операционной системы не являющейся MS Windows
-								 */
-								#else
-									// Получаем количество дочерних элементов
-									result = (::rmdir(address.c_str()) == 0);
-								#endif
-							}
+						}
+						// Удаляем последний каталог
+						if(result){
+							/**
+							 * Для операционной системы MS Windows
+							 */
+							#if _WIN32 || _WIN64
+								// Получаем количество дочерних элементов
+								result = (::_wrmdir(this->_fmk->convert(address).c_str()) == 0);
+							/**
+							 * Для операционной системы не являющейся MS Windows
+							 */
+							#else
+								// Получаем количество дочерних элементов
+								result = (::rmdir(address.c_str()) == 0);
+							#endif
+						}
 					} break;
 					// Если переданный путь является файлом
 					case static_cast <uint8_t> (type_t::FILE):
@@ -914,7 +1172,7 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 				// Если адрес пути получен
 				if(resolve && !result.empty()){
 					// Создаём объект проверки наличия ярлыка
-					IShellLinkW * psl = nullptr;
+					com_guard_t <IShellLinkW> psl;
 					// Выполняем инициализацию результата
 					HRESULT hres = ::CoInitialize(nullptr);
 					// Выполняем инициализацию объекта для проверки ярлыков
@@ -922,7 +1180,7 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 					// Если инициализация выполнена
 					if(SUCCEEDED(hres)){
 						// Создаём объект проверки файла
-						IPersistFile * ppf = nullptr;
+						com_guard_t <IPersistFile> ppf;
 						// Выполняем инициализацию объекта для проверки файла
 						hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
 						// Если объект для проверки файла инициализирован
@@ -960,11 +1218,7 @@ string awh::FileSystem::fullpath(string_view addr, const bool resolve) const noe
 									}
 								}
 							}
-							// Выполняем очистку объекта провверки файла
-							psl->Release();
 						}
-						// Выполняем очистку объекта провверки файла
-						psl->Release();
 					}
 					// Выполняем очистку объекта результата
 					::CoUninitialize();
@@ -1340,7 +1594,7 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1366,7 +1620,7 @@ bool awh::FileSystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1433,6 +1687,13 @@ bool awh::FileSystem::mkdir(string_view addr) const noexcept {
 							 * Для операционной системы MS Windows
 							 */
 							#else
+								// Если это дисковой сепаратор
+								if((::strlen(buffer) == 2) && (buffer[1] == ':')){
+									// Запоминаем сепаратор
+									(* i) = AWH_FS_SEPARATOR[0];
+									// Продолжаем перебор адреса
+									continue;
+								}
 								// Создаем каталог
 								result = (::_wmkdir(this->_fmk->convert(buffer).c_str()) == 0);
 							#endif
@@ -1454,6 +1715,10 @@ bool awh::FileSystem::mkdir(string_view addr) const noexcept {
 							 * Для операционной системы MS Windows
 							 */
 							#else
+								// Если это дисковой сепаратор
+								if((::strlen(buffer) == 2) && (buffer[1] == ':'))
+									// Выходим из цикла
+									break;
 								// Создаем каталог
 								result = (::_wmkdir(this->_fmk->convert(buffer).c_str()) == 0);
 							#endif
@@ -1685,7 +1950,7 @@ uintmax_t awh::FileSystem::size(string_view addr, string_view ext, const bool re
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -1722,123 +1987,110 @@ uintmax_t awh::FileSystem::size(string_view addr, string_view ext, const bool re
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							_WDIR * dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
+							dir_guard_t dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							DIR * dir = ::opendir(path.data());
+							dir_guard_t dir = ::opendir(path.data());
 						#endif
-							// Если каталог открыт
-							if(dir != nullptr){
+						// Если каталог открыт
+						if(dir.valid()){
+							/**
+							 * Для операционной системы MS Windows
+							 */
+							#if _WIN32 || _WIN64
+								// Создаем указатель на содержимое каталога
+								struct _wdirent * ptr = nullptr;
 								/**
-								 * Для операционной системы MS Windows
+								 * Выполняем чтение содержимого каталога
 								 */
-								#if _WIN32 || _WIN64
-									// Создаем указатель на содержимое каталога
-									struct _wdirent * ptr = nullptr;
-									/**
-									 * Выполняем чтение содержимого каталога
-									 */
-									while((ptr = ::_wreaddir(dir))){
+								while((ptr = ::_wreaddir(dir))){
+							/**
+							 * Для операционной системы не являющейся MS Windows
+							 */
+							#else
+								// Создаем указатель на содержимое каталога
+								struct dirent * ptr = nullptr;
 								/**
-								 * Для операционной системы не являющейся MS Windows
+								 * Выполняем чтение содержимого каталога
 								 */
-								#else
-									// Создаем указатель на содержимое каталога
-									struct dirent * ptr = nullptr;
+								while((ptr = ::readdir(dir))){
+							#endif
 									/**
-									 * Выполняем чтение содержимого каталога
+									 * Для операционной системы MS Windows
 									 */
-									while((ptr = ::readdir(dir))){
-								#endif
-										/**
-										 * Для операционной системы MS Windows
-										 */
-										#if _WIN32 || _WIN64
-											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-											if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
-												// Выполняем пропуск каталога
-												continue;
-											// Получаем полный путь в виде строки
-											const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
-										/**
-										 * Для операционной системы не являющейся MS Windows
-										 */
-										#else
-											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-											if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
-												// Выполняем пропуск каталога
-												continue;
-											// Получаем полный путь в виде строки
-											const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
-										#endif
-										/**
-										 * Определяем тип переданного пути
-										 */
-										switch(static_cast <uint8_t> (this->type(address))){
-											// Если полный путь является каталогом
-											case static_cast <uint8_t> (type_t::DIR):
-												// Выполняем подсчёт размера каталога
-												result += (recurse ? this->size(address, ext, recurse) : 0);
-											break;
-											// Если полный путь является файлом
-											case static_cast <uint8_t> (type_t::FILE): {
-												// Если расширение файла передано
-												if(!std::empty(ext)){
-													// Получаем обёртку полученного пути
-													string_view path = address;
-													// Получаем расширение файла
-													const string & extension = this->_fmk->format(".%s", ext.data());
-													// Если расширение не выше полного адреса
-													if(path.size() > extension.size()){
-														// Если расширение файла найдено
-														if(this->_fmk->compare(path.substr(path.size() - extension.size()).data(), extension))
-															// Получаем размер файла
-															result += this->size(path, ext, recurse);
-													}
-												// Если расширение файла не передано, то просто получаем размер файла
-												} else result += this->size(address, ext, recurse);
-											} break;
-											// Если путь принадлежит к другому типу
-											default: {
-												/**
-												 * Для операционной системы MS Windows
-												 */
-												#if _WIN32 || _WIN64
-													// Структура проверка статистики
-													struct _stat info{};
-													// Если статистика извлечена
-													if(!::_wstat(this->_fmk->convert(address).c_str(), &info))
-												/**
-												 * Для операционной системы не являющейся MS Windows
-												 */
-												#else
-													// Структура проверка статистики
-													struct stat info{};
-													// Если статистика извлечена
-													if(!::stat(address.c_str(), &info))
-												#endif
-														// Выполняем извлечение данных статистики
-														result += static_cast <uintmax_t> (info.st_size);
-											}
+									#if _WIN32 || _WIN64
+										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+											// Выполняем пропуск каталога
+											continue;
+										// Получаем полный путь в виде строки
+										const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+									/**
+									 * Для операционной системы не являющейся MS Windows
+									 */
+									#else
+										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+										if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+											// Выполняем пропуск каталога
+											continue;
+										// Получаем полный путь в виде строки
+										const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
+									#endif
+									/**
+									 * Определяем тип переданного пути
+									 */
+									switch(static_cast <uint8_t> (this->type(address))){
+										// Если полный путь является каталогом
+										case static_cast <uint8_t> (type_t::DIR):
+											// Выполняем подсчёт размера каталога
+											result += (recurse ? this->size(address, ext, recurse) : 0);
+										break;
+										// Если полный путь является файлом
+										case static_cast <uint8_t> (type_t::FILE): {
+											// Если расширение файла передано
+											if(!std::empty(ext)){
+												// Получаем обёртку полученного пути
+												string_view path = address;
+												// Получаем расширение файла
+												const string & extension = this->_fmk->format(".%s", ext.data());
+												// Если расширение не выше полного адреса
+												if(path.size() > extension.size()){
+													// Если расширение файла найдено
+													if(this->_fmk->compare(path.substr(path.size() - extension.size()).data(), extension))
+														// Получаем размер файла
+														result += this->size(path, ext, recurse);
+												}
+											// Если расширение файла не передано, то просто получаем размер файла
+											} else result += this->size(address, ext, recurse);
+										} break;
+										// Если путь принадлежит к другому типу
+										default: {
+											/**
+											 * Для операционной системы MS Windows
+											 */
+											#if _WIN32 || _WIN64
+												// Структура проверка статистики
+												struct _stat info{};
+												// Если статистика извлечена
+												if(!::_wstat(this->_fmk->convert(address).c_str(), &info))
+											/**
+											 * Для операционной системы не являющейся MS Windows
+											 */
+											#else
+												// Структура проверка статистики
+												struct stat info{};
+												// Если статистика извлечена
+												if(!::stat(address.c_str(), &info))
+											#endif
+													// Выполняем извлечение данных статистики
+													result += static_cast <uintmax_t> (info.st_size);
 										}
 									}
-								/**
-								 * Для операционной системы MS Windows
-								 */
-								#if _WIN32 || _WIN64
-									// Закрываем открытый каталог
-									::_wclosedir(dir);
-								/**
-								 * Для операционной системы не являющейся MS Windows
-								 */
-								#else
-									// Закрываем открытый каталог
-									::closedir(dir);
-								#endif
-							}
+								}
+						}
 					} break;
 				}
 			}
@@ -1882,7 +2134,7 @@ uintmax_t awh::FileSystem::size(string_view addr, string_view ext, const bool re
 	return result;
 }
 /**
- * @brief Метод подсчёта количество файлов в каталоге
+ * @brief Метод подсчёта количества файлов в каталоге
  *
  * @param addr    адрес для подсчёта количества файлов
  * @param ext     расширение файла если требуется фильтрация
@@ -1909,16 +2161,16 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
-					_WDIR * dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
+					dir_guard_t dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
-					DIR * dir = ::opendir(path.data());
+					dir_guard_t dir = ::opendir(path.data());
 				#endif
 					// Если каталог открыт
-					if(dir != nullptr){
+					if(dir.valid()){
 						/**
 						 * Для операционной системы MS Windows
 						 */
@@ -1967,7 +2219,7 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 								switch(static_cast <uint8_t> (this->type(address))){
 									// Если полный путь является каталогом
 									case static_cast <uint8_t> (type_t::DIR):
-										// Выполняем подсчитываем количество файлов в каталоге
+										// Подсчитываем количество файлов в каталоге
 										result += (recurse ? this->count(address, ext, recurse) : 0);
 									break;
 									// Если путь принадлежит к другому типу
@@ -1990,19 +2242,6 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 									}
 								}
 							}
-						/**
-						 * Для операционной системы MS Windows
-						 */
-						#if _WIN32 || _WIN64
-							// Закрываем открытый каталог
-							::_wclosedir(dir);
-						/**
-						 * Для операционной системы не являющейся MS Windows
-						 */
-						#else
-							// Закрываем открытый каталог
-							::closedir(dir);
-						#endif
 					}
 			}
 		/**
@@ -2164,14 +2403,11 @@ void awh::FileSystem::append(string_view filename, const void * buffer, const si
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на добавление
-					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
-					if(file != INVALID_HANDLE_VALUE){
+					if(file.valid())
 						// Выполняем добавление данных в файл
 						::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
-						// Выполняем закрытие файла
-						::CloseHandle(file);
-					}
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
@@ -2293,9 +2529,9 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
-					if(file != INVALID_HANDLE_VALUE){
+					if(file.valid()){
 						// Создаём объект большого числа
 						LARGE_INTEGER li;
 						// Устанавливаем начальное значение позиции
@@ -2357,19 +2593,17 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 								#endif
 							}
 						}
-						// Выполняем закрытие файла
-						::CloseHandle(file);
 					}
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
-					// Файловый дескриптор файла
-					int32_t fd = -1;
 					// Структура статистики файла
 					struct stat info{};
+					// Файловый дескриптор файла
+					fd_guard_t fd(::open(address.c_str(), O_RDONLY));
 					// Если файл не открыт
-					if((fd = ::open(address.c_str(), O_RDONLY)) < 0){
+					if(!fd.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -2422,12 +2656,9 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 							// Устанавливаем позицию в начало файла
 							position = 0;
 						// Если позиция выше размера файла
-						if(position >= static_cast <off_t> (info.st_size)){
-							// Закрываем файловый дескриптор
-							::close(fd);
+						if(position >= static_cast <off_t> (info.st_size))
 							// Выходим из метода
 							return;
-						}
 						// Определяем размер читаемых данных
 						size_t size = (static_cast <size_t> (info.st_size) - static_cast <size_t> (position));
 						// Если объект результата пустой
@@ -2453,10 +2684,6 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 							#endif
 						}
 					}
-					// Если файл открыт
-					if(fd > -1)
-						// Закрываем файловый дескриптор
-						::close(fd);
 				#endif
 			}
 		/**
@@ -2468,7 +2695,7 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2485,7 +2712,7 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2624,9 +2851,9 @@ void awh::FileSystem::write(string_view filename, const void * buffer, const siz
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на запись
-					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
-					if(file != INVALID_HANDLE_VALUE){
+					if(file.valid()){
 						// Создаём объект большого числа
 						LARGE_INTEGER li;
 						// Устанавливаем начальное значение позиции
@@ -2661,8 +2888,6 @@ void awh::FileSystem::write(string_view filename, const void * buffer, const siz
 						if(li.QuadPart > -1)
 							// Выполняем запись данных в файл
 							::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
-						// Выполняем закрытие файла
-						::CloseHandle(file);
 					}
 				/**
 				 * Для операционной системы не являющейся MS Windows
@@ -2859,7 +3084,7 @@ void awh::FileSystem::readfile(string_view filename, const function <void (strin
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2897,7 +3122,7 @@ void awh::FileSystem::readfile(string_view filename, const function <void (strin
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -3378,16 +3603,16 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
-					_WDIR * dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
+					dir_guard_t dir = ::_wopendir(this->_fmk->convert(path.data()).c_str());
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
-					DIR * dir = ::opendir(path.data());
+					dir_guard_t dir = ::opendir(path.data());
 				#endif
 					// Если каталог открыт
-					if(dir != nullptr){
+					if(dir.valid()){
 						/**
 						 * Для операционной системы MS Windows
 						 */
@@ -3471,19 +3696,6 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
 										callback(type, address);
 								}
 							}
-						/**
-						 * Для операционной системы MS Windows
-						 */
-						#if _WIN32 || _WIN64
-							// Закрываем открытый каталог
-							::_wclosedir(dir);
-						/**
-						 * Для операционной системы не являющейся MS Windows
-						 */
-						#else
-							// Закрываем открытый каталог
-							::closedir(dir);
-						#endif
 					}
 			/**
 			 * Если возникает ошибка
