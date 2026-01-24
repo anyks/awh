@@ -1180,7 +1180,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 		// Буфер данных для извлечения данных
 		char buffer[1024];
 		// Объект параметров пользователя
-		struct passwd pwd;
+		struct passwd pwd{};
 		// Извлечённые данные пользователя
 		struct passwd * data = nullptr;
 		// Выполняем извлечение данных пользователя
@@ -1273,7 +1273,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 		// Буфер данных для извлечения данных
 		char buffer[1024];
 		// Объект параметров пользователя
-		struct passwd pwd;
+		struct passwd pwd{};
 		// Извлечённые данные пользователя
 		struct passwd * data = nullptr;
 		// Выполняем извлечение данных пользователя
@@ -1386,7 +1386,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			// Буфер данных для извлечения данных
 			char buffer[1024];
 			// Объект параметров пользователя
-			struct passwd pwd;
+			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
@@ -1425,7 +1425,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			// Буфер данных для извлечения данных
 			char buffer[1024];
 			// Объект параметров пользователя
-			struct passwd pwd;
+			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
@@ -1466,7 +1466,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			// Буфер данных для извлечения данных
 			char buffer[1024];
 			// Объект параметров пользователя
-			struct passwd pwd;
+			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
@@ -1644,7 +1644,7 @@ bool awh::OS::disableReturnMemory([[maybe_unused]] const bool mode) const noexce
 			// Буфер данных для извлечения данных
 			char buffer[1024];
 			// Объект параметров пользователя
-			struct passwd pwd;
+			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя

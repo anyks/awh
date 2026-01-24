@@ -1,6 +1,6 @@
 /**
- * @file: crypto.cpp
- * @date: 2026-01-20
+ * @file: fs.cpp
+ * @date: 2026-01-24
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -20,8 +20,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
-#include <sys/crypto.hpp>
+#include <sys/fs.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -41,160 +40,71 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект для работы с криптографией
-	crypto_t crypto(&fmk, &log);
-	// Строка для компрессии данных
-	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
-	// Выводим заголовок компрессии AES256
-	cout << " ======== AES256 ======== " << endl;
-	// Устанавливаем количество раундов шифрования
-	crypto.roundAES(10);
-	// Устанавливаем соль шифрования
-	crypto.salt("anyks_salt");
-	// Устанавливаем пароль шифрования
-	crypto.password("anyks_password");
-	// Выполняем кодирование текста
-	string encoded = crypto.encrypt <string> (data, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
-	// Выводим результат хэширования
-	cout << "Encoded1 data AES256: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
-	// Выполняем декомпрессию данных
-	string decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
-	// Выводим результат хэширования
-	cout << "Decoded1 data AES256: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
-	// Инициализируем объект криптографии для другого типа хэша
-	crypto.initialize(crypto_t::event_t::ENCODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
-	// Выполняем кодирование текста
-	encoded = crypto.encrypt <string> (data);
-	// Добавляем ещё один слой шифрования
-	encoded.append(crypto.encrypt <string> (data));
-	// Завершаем процесс шифрования
-	crypto.finalize(encoded);
-	// Выводим результат хэширования
-	cout << "Encoded2 data AES192: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
-	// Инициализируем объект криптографии для другого типа хэша
-	crypto.initialize(crypto_t::event_t::DECODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
-	// Выполняем декомпрессию данных
-	decoded = crypto.decrypt <string> (encoded);
-	// Завершаем процесс дешифрования
-	crypto.finalize(decoded);
-	// Выводим результат хэширования
-	cout << "Decoded2 data AES192: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии BASE64
-	cout << " ======== BASE64 ======== " << endl;
-	// Выполняем кодирование текста
-	encoded = crypto.encrypt <string> (data, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
-	// Выводим результат хэширования
-	cout << "Encoded data BASE64: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выполняем декомпрессию данных
-	decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
-	// Выводим результат хэширования
-	cout << "Decoded data BASE64: " << decoded << ", SIZE=" << decoded.size() << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии HASH SHA256
-	cout << " ======== HASH SHA256 ======== " << endl;
-	// Выполняем кодирование текста
-	encoded = crypto.hash <string> (data, crypto_t::hash_t::SHA256);
-	// Выводим результат хэширования
-	cout << "Encoded data SHA256: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии HASH MD5
-	cout << " ======== HASH MD5 ======== " << endl;
-	// Выполняем кодирование текста
-	encoded = crypto.hash <string> (data, crypto_t::hash_t::MD5);
-	// Выводим результат хэширования
-	cout << "Encoded data MD5: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии HASH HMAC SHA256
-	cout << " ======== HASH HMAC SHA256 ======== " << endl;
-	// Выполняем кодирование текста
-	encoded = crypto.hmac <string> ("test", data, crypto_t::hash_t::SHA256);
-	// Выводим результат хэширования
-	cout << "Encoded data SHA256: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии HASH HMAC MD5
-	cout << " ======== HASH HMAC MD5 ======== " << endl;
-	// Выполняем кодирование текста
-	encoded = crypto.hmac <string> ("test", data, crypto_t::hash_t::MD5);
-	// Выводим результат хэширования
-	cout << "Encoded data MD5: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии HASH 32-BIT
-	cout << " ======== HASH 32-BIT ======== " << endl;
-	// Выполняем кодирование текста
-	uint32_t value1 = crypto.hash <uint32_t> (data);
-	// Выводим результат хэширования
-	cout << "Encoded data 32-BIT: " << value1 << ", SIZE=" << sizeof(value1) << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии HASH 64-BIT
-	cout << " ======== HASH 64-BIT ======== " << endl;
-	// Выполняем кодирование текста
-	uint64_t value2 = crypto.hash <uint64_t> (data);
-	// Выводим результат хэширования
-	cout << "Encoded data 64-BIT: " << value2 << ", SIZE=" << sizeof(value2) << endl;
-	// Выводим пустую строку
-	cout << endl;
-	// Выводим заголовок компрессии ENCRYPTION
-	cout << " ======== ENCRYPTION ======== " << endl;
-	// Генерируем пару ключей RSA
-	if(crypto.generatePrivateKeyRSA()){
-		// Сохраняем публичный ключ в файл
-		if(crypto.savePublicKeyRSA("public_key.pem")){
-			// Сохраняем приватный ключ в файл
-			if(crypto.savePrivateKeyRSA("private_key.pem")){
-				// Загружаем публичный ключ из файла
-				if(crypto.loadPublicKeyRSA("public_key.pem")){
-					// Буфер данных для подписи
-					vector <uint8_t> signature;
-					// Буфер данных для шифрования
-					vector <uint8_t> buffer(data.begin(), data.end());
-					// Шифруем данные публичным ключом RSA
-					crypto.encryptWithPublicKey(buffer, signature);
-					// Формируем строку из зашифрованных данных
-					const_cast <string &> (data).assign(signature.begin(), signature.end());
-					// Выводим результат
-					cout << "Encrypted data RSA: " << data << ", SIZE=" << data.size() << endl;
-					// Загружаем приватный ключ из файла
-					if(crypto.loadPrivateKeyRSA("private_key.pem")){
-						// Расшифровываем данные приватным ключом RSA
-						crypto.decryptWithPrivateKey(signature, buffer);
-						// Формируем строку из расшифрованных данных
-						const_cast <string &> (data).assign(buffer.begin(), buffer.end());
-						// Выводим результат
-						cout << "Decrypted data RSA: " << data << ", SIZE=" << data.size() << endl;
-						// Подписываем данные приватным ключом RSA
-						crypto.signWithPrivateKey(buffer, crypto_t::hash_t::MD5, signature);
-						// Выполняем верификацию данных публичным ключом RSA
-						if(crypto.verifyWithPublicKey(buffer, signature, crypto_t::hash_t::MD5))
-							// Выводим результат
-							cout << "Signature verified successfully!" << endl;
-						// Если верификация не удалась
-						else cout << "Signature verification failed!" << endl;
-						// Получаем приватный ключ RSA
-						const string prikey = crypto.getPrivateKeyRSA();
-						// Выводим приватный ключ RSA
-						cout << "Private Key:" << endl << prikey << endl;
-						// Устанавливаем приватный ключ RSA
-						crypto.setPrivateKeyRSA(prikey);
-						// Получаем публичный ключ RSA
-						const string pubkey = crypto.getPublicKeyRSA();
-						// Выводим публичный ключ RSA
-						cout << "Public Key:" << endl << pubkey << endl;
-						// Устанавливаем публичный ключ RSA
-						crypto.setPublicKeyRSA(pubkey);
-					}
-				}
-			}
-		}
-	}
-	// Выводим пустую строку
-	cout << endl;
+	fs_t fs(&fmk, &log);
+	// Проверяем соответствие директории в файловой системе по адресу
+	cout << " !!!! IS DIR " << (fs_t::type_t::DIR == fs.type("../tests")) << endl;
+	// Проверяем соответствие файлу в файловой системе по адресу
+	cout << " !!!! IS FILE " << (fs_t::type_t::FILE == fs.type("../README.md")) << endl;
+	// Проверяем соответствие символьной ссылки в файловой системе по адресу
+	cout << " !!!! IS LINK " << (fs_t::type_t::LINK == fs.type("../README2.md")) << endl;
+	// Проверяем соответствие ярлыка в файловой системе по адресу
+	cout << " !!!! IS LINK " << (fs_t::type_t::LINK == fs.type("../README3.md")) << endl;
+	// Создаём символьную ссылку
+	fs.symlink("../tests", "../tests2");
+	// Выводим адрес символьной ссылки
+	cout << " !!!! Symlink " << fs.fullpath("../tests2") << " -> " << fs.fullpath("../tests2", true) << endl;
+	// Выводим адрес ярлыка
+	cout << " !!!! Shortcut " << fs.fullpath("../README3.md") << " -> " << fs.fullpath("../README3.md", true) << endl;
+	// Создаём жёсткую ссылку
+	fs.hardlink("../README.md", "../README4.md");
+	// Удаляем файл по адресу
+	fs.unlink("../README4.md");
+	// Удаляем символьную ссылку по адресу
+	fs.unlink("../tests2");
+	// Удаляем каталог по адресу
+	fs.unlink("../tests3");
+	// Устанавливаем права доступа к файлу
+	fs.chmod("../README.md", fs.chmod("../README.md"));
+	// Устанавливаем владельца на файл
+	// fs.chown("../README.md", "forman", "staff");
+	// Создаём каталог
+	cout << " !!! Create Dir: " << fs.mkdir("../data/test/goga") << endl;
+	// cout << " !!! Create Dir: " << fs.mkdir("../data/test/goga", "forman", "staff") << endl;
+	// Удаляем каталог по адресу
+	cout << " !!! Remove Dir: " << fs.unlink("../data") << endl;
+	// Извлекаем название и расширение файла
+	const fs_t::components_t & components = fs.components("../README.md", false, true);
+	// Выводим название и расширение файла
+	cout << " !!! File Name: " << components.first << endl;
+	cout << " !!! File Ext: " << components.second << endl;
+	// Подсчитываем количество файлов в каталоге
+	cout << " !!! File Count: " << fs.count("..", "md", true) << endl;
+	// Подсчитываем размер файла/каталога
+	cout << " !!! File Size: " << fs.size("..", "", true) << endl;
+	// Добавляем в файл бинарные данные
+	fs.append("../Data.txt", L"Hello World!!!\n");
+	// Записываем в файл бинарные данные
+	fs.write("../Data.txt", L"Hello World and ANYKS!!!\n");
+	// Читаем из файла построчно
+	fs.readfile("../README3.md", [](string_view str) noexcept -> void {
+		// Выводим строку файла
+		cout << " !!!! LINE: " << str << endl;
+	});
+	// Читаем из файла бинарными блоками
+	fs.readfile("../README3.md", 4096, [](const void * data, const size_t size) noexcept -> void {
+		// Выводим размер прочитанного буфера
+		cout << " !!!! BUFFER SIZE: " << size << " || " << string(static_cast <const char *> (data), size) << endl;
+	});
+	// Рекурсивно получаем все файлы в каталоге
+	fs.readdir("..", "", true, [](const fs_t::type_t type, string_view filename) noexcept -> void {
+		// Выводим имя файла
+		cout << " !!!! FILE: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << endl;
+	});
+	// Рекурсивно получаем все файлы с фильтром по расширению в каталоге
+	fs.readdir("..", "md", false, [](const fs_t::type_t type, string_view filename, string_view text) noexcept -> void {
+		// Выводим имя файла и его содержимое
+		cout << " !!!! FILTERED FILE: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << " || CONTENT: " << text << endl;
+	});
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

@@ -110,9 +110,9 @@ namespace awh {
 			 *
 			 * @param addr    полный адрес для удаления
 			 * @param resolve флаг резолвинга символьных ссылок
-			 * @return        количество дочерних элементов
+			 * @return        результат удаления
 			 */
-			int32_t unlink(string_view addr, const bool resolve = false) const noexcept;
+			bool unlink(string_view addr, const bool resolve = false) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения реального адреса
@@ -153,8 +153,9 @@ namespace awh {
 			 * @brief Метод рекурсивного создания пути
 			 *
 			 * @param addr адрес для создания каталога
+			 * @return     результат создания каталога
 			 */
-			void mkdir(string_view addr) const noexcept;
+			bool mkdir(string_view addr) const noexcept;
 			/**
 			 * @brief Метод создания каталога с указанием владельца
 			 *
@@ -206,6 +207,20 @@ namespace awh {
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 */
 			void append(string_view filename, const T & buffer) const noexcept;
+			/**
+			 * @brief Метод добавления в файл бинарных данных
+			 *
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 */
+			void append(string_view filename, const char * buffer) const noexcept;
+			/**
+			 * @brief Метод добавления в файл бинарных данных
+			 *
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 */
+			void append(string_view filename, const wchar_t * buffer) const noexcept;
 			/**
 			 * @brief Метод добавления в файл бинарных данных
 			 *
@@ -266,6 +281,24 @@ namespace awh {
 			 *
 			 * @param filename адрес файла в который необходимо выполнить запись
 			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 * @param seek     тип смещения в файле
+			 * @param offset   смещение в файле
+			 */
+			void write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
+			/**
+			 * @brief Метод записи в файл бинарных данных
+			 *
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 * @param seek     тип смещения в файле
+			 * @param offset   смещение в файле
+			 */
+			void write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
+			/**
+			 * @brief Метод записи в файл бинарных данных
+			 *
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param size     размер бинарного буфера для записи в файл
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
@@ -301,7 +334,7 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param resolve  флаг резолвинга символьных ссылок
 			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (string_view)> & callback, const bool resolve = true) const noexcept;
+			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve = true) const noexcept;
 			/**
 			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах построчно
 			 *
@@ -311,7 +344,7 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param resolve  флаг резолвинга символьных ссылок
 			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (string_view, string_view)> & callback, const bool resolve = true) const noexcept;
+			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve = true) const noexcept;
 			/**
 			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах бинарными блоками
 			 *
@@ -322,7 +355,7 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 * @param resolve  флаг резолвинга символьных ссылок
 			 */
-			void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (string_view, const void *, const size_t)> & callback, const bool resolve = true) const noexcept;
+			void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
