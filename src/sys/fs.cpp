@@ -2140,7 +2140,7 @@ auto awh::FileSystem::read(string_view filename, const seek_t seek, const size_t
 	// Если буфер данных передан
 	if(!std::empty(filename))
 		// Выполняем чтение данных из файла
-		this->read(filename, seek, result, offset);
+		this->read(filename, result, seek, offset);
 	// Выводим результат
 	return result;
 }
@@ -2169,11 +2169,11 @@ template <typename T>
  * @brief Метод чтения данных из файла
  *
  * @param filename адрес файла для чтения
- * @param seek     тип смещения в файле
  * @param result   контейнер куда следует положить результат
+ * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  */
-void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, const size_t offset) const noexcept {
+void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, const size_t offset) const noexcept {
 	// Если адрес файла передан и он существует
 	if(!std::empty(filename) && (this->type(filename) == type_t::FILE)){
 		/**
@@ -2396,17 +2396,17 @@ void awh::FileSystem::read(string_view filename, const seek_t seek, T & result, 
  * @brief Явный специализированный шаблон метода чтения данных из файла в строку
  *
  */
-template void awh::FileSystem::read(string_view, const seek_t, string &, const size_t) const noexcept;
+template void awh::FileSystem::read(string_view, string &, const seek_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода чтения данных из файла в буфер символов
  *
  */
-template void awh::FileSystem::read(string_view, const seek_t, vector <char> &, const size_t) const noexcept;
+template void awh::FileSystem::read(string_view, vector <char> &, const seek_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода чтения данных из файла в буфер бинарных данных
  *
  */
-template void awh::FileSystem::read(string_view, const seek_t, vector <uint8_t> &, const size_t) const noexcept;
+template void awh::FileSystem::read(string_view, vector <uint8_t> &, const seek_t, const size_t) const noexcept;
 /**
  * @brief Шаблон метода записи в файл бинарных данных
  *
@@ -2581,11 +2581,11 @@ void awh::FileSystem::write(string_view filename, const void * buffer, const siz
  * @brief Метод рекурсивного получения всех строк файла
  *
  * @param filename адрес файла для чтения
- * @param seek     тип смещения в файле
  * @param callback функция обратного вызова
+ * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  */
-void awh::FileSystem::readfile(string_view filename, const seek_t seek, const function <void (string_view)> & callback, const size_t offset) const noexcept {
+void awh::FileSystem::readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
 	if(!std::empty(filename) && (callback != nullptr)){
 		/**
@@ -2913,11 +2913,11 @@ void awh::FileSystem::readfile(string_view filename, const seek_t seek, const fu
  *
  * @param filename адрес файла для чтения
  * @param size     размер буфера для чтения файла
- * @param seek     тип смещения в файле
  * @param callback функция обратного вызова
+ * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  */
-void awh::FileSystem::readfile(string_view filename, const size_t size, const seek_t seek, const function <void (const void *, const size_t)> & callback, const size_t offset) const noexcept {
+void awh::FileSystem::readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
 	if(!std::empty(filename) && (callback != nullptr)){
 		/**
@@ -3430,12 +3430,12 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
 			// Переходим по всему списку файлов в каталоге
 			this->readdir(address, ext, recurse, [&](string_view filename) noexcept -> void {
 				// Выполняем считывание всех строк текста
-				this->readfile(filename, seek_t::BEGIN, [&](string_view text) noexcept -> void {
+				this->readfile(filename, [&](string_view text) noexcept -> void {
 					// Если текст получен
 					if(!text.empty())
 						// Выводим функцию обратного вызова
 						callback(text, filename);
-				});
+				}, seek_t::BEGIN);
 			}, resolve);
 	// Если переданный адрес не является каталогом
 	} else {
@@ -3478,12 +3478,12 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const size_t si
 			// Переходим по всему списку файлов в каталоге
 			this->readdir(address, ext, recurse, [&](string_view filename) noexcept -> void {
 				// Выполняем считывание всех строк текста
-				this->readfile(filename, size, seek_t::BEGIN, [&](const void * buffer, const size_t size) noexcept -> void {
+				this->readfile(filename, size, [&](const void * buffer, const size_t size) noexcept -> void {
 					// Буфер данных получен успешно
 					if((buffer != nullptr) && (size > 0))
 						// Выводим функцию обратного вызова
 						callback(filename, buffer, size);
-				});
+				}, seek_t::BEGIN);
 			}, resolve);
 		}
 	// Если переданный адрес не является каталогом

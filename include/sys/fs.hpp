@@ -229,7 +229,7 @@ namespace awh {
 			 * @param offset   смещение в файле
 			 * @return         бинарный буфер с прочитанными данными
 			 */
-			auto read(string_view filename, const seek_t seek, const size_t offset = 0) const noexcept -> T;
+			auto read(string_view filename, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода чтения данных из файла
 			 *
@@ -240,11 +240,11 @@ namespace awh {
 			 * @brief Метод чтения данных из файла
 			 *
 			 * @param filename адрес файла для чтения
-			 * @param seek     тип смещения в файле
 			 * @param result   контейнер куда следует положить результат
+			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 */
-			void read(string_view filename, const seek_t seek, T & result, const size_t offset = 0) const noexcept;
+			void read(string_view filename, T & result, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода записи в файл бинарных данных
@@ -260,7 +260,7 @@ namespace awh {
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 */
-			void write(string_view filename, const T & buffer, const seek_t seek, const size_t offset = 0) const noexcept;
+			void write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
 			/**
 			 * @brief Метод записи в файл бинарных данных
 			 *
@@ -270,27 +270,27 @@ namespace awh {
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 */
-			void write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset = 0) const noexcept;
+			void write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод рекурсивного получения всех строк файла
 			 *
 			 * @param filename адрес файла для чтения
-			 * @param seek     тип смещения в файле
 			 * @param callback функция обратного вызова
+			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 */
-			void readfile(string_view filename, const seek_t seek, const function <void (string_view)> & callback, const size_t offset = 0) const noexcept;
+			void readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
 			/**
 			 * @brief Метод рекурсивного получения буфера данных из больших файлов
 			 *
 			 * @param filename адрес файла для чтения
 			 * @param size     размер буфера для чтения файла
-			 * @param seek     тип смещения в файле
 			 * @param callback функция обратного вызова
+			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 */
-			void readfile(string_view filename, const size_t size, const seek_t seek, const function <void (const void *, const size_t)> & callback, const size_t offset = 0) const noexcept;
+			void readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
