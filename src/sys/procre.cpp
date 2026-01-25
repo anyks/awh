@@ -93,18 +93,18 @@ using namespace std;
 			try {
 				// Устанавливаем адрес файла для чтения
 				ifstream file(filename.c_str());
-				// Если файл прочитан удачно
+				// Если файл открыт удачно
 				if(file.is_open()){
 					// Переходим в конец файла
 					file.seekg(0, ios::end);
 					// Определяем размер файла
-					const ssize_t size = static_cast <ssize_t> (file.tellg());
+					const streampos pos = file.tellg();
+					// Если размер файла получен
+					if(pos != static_cast <streampos> (-1))
+						// Выделяем память для буфера данных
+						result.reserve(static_cast <size_t> (pos));
 					// Переходим в начало файла
 					file.seekg(0, ios::beg);
-					// Если размер файла получен
-					if(size != static_cast <decltype(size)> (-1))
-						// Выделяем память для буфера данных
-						result.reserve(static_cast <size_t> (file.tellg()));
 					// Выполняем заполнение данными буфер памяти
 					result.assign(istreambuf_iterator <char> (file), istreambuf_iterator <char> ());
 					// Закрываем файл
@@ -165,19 +165,20 @@ string awh::ProcessResolver::name(const pid_t pid) const noexcept {
 				struct stat info;
 				// Выполняем извлечение данных статистики
 				const int32_t status = ::stat(buffer, &info);
-				// Если файл существует
+				// Если файл существует и это обычный файл
 				if((status == 0) && S_ISREG(info.st_mode)){
 					// Выполняем открытие файла
 					FILE * file = ::fopen(buffer, "r");
 					// Если файл открыт удачно
 					if(file != nullptr){
-						// Размер данных полученных из файла
-						const size_t size = ::fread(buffer, sizeof(char), 1024, file);
-						// Если данные из файла прочитан удачно
+						// Чтение данных из файла.
+						// Внимание: sizeof(buffer) == 1024, читаем до sizeof(buffer) - 1, чтобы гарантировать нуль-терминатор
+						const size_t size = ::fread(buffer, sizeof(char), sizeof(buffer) - 1, file);
+						// Если данные из файла прочитаны удачно
 						if(size > 0){
 							// Если последний символ это перенос строки
 							if(buffer[size - 1] == '\n')
-								// Выполняем формирование результата
+								// Выполняем формирование результата (до переноса)
 								result.assign(buffer, buffer + (size - 1));
 							// Выполняем формирование результата
 							else result.assign(buffer, buffer + size);

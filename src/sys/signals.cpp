@@ -27,6 +27,8 @@
 	 * Стандартные модули
 	 */
 	#include <pwd.h>
+	#include <vector>
+	#include <unistd.h>
 	/**
 	 * Подключаем наши модули
 	 */
@@ -87,14 +89,26 @@ namespace signals {
 			if(self.callback != nullptr){
 				// Если произошло убийство приложения
 				if((info != nullptr) && (signal == SIGTERM)){
+					// Буфер для данных
+					long bufsize = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+					// Если размер буфера не определён
+					if(bufsize == -1)
+						// Устанавливаем размер буфера по умолчанию
+						bufsize = 16384;
+					// Создаём буфер
+					vector <char> buffer(bufsize);
+					// Структуры для получения результата
+					struct passwd pwd{};
+					// Результат получения названия пользователя
+					struct passwd * result = nullptr;
+					// Определяем название пользователя
+					::getpwuid_r(info->si_uid, &pwd, buffer.data(), buffer.size(), &result);
 					// Название пользователя
 					const char * user = nullptr;
-					// Определяем название пользователя
-					const auto * pwd = ::getpwuid(info->si_uid);
 					// Если название пользователя определено
-					if(pwd != nullptr)
+					if(result != nullptr)
 						// Устанавливаем название пользователя
-						user = pwd->pw_name;
+						user = result->pw_name;
 					// Создаём объект дознавателя
 					awh::procre_t procre(self.log);
 					// Выполняем получение названия процесса
@@ -195,7 +209,7 @@ namespace signals {
  * @param sig идентификатор сигнала
  */
 void awh::Signals::callback(const int32_t sig) noexcept {
-	// Выполняем остановку всех сотальных сигналов
+	// Выполняем остановку всех остальных сигналов
 	this->stop();
 	// Если функция обратного вызова установлена, выводим её
 	if(this->_callback != nullptr)
@@ -215,7 +229,15 @@ void awh::Signals::stop() noexcept {
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Устанавливаем функцию перехвадчика событий
+			// Выполняем зануление структур перехватчиков событий
+			this->_events.sigint.sa_flags  = 0;
+			this->_events.sigfpe.sa_flags  = 0;
+			this->_events.sigill.sa_flags  = 0;
+			this->_events.sigbus.sa_flags  = 0;
+			this->_events.sigabrt.sa_flags = 0;
+			this->_events.sigterm.sa_flags = 0;
+			this->_events.sigsegv.sa_flags = 0;
+			// Устанавливаем функцию перехватчика событий
 			this->_events.sigint.sa_handler  = SIG_DFL;
 			this->_events.sigfpe.sa_handler  = SIG_DFL;
 			this->_events.sigill.sa_handler  = SIG_DFL;
