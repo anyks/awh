@@ -416,6 +416,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/procre.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/compressor.cpp"
