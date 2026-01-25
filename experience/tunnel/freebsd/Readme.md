@@ -22,7 +22,7 @@ sudo ./tun_freebsd server 10.0.0.1 10.0.0.2 2049 0.0.0.0 2049 udp
 ### UDP Client
 ```bash
 # Replace 1.2.3.4 with the actual Server IP
-sudo ./tun_freebsd client 10.0.0.2 10.0.0.1 2049 1.2.3.42049 udp
+sudo ./tun_freebsd client 10.0.0.2 10.0.0.1 2049 1.2.3.4 2049 udp
 ```
 
 ## Note

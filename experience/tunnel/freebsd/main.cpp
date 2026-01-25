@@ -90,38 +90,28 @@ int main(int argc, char** argv) {
             if (select(max_fd + 1, &fds, NULL, NULL, NULL) < 0) break;
 
             if (FD_ISSET(tun_fd, &fds)) {
-                // Reading from tun with TUNSIFHEAD=1 -> 4 byte family + IP packet
-                uint32_t family;
-                struct iovec iov[2];
-                iov[0].iov_base = &family;
-                iov[0].iov_len = sizeof(family);
-                iov[1].iov_base = buffer;
-                iov[1].iov_len = sizeof(buffer);
-
-                ssize_t n = readv(tun_fd, iov, 2);
-                if (n > (ssize_t)sizeof(family)) {
-                    ssize_t payload_len = n - sizeof(family);
+                // Tun READ (from Kernel):
+                // If TUNSIFHEAD=0, we read pure IP.
+                // If TUNSIFHEAD=1 (default on create/open), we read 4 bytes family + IP.
+                // In tunnel.cpp we explicitly set TUNSIFHEAD=0.
+                
+                ssize_t n = read(tun_fd, buffer, sizeof(buffer));
+                if (n > 0) {
                      if (sock_type == SOCK_DGRAM)
                      {
-                         // If server and no client packet yet, we can't send.
-                         // Or use the provided remote_ip if user knows it.
-                         // But often UDP servers wait for first packet to learn remote addr.
-                         // Here we assume P2P Fixed IP logic from CLI.
-                        sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
-                        std::cout << "Sent " << payload_len << " bytes to network" << std::endl;
+                        sendto(net_fd, buffer, n, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
+                        std::cout << "Sent " << n << " bytes to network" << std::endl;
                      }
                     else
-                        send(net_fd, buffer, payload_len, 0);
+                        send(net_fd, buffer, n, 0);
                 }
             }
 
             if (FD_ISSET(net_fd, &fds)) {
+                // Network READ (from Socket):
                 ssize_t n;
                 if (sock_type == SOCK_DGRAM) {
                     n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sender_addr, &sender_len);
-                    // Update remote_addr to sender for dynamic handling if desired?
-                    // For typical P2P tunnel, we might lock to the CLI arg, or update it.
-                    // For strict compliance with "Server waits for client", we could update remote_addr here.
                     if (mode == "server") {
                         memcpy(&remote_addr, &sender_addr, sizeof(remote_addr));
                     }
@@ -133,15 +123,9 @@ int main(int argc, char** argv) {
                 
                 if (n <= 0) break;
 
-                // Writing to tun: prepend family
-                // Like macOS, FreeBSD tun with TUNSIFHEAD=1 usually expects Host Byte Order for the family
-                uint32_t family = AF_INET;
-                struct iovec iov[2];
-                iov[0].iov_base = &family;
-                iov[0].iov_len = sizeof(family);
-                iov[1].iov_base = buffer;
-                iov[1].iov_len = n;
-                writev(tun_fd, iov, 2);
+                // Tun WRITE (to Kernel):
+                // If TUNSIFHEAD=0, we write pure IP.
+                write(tun_fd, buffer, n);
             }
         }
     } catch (const std::exception& e) {
