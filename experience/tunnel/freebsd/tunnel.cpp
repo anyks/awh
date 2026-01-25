@@ -33,24 +33,28 @@ std::string TunInterface::create(const std::string& name_template, int& out_fd) 
     // but the macOS implementation handles the header, so we can keep it consistent if desired.
     // Enable TUN packet information (header)
     int flag = 1;
-    if (ioctl(fd, TUNSIFHEAD, &flag) < 0) {
-        std::cerr << "Warning: Failed to set TUNSIFHEAD=1. Interface might be in pure IP mode." << std::endl;
-    } else {
-        std::cout << "Debug: TUNSIFHEAD=1 set successfully." << std::endl;
-    }
-    
-    // Check current mode just in case
-    int check_flag = 0;
-    if (ioctl(fd, TUNGIFHEAD, &check_flag) == 0) {
-         std::cout << "Debug: Current TUNSIFHEAD status: " << check_flag << std::endl;
-    }
+    ioctl(fd, TUNSIFHEAD, &flag);
 
     out_fd = fd;
     return std::string(name);
 }
 
 void TunInterface::destroy(const std::string& ifname) {
-    std::cout << "Interface " << ifname << " will be destroyed when the process exits." << std::endl;
+    // Try to explicitly destroy the interface using socket IOCTL.
+    // This handles cases where close(fd) might not immediately remove it 
+    // or if the interface persists due to system settings.
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s >= 0) {
+        struct ifreq ifr;
+        memset(&ifr, 0, sizeof(ifr));
+        strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+        
+        // SIOCIFDESTROY destroys a cloned interface
+        if (ioctl(s, SIOCIFDESTROY, &ifr) == 0) {
+             std::cout << "Interface " << ifname << " destroyed." << std::endl;
+        }
+        close(s);
+    }
 }
 
 void TunInterface::set_ip(const std::string& ifname, const std::string& local_ip, const std::string& peer_ip) {

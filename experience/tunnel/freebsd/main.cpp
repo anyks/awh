@@ -100,9 +100,6 @@ int main(int argc, char** argv) {
 
                 ssize_t n = readv(tun_fd, iov, 2);
                 if (n > 0) {
-                     // DEBUG: Check what we actually read
-                     // std::cout << "Debug: Read " << n << " bytes from TUN. Family raw: " << std::hex << family << std::dec << std::endl;
-                     
                      // If we are getting IP packet directly (mode 0), family would look like 0x4500....
                      // If we are getting Header (mode 1), family should be 0x02000000 (AF_INET in Net Order) or 0x00000002.
                      
@@ -110,7 +107,6 @@ int main(int argc, char** argv) {
                         ssize_t payload_len = n - sizeof(family);
                         if (sock_type == SOCK_DGRAM) {
                             sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
-                            std::cout << "Sent " << payload_len << " bytes to network" << std::endl;
                         } else {
                             send(net_fd, buffer, payload_len, 0);
                         }
@@ -126,7 +122,6 @@ int main(int argc, char** argv) {
                     if (mode == "server") {
                         memcpy(&remote_addr, &sender_addr, sizeof(remote_addr));
                     }
-                    std::cout << "Received " << n << " bytes from network" << std::endl;
                 }
                 else {
                     n = recv(net_fd, buffer, sizeof(buffer), 0);
