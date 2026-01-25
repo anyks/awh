@@ -128,8 +128,8 @@ int main(int argc, char** argv) {
                 if (n <= 0) break;
 
                 // Prepend family for MacOS utun write
-                // utun on macOS expects the family in Host Byte Order (AF_INET), not Network Byte Order.
-                uint32_t family = AF_INET; 
+                // Trying Network Byte Order (htonl) as Host Order failed for ICMP/Server->Client traffic
+                uint32_t family = htonl(AF_INET); 
                 struct iovec iov[2];
                 iov[0].iov_base = &family;
                 iov[0].iov_len = sizeof(family);
