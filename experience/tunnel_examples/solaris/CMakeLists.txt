@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.10)
+project(tunnel-linux)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(tunnel-server server.cpp tunnel.cpp)
+add_executable(tunnel-client client.cpp tunnel.cpp)

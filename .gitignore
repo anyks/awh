@@ -39,6 +39,11 @@
 /third_party
 submodules/libiconv/
 submodules/libidn2/
+experience/tunnel/macos/build/
+experience/tunnel/linux/build/
+experience/tunnel/solaris/build/
+experience/tunnel/freebsd/build/
+experience/tunnel/windows/build/
 
 cmake/raw.githubusercontent.com_viva64_pvs-studio-cmake-module_master_PVS-Studio.cmake.txt
 
