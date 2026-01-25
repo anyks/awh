@@ -90,20 +90,31 @@ int main(int argc, char** argv) {
             if (select(max_fd + 1, &fds, NULL, NULL, NULL) < 0) break;
 
             if (FD_ISSET(tun_fd, &fds)) {
-                // Tun READ (from Kernel):
-                // If TUNSIFHEAD=0, we read pure IP.
-                // If TUNSIFHEAD=1 (default on create/open), we read 4 bytes family + IP.
-                // In tunnel.cpp we explicitly set TUNSIFHEAD=0.
-                
-                ssize_t n = read(tun_fd, buffer, sizeof(buffer));
+                // Reading from tun with TUNSIFHEAD=1 expectation
+                uint32_t family = 0;
+                struct iovec iov[2];
+                iov[0].iov_base = &family;
+                iov[0].iov_len = sizeof(family);
+                iov[1].iov_base = buffer;
+                iov[1].iov_len = sizeof(buffer);
+
+                ssize_t n = readv(tun_fd, iov, 2);
                 if (n > 0) {
-                     if (sock_type == SOCK_DGRAM)
-                     {
-                        sendto(net_fd, buffer, n, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
-                        std::cout << "Sent " << n << " bytes to network" << std::endl;
+                     // DEBUG: Check what we actually read
+                     // std::cout << "Debug: Read " << n << " bytes from TUN. Family raw: " << std::hex << family << std::dec << std::endl;
+                     
+                     // If we are getting IP packet directly (mode 0), family would look like 0x4500....
+                     // If we are getting Header (mode 1), family should be 0x02000000 (AF_INET in Net Order) or 0x00000002.
+                     
+                     if (n > (ssize_t)sizeof(family)) {
+                        ssize_t payload_len = n - sizeof(family);
+                        if (sock_type == SOCK_DGRAM) {
+                            sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
+                            std::cout << "Sent " << payload_len << " bytes to network" << std::endl;
+                        } else {
+                            send(net_fd, buffer, payload_len, 0);
+                        }
                      }
-                    else
-                        send(net_fd, buffer, n, 0);
                 }
             }
 
@@ -124,8 +135,14 @@ int main(int argc, char** argv) {
                 if (n <= 0) break;
 
                 // Tun WRITE (to Kernel):
-                // If TUNSIFHEAD=0, we write pure IP.
-                write(tun_fd, buffer, n);
+                // We assume Mode 1 (Header). FreeBSD expects Network Byte Order (htonl).
+                uint32_t family = htonl(AF_INET);
+                struct iovec iov[2];
+                iov[0].iov_base = &family;
+                iov[0].iov_len = sizeof(family);
+                iov[1].iov_base = buffer;
+                iov[1].iov_len = n;
+                writev(tun_fd, iov, 2);
             }
         }
     } catch (const std::exception& e) {

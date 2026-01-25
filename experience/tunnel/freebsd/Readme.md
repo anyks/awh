@@ -27,3 +27,5 @@ sudo ./tun_freebsd client 10.0.0.2 10.0.0.1 2049 1.2.3.4 2049 udp
 
 ## Note
 Uses `/dev/tun` cloning device. The example assumes `AF_INET` header (4 bytes) is present on the TUN interface.
+
+> sudo ipfw add 10 allow ip from any to any via tun*
