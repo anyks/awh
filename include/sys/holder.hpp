@@ -20,6 +20,8 @@
  */
 #include <mutex>
 #include <stack>
+#include <atomic>
+#include <cstdint>
 #include <unordered_set>
 
 /**
@@ -33,13 +35,9 @@
  */
 namespace awh {
 	/**
-	 * Подписываемся на стандартное пространство имён
-	 */
-	using namespace std;
-	/**
 	 * @brief Шаблон формата данных статусов холдера
 	 *
-	 * @tparam T данные статусов холдера
+	 * @tparam T тип данных статусов холдера
 	 */
 	template <typename T>
 	/**
@@ -58,13 +56,13 @@ namespace awh {
 			};
 		private:
 			// Флаг холдирования
-			bool _flag;
+			std::atomic_bool _flag;
+		private:
+			// Ссылка на стек статусов
+			std::stack <T> & _status;
 		private:
 			// Мютекс для блокировки потока
 			lock_state_t <std::mutex> _mtx;
-		private:
-			// Объект статуса работы DNS-резолвера
-			std::stack <T> & _status;
 		public:
 			/**
 			 * @brief Метод установки безопасности работы потоков
@@ -79,33 +77,33 @@ namespace awh {
 			/**
 			 * @brief Метод проверки на разрешение выполнения операции
 			 *
-			 * @param comp  статус сравнения
-			 * @param hold  статус установки
-			 * @param equal флаг эквивалентности
-			 * @return      результат проверки
+			 * @param comp  множество для сравнения текущего статуса
+			 * @param hold  статус, который нужно установить (захолдить)
+			 * @param equal флаг эквивалентности (true - разрешено, если есть в comp, false - если нет)
+			 * @return      результат проверки (удалось ли захватить)
 			 */
 			bool access(const std::unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Определяем есть ли фиксированные статусы
-				this->_flag = this->_status.empty();
+				this->_flag.store(this->_status.empty(), std::memory_order_release);
 				// Если результат не получен
-				if(!this->_flag && !comp.empty())
+				if(!this->_flag.load(std::memory_order_acquire) && !comp.empty())
 					// Получаем результат сравнения
-					this->_flag = (equal ? (comp.count(this->_status.top()) > 0) : (comp.count(this->_status.top()) < 1));
-				// Если результат получен, выполняем холд
-				if(this->_flag){
+					this->_flag.store((equal ? (comp.count(this->_status.top()) > 0) : (comp.count(this->_status.top()) < 1)), std::memory_order_release);
+				// Если необходимо выполнить холдирование
+				if(this->_flag.load(std::memory_order_acquire)){
 					// Выполняем блокировку потока
 					const locker_t <> lock(this->_mtx);
 					// Выполняем установку холда
 					this->_status.push(hold);
 				}
 				// Выводим результат
-				return this->_flag;
+				return this->_flag.load(std::memory_order_acquire);
 			}
 		public:
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param status объект статуса работы DNS-резолвера
+			 * @param status ссылка на стек статусов
 			 */
 			explicit Holder(std::stack <T> & status) noexcept : _flag(false), _status(status) {}
 			/**
@@ -114,7 +112,7 @@ namespace awh {
 			 */
 			~Holder() noexcept {
 				// Если холдирование выполнено
-				if(this->_flag){
+				if(this->_flag.load(std::memory_order_acquire)){
 					// Выполняем блокировку потока
 					const locker_t <> lock(this->_mtx);
 					// Выполняем снятие холда
