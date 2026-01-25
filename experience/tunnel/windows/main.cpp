@@ -99,6 +99,8 @@ int main(int argc, char** argv) {
         WSAEventSelect(net_sock, events[1], FD_READ | FD_CLOSE);
 
         char net_buf[4096];
+        struct sockaddr_in sender_addr;                     
+        int sender_len = sizeof(sender_addr);               
 
         while (true) {
             DWORD wait = WaitForMultipleObjects(2, events, FALSE, INFINITE);
@@ -118,7 +120,16 @@ int main(int argc, char** argv) {
                 WSANETWORKEVENTS ne;
                 WSAEnumNetworkEvents(net_sock, events[1], &ne);
                 if (ne.lNetworkEvents & FD_READ) {
-                    int n = recv(net_sock, net_buf, sizeof(net_buf), 0);
+                    int n;
+                    if (sq_type == SOCK_DGRAM) {
+                         n = recvfrom(net_sock, net_buf, sizeof(net_buf), 0, (struct sockaddr*)&sender_addr, &sender_len);
+                         if (mode == "server") {
+                             memcpy(&remote, &sender_addr, sizeof(remote));
+                         }
+                    } else {
+                         n = recv(net_sock, net_buf, sizeof(net_buf), 0);
+                    }
+                    
                     if (n > 0) {
                         // Write to Wintun
                         BYTE* packet = AllocatePacket(tun_handle.session, n);

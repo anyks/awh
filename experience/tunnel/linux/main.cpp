@@ -92,6 +92,9 @@ int main(int argc, char** argv) {
         // 4. Transport Loop
         std::cout << "Starting forwarding loop. Press Ctrl+C to stop." << std::endl;
         char buffer[2048];
+        struct sockaddr_in sender_addr;
+        socklen_t sender_len = sizeof(sender_addr);
+
         while (true) {
             fd_set fds;
             FD_ZERO(&fds);
@@ -121,9 +124,10 @@ int main(int argc, char** argv) {
             if (FD_ISSET(net_fd, &fds)) {
                 ssize_t n;
                 if (sock_type == SOCK_DGRAM) {
-                    struct sockaddr_in sender;
-                    socklen_t slen = sizeof(sender);
-                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sender, &slen);
+                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sender_addr, &sender_len);
+                     if (mode == "server") {
+                        memcpy(&remote_addr, &sender_addr, sizeof(remote_addr));
+                    }
                 } else {
                     n = recv(net_fd, buffer, sizeof(buffer), 0);
                     if (n == 0) break; // Connection closed

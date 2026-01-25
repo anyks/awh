@@ -78,6 +78,8 @@ int main(int argc, char** argv) {
 
         std::cout << "Tunnel running on " << tun_name << std::endl;
         char buffer[2048];
+        struct sockaddr_in sender_addr;
+        socklen_t sender_len = sizeof(sender_addr);
         
         while (true) {
             fd_set fds;
@@ -111,9 +113,12 @@ int main(int argc, char** argv) {
 
             if (FD_ISSET(net_fd, &fds)) {
                 ssize_t n;
-                socklen_t slen = sizeof(remote_addr);
-                if (sock_type == SOCK_DGRAM)
-                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&remote_addr, &slen);
+                if (sock_type == SOCK_DGRAM) {
+                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sender_addr, &sender_len);
+                     if (mode == "server") {
+                        memcpy(&remote_addr, &sender_addr, sizeof(remote_addr)); // Update remote dest to sender
+                    }
+                }
                 else 
                     n = recv(net_fd, buffer, sizeof(buffer), 0);
                 

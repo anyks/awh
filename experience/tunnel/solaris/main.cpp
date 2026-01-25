@@ -76,6 +76,9 @@ int main(int argc, char** argv) {
         std::cout << "Tunnel running on " << tun_name << ". Use Ctrl+C to stop." << std::endl;
 
         char buffer[2048];
+        struct sockaddr_in sender_addr;
+        socklen_t sender_len = sizeof(sender_addr);
+
         // Solaris/OpenIndiana 'tun' device behaves like a STREAMS device.
         // Reading/writing often requires handling the strbuf or just simple read/write if the module stack is correct.
         // Assuming raw mode (no PPI).
@@ -101,9 +104,12 @@ int main(int argc, char** argv) {
 
             if (FD_ISSET(net_fd, &fds)) {
                 ssize_t n;
-                socklen_t slen = sizeof(remote_addr);
-                if (sock_type == SOCK_DGRAM)
-                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&remote_addr, &slen);
+                if (sock_type == SOCK_DGRAM) {
+                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sender_addr, &sender_len);
+                     if (mode == "server") {
+                        memcpy(&remote_addr, &sender_addr, sizeof(remote_addr));
+                    }
+                }
                 else
                     n = recv(net_fd, buffer, sizeof(buffer), 0);
                 

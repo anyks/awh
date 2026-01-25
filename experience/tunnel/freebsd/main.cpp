@@ -77,6 +77,9 @@ int main(int argc, char** argv) {
         }
 
         char buffer[2048];
+        struct sockaddr_in sender_addr;
+        socklen_t sender_len = sizeof(sender_addr);
+
         while (true) {
             fd_set fds;
             FD_ZERO(&fds);
@@ -99,7 +102,13 @@ int main(int argc, char** argv) {
                 if (n > (ssize_t)sizeof(family)) {
                     ssize_t payload_len = n - sizeof(family);
                      if (sock_type == SOCK_DGRAM)
+                     {
+                         // If server and no client packet yet, we can't send.
+                         // Or use the provided remote_ip if user knows it.
+                         // But often UDP servers wait for first packet to learn remote addr.
+                         // Here we assume P2P Fixed IP logic from CLI.
                         sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
+                     }
                     else
                         send(net_fd, buffer, payload_len, 0);
                 }
@@ -107,11 +116,18 @@ int main(int argc, char** argv) {
 
             if (FD_ISSET(net_fd, &fds)) {
                 ssize_t n;
-                socklen_t slen = sizeof(remote_addr);
-                if (sock_type == SOCK_DGRAM)
-                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&remote_addr, &slen);
-                else
+                if (sock_type == SOCK_DGRAM) {
+                    n = recvfrom(net_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sender_addr, &sender_len);
+                    // Update remote_addr to sender for dynamic handling if desired?
+                    // For typical P2P tunnel, we might lock to the CLI arg, or update it.
+                    // For strict compliance with "Server waits for client", we could update remote_addr here.
+                    if (mode == "server") {
+                        memcpy(&remote_addr, &sender_addr, sizeof(remote_addr));
+                    }
+                }
+                else {
                     n = recv(net_fd, buffer, sizeof(buffer), 0);
+                }
                 
                 if (n <= 0) break;
 
