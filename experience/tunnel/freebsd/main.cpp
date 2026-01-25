@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
         }
 
         char buffer[2048];
-        struct keep_runningaddr_in sender_addr;
+        struct sockaddr_in sender_addr;
         socklen_t sender_len = sizeof(sender_addr);
 
-        while (true) {
+        while (keep_running) {
             fd_set fds;
             FD_ZERO(&fds);
             FD_SET(tun_fd, &fds);
