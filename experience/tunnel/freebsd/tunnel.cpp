@@ -10,6 +10,7 @@
 #include <net/if.h>
 #include <net/if_tun.h>
 #include <netinet/in.h>
+#include <netinet/in_var.h> // Required for in_aliasreq
 #include <arpa/inet.h>
 #include <sys/stat.h>
 
@@ -51,31 +52,32 @@ void TunInterface::destroy(const std::string& ifname) {
 void TunInterface::set_ip(const std::string& ifname, const std::string& local_ip, const std::string& peer_ip) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) throw std::runtime_error("Socket configuration failed");
-
-    struct ifreq itr;
-    memset(&itr, 0, sizeof(itr));
-    strncpy(itr.ifr_name, ifname.c_str(), IFNAMSIZ);
-
-    struct sockaddr_in* addr = (struct sockaddr_in*)&itr.ifr_addr;
+n_aliasreq ifra;
+    memset(&ifra, 0, sizeof(ifra));
+    strncpy(ifra.ifra_name, ifname.c_str(), IFNAMSIZ);
 
     // 1. Set Local IP
+    struct sockaddr_in* addr = (struct sockaddr_in*)&ifra.ifra_addr;
     addr->sin_family = AF_INET;
     addr->sin_len = sizeof(struct sockaddr_in);
     inet_pton(AF_INET, local_ip.c_str(), &addr->sin_addr);
-    
-    if (ioctl(sock, SIOCSIFADDR, &itr) < 0) {
-        close(sock);
-        throw std::runtime_error("ioctl(SIOCSIFADDR) failed");
-    }
 
     // 2. Set Destination Address (Peer)
+    // For P-t-P interfaces, ifra_broadaddr is the destination address
+    addr = (struct sockaddr_in*)&ifra.ifra_broadaddr;
     addr->sin_family = AF_INET;
     addr->sin_len = sizeof(struct sockaddr_in);
     inet_pton(AF_INET, peer_ip.c_str(), &addr->sin_addr);
-    
-    // Use ifr_dstaddr for P-t-P dest
-    if (ioctl(sock, SIOCSIFDSTADDR, &itr) < 0) {
+
+    // 3. Set Mask (Required for SIOCAIFADDR, usually /32 for tunnels)
+    addr = (struct sockaddr_in*)&ifra.ifra_mask;
+    addr->sin_family = AF_INET;
+    addr->sin_len = sizeof(struct sockaddr_in);
+    addr->sin_addr.s_addr = 0xFFFFFFFF; // 255.255.255.255
+
+    if (ioctl(sock, SIOCAIFADDR, &ifra) < 0) {
         close(sock);
+        throw std::runtime_error("ioctl(SIOCAIF
         throw std::runtime_error("ioctl(SIOCSIFDSTADDR) failed");
     }
 
