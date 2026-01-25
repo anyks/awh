@@ -31,14 +31,10 @@ std::string TunInterface::create(const std::string& name_template, int& out_fd) 
     // Default mode usually includes address family header (4 bytes)
     // We can try to turn it off with TUNSIFHEAD ioctl(fd, TUNSIFHEAD, &zero) if needed,
     // but the macOS implementation handles the header, so we can keep it consistent if desired.
-    // However, for simplicity, let's try to disable the header info to make it like Linux (pure IP packet).
-    int flag = 0;
+    // We will FORCE TUNSIFHEAD = 1 to ensure main.cpp logic (which reads/writes 4-byte family) is correct.
+    int flag = 1;
     if (ioctl(fd, TUNSIFHEAD, &flag) < 0) {
-        // If we can't disable it, we must handle it in main.cpp
-        // We will assume we failed to disable it if error, or it succeeded.
-        // Actually, let's Enable it explicitly to be deterministic.
-        flag = 1;
-        ioctl(fd, TUNSIFHEAD, &flag); 
+        std::cerr << "Warning: Failed to set TUNSIFHEAD to 1" << std::endl;
     }
 
     out_fd = fd;

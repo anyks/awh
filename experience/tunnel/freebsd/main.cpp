@@ -108,6 +108,7 @@ int main(int argc, char** argv) {
                          // But often UDP servers wait for first packet to learn remote addr.
                          // Here we assume P2P Fixed IP logic from CLI.
                         sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
+                        std::cout << "Sent " << payload_len << " bytes to network" << std::endl;
                      }
                     else
                         send(net_fd, buffer, payload_len, 0);
@@ -124,6 +125,7 @@ int main(int argc, char** argv) {
                     if (mode == "server") {
                         memcpy(&remote_addr, &sender_addr, sizeof(remote_addr));
                     }
+                    std::cout << "Received " << n << " bytes from network" << std::endl;
                 }
                 else {
                     n = recv(net_fd, buffer, sizeof(buffer), 0);
