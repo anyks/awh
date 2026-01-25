@@ -78,6 +78,10 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST "Build unit BUFFER test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с датой и временем
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST "Build unit CHRONO test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с холдером (блокировкой) доступа к методам и функциям
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HOLDER_TEST "Build unit HOLDER test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с версионированием
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_VERSION_TEST "Build unit VERSION test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с криптографией
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST "Build unit CRYPTO test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с компрессором
@@ -200,6 +204,37 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с датой и временем
             message(STATUS "Build tests CHRONO module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
+
+        # Если нужно собрать тесты для работы с холдером (блокировкой) доступа к методам и функциям
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HOLDER_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с холдером (блокировкой) доступа к методам и функциям
+            message(STATUS "Build tests HOLDER module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с холдером (блокировкой) доступа к методам и функциям
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                holder/holder.cpp
+                holder/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с холдером (блокировкой) доступа к методам и функциям
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с холдером (блокировкой) доступа к методам и функциям
+            message(STATUS "Build tests HOLDER module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HOLDER_TEST})
+
+        # Если нужно собрать тесты для работы с версионированием
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_VERSION_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с версионированием
+            message(STATUS "Build tests VERSION module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с версионированием
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                version/version.cpp
+                version/static.cpp
+                version/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с версионированием
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с версионированием
+            message(STATUS "Build tests VERSION module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_VERSION_TEST})
 
         # Если нужно собрать тесты для работы с криптографией
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})

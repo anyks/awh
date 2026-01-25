@@ -414,7 +414,9 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/procre.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/compressor.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/tls.cpp"
@@ -502,6 +504,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(FILESYSTEM_APP_SYS_NAME sys-filesystem)
     # Указываем что нужно собрать приложение работы с файловой системой
     option(CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE "Build Filesystem app sample" ON)
+
+    # Устанавливаем имя приложения работы с резольвером процессов
+    SET(PROCRE_APP_SYS_NAME sys-procre)
+    # Указываем что нужно собрать приложение работы с резольвером процессов
+    option(CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE "Build Process Resolver app sample" ON)
 
     # Устанавливаем имя приложения работы с шифрованием и хэшированием
     SET(CRYPTO_APP_SYS_NAME sys-crypto)
@@ -734,6 +741,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample FILESYSTEM: No\n")
     endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с резольвером процессов
+    if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Process Resolver: Yes\n")
+        # Выполняем создание приложения работы с резольвером процессов
+        add_sample(${PROCRE_APP_SYS_NAME} sample/sys/procre.cpp sys)
+    # Если не нужно собирать семплы для работы с резольвером процессов
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Process Resolver: No\n")
+    endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
     if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -1060,6 +1079,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с резольвером процессов
+        if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения резольвера процессов
+            target_link_libraries(
+                ${PROCRE_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
         if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -1496,6 +1526,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с резольвером процессов
+        if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения резольвера процессов
+            target_link_libraries(
+                ${PROCRE_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
         if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -1975,6 +2017,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с резольвером процессов
+            if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения резольвера процессов
+                add_custom_command(TARGET "${PROCRE_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PROCRE_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${PROCRE_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с шифрованием и хэшированием
             if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения шифрования и хэширования
@@ -2275,6 +2327,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${FILESYSTEM_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${FILESYSTEM_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с резольвером процессов
+            if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения файловой системы
+                pvs_studio_add_target(TARGET ${PROCRE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROCRE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с шифрованием и хэшированием
             if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
@@ -2531,6 +2589,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с файловой системой
         install(TARGETS ${FILESYSTEM_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с резольвером процессов
+    if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с резольвером процессов
+        install(TARGETS ${PROCRE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
     if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})

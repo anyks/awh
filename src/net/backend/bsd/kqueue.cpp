@@ -81,7 +81,7 @@
 #include <net/addr.hpp>
 
 /**
- * Подключаем системные заголовочные файлы
+ * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
 #include <sys/queue.hpp>
