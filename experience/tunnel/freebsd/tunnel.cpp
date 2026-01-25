@@ -52,7 +52,8 @@ void TunInterface::destroy(const std::string& ifname) {
 void TunInterface::set_ip(const std::string& ifname, const std::string& local_ip, const std::string& peer_ip) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) throw std::runtime_error("Socket configuration failed");
-n_aliasreq ifra;
+
+    struct in_aliasreq ifra;
     memset(&ifra, 0, sizeof(ifra));
     strncpy(ifra.ifra_name, ifname.c_str(), IFNAMSIZ);
 
@@ -77,8 +78,7 @@ n_aliasreq ifra;
 
     if (ioctl(sock, SIOCAIFADDR, &ifra) < 0) {
         close(sock);
-        throw std::runtime_error("ioctl(SIOCAIF
-        throw std::runtime_error("ioctl(SIOCSIFDSTADDR) failed");
+        throw std::runtime_error("ioctl(SIOCAIFADDR) failed");
     }
 
     close(sock);
