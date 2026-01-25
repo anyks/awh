@@ -163,13 +163,15 @@ void awh::Version::set(const string & version) noexcept {
 				start = (stop + 1);
 				// Увеличиваем смещение индекса
 				index++;
-				// Если индекс перешёл диапазон, выходим
-				if(index > 3)
+				// Если индекс достиг предела (3, т.к. последний запишем после цикла), выходим
+				if(index >= 3)
 					// Выходим из цикла
 					break;
 			}
-			// Выполняем установку последнего октета
-			reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(version.substr(start)));
+			// Если индекс в допустимых пределах
+			if(index < 4)
+				// Выполняем установку последнего октета (если индекс в допустимых пределах)
+				reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(version.substr(start)));
 			// Переводим число в Big-Endian
 			this->_version = htonl(this->_version);
 		/**
