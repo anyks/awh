@@ -7,7 +7,15 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/select.h>
+#include <signal.h>
 #include "tunnel.hpp"
+
+// Global flag for signal handling
+volatile sig_atomic_t keep_running = 1;
+
+void signal_handler(int signo) {
+    keep_running = 0;
+}
 
 // Identical to MacOS main.cpp regarding logic (handling 4-byte header if enabled)
 // In tunnel.cpp we enabled TUNSIFHEAD = 1 to be deterministic.
@@ -28,6 +36,9 @@ int main(int argc, char** argv) {
     std::string tun_local = argv[2];
     std::string tun_peer = argv[3];
     int local_port = std::stoi(argv[4]);
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
     std::string remote_ip = argv[5];
     int remote_port = std::stoi(argv[6]);
     std::string protocol = (argc > 7) ? argv[7] : "udp";
@@ -77,7 +88,7 @@ int main(int argc, char** argv) {
         }
 
         char buffer[2048];
-        struct sockaddr_in sender_addr;
+        struct keep_runningaddr_in sender_addr;
         socklen_t sender_len = sizeof(sender_addr);
 
         while (true) {
