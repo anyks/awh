@@ -1658,7 +1658,7 @@ bool awh::FileSystem::mkdir(string_view addr) const noexcept {
 			 */
 			try {
 				// Выполняем извлечение актуального значения адреса
-				const string & address = this->fullpath(addr, true);
+				const string & address = this->fullpath(addr);
 				// Если адрес получен правильный
 				if((result = !address.empty())){
 					// Создаём буфер данных для получения адреса
@@ -2145,7 +2145,7 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 	// Результат работы функции
 	uintmax_t result = 0;
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(addr) && (this->type(addr) == type_t::DIR)){
+	if(!std::empty(addr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2153,7 +2153,7 @@ uintmax_t awh::FileSystem::count(string_view addr, string_view ext, const bool r
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->fullpath(addr, true);
 			// Если адрес получен правильный
-			if(!address.empty()){
+			if(!address.empty() && (this->type(address) == type_t::DIR)){
 				// Получаем обёртку полученного пути
 				string_view path = address;
 				/**
@@ -2515,7 +2515,7 @@ template <typename T>
  */
 void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, const size_t offset) const noexcept {
 	// Если адрес файла передан и он существует
-	if(!std::empty(filename) && (this->type(filename) == type_t::FILE)){
+	if(!std::empty(filename)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2523,7 +2523,7 @@ void awh::FileSystem::read(string_view filename, T & result, const seek_t seek, 
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный
-			if(!address.empty()){
+			if(!address.empty() && (this->type(address) == type_t::FILE)){
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -3577,7 +3577,7 @@ void awh::FileSystem::readfile(string_view filename, const size_t size, const fu
  */
 void awh::FileSystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (callback != nullptr) && (this->type(path) == type_t::DIR)){
+	if(!std::empty(path) && (callback != nullptr)){
 		/**
 		 * @brief Прототип функции запроса файлов в каталоге
 		 *
@@ -3736,7 +3736,7 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
-		if(!address.empty())
+		if(!address.empty() && (this->type(address) == type_t::DIR))
 			// Запрашиваем данные первого каталога
 			readFn(address, ext, recurse);
 	// Если переданный адрес не является каталогом
@@ -3767,11 +3767,11 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
  */
 void awh::FileSystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (callback != nullptr) && (this->type(path) == type_t::DIR)){
+	if(!std::empty(path) && (callback != nullptr)){
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
-		if(!address.empty())
+		if(!address.empty() && (this->type(address) == type_t::DIR))
 			// Переходим по всему списку файлов в каталоге
 			this->readdir(address, ext, recurse, [&](const type_t type, string_view filename) noexcept -> void {
 				/**
@@ -3856,11 +3856,11 @@ void awh::FileSystem::readdir(string_view path, string_view ext, const bool recu
  */
 void awh::FileSystem::readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (callback != nullptr) && (this->type(path) == type_t::DIR)){
+	if(!std::empty(path) && (callback != nullptr)){
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
-		if(!address.empty()){
+		if(!address.empty() && (this->type(address) == type_t::DIR)){
 			// Если размер буфера для чтения равен нулю
 			if(size == 0)
 				// Корректируем размер буфера для чтения

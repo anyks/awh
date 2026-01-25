@@ -84,6 +84,8 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_COMPRESSOR_TEST "Build unit COMPRESSOR test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с пуллам потоков
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST "Build unit THREADPOOL test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с файловой системой
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_FS_TEST "Build unit FS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с функциями обратного вызова
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST "Build unit CALLBACK test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с функциями обратного вызова
@@ -244,6 +246,22 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с пуллам потоков
             message(STATUS "Build tests THREADPOOL module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})
+
+        # Если нужно собрать тесты для работы с файловой системой
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FS_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с файловой системой
+            message(STATUS "Build tests FS module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с файловой системой
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                fs/fs.cpp
+                fs/static.cpp
+                fs/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с файловой системой
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с файловой системой
+            message(STATUS "Build tests FS module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_FS_TEST})
 
         # Если нужно собрать тесты для работы с функциями обратного вызова
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST})
