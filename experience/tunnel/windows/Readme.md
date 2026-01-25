@@ -20,11 +20,13 @@ Run as Administrator. Wintun will automatically create an interface.
 
 ### UDP Server
 ```bash
-tun_windows.exe server 10.0.0.1 24 5000 <client_ip> 5000 udp
+# Replace 0.0.0.0 with client IP if known, or leave as 0.0.0.0 to learn dynamically
+tun_windows.exe server 10.0.0.1 24 5000 0.0.0.0 5000 udp
 ```
 *Note: The second argument is the Mask Length (CIDR) for Wintun.*
 
 ### UDP Client
 ```bash
-tun_windows.exe client 10.0.0.2 24 5000 <server_ip> 5000 udp
+# Replace 1.2.3.4 with the actual Server IP
+tun_windows.exe client 10.0.0.2 24 5000 1.2.3.4 5000 udp
 ```
