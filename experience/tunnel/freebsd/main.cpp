@@ -134,7 +134,8 @@ int main(int argc, char** argv) {
                 if (n <= 0) break;
 
                 // Writing to tun: prepend family
-                uint32_t family = htonl(AF_INET);
+                // Like macOS, FreeBSD tun with TUNSIFHEAD=1 usually expects Host Byte Order for the family
+                uint32_t family = AF_INET;
                 struct iovec iov[2];
                 iov[0].iov_base = &family;
                 iov[0].iov_len = sizeof(family);
