@@ -39,6 +39,7 @@
 /third_party
 submodules/libiconv/
 submodules/libidn2/
+experience/nat/build/
 experience/tunnel/macos/build/
 experience/tunnel/linux/build/
 experience/tunnel/solaris/build/
