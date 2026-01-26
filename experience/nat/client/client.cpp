@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::string method = argv[2];
-    uint16_t internal_port = 54323;
+    uint16_t internal_port = 607;
     uint16_t external_port = 0;
 
     net::init_sockets();
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
 	int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	sockaddr_in local{};
 	local.sin_family = AF_INET;
-	local.sin_port = htons(external_port);
+	local.sin_port = htons(internal_port);
 	local.sin_addr.s_addr = htonl(INADDR_ANY);
 	bind(listen_sock, (sockaddr*)&local, sizeof(local));
 

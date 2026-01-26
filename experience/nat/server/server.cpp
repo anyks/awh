@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 
 		sockaddr_in addr{};
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(54323);
+		addr.sin_port = htons(607);
 		addr.sin_addr.s_addr = client_addr.sin_addr.s_addr;
 		int serv_sock = socket(AF_INET, SOCK_DGRAM, 0);
 		// Отправляем на публичный IP клиента и внешний порт
