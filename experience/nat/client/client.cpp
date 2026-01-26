@@ -147,7 +147,7 @@ bool pcp_map(uint16_t internal_port, uint16_t& external_port) {
     req[0] = 2; // версия PCP
     req[1] = 1; // опкод MAP
     // req[2] = reserved (0)
-    req[3] = 6; // протокол: 6 = TCP, 17 = UDP
+    req[3] = 17; // протокол: 6 = TCP, 17 = UDP
     // req[4..7] = lifetime (в секундах). 0 = по умолчанию (обычно 2 часа)
     // req[8..23] = client IP (оставляем 0 — заполнит роутер)
     // req[24..39] = nonce (можно 0)
@@ -165,6 +165,9 @@ bool pcp_map(uint16_t internal_port, uint16_t& external_port) {
 
     if (resp.size() >= 60 && static_cast<uint8_t>(resp[1]) == 129) {
         external_port = ntohs(*reinterpret_cast<const uint16_t*>(resp.data() + 56));
+
+		printf("EXTERNAL PORT %d\n", external_port);
+
         return true;
     }
     return false;
