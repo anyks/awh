@@ -210,7 +210,7 @@ bool upnp_map(uint16_t internal_port, uint16_t& external_port) {
         port_str,           // internal port
         lan_addr,           // internal client
         "NAT Punch Demo",   // description
-        "TCP",              // protocol
+        "UDP",              // protocol
         nullptr,            // remote host
         "0"                 // lease duration
     );
@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::string method = argv[2];
-    uint16_t internal_port = 607;
+    uint16_t internal_port = 54323;
     uint16_t external_port = 0;
 
     net::init_sockets();
