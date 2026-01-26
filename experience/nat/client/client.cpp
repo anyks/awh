@@ -97,6 +97,19 @@ bool natpmp_map(uint16_t internal_port, uint16_t& external_port) {
     // === 5. Парсим ответ ===
     if (map_resp.size() >= 16 && static_cast<uint8_t>(map_resp[1]) == 129) {
         external_port = ntohs(*reinterpret_cast<const uint16_t*>(map_resp.data() + 12));
+
+		// Слушаем локальный порт
+		int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
+		sockaddr_in local{};
+		local.sin_family = AF_INET;
+		local.sin_port = htons(external_port);
+		local.sin_addr.s_addr = htonl(INADDR_ANY);
+		bind(listen_sock, (sockaddr*)&local, sizeof(local));
+
+		// Ждём ответ от сервера
+		char buf[256];
+		recvfrom(listen_sock, buf, sizeof(buf), 0, nullptr, nullptr);
+		std::cout << "Received from server: " << buf << "\n";
         return true;
     }
     return false;
@@ -165,6 +178,20 @@ bool pcp_map(uint16_t internal_port, uint16_t& external_port) {
 
     if (resp.size() >= 60 && static_cast<uint8_t>(resp[1]) == 129) {
         external_port = ntohs(*reinterpret_cast<const uint16_t*>(resp.data() + 56));
+
+		// Слушаем локальный порт
+		int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
+		sockaddr_in local{};
+		local.sin_family = AF_INET;
+		local.sin_port = htons(external_port);
+		local.sin_addr.s_addr = htonl(INADDR_ANY);
+		bind(listen_sock, (sockaddr*)&local, sizeof(local));
+
+		// Ждём ответ от сервера
+		char buf[256];
+		recvfrom(listen_sock, buf, sizeof(buf), 0, nullptr, nullptr);
+		std::cout << "Received from server: " << buf << "\n";
+
         return true;
     }
     return false;
