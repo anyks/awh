@@ -97,19 +97,6 @@ bool natpmp_map(uint16_t internal_port, uint16_t& external_port) {
     // === 5. Парсим ответ ===
     if (map_resp.size() >= 16 && static_cast<uint8_t>(map_resp[1]) == 129) {
         external_port = ntohs(*reinterpret_cast<const uint16_t*>(map_resp.data() + 12));
-
-		// Слушаем локальный порт
-		int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
-		sockaddr_in local{};
-		local.sin_family = AF_INET;
-		local.sin_port = htons(external_port);
-		local.sin_addr.s_addr = htonl(INADDR_ANY);
-		bind(listen_sock, (sockaddr*)&local, sizeof(local));
-
-		// Ждём ответ от сервера
-		char buf[256];
-		recvfrom(listen_sock, buf, sizeof(buf), 0, nullptr, nullptr);
-		std::cout << "Received from server: " << buf << "\n";
         return true;
     }
     return false;
@@ -178,20 +165,6 @@ bool pcp_map(uint16_t internal_port, uint16_t& external_port) {
 
     if (resp.size() >= 60 && static_cast<uint8_t>(resp[1]) == 129) {
         external_port = ntohs(*reinterpret_cast<const uint16_t*>(resp.data() + 56));
-
-		// Слушаем локальный порт
-		int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
-		sockaddr_in local{};
-		local.sin_family = AF_INET;
-		local.sin_port = htons(external_port);
-		local.sin_addr.s_addr = htonl(INADDR_ANY);
-		bind(listen_sock, (sockaddr*)&local, sizeof(local));
-
-		// Ждём ответ от сервера
-		char buf[256];
-		recvfrom(listen_sock, buf, sizeof(buf), 0, nullptr, nullptr);
-		std::cout << "Received from server: " << buf << "\n";
-
         return true;
     }
     return false;
@@ -253,19 +226,6 @@ bool upnp_map(uint16_t internal_port, uint16_t& external_port) {
 
     external_port = internal_port;
     std::cout << "UPnP: mapped " << lan_addr << ":" << internal_port << " -> public:" << external_port << "\n";
-
-	// Слушаем локальный порт
-	int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	sockaddr_in local{};
-	local.sin_family = AF_INET;
-	local.sin_port = htons(external_port);
-	local.sin_addr.s_addr = htonl(INADDR_ANY);
-	bind(listen_sock, (sockaddr*)&local, sizeof(local));
-
-	// Ждём ответ от сервера
-	char buf[256];
-	recvfrom(listen_sock, buf, sizeof(buf), 0, nullptr, nullptr);
-	std::cout << "Received from server: " << buf << "\n";
     return true;
 }
 #endif
@@ -278,7 +238,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::string method = argv[2];
-    uint16_t internal_port = 54322;
+    uint16_t internal_port = 54323;
     uint16_t external_port = 0;
 
     net::init_sockets();
@@ -303,10 +263,24 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Mapped port: " << external_port << "\n";
 
+	// Слушаем локальный порт
+	int listen_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	sockaddr_in local{};
+	local.sin_family = AF_INET;
+	local.sin_port = htons(external_port);
+	local.sin_addr.s_addr = htonl(INADDR_ANY);
+	bind(listen_sock, (sockaddr*)&local, sizeof(local));
+
     // Отправляем "Hello World" на сервер
     auto sock = net::create_udp_socket();
     net::send_udp(sock, "Hello World", "89.169.31.66", 2049);
     close(sock);
+
+	// Ждём ответ от сервера
+	char buf[256];
+	recvfrom(listen_sock, buf, sizeof(buf), 0, nullptr, nullptr);
+	std::cout << "Received from server: " << buf << "\n";
+	close(listen_sock);
 
     net::cleanup_sockets();
     return 0;
