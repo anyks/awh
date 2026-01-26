@@ -36,11 +36,11 @@ int main(int argc, char* argv[]) {
         buffer[n] = '\0';
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-        std::cout << "Received from " << client_ip << ": " << buffer << "\n";
+        std::cout << "Received from " << client_ip << ":" << htons(client_addr.sin_port) << ", DATA=" << buffer << "\n";
 
 		sockaddr_in addr{};
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(client_addr.sin_port);
+		addr.sin_port = client_addr.sin_port;
 		addr.sin_addr.s_addr = client_addr.sin_addr.s_addr;
 		int serv_sock = socket(AF_INET, SOCK_DGRAM, 0);
 		// Отправляем на публичный IP клиента и внешний порт
