@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
              net_fd = client_fd;
         }
 
-        char buffer[2048];
+        uint8_t buffer[2048];
         struct sockaddr_in sender_addr;
         socklen_t sender_len = sizeof(sender_addr);
 
@@ -102,6 +102,11 @@ int main(int argc, char** argv) {
 
             if (FD_ISSET(tun_fd, &fds)) {
                 // Reading from tun with TUNSIFHEAD=1 expectation
+				/**
+				 * В iov[0] (4 байта): address family (AF_INET = 2, AF_INET6 = 30)
+				 * В iov[1]: сырой IP-пакет (начиная с IPv4/IPv6 заголовка)
+				 * На FreeBSD: family = AF_INET (2) или AF_INET6 (30)
+				 */
                 uint32_t family = 0;
                 struct iovec iov[2];
                 iov[0].iov_base = &family;
@@ -116,11 +121,44 @@ int main(int argc, char** argv) {
                      
                      if (n > (ssize_t)sizeof(family)) {
                         ssize_t payload_len = n - sizeof(family);
-                        if (sock_type == SOCK_DGRAM) {
-                            sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
-                        } else {
-                            send(net_fd, buffer, payload_len, 0);
-                        }
+
+						if (payload_len >= 20) {
+							// Определяем версию по первым 4 битам
+							uint8_t version = (buffer[0] >> 4) & 0x0F;
+
+							if (version == 4) {
+								if (n < 20) return; // недостаточно для IPv4
+								uint32_t src_ip = *(uint32_t*)(buffer + 12); // source IP
+       							uint32_t dst_ip = *(uint32_t*)(buffer + 16); // destination IP
+								// обработка IPv4
+
+								// Важно: dst_ip в network byte order (big-endian)
+								// Если нужно в host order — используйте ntohl()
+								printf("Destination IP: %d.%d.%d.%d\n",
+									(dst_ip >> 24) & 0xFF,
+									(dst_ip >> 16) & 0xFF,
+									(dst_ip >> 8)  & 0xFF,
+									(dst_ip)       & 0xFF);
+
+								if (sock_type == SOCK_DGRAM) {
+									sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
+								} else {
+									send(net_fd, buffer, payload_len, 0);
+								}
+							}
+							else if (version == 6) {
+								if (n < 40) return; // недостаточно для IPv6
+								uint8_t* src_ip6 = buffer + 8;   // source address (16 байт)
+        						uint8_t* dst_ip6 = buffer + 24;  // destination address (16 байт)
+								// обработка IPv6
+
+								if (sock_type == SOCK_DGRAM) {
+									sendto(net_fd, buffer, payload_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
+								} else {
+									send(net_fd, buffer, payload_len, 0);
+								}
+							}
+						}
                      }
                 }
             }

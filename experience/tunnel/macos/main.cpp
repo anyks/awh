@@ -94,12 +94,20 @@ int main(int argc, char** argv) {
                 // macOS utun usually prepends a 4-byte protocol family header.
                 // We should technically skip it or handle it. 
                 // For IPv4 it is AF_INET (2) in host byte order.
+				// family == 0x02000000U for AF_INET in network byte order
+				// for AF_INET6 it is 0x1E000000U
                 uint32_t family;
                 struct iovec iov[2];
                 iov[0].iov_base = &family;
                 iov[0].iov_len = sizeof(family);
                 iov[1].iov_base = buffer;
                 iov[1].iov_len = sizeof(buffer);
+
+				if (family == htonl(AF_INET)) {
+					// IPv4
+				} else if (family == htonl(AF_INET6)) {
+					// IPv6
+				}
                 
                 ssize_t n = readv(tun_fd, iov, 2);
                 if (n > (ssize_t)sizeof(family)) {

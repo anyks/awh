@@ -112,6 +112,8 @@ int main(int argc, char** argv) {
             if (FD_ISSET(tun_fd, &fds)) {
                 ssize_t n = read(tun_fd, buffer, sizeof(buffer));
                 if (n > 0) {
+					// Извлекаем destination IP (байты 16-19 в IPv4)
+    				uint32_t dst_ip = *(uint32_t*)(buffer + 16);
                     if (sock_type == SOCK_DGRAM) {
                         sendto(net_fd, buffer, n, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
                     } else {
