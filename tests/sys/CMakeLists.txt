@@ -92,8 +92,10 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FS_TEST "Build unit FS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с функциями обратного вызова
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST "Build unit CALLBACK test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с функциями обратного вызова
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST "Build unit CALLBACK test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с процессами
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_PROCRE_TEST "Build unit PROCRE test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с сигналами
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST "Build unit SIGNALS test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для работы с ОС
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
@@ -313,6 +315,38 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с функциями обратного вызова
             message(STATUS "Build tests CALLBACK module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CALLBACK_TEST})
+
+        # Если нужно собрать тесты для работы с процессами
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_PROCRE_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с процессами
+            message(STATUS "Build tests PROCRE module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с процессами
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                procre/procre.cpp
+                procre/static.cpp
+                procre/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с процессами
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с процессами
+            message(STATUS "Build tests PROCRE module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_PROCRE_TEST})
+
+        # Если нужно собрать тесты для работы с сигналами
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с сигналами
+            message(STATUS "Build tests SIGNALS module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с сигналами
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                signals/signals.cpp
+                signals/static.cpp
+                signals/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с сигналами
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с сигналами
+            message(STATUS "Build tests SIGNALS module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS

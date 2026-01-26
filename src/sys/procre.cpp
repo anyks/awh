@@ -145,184 +145,181 @@ using namespace std;
 string awh::ProcessResolver::name(const pid_t pid) const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если идентификатор процесса передан
-	if(pid > 0){
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
 		/**
-		 * Выполняем перехват ошибок
+		 * Для операционной системы Linux
 		 */
-		try {
-			/**
-			 * Для операционной системы Linux
-			 */
-			#if __linux__
+		#if __linux__
+			// Создаём буфер строки
+			char buffer[1024];
+			// Заполняем нулями буфер данных
+			::memset(buffer, 0, sizeof(buffer));
+			// Заполняем адрес процесса
+			::sprintf(buffer, "/proc/%d/comm", pid);
+			// Структура проверка статистики
+			struct stat info;
+			// Выполняем извлечение данных статистики
+			const int32_t status = ::stat(buffer, &info);
+			// Если файл существует и это обычный файл
+			if((status == 0) && S_ISREG(info.st_mode)){
+				// Выполняем открытие файла
+				FILE * file = ::fopen(buffer, "r");
+				// Если файл открыт удачно
+				if(file != nullptr){
+					// Чтение данных из файла.
+					// Внимание: sizeof(buffer) == 1024, читаем до sizeof(buffer) - 1, чтобы гарантировать нуль-терминатор
+					const size_t size = ::fread(buffer, sizeof(char), sizeof(buffer) - 1, file);
+					// Если данные из файла прочитаны удачно
+					if(size > 0){
+						// Если последний символ это перенос строки
+						if(buffer[size - 1] == '\n')
+							// Выполняем формирование результата (до переноса)
+							result.assign(buffer, buffer + (size - 1));
+						// Выполняем формирование результата
+						else result.assign(buffer, buffer + size);
+					}
+					// Выполняем закрытие файла
+					::fclose(file);
+				}
+			}
+		/**
+		 * Для операционной системы FreeBSD
+		 */
+		#elif __FreeBSD__
+			// Выполняем получение данные процесса
+			struct kinfo_proc * proc = ::kinfo_getproc(pid);
+			// Если данные процесса получены
+			if(proc != nullptr){
+				// Выполняем получение названия процесса
+				result = proc->ki_comm;
+				// Очищаем ранее созданный объект с данными процесса
+				::free(proc);
+			}
+		/**
+		 * Для операционной системы MacOS X
+		 */
+		#elif __APPLE__ || __MACH__
+			// Создаём буфер строки
+			char buffer[512];
+			// Заполняем нулями буфер данных
+			::memset(buffer, 0, sizeof(buffer));
+			// Получаем название приложения
+			ssize_t size = ::proc_name(pid, buffer, sizeof(buffer));
+			// Если название приложения получено
+			if(size > 0)
+				// Выполняем формирование результата
+				result.assign(buffer, buffer + size);
+		/**
+		 * Для операционной системы NetBSD или OpenBSD
+		 */
+		#elif __NetBSD__ || __OpenBSD__
+			// Строковый поток названия файла
+			stringstream ss;
+			// Формируем название файла
+			ss << "/proc/" << pid << "/comm";
+			// Выполняем извлечение данных файла
+			result = ::procre::read(ss.str(), this->_log);
+			// Если файл прочитан удачно
+			if(!result.empty()){
+				// Если последний символ является переносом строки
+				if(result.rbegin()[0] == '\n')
+					// Выполняем удаление последнего символа
+					result.pop_back();
+			// Если не может быть прочитан
+			} else {
+				// Выполняем очистку потока
+				ss.str("");
+				// Формируем название файла
+				ss << "/proc/" << pid << "/exe";
 				// Создаём буфер строки
 				char buffer[1024];
 				// Заполняем нулями буфер данных
 				::memset(buffer, 0, sizeof(buffer));
-				// Заполняем адрес процесса
-				::sprintf(buffer, "/proc/%d/comm", pid);
-				// Структура проверка статистики
-				struct stat info;
-				// Выполняем извлечение данных статистики
-				const int32_t status = ::stat(buffer, &info);
-				// Если файл существует и это обычный файл
-				if((status == 0) && S_ISREG(info.st_mode)){
-					// Выполняем открытие файла
-					FILE * file = ::fopen(buffer, "r");
-					// Если файл открыт удачно
-					if(file != nullptr){
-						// Чтение данных из файла.
-						// Внимание: sizeof(buffer) == 1024, читаем до sizeof(buffer) - 1, чтобы гарантировать нуль-терминатор
-						const size_t size = ::fread(buffer, sizeof(char), sizeof(buffer) - 1, file);
-						// Если данные из файла прочитаны удачно
-						if(size > 0){
-							// Если последний символ это перенос строки
-							if(buffer[size - 1] == '\n')
-								// Выполняем формирование результата (до переноса)
-								result.assign(buffer, buffer + (size - 1));
-							// Выполняем формирование результата
-							else result.assign(buffer, buffer + size);
-						}
-						// Выполняем закрытие файла
-						::fclose(file);
-					}
-				}
-			/**
-			 * Для операционной системы FreeBSD
-			 */
-			#elif __FreeBSD__
-				// Выполняем получение данные процесса
-				struct kinfo_proc * proc = ::kinfo_getproc(pid);
-				// Если данные процесса получены
-				if(proc != nullptr){
-					// Выполняем получение названия процесса
-					result = proc->ki_comm;
-					// Очищаем ранее созданный объект с данными процесса
-					::free(proc);
-				}
-			/**
-			 * Для операционной системы MacOS X
-			 */
-			#elif __APPLE__ || __MACH__
-				// Создаём буфер строки
-				char buffer[512];
-				// Заполняем нулями буфер данных
-				::memset(buffer, 0, sizeof(buffer));
-				// Получаем название приложения
-				ssize_t size = ::proc_name(pid, buffer, sizeof(buffer));
-				// Если название приложения получено
-				if(size > 0)
-					// Выполняем формирование результата
-					result.assign(buffer, buffer + size);
-			/**
-			 * Для операционной системы NetBSD или OpenBSD
-			 */
-			#elif __NetBSD__ || __OpenBSD__
-				// Строковый поток названия файла
-				stringstream ss;
-				// Формируем название файла
-				ss << "/proc/" << pid << "/comm";
-				// Выполняем извлечение данных файла
-				result = ::procre::read(ss.str(), this->_log);
-				// Если файл прочитан удачно
-				if(!result.empty()){
+				// Выполняем извлечение данных в буфер
+				const int32_t size = static_cast <int32_t> (::readlink(ss.str().c_str(), buffer, sizeof(buffer)));
+				// Выполняем чтение данных в бинарный буфер
+				if(size > 0) {
+					// Устанавливаем последний символ
+					buffer[size] = '\0';
+					// Если мы нашли разделитель
+					if(const char * p = ::strrchr(buffer, '/'))
+						// Выполняем удаление разделителя
+						result = (p + 1);
+					// Выполняем получение названия приложения
+					else result = buffer;
 					// Если последний символ является переносом строки
 					if(result.rbegin()[0] == '\n')
 						// Выполняем удаление последнего символа
 						result.pop_back();
-				// Если не может быть прочитан
-				} else {
-					// Выполняем очистку потока
-					ss.str("");
-					// Формируем название файла
-					ss << "/proc/" << pid << "/exe";
-					// Создаём буфер строки
-					char buffer[1024];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(buffer));
-					// Выполняем извлечение данных в буфер
-					const int32_t size = static_cast <int32_t> (::readlink(ss.str().c_str(), buffer, sizeof(buffer)));
-					// Выполняем чтение данных в бинарный буфер
-					if(size > 0) {
-						// Устанавливаем последний символ
-						buffer[size] = '\0';
-						// Если мы нашли разделитель
-						if(const char * p = ::strrchr(buffer, '/'))
-							// Выполняем удаление разделителя
-							result = (p + 1);
-						// Выполняем получение названия приложения
-						else result = buffer;
-						// Если последний символ является переносом строки
-						if(result.rbegin()[0] == '\n')
-							// Выполняем удаление последнего символа
-							result.pop_back();
-					}
 				}
-			/**
-			 * Реализация под Sun Solaris
-			 */
-			#elif __sun__
-				// Строковый поток названия файла
-				stringstream ss;
-				// Формируем название файла
-				ss << "/proc/" << pid << "/psinfo";
-				// Выполняем чтение файла
-				ifstream file(ss.str());
-				// Если файл прочитан удачно
-				if(file.is_open()){
-					// Создаём объект информационных данных процесса
-					psinfo_t info;
-					// Выполняем чтение структуры данных процесса
-					file.read(reinterpret_cast <char *> (&info), sizeof(info));
-					// Закрываем файл
-					file.close();
-					// Выполняем извлечение названия процесса
-					result = info.pr_fname;
-				}
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#elif _WIN32 || _WIN64
-				// Выполняем получение данных процесса
-				HANDLE hpc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-				// Если процесс открыт удачно
-				if(hpc != nullptr){
-					// Создаём буфер строки
-					char buffer[MAX_PATH];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(buffer));
-					// Извлекаем данные процесса
-					::GetProcessImageFileNameA(hpc, buffer, MAX_PATH);
-					// Выполняем получение результата
-					result = buffer;
-					// Выполняем закрытие процесса
-					::CloseHandle(hpc);
-					// Выполняем поиск каталога
-					const size_t pos = result.rfind('\\');
-					// Если каталог найден
-					if(pos != string::npos)
-						// Выполняем удаление лишних символов
-						result.erase(result.begin(), result.begin() + (pos + 1));
-				}
-			#endif
+			}
 		/**
-		 * Если возникает ошибка
+		 * Реализация под Sun Solaris
 		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
+		#elif __sun__
+			// Строковый поток названия файла
+			stringstream ss;
+			// Формируем название файла
+			ss << "/proc/" << pid << "/psinfo";
+			// Выполняем чтение файла
+			ifstream file(ss.str());
+			// Если файл прочитан удачно
+			if(file.is_open()){
+				// Создаём объект информационных данных процесса
+				psinfo_t info;
+				// Выполняем чтение структуры данных процесса
+				file.read(reinterpret_cast <char *> (&info), sizeof(info));
+				// Закрываем файл
+				file.close();
+				// Выполняем извлечение названия процесса
+				result = info.pr_fname;
+			}
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#elif _WIN32 || _WIN64
+			// Выполняем получение данных процесса
+			HANDLE hpc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+			// Если процесс открыт удачно
+			if(hpc != nullptr){
+				// Создаём буфер строки
+				char buffer[MAX_PATH];
+				// Заполняем нулями буфер данных
+				::memset(buffer, 0, sizeof(buffer));
+				// Извлекаем данные процесса
+				::GetProcessImageFileNameA(hpc, buffer, MAX_PATH);
+				// Выполняем получение результата
+				result = buffer;
+				// Выполняем закрытие процесса
+				::CloseHandle(hpc);
+				// Выполняем поиск каталога
+				const size_t pos = result.rfind('\\');
+				// Если каталог найден
+				if(pos != string::npos)
+					// Выполняем удаление лишних символов
+					result.erase(result.begin(), result.begin() + (pos + 1));
+			}
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
