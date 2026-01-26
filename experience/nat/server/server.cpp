@@ -37,6 +37,8 @@ int main(int argc, char* argv[]) {
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
         std::cout << "Received from " << client_ip << ": " << buffer << "\n";
+		// Отправляем на публичный IP клиента и внешний порт
+		sendto(sock, "Hello Client!", 13, 0, (sockaddr*)&client_addr, addr_len);
     }
 
     close(sock);
