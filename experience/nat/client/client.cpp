@@ -82,21 +82,31 @@ bool natpmp_map(uint16_t internal_port, uint16_t& external_port) {
     // === 4. Шаг 2: Запрос проброса порта ===
     uint8_t map_req[12] = {0};
     map_req[0] = 0; // версия
-    map_req[1] = 1; // опкод = 1 (map)
-    *reinterpret_cast<uint16_t*>(map_req + 8) = htons(internal_port);  // внутренний порт
-    *reinterpret_cast<uint16_t*>(map_req + 10) = htons(0);            // внешний порт = 0 (авто)
+    map_req[1] = 1; // опкод = 1 (map UDP)
+    map_req[2] = 0; // зарезервировано
+    map_req[3] = 0; // зарезервировано
+    *reinterpret_cast<uint16_t*>(map_req + 4) = htons(internal_port);  // внутренний порт
+    *reinterpret_cast<uint16_t*>(map_req + 6) = htons(0);            // внешний порт = 0 (авто)
+    *reinterpret_cast<uint32_t*>(map_req + 8) = htonl(3600);         // время жизни (секунды)
 
     if (!net::send_udp(sock, std::string(reinterpret_cast<char*>(map_req), 12), gateway, 5351)) {
         close(sock);
         return false;
     }
 
-    auto map_resp = net::recv_udp(sock, 2);
+    auto map_resp = net::recv_udp(sock, 16);
     close(sock);
 
     // === 5. Парсим ответ ===
     if (map_resp.size() >= 16 && static_cast<uint8_t>(map_resp[1]) == 129) {
-        external_port = ntohs(*reinterpret_cast<const uint16_t*>(map_resp.data() + 12));
+        // Успех (Result code = 0) проверяем в map_resp[2..3]
+        uint16_t result_code = ntohs(*reinterpret_cast<const uint16_t*>(map_resp.data() + 2));
+        if (result_code != 0) {
+            printf("NAT-PMP Error Code: %d\n", result_code);
+            return false;
+        }
+        // Внешний порт (Mapped External Port) - offset 10
+        external_port = ntohs(*reinterpret_cast<const uint16_t*>(map_resp.data() + 10));
         return true;
     }
     return false;
@@ -145,26 +155,38 @@ bool pcp_map(uint16_t internal_port, uint16_t& external_port) {
     // PCP MAP request (RFC 6887)
     uint8_t req[60] = {0};
     req[0] = 2; // версия PCP
-    req[1] = 1; // опкод MAP
-    // req[2] = reserved (0)
-    req[3] = 17; // протокол: 6 = TCP, 17 = UDP
-    // req[4..7] = lifetime (в секундах). 0 = по умолчанию (обычно 2 часа)
-    // req[8..23] = client IP (оставляем 0 — заполнит роутер)
-    // req[24..39] = nonce (можно 0)
-    // req[40..55] = remote peer IP (0.0.0.0 для любого)
-    *(uint16_t*)(req + 56) = htons(internal_port); // внутренний порт
-    *(uint16_t*)(req + 58) = htons(0);            // внешний порт = 0 (авто)
+    req[1] = 1; // опкод MAP (Client Request)
+    
+    // Lifetime (Header offset 4)
+    *reinterpret_cast<uint32_t*>(req + 4) = htonl(3600); // 1 час жизни
+
+    // Mapping Nonce (Offset 24, 12 bytes) - Randomize it
+    for(int i = 24; i < 36; ++i) req[i] = rand() % 255;
+
+    // Protocol (Offset 36)
+    req[36] = 17; // протокол: 17 = UDP
+
+    // Internal Port (Offset 40)
+    *reinterpret_cast<uint16_t*>(req + 40) = htons(internal_port); 
+    // External Port (Offset 42)
+    *reinterpret_cast<uint16_t*>(req + 42) = htons(0); // 0 = авто
 
     if (!net::send_udp(sock, std::string(reinterpret_cast<char*>(req), 60), gateway, 5351)) {
         close(sock);
         return false;
     }
 
-    auto resp = net::recv_udp(sock, 3);
+    auto resp = net::recv_udp(sock, 60);
     close(sock);
 
-    if (resp.size() >= 60 && static_cast<uint8_t>(resp[1]) == 129) {
-        external_port = ntohs(*reinterpret_cast<const uint16_t*>(resp.data() + 56));
+    if (resp.size() >= 60 && static_cast<uint8_t>(resp[1]) == 129) { // 129 = MAP Opcode Response
+        uint8_t result_code = resp[3]; // Result Code
+        if (result_code != 0) {
+             printf("PCP Error Code: %d\n", result_code);
+             return false;
+        }
+        // Assigned External Port (Offset 42)
+        external_port = ntohs(*reinterpret_cast<const uint16_t*>(resp.data() + 42));
 
 		printf("EXTERNAL PORT %d\n", external_port);
 
@@ -241,7 +263,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::string method = argv[2];
-    uint16_t internal_port = 54324;
+    uint16_t internal_port = 54325;
     uint16_t external_port = 0;
 
     net::init_sockets();
