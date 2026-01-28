@@ -70,6 +70,7 @@
 #include <net/route.h>
 #include <net/ethernet.h>
 #include <sys/un.h>
+#include <sys/ioctl.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
@@ -87,9 +88,18 @@
  * Если операционной системой является FreeBSD
  */
 #if __FreeBSD__
-	// Подключаем заголовочный файл SCTP
+	/**
+	 * Подключаем заголовочный файл SCTP
+	 */
 	#include <netinet/sctp.h>
 #endif
+
+/**
+ * Подключаем заголовочные файлы MiniUPnP
+ */
+#include <miniupnpc/miniupnpc.h>
+#include <miniupnpc/upnpcommands.h>
+#include <miniupnpc/upnperrors.h>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -1415,6 +1425,686 @@ void awh::Ethernet::netboost() const noexcept {
 	}
 }
 /**
+ * @brief Метод получения шлюза по умолчанию
+ *
+ * @param source объект источника сетевых адресов
+ * @return       адрес шлюза по умолчанию
+ */
+bool awh::Ethernet::gateway(net::src_t & source) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(source.ip->size){
+			// Если адрес является IPv4
+			case 4: {
+				/**
+				 * MIB для получения маршрута по умолчанию IPv4
+				 */
+				int32_t mib[6] = {
+					CTL_NET,      // Используем сетевой стек
+					PF_ROUTE,     // Работа с маршрутами
+					0,            // Используем протокол по умолчанию
+					AF_INET,      // Семейство адресов IPv4
+					NET_RT_FLAGS, // Используем флаги маршрута
+					RTF_GATEWAY   // Интересует маршрут шлюза
+				};
+				// Необходимый размер буфера
+				size_t length = 0;
+				// Получаем размер буфера для хранения маршрута по умолчанию
+				if(!(result = (::sysctl(mib, 6, nullptr, &length, nullptr, 0) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Выделяем память под буфер маршрута по умолчанию
+				vector <uint8_t> buffer(length, 0);
+				// Получаем маршрут по умолчанию
+				if(!(result = (::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Указатель на текущую позицию в буфере
+				const uint8_t * ptr = (&buffer[0] + sizeof(struct rt_msghdr));
+				// Разбор полученного маршрута
+				struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (&buffer[0]);
+				// Пропускаем адрес назначения (RTA_DST)
+				if(rtm->rtm_addrs & RTA_DST)
+					// Выполняем смещение указателя
+					ptr += sizeof(struct sockaddr_in);
+				// Теперь идёт шлюз (RTA_GATEWAY)
+				if(rtm->rtm_addrs & RTA_GATEWAY){
+					// Извлекаем объект адреса шлюза
+					const struct sockaddr * sa = reinterpret_cast <const struct sockaddr *> (ptr);
+					// Если адрес шлюза является IPv4
+					if((result = (sa->sa_family == AF_INET))){
+						// Извлекаем объект IPv4-адрес
+						const struct sockaddr_in * sin = reinterpret_cast <const struct sockaddr_in *> (sa);
+						// Копируем IP-адрес в результат
+						awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = sin->sin_addr.s_addr;
+						// Устанавливаем название сетевого интерфейса
+						source.iface = this->iface(source.ip);
+						// Устанавливаем MAC-адрес шлюза по умолчанию
+						this->fillsource(event::node_t::PEER, source);
+					}
+				}
+			} break;
+			// Если адрес является IPv6
+			case 16: {
+				/**
+				 * MIB для получения маршрута по умолчанию IPv4
+				 */
+				int32_t mib[6] = {
+					CTL_NET,      // Используем сетевой стек
+					PF_ROUTE,     // Работа с маршрутами
+					0,            // Используем протокол по умолчанию
+					AF_INET6,     // Семейство адресов IPv6
+					NET_RT_FLAGS, // Используем флаги маршрута
+					RTF_GATEWAY   // Интересует маршрут шлюза
+				};
+				// Необходимый размер буфера
+				size_t length = 0;
+				// Получаем размер буфера для хранения маршрута по умолчанию
+				if(!(result = (::sysctl(mib, 6, nullptr, &length, nullptr, 0) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Выделяем память под буфер маршрута по умолчанию
+				vector <uint8_t> buffer(length, 0);
+				// Получаем маршрут по умолчанию
+				if(!(result = (::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Указатель на текущую позицию в буфере
+				const uint8_t * ptr = (&buffer[0] + sizeof(struct rt_msghdr));
+				// Разбор полученного маршрута
+				struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (&buffer[0]);
+				// Пропускаем адрес назначения (RTA_DST)
+				if(rtm->rtm_addrs & RTA_DST)
+					// Выполняем смещение указателя
+					ptr += sizeof(struct sockaddr_in6);
+				// Теперь идёт шлюз (RTA_GATEWAY)
+				if(rtm->rtm_addrs & RTA_GATEWAY){
+					// Извлекаем объект адреса шлюза
+					const struct sockaddr * sa = reinterpret_cast <const struct sockaddr *> (ptr);
+					// Если адрес шлюза является IPv6
+					if((result = (sa->sa_family == AF_INET6))){
+						// Извлекаем объект IPv6-адрес
+						const struct sockaddr_in6 * sin6 = reinterpret_cast <const struct sockaddr_in6 *> (sa);
+						// Копируем IP-адрес в результат
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin6->sin6_addr, 16);
+						// Устанавливаем название сетевого интерфейса
+						source.iface = this->iface(source.ip);
+						// Устанавливаем MAC-адрес шлюза по умолчанию
+						this->fillsource(event::node_t::PEER, source);
+					}
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+
+#ifndef RT_ROUNDUP
+#define RT_ROUNDUP(a) \
+    ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+#endif
+
+void remove_default_gateway() {
+	int mib[6] = { CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_GATEWAY };
+	size_t needed = 0;
+	if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0) return;
+
+	std::vector<char> buf(needed);
+	if (sysctl(mib, 6, buf.data(), &needed, NULL, 0) < 0) return;
+
+	char *next = buf.data();
+	char *limit = next + needed;
+
+	int s = socket(PF_ROUTE, SOCK_RAW, 0);
+	if (s < 0) return;
+
+	while (next < limit) {
+		struct rt_msghdr *rtm = (struct rt_msghdr *)next;
+		if (rtm->rtm_version != RTM_VERSION) break;
+
+		struct sockaddr *sa = (struct sockaddr *)(rtm + 1);
+		struct sockaddr_in *dst = nullptr;
+		struct sockaddr_in *gw = nullptr;
+
+		auto advance = [](struct sockaddr *s) -> struct sockaddr* {
+			unsigned int len = s->sa_len ? s->sa_len : sizeof(long);
+			return (struct sockaddr *)((char *)s + RT_ROUNDUP(len));
+		};
+
+		if (rtm->rtm_addrs & RTA_DST) {
+			if (sa->sa_family == AF_INET) dst = (struct sockaddr_in *)sa;
+			sa = advance(sa);
+		}
+		if (rtm->rtm_addrs & RTA_GATEWAY) {
+			if (sa->sa_family == AF_INET) gw = (struct sockaddr_in *)sa;
+			sa = advance(sa);
+		}
+
+		if (dst && dst->sin_addr.s_addr == INADDR_ANY && gw) {
+			char msg_buf[1024];
+			memset(msg_buf, 0, sizeof(msg_buf));
+			struct rt_msghdr* del_rtm = (struct rt_msghdr*)msg_buf;
+			char* cp = msg_buf + sizeof(struct rt_msghdr);
+
+			del_rtm->rtm_version = RTM_VERSION;
+			del_rtm->rtm_type = RTM_DELETE;
+			del_rtm->rtm_flags = RTF_UP | RTF_GATEWAY | RTF_STATIC;
+			del_rtm->rtm_addrs = RTA_DST | RTA_GATEWAY | RTA_NETMASK;
+			del_rtm->rtm_pid = getpid();
+			del_rtm->rtm_seq = 2;
+
+			// 1. Destination (0.0.0.0)
+			struct sockaddr_in sin_dst = {};
+			sin_dst.sin_family = AF_INET;
+			sin_dst.sin_len = sizeof(sin_dst);
+			sin_dst.sin_addr.s_addr = INADDR_ANY;
+			memcpy(cp, &sin_dst, sizeof(sin_dst));
+			cp += RT_ROUNDUP(sizeof(sin_dst));
+
+			// 2. Gateway (from sysctl)
+			struct sockaddr_in sin_gw = *gw;
+			if (sin_gw.sin_len == 0) sin_gw.sin_len = sizeof(struct sockaddr_in);
+			memcpy(cp, &sin_gw, sin_gw.sin_len);
+			cp += RT_ROUNDUP(sin_gw.sin_len);
+
+			// 3. Netmask (0.0.0.0) - REQUIRED for default route
+			struct sockaddr_in sin_mask = {};
+			sin_mask.sin_family = AF_INET;
+			sin_mask.sin_len = sizeof(sin_mask);
+			sin_mask.sin_addr.s_addr = 0;
+			memcpy(cp, &sin_mask, sizeof(sin_mask));
+			cp += RT_ROUNDUP(sizeof(sin_mask));
+
+			del_rtm->rtm_msglen = cp - msg_buf;
+			write(s, msg_buf, del_rtm->rtm_msglen);
+		}
+
+		next += rtm->rtm_msglen;
+	}
+	close(s);
+}
+
+/**
+ * @brief Метод удаления шлюза по умолчанию
+ *
+ * @return результат удаления шлюза по умолчанию
+ */
+bool awh::Ethernet::gatewayRemove() const noexcept {
+
+}
+/**
+ * @brief Метод получения шлюза по умолчанию для указанного сетевого интерфейса
+ *
+ * @param addr  адрес сетевого подключения
+ * @param iface имя сетевого интерфейса
+ * @return      адрес шлюза по умолчанию
+ */
+bool awh::Ethernet::gateway(const unique_ptr <net::addr_t> & addr, const string & iface) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(addr->size){
+			// Если адрес является IPv4
+			case 4: {
+				// Создаём сокет для управления интерфейсом
+				net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+				// Если создание сокета прошло неудачно
+				if(!(result = (sock != net::invalid_socket_t))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+
+				remove_default_gateway();
+				// ip route add default via 192.168.7.1 dev en0
+				// sudo route add default 192.168.7.1
+
+				/**
+				 * @brief Структура сообщения маршрута
+				 *
+				 */
+				struct {
+					// Объект заголовка маршрута (должен быть первым!)
+					struct rt_msghdr rtm;
+					// Буфер сообщения (для адресов)
+					char buffer[512];
+				} msg;
+				
+				// Зануляем всю структуру
+				memset(&msg, 0, sizeof(msg));
+
+				/**
+				 * @brief Вспомогательная функция для IPv4-адресов
+				 *
+				 * @param addr IPv4-адрес в сетевом порядке байтов
+				 * @return     объект IPv4-адреса
+				 */
+				auto sin = [](in_addr_t addr) -> struct sockaddr_in {
+					// Создаём объект IPv4-адреса
+					struct sockaddr_in sa = {};
+					// Заполняем объект IPv4-адреса
+					sa.sin_family = AF_INET;
+					// Устанавливаем длину объекта IPv4-адреса
+					sa.sin_len = sizeof(sa);
+					// Устанавливаем сам IPv4-адрес
+					sa.sin_addr.s_addr = addr;
+					// Возвращаем объект IPv4-адреса
+					return sa;
+				};
+
+				// Устанавливаем последовательный номер сообщения
+				msg.rtm.rtm_seq = 1;
+				// Устанавливаем идентификатор процесса
+				msg.rtm.rtm_pid = ::getpid();
+				// Устанавливаем тип сообщения - добавление маршрута
+				msg.rtm.rtm_type = RTM_ADD;
+				// Устанавливаем версию заголовка маршрута
+				msg.rtm.rtm_version = RTM_VERSION;
+				// Устанавливаем флаги маршрута
+				msg.rtm.rtm_flags = (RTF_UP | RTF_GATEWAY | RTF_STATIC);
+				// Устанавливаем адреса маршрута
+				msg.rtm.rtm_addrs = (RTA_DST | RTA_GATEWAY | RTA_NETMASK);
+				
+				// Указатель для записи в буфер
+				char *cp = msg.buffer;
+
+				// DST: 0.0.0.0
+				struct sockaddr_in sin_dst = sin(INADDR_ANY);
+				memcpy(cp, &sin_dst, sizeof(sin_dst));
+				cp += RT_ROUNDUP(sizeof(sin_dst));
+
+				// GATEWAY: IP шлюза
+				struct sockaddr_in sin_gw = sin(awh_cast <const net::addr_net_ipv4_t *> (addr.get())->address);
+				memcpy(cp, &sin_gw, sizeof(sin_gw));
+				cp += RT_ROUNDUP(sizeof(sin_gw));
+
+				// NETMASK: 0.0.0.0
+				struct sockaddr_in sin_mask = sin(0);
+				// Важно: для 0.0.0.0 маски иногда лучше не указывать ip вообще в структуре (sin_len=0), 
+				// но для явной маски 0.0.0.0 обычно используется структура с нулями.
+				// Однако в BSD часто принято, что если маска нулевая, то sockaddr может быть пустым или специфичным.
+				// Но явный 0.0.0.0 с длиной 16 тоже работает.
+				memcpy(cp, &sin_mask, sizeof(sin_mask));
+				cp += RT_ROUNDUP(sizeof(sin_mask));
+
+				// Опционально: указать интерфейс через sockaddr_dl
+				if((result = !iface.empty())){
+					unsigned int ifidx = ::if_nametoindex(iface.c_str());
+					if(!(result = (ifidx > 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, ::strerror(errno));
+						#else
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						::close(sock);
+						return result;
+					}
+
+					struct sockaddr_dl sdl = {};
+					sdl.sdl_len = sizeof(sdl);
+					sdl.sdl_family = AF_LINK;
+					sdl.sdl_index = ifidx;
+					
+					memcpy(cp, &sdl, sizeof(sdl));
+					cp += RT_ROUNDUP(sizeof(sdl));
+					
+					// Обновляем адреса маршрута
+					msg.rtm.rtm_addrs |= RTA_IFP;
+				}
+
+				// Устанавливаем итоговый размер сообщения
+				msg.rtm.rtm_msglen = (cp - (char *)&msg);
+
+				// Записываем сообщение в сокет
+				if(!(result = (::write(sock, &msg, msg.rtm.rtm_msglen) > 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+				// Закрываем сокет
+				::close(sock);
+			} break;
+			// Если адрес является IPv6
+			case 16: {
+				// Создаём сокет для управления интерфейсом
+				net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+				// Если создание сокета прошло неудачно
+				if(!(result = (sock != net::invalid_socket_t))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				/**
+				 * @brief Структура сообщения маршрута
+				 *
+				 */
+				struct {
+					// Объект заголовка маршрута (первый!)
+					struct rt_msghdr rtm;
+					// Буфер сообщения (IPv6 требует больше места)
+					char buffer[1024];
+				} msg;
+				
+				// Зануляем всю структуру
+				memset(&msg, 0, sizeof(msg));
+
+				/**
+				 * @brief Вспомогательная функция для IPv6-адресов
+				 *
+				 * @param addr IPv6-адрес в сетевом порядке байтов
+				 * @return     объект IPv6-адреса
+				 */
+				auto sin6 = [](const struct in6_addr * addr) -> struct sockaddr_in6 {
+					// Создаём объект IPv6-адреса
+					struct sockaddr_in6 sa = {};
+					// Заполняем объект IPv6-адреса
+					sa.sin6_family = AF_INET6;
+					// Устанавливаем длину объекта IPv6-адреса
+					sa.sin6_len = sizeof(sa);
+					// Устанавливаем сам IPv6-адрес
+					::memcpy(&sa.sin6_addr, addr, 16);
+					// Возвращаем объект IPv6-адреса
+					return sa;
+				};
+				// Устанавливаем последовательный номер сообщения
+				msg.rtm.rtm_seq = 1;
+				// Устанавливаем идентификатор процесса
+				msg.rtm.rtm_pid = ::getpid();
+				// Устанавливаем тип сообщения - добавление маршрута
+				msg.rtm.rtm_type = RTM_ADD;
+				// Устанавливаем версию заголовка маршрута
+				msg.rtm.rtm_version = RTM_VERSION;
+				// Устанавливаем флаги маршрута
+				msg.rtm.rtm_flags = (RTF_UP | RTF_GATEWAY | RTF_STATIC);
+				// Устанавливаем адреса маршрута
+				msg.rtm.rtm_addrs = (RTA_DST | RTA_GATEWAY | RTA_NETMASK);
+				
+				// Указатель для записи в буфер
+				char *cp = msg.buffer;
+
+				// DST: [::] точка назначения адреса по умолчанию
+				struct sockaddr_in6 sin6_dst = sin6(&in6addr_any);
+				memcpy(cp, &sin6_dst, sizeof(sin6_dst));
+				cp += RT_ROUNDUP(sizeof(sin6_dst));
+
+				// GATEWAY: IPv6-адрес шлюза
+				struct sockaddr_in6 sin6_gw = sin6(reinterpret_cast <const struct in6_addr *> (&awh_cast <const net::addr_net_ipv6_t *> (addr.get())->address[0]));
+				memcpy(cp, &sin6_gw, sizeof(sin6_gw));
+				cp += RT_ROUNDUP(sizeof(sin6_gw));
+
+				// NETMASK: [::] маска подсети
+				struct sockaddr_in6 sin6_mask = sin6(&in6addr_any);
+				memcpy(cp, &sin6_mask, sizeof(sin6_mask));
+				cp += RT_ROUNDUP(sizeof(sin6_mask));
+
+				// Опционально: указать интерфейс через sockaddr_dl
+				if((result = !iface.empty())){
+					// Получаем индекс сетевого интерфейса по его имени
+					unsigned int ifidx = ::if_nametoindex(iface.c_str());
+					// Если индекс сетевого интерфейса равен нулю, значит интерфейс не найден
+					if(!(result = (ifidx > 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
+					
+					// Получаем текущее значение аппаратного сетевого адреса
+					struct sockaddr_dl sdl = {};
+					// Устанавливаем семейство адресов
+					sdl.sdl_family = AF_LINK;
+					// Устанавливаем длину структуры
+					sdl.sdl_len = sizeof(sdl);
+					sdl.sdl_index = ifidx;
+
+					memcpy(cp, &sdl, sizeof(sdl));
+					cp += RT_ROUNDUP(sizeof(sdl));
+					
+					// Обновляем адреса маршрута
+					msg.rtm.rtm_addrs |= RTA_IFP;
+				}
+				
+				// Устанавливаем размер сообщения
+				msg.rtm.rtm_msglen = (cp - (char *)&msg);
+
+				// Записываем сообщение в сокет
+				if(!(result = (::write(sock, &msg, msg.rtm.rtm_msglen) > 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+				// Закрываем сокет
+				::close(sock);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(iface), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения списка сетевых интерфейсов системы
+ *
+ * @return список сетевых интерфейсов системы
+ */
+unordered_set <string> awh::Ethernet::ifaces() const noexcept {
+	// Результат работы функции
+	unordered_set <string> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Получаем список сетевых интерфейсов
+		struct ifaddrs * ptr = nullptr;
+		// Выполняем получение списка сетевых интерфейсов
+		if(::getifaddrs(&ptr) != 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+			#endif
+			// Выводим пустой результат
+			return result;
+		}
+		// Перебираем все сетевые интерфейсы
+		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next)
+			// Добавляем имя сетевого интерфейса в результирующий список
+			result.emplace(ifa->ifa_name);
+		// Освобождаем память списка сетевых интерфейсов
+		::freeifaddrs(ptr);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводиим результат
+	return result;
+}
+/**
  * @brief Метод получения имени сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
@@ -1456,8 +2146,8 @@ string awh::Ethernet::iface(const unique_ptr <net::addr_t> & addr) const noexcep
 				// Если адрес является MAC-адресом
 				case 6: {
 					// Ищем MAC-адрес интерфейса
-					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)) {
-						// Получаем указатель на структуру sockaddr_dl
+					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
+						// Получаем текущее значение аппаратного сетевого адреса
 						struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
 						// Проверяем длину MAC-адреса
 						if(sdl->sdl_alen == 6){
@@ -1531,6 +2221,478 @@ string awh::Ethernet::iface(const unique_ptr <net::addr_t> & addr) const noexcep
 	return result;
 }
 /**
+ * @brief Метод включения/выключения сетевого интерфейса
+ *
+ * @param name имя сетевого интерфейса
+ * @param mode режим включения/выключения интерфейса
+ * @param mtu  размер MTU интерфейса
+ * @return     результат включения/выключения интерфейса
+ */
+bool awh::Ethernet::iface(const string & name, const event::mode_t mode, const int32_t mtu) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если название сетевого интерфейса передано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём сокет для управления интерфейсом
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(!(result = (sock != net::invalid_socket_t))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Настраиваем интерфейс
+			struct ifreq itr{};
+			// Заполняем структуру управления интерфейсом
+			::memset(&itr, 0, sizeof(itr));
+			// Копируем имя интерфейса
+			::strncpy(itr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			// Устанавливаем завершающий ноль
+			itr.ifr_name[IFNAMSIZ - 1] = '\0';
+			// Если не удалось получить флаги интерфейса
+			if(!(result = (::ioctl(sock, SIOCGIFFLAGS, &itr) == 0))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Закрываем сокет
+				::close(sock);
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * Определяем режим работы интерфейса
+			 */
+			switch(static_cast <uint8_t> (mode)){
+				// Если необходимо включить интерфейс
+				case static_cast <uint8_t> (event::mode_t::ENABLED):
+					// Добавляем флаги UP и RUNNING
+					itr.ifr_flags |= (IFF_UP | IFF_RUNNING);
+				break;
+				// Если необходимо выключить интерфейс
+				case static_cast <uint8_t> (event::mode_t::DISABLED):
+					// Сбросить флаги UP и RUNNING
+					itr.ifr_flags &= ~(IFF_UP | IFF_RUNNING);
+				break;
+			}
+			// Применяем новые флаги интерфейса
+			if(!(result = (::ioctl(sock, SIOCSIFFLAGS, &itr) == 0))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Закрываем сокет
+				::close(sock);
+				// Выводим результат
+				return result;
+			}
+			// Если необходимо включить интерфейс
+			if(mode == event::mode_t::ENABLED){
+				// Устанавливаем MTU интерфейса
+				itr.ifr_mtu = mtu;
+				// Применяем новый MTU интерфейса
+				if(!(result = (::ioctl(sock, SIOCSIFMTU, &itr) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			}
+			// Закрываем сокет
+			::close(sock);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+
+#ifdef __AWH_DISABLE__
+
+/**
+ * @brief Метод получения списка проброшенных портов на маршрутизаторе
+ *
+ * @return список проброшенных портов на маршрутизаторе
+ */
+vector <awh::net::portmap_t> awh::Ethernet::mappings() const noexcept {
+	// Результат работы функции
+	vector <net::portmap_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Ищем устройства UPnP в локальной сети (3 секунды таймаут)
+		UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
+		// Если устройства не найдены
+		if(devlist == nullptr)
+			// Выводим пустой результат
+			return result;
+		// Действующий шлюз IGD
+		UPNPUrls urls = {0};
+		// Структура данных IGD
+		IGDdatas data = {0};
+		// Буфер для хранения внутреннего IP-адреса
+		vector <char> internalAddr(64, 0);
+		// Получаем действующий шлюз IGD
+		int32_t status = ::UPNP_GetValidIGD(devlist, &urls, &data, &internalAddr[0], internalAddr.size(), nullptr, 0);
+		// Освобождаем память списка устройств UPnP
+		::freeUPNPDevlist(devlist);
+		// Если не удалось получить действующий шлюз IGD
+		if(status != 1){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strupnperror(status));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
+			#endif
+			// Освобождаем память URL-ов UPnP
+			::FreeUPNPUrls(&urls);
+			// Выводим пустой результат
+			return result;
+		}
+		// Индекс перебора записей проброса портов
+		size_t index = 0;
+		/**
+		 * Перебираем все записи проброса портов
+		 */
+		for(;;){
+			// Буфер для хранения статуса включения/выключения порта
+			char enabled[16] = {0};
+			// Буфер для хранения протокола порта
+			char protocol[16] = {0};
+			// Буфер для хранения продолжительности аренды порта
+			char duration[16] = {0};
+			// Буфер для хранения внутреннего IP-адреса
+			char internalAddr[64] = {0};
+			// Буфер для хранения внешнего IP-адреса
+			char externalAddr[64] = {0};
+			// Буфер для хранения внутреннего порта
+			char internalPort[16] = {0};
+			// Буфер для хранения внешнего порта
+			char externalPort[16] = {0};
+			// Буфер для хранения описания проброса порта
+			char description[128] = {0};
+			// Получаем запись проброса порта по индексу
+			status = ::UPNP_GetGenericPortMappingEntry(
+				urls.controlURL, data.first.servicetype, std::to_string(index++).c_str(),
+				externalPort, internalAddr, internalPort, protocol, description, enabled, externalAddr, duration
+			);
+			// Если записи с таким индексом нет
+			if(status != 0)
+				// Выходим из цикла перебора записей проброса портов
+				break;
+			// Добавляем новую запись проброса порта в результирующий список
+			result.push_back(net::portmap_t());
+			// Устанавливаем описание проброшенного порта в результирующую запись
+			result.back().description = description;
+			// Устанавливаем внутренний IP-адрес в результирующую запись
+			result.back().internalAddr = internalAddr;
+			// Устанавливаем внешний IP-адрес в результирующую запись
+			result.back().externalAddr = externalAddr;
+			// Устанавливаем тип проброшенного порта в результирующую запись
+			result.back().type = net::portmap_type_t::UPNP;
+			// Устанавливаем время аренды проброшенного порта в результирующую запись
+			result.back().ttl = this->_fmk->atoi <uint32_t> (duration, ::strlen(duration));
+			// Устанавливаем внутренний порт в результирующую запись
+			result.back().internalPort = this->_fmk->atoi <uint16_t> (internalPort, ::strlen(internalPort));
+			// Устанавливаем внешний порт в результирующую запись
+			result.back().externalPort = this->_fmk->atoi <uint16_t> (externalPort, ::strlen(externalPort));
+			// Устанавливаем протокол проброшенного порта в результирующую запись
+			result.back().protocol = (this->_fmk->compare("tcp", protocol) ? event::protocol_t::TCP : event::protocol_t::UDP);
+		}
+		// Освобождаем память URL-ов UPnP
+		::FreeUPNPUrls(&urls);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод проброса порта на маршрутизаторе
+ *
+ * @param portmap параметры проброса порта
+ * @param mode    режим включения/выключения проброса порта
+ * @return        результат выполнения установки
+ */
+bool awh::Ethernet::mapping(const net::portmap_t & portmap, const event::mode_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип проброса порта
+		 */
+		switch(static_cast <uint8_t> (portmap.type)){
+			// Если тип проброса порта является PCP
+			case static_cast <uint8_t> (net::portmap_type_t::PCP): {
+
+			} break;
+			// Если тип проброса порта является UPNP
+			case static_cast <uint8_t> (net::portmap_type_t::UPNP): {
+				// Ищем устройства UPnP в локальной сети (3 секунды таймаут)
+				UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
+				// Если устройства не найдены
+				if(devlist == nullptr)
+					// Выводим пустой результат
+					return result;
+				// Действующий шлюз IGD
+				UPNPUrls urls = {0};
+				// Структура данных IGD
+				IGDdatas data = {0};
+				// Буфер для хранения внутреннего IP-адреса
+				vector <char> internalAddr(64, 0);
+				// Получаем действующий шлюз IGD
+				int32_t status = ::UPNP_GetValidIGD(devlist, &urls, &data, &internalAddr[0], internalAddr.size(), nullptr, 0);
+				// Освобождаем память списка устройств UPnP
+				::freeUPNPDevlist(devlist);
+				// Если не удалось получить действующий шлюз IGD
+				if(status != 1){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								portmap.ttl,
+								portmap.description,
+								portmap.internalPort,
+								portmap.externalPort,
+								portmap.internalAddr,
+								portmap.externalAddr,
+								static_cast <uint16_t> (portmap.type),
+								static_cast <uint16_t> (portmap.protocol),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING, ::strupnperror(status)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
+					#endif
+					// Освобождаем память URL-ов UPnP
+					::FreeUPNPUrls(&urls);
+					// Выводим пустой результат
+					return result;
+				}
+				/**
+				 * Определяем режим работы проброса порта
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо пробросить порт
+					case static_cast <uint8_t> (event::mode_t::ENABLED): {
+						// Буфер для хранения внутреннего IP-адреса
+						char internalPort[16];
+						// Буфер для хранения внешнего IP-адреса
+						char externalPort[16];
+						// Устанавливаем внешний порт
+						::snprintf(externalPort, sizeof(externalPort), "%d", portmap.externalPort);
+						// Устанавливаем внутренний порт
+						::snprintf(internalPort, sizeof(internalPort), "%d", portmap.internalPort);
+						// Пробрасываем порт на маршрутизаторе
+						status = ::UPNP_AddPortMapping(
+							// Устанавливаем URL управления
+							urls.controlURL,
+							// Устанавливаем тип сервиса
+							data.first.servicetype,
+							// Устанавливаем внешний порт
+							externalPort,
+							// Устанавливаем внутренний порт
+							internalPort,
+							// Устанавливаем внутренний IP-адрес
+							&internalAddr[0],
+							// Устанавливаем описание проброса порта
+							(portmap.description.empty() ? this->_fmk->format("%s (%s)", AWH_NAME, AWH_SHORT_NAME).c_str() : &portmap.description[0]),
+							// Устанавливаем протокол порта
+							(portmap.protocol == event::protocol_t::TCP ? "TCP" : "UDP"),
+							// Устанавливаем внешний IP-адрес, если он указан
+							(portmap.externalAddr.empty() ? nullptr : &portmap.externalAddr[0]),
+							// Устанавливаем время жизни проброса порта
+							(portmap.ttl == 0 ? "0" : std::to_string(portmap.ttl).c_str())
+						);
+					} break;
+					// Если необходимо убрать проброшенный порт
+					case static_cast <uint8_t> (event::mode_t::DISABLED): {
+						// Буфер для хранения внешнего IP-адреса
+						char externalPort[16];
+						// Устанавливаем внешний порт
+						::snprintf(externalPort, sizeof(externalPort), "%d", portmap.externalPort);
+						// Удаляем проброс порта на маршрутизаторе
+						status = ::UPNP_DeletePortMapping(
+							// Устанавливаем URL управления
+							urls.controlURL,
+							// Устанавливаем тип сервиса
+							data.first.servicetype,
+							// Устанавливаем внешний порт
+							externalPort,
+							// Устанавливаем протокол порта
+							(portmap.protocol == event::protocol_t::TCP ? "TCP" : "UDP"),
+							// Устанавливаем внешний IP-адрес, если он указан
+							(portmap.externalAddr.empty() ? nullptr : &portmap.externalAddr[0])
+						);
+					} break;
+				}
+				// Очищаем память URL-ов UPnP
+				::FreeUPNPUrls(&urls);
+				// Если возникла ошибка
+				if(!(result = (status == UPNPCOMMAND_SUCCESS))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								portmap.ttl,
+								portmap.description,
+								portmap.internalPort,
+								portmap.externalPort,
+								portmap.internalAddr,
+								portmap.externalAddr,
+								static_cast <uint16_t> (portmap.type),
+								static_cast <uint16_t> (portmap.protocol),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING, ::strupnperror(status)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
+					#endif
+				}
+			} break;
+			// Если тип проброса порта является NAT_PMP
+			case static_cast <uint8_t> (net::portmap_type_t::NAT_PMP): {
+
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					portmap.ttl,
+					portmap.description,
+					portmap.internalPort,
+					portmap.externalPort,
+					portmap.internalAddr,
+					portmap.externalAddr,
+					static_cast <uint16_t> (portmap.type),
+					static_cast <uint16_t> (portmap.protocol),
+					static_cast <uint16_t> (mode)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+    return result;
+}
+
+#endif
+/**
  * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
  *
  * @param source объект источника сетевых адресов
@@ -1560,8 +2722,8 @@ void awh::Ethernet::fillsource(net::src_t & source) const noexcept {
 						// Переходим к следующему интерфейсу
 						continue;
 					// Ищем MAC-адрес интерфейса
-					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)) {
-						// Получаем указатель на структуру sockaddr_dl
+					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
+						// Получаем текущее значение аппаратного сетевого адреса
 						struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
 						// Проверяем длину MAC-адреса
 						if((result = (sdl->sdl_alen == 6))){
@@ -2578,6 +3740,49 @@ int32_t awh::Ethernet::error(const net::socket_t sock) const noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * @brief Метод создания TUN/TAP интерфейса
+ *
+ * @param ifname имя сетевого интерфейса
+ * @return       дескриптор созданного TUN/TAP интерфейса
+ */
+awh::net::socket_t awh::Ethernet::tunnel(string & ifname) const noexcept {
+
+}
+/**
+ * @brief Метод получения IP-адреса сетевого интерфейса
+ *
+ * @param ifname имя сетевого интерфейса
+ * @param type   тип IP-адреса (локальный, глобальный, маска)
+ * @return       IP-адрес сетевого интерфейса
+ */
+string awh::Ethernet::ip(const string & ifname, const net::ip_type_t type) const noexcept {
+
+}
+/**
+ * @brief Метод установки IP-адреса на сетевой интерфейс
+ *
+ * @param ifname имя сетевого интерфейса
+ * @param addr   адрес сетевого интерфейса для установки
+ * @param peer   адрес удалённого пира (для точка-точка)
+ * @param prefix префикс подсети
+ * @return       результат установки IP-адреса
+ */
+bool awh::Ethernet::ip(const string & ifname, const unique_ptr <net::addr_t> & addr, const uint8_t prefix) const noexcept {
+
+}
+/**
+ * @brief Метод установки IP-адреса на сетевой интерфейс
+ *
+ * @param ifname имя сетевого интерфейса
+ * @param addr   адрес сетевого интерфейса для установки
+ * @param peer   адрес удалённого пира (для точка-точка)
+ * @param prefix префикс подсети
+ * @return       результат установки IP-адреса
+ */
+bool awh::Ethernet::ip(const string & ifname, const unique_ptr <net::addr_t> & addr, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
+
 }
 /**
  * @brief Метод установки таймаута сокета

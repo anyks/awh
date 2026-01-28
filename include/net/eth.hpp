@@ -33,6 +33,7 @@ namespace awh {
 	using namespace std;
 	/**
 	 * @brief Класс для работы с сетевым уровнем Ethernet
+	 *
 	 */
 	typedef class AWH_SHARED_EXPORT Ethernet {
 		/**
@@ -170,12 +171,64 @@ namespace awh {
 			void netboost() const noexcept;
 		public:
 			/**
+			 * @brief Метод удаления шлюза по умолчанию
+			 *
+			 * @return результат удаления шлюза по умолчанию
+			 */
+			bool gatewayRemove() const noexcept;
+			/**
+			 * @brief Метод получения шлюза по умолчанию
+			 *
+			 * @param source объект источника сетевых адресов
+			 * @return       адрес шлюза по умолчанию
+			 */
+			bool gateway(net::src_t & source) const noexcept;
+			/**
+			 * @brief Метод получения шлюза по умолчанию для указанного сетевого интерфейса
+			 *
+			 * @param addr  адрес сетевого подключения
+			 * @param iface имя сетевого интерфейса
+			 * @return      адрес шлюза по умолчанию
+			 */
+			bool gateway(const unique_ptr <net::addr_t> & addr, const string & iface = "") const noexcept;
+		public:
+			/**
+			 * @brief Метод получения списка сетевых интерфейсов системы
+			 *
+			 * @return список сетевых интерфейсов системы
+			 */
+			unordered_set <string> ifaces() const noexcept;
+			/**
 			 * @brief Метод получения имени сетевого интерфейса по адресу
 			 *
 			 * @param addr адрес сетевого подключения
 			 * @return     имя сетевого интерфейса
 			 */
 			string iface(const unique_ptr <net::addr_t> & addr) const noexcept;
+			/**
+			 * @brief Метод включения/выключения сетевого интерфейса
+			 *
+			 * @param name имя сетевого интерфейса
+			 * @param mode режим включения/выключения интерфейса
+			 * @param mtu  размер MTU интерфейса
+			 * @return     результат включения/выключения интерфейса
+			 */
+			bool iface(const string & name, const event::mode_t mode, const int32_t mtu = 1400) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения списка проброшенных портов на маршрутизаторе
+			 *
+			 * @return список проброшенных портов на маршрутизаторе
+			 */
+			// vector <net::portmap_t> mappings() const noexcept;
+			/**
+			 * @brief Метод проброса порта на маршрутизаторе
+			 *
+			 * @param portmap параметры проброса порта
+			 * @param mode    режим включения/выключения проброса порта
+			 * @return        результат выполнения установки
+			 */
+			// bool mapping(const net::portmap_t & portmap, const event::mode_t mode) const noexcept;
 		public:
 			/**
 			 * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
@@ -224,6 +277,43 @@ namespace awh {
 			 * @return     код ошибки на сокете если присутствует
 			 */
 			int32_t error(const net::socket_t sock) const noexcept;
+		public:
+			/**
+			 * @brief Метод создания TUN/TAP интерфейса
+			 *
+			 * @param ifname имя сетевого интерфейса
+			 * @return       дескриптор созданного TUN/TAP интерфейса
+			 */
+			net::socket_t tunnel(string & ifname) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения IP-адреса сетевого интерфейса
+			 *
+			 * @param ifname имя сетевого интерфейса
+			 * @param type   тип IP-адреса (локальный, глобальный, маска)
+			 * @return       IP-адрес сетевого интерфейса
+			 */
+			string ip(const string & ifname, const net::ip_type_t type) const noexcept;
+			/**
+			 * @brief Метод установки IP-адреса на сетевой интерфейс
+			 *
+			 * @param ifname имя сетевого интерфейса
+			 * @param addr   адрес сетевого интерфейса для установки
+			 * @param peer   адрес удалённого пира (для точка-точка)
+			 * @param prefix префикс подсети
+			 * @return       результат установки IP-адреса
+			 */
+			bool ip(const string & ifname, const unique_ptr <net::addr_t> & addr, const uint8_t prefix) const noexcept;
+			/**
+			 * @brief Метод установки IP-адреса на сетевой интерфейс
+			 *
+			 * @param ifname имя сетевого интерфейса
+			 * @param addr   адрес сетевого интерфейса для установки
+			 * @param peer   адрес удалённого пира (для точка-точка)
+			 * @param prefix префикс подсети
+			 * @return       результат установки IP-адреса
+			 */
+			bool ip(const string & ifname, const unique_ptr <net::addr_t> & addr, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки таймаута сокета

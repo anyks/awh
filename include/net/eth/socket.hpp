@@ -1,0 +1,160 @@
+/**
+ * @file: socket.hpp
+ * @date: 2026-01-28
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+#ifndef __AWH_SOCKET__
+#define __AWH_SOCKET__
+
+/**
+ * Наши модули
+ */
+#include "net.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+
+/**
+ * @brief основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	/**
+	 * @brief Класс для работы с сокетами
+	 *
+	 */
+	typedef class AWH_SHARED_EXPORT Socket {
+		private:
+			// Объект фреймворка
+			const fmk_t * _fmk;
+			// Объект работы с логами
+			const log_t * _log;
+		public:
+			/**
+			 * @brief Метод получения кода ошибки
+			 *
+			 * @param sock сетевой сокет
+			 * @return     код ошибки на сокете если присутствует
+			 */
+			int32_t error(const net::socket_t sock) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки таймаута сокета
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @param msec  время таймаута в миллисекундах
+			 * @return      результат установки таймаута
+			 */
+			bool timeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения размера буфера
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @return      размер буфера сокета
+			 */
+			int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept;
+			/**
+			 * @brief Метод установки размеров буфера
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @param size  размер буфера сокета
+			 * @return      установленный размер буфера сокета
+			 */
+			int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки сетевого интерфейса для multicast пакетов
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param ifname имя сетевого интерфейса
+			 * @return       результат работы функции
+			 */
+			bool multicastIface(const net::socket_t sock, const event::family_t family, const string & ifname) const noexcept;
+		public:
+			/**
+			 * @brief Метод устанавливает постоянное подключение на сокет
+			 *
+			 * @param sock  сетевой сокет
+			 * @param cnt   максимальное количество попыток
+			 * @param idle  время через которое происходит проверка подключения
+			 * @param intvl время между попытками
+			 * @return      результат работы функции
+			 */
+			bool keepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки опций сокета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим активации или деактивации
+			 * @param option опция сокета
+			 * @return       результат работы функции
+			 */
+			bool setoption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param sock     сетевой сокет
+			 * @param family   семейство протоколов (IPv4 или IPv6)
+			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @param hops     максимальное количество хопов
+			 * @return         результат работы функции
+			 */
+			bool hops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept;
+		public:
+			/**
+			 * @brief Метод активации/деактивации мультикаст группы события
+			 *
+			 * @param sock   сетевой сокет
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @return       результат работы функции
+			 */
+			bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept;
+		public:
+			/**
+			 * @brief Метод создания сокета
+			 *
+			 * @param family семейство протоколов сокета
+			 * @param type   тип сокета
+			 * @param proto  протокол сокета
+			 * @return       созданный сокет
+			 */
+			net::socket_t create(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект работы с логами
+			 */
+			explicit Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Socket() noexcept {}
+	} socket_t;
+};
+
+#endif // __AWH_SOCKET__

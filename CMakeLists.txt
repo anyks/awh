@@ -337,6 +337,8 @@ endif (Dependence_FOUND)
 
 # Выполняем поиск библиотеки TcMalloc
 find_package(TcMalloc REQUIRED)
+# Выполняем поиск библиотеки MiniUPnPc
+find_package(MiniUPnPc REQUIRED)
 
 # Провекра TcMalloc
 if (TcMalloc_FOUND)
@@ -345,6 +347,14 @@ if (TcMalloc_FOUND)
 else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
 endif (TcMalloc_FOUND)
+
+# Провекра MiniUPnPc
+if (MiniUPnPc_FOUND)
+    message(STATUS "MiniUPnPc include dir found: " ${MINIUPNPC_INCLUDE_DIR})
+    message(STATUS "MiniUPnPc lib found: " ${MINIUPNPC_LIBRARY})
+else (MiniUPnPc_FOUND)
+    message(FATAL_ERROR "MiniUPnPc not found")
+endif (MiniUPnPc_FOUND)
 
 # Если необходимо собрать тесты
 if (CMAKE_BUILD_TESTS)
@@ -390,6 +400,7 @@ endif()
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
 include_directories(BEFORE ${TCMALLOC_INCLUDE_DIR})
+include_directories(BEFORE ${MINIUPNPC_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
@@ -401,6 +412,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
         "${SOURCE_FILES}"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/eth.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/kqueue.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/gateway.cpp"
     )
 endif()
 
@@ -495,6 +507,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(IP_APP_NET_NAME net-ip)
     # Указываем что нужно собрать приложение работы с IP-адресами
     option(CMAKE_BUILD_IP_NET_APP_SAMPLE "Build IP app sample" ON)
+
+    # Устанавливаем имя приложения работы с Ethernet-адресами
+    SET(ETH_APP_NET_NAME net-eth)
+    # Указываем что нужно собрать приложение работы с Ethernet-адресами
+    option(CMAKE_BUILD_ETH_NET_APP_SAMPLE "Build ETH app sample" ON)
 
     # Устанавливаем имя приложения работы с датой и временем
     SET(DATE_APP_SYS_NAME sys-date)
@@ -857,17 +874,29 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample IPC: No\n")
     endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
 
-    # Если нужно собрать семплы для работы с ОС
+    # Если нужно собрать семплы для работы с IP-адресами
     if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample IP network: Yes\n")
         # Выполняем создание приложения работы с IP-адресами
         add_sample(${IP_APP_NET_NAME} sample/net/ip.cpp net)
-    # Если не нужно собирать семплы для работы с ОС
+    # Если не нужно собирать семплы для работы с IP-адресами
     else()
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample IP network: No\n")
     endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с Ethernet-адресами
+    if (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Ethernet network: Yes\n")
+        # Выполняем создание приложения работы с Ethernet-адресами
+        add_sample(${ETH_APP_NET_NAME} sample/net/eth.cpp net)
+    # Если не нужно собирать семплы для работы с Ethernet-адресами
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Ethernet network: No\n")
+    endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с TCP (клиент и сервер)
     if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
@@ -1042,6 +1071,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         ${AWH_LIB_NAME}
         PRIVATE
         ${DEPEND_LIBRARY}
+        ${MINIUPNPC_LIBRARY}
         ${TCMALLOC_LIBRARIES}
         ${AWH_FLAGS}
     )
@@ -1058,6 +1088,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с Ethernet-адресами
+        if (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+            # Выполняем сборку приложения работы с Ethernet-адресами
+            target_link_libraries(
+                ${ETH_APP_NET_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -1499,10 +1540,24 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IP_APP_NET_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с Ethernet-адресами
+        if (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+            # Выполняем сборку приложения работы с Ethernet-адресами
+            target_link_libraries(
+                ${ETH_APP_NET_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -1511,6 +1566,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${DATE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1523,6 +1579,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${FILESYSTEM_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1535,6 +1592,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${PROCRE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1547,6 +1605,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CRYPTO_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1559,6 +1618,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${COMPRESSOR_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1571,6 +1631,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${DIR_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1583,6 +1644,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${FILE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1595,6 +1657,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${PING_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1607,6 +1670,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${TIMER_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1619,6 +1683,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${EVENTS_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1631,6 +1696,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_PIPE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1640,6 +1706,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_STREAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1649,6 +1716,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_DATAGRAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1658,6 +1726,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_SEQPACKET_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1670,6 +1739,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1679,6 +1749,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1691,6 +1762,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1700,6 +1772,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDP_CONN_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1709,6 +1782,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1721,6 +1795,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1730,6 +1805,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1742,6 +1818,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1751,6 +1828,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1760,6 +1838,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1769,6 +1848,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1781,6 +1861,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1790,6 +1871,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1802,6 +1884,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1811,6 +1894,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1820,6 +1904,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1829,6 +1914,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1841,6 +1927,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1850,6 +1937,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1862,6 +1950,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1871,6 +1960,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1880,6 +1970,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TLS_WEB_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1889,6 +1980,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TLS_MULTI_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
+                ${MINIUPNPC_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
@@ -1903,6 +1995,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_TLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1911,6 +2004,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_TLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1919,6 +2013,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_DTLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1927,6 +2022,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_DTLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1935,6 +2031,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_AUTH_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1943,6 +2040,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_AUTH_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1951,6 +2049,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_STREAM_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1959,6 +2058,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_STREAM_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1967,6 +2067,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
 
@@ -1975,6 +2076,7 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
+                    ${MINIUPNPC_LIBRARY}
                     ${TCMALLOC_LIBRARIES}
                 )
             endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
@@ -1997,6 +2099,16 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с Ethernet-адресами
+            if (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+                # Выполняем сборку приложения работы с Ethernet-адресами
+                add_custom_command(TARGET "${ETH_APP_NET_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${ETH_APP_NET_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${ETH_APP_NET_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -2316,6 +2428,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${IP_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с Ethernet-адресами
+            if (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+                # Выполняем анализ приложения работы с Ethernet-адресами
+                pvs_studio_add_target(TARGET ${ETH_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ETH_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
@@ -2568,6 +2686,8 @@ else()
     install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()
 
+# Устанавливаем библиотеку MiniUPnPc
+install(FILES ${MINIUPNPC_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем статическую библиотеку TcMalloc
 install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
@@ -2578,6 +2698,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с IP-адресами
         install(TARGETS ${IP_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с Ethernet-адресами
+    if (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+        # Устанавливаем приложение работы с Ethernet-адресами
+        install(TARGETS ${ETH_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
