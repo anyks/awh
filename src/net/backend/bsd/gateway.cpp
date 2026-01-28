@@ -154,11 +154,331 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 		switch(route.gateway->size){
 			// Если адрес является IPv4
 			case 4: {
-
+				// Создаём сокет для добавления маршрутов
+				net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+				// Если сокет не создан
+				if(sock == net::invalid_socket_t){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Буфер для добавления маршрута
+				char buffer[1024];
+				// Зануляем буфер для добавления маршрута
+				::memset(buffer, 0, sizeof(buffer));
+				// Структура сообщения для добавления маршрута
+				struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (buffer);
+				// Буфер полезной нагрузки
+				char * cp = (buffer + sizeof(struct rt_msghdr));
+				// Порядковый номер устанавливаемого маршрута
+				rtm->rtm_seq = 1;
+				// Идентификатор процесса
+				rtm->rtm_pid = ::getpid();
+				// Тип сообщения
+				rtm->rtm_type = RTM_ADD;
+				// Версия маршрута
+				rtm->rtm_version = RTM_VERSION;
+				// Флаги: UP и STATIC
+				rtm->rtm_flags = (RTF_UP | RTF_STATIC);
+				// Маска используемых полей
+				rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
+				/**
+				 * 1. Адрес назначения (RTA_DST)
+				 */
+				struct sockaddr_in dst;
+				// Зануляем объект адреса назначения
+				::memset(&dst, 0, sizeof(dst));
+				// Устанавливаем длину структуры
+				dst.sin_len = sizeof(struct sockaddr_in);
+				// Устанавливаем семейство адресов
+				dst.sin_family = AF_INET;
+				// Получаем адрес назначения
+				dst.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address;
+				// Копируем в буфер адрес назначения
+				::memcpy(cp, &dst, dst.sin_len);
+				// Сдвигаем буфер полезной нагрузки
+				cp += ROUNDUP(dst.sin_len);
+				/**
+				 * 2. Адрес шлюза (RTA_GATEWAY)
+				 */
+				// Если передан интерфейс для установки шлюза
+				if(!route.ifname.empty()){
+					// Получаем индекс интерфейса
+					const uint32_t idx = ::if_nametoindex(route.ifname.c_str());
+					// Если найден интерфейс по имени
+					if(idx > 0) {
+						// Структура канального уровня
+						struct sockaddr_dl sdl;
+						// Зануляем структуру адреса канального уровня
+						::memset(&sdl, 0, sizeof(sdl));
+						// Устанавливаем длину структуры
+						sdl.sdl_len = sizeof(struct sockaddr_dl);
+						// Устанавливаем семейство адресов
+						sdl.sdl_family = AF_LINK;
+						// Устанавливаем индекс интерфейса
+						sdl.sdl_index = static_cast <uint16_t> (idx);
+						// Устанавливаем флаг адреса шлюза
+						rtm->rtm_addrs |= RTA_GATEWAY;
+						// Устанавливаем в буфер адрес шлюза
+						::memcpy(cp, &sdl, sdl.sdl_len);
+						// Сдвигаем буфер полезной нагрузки
+						cp += ROUNDUP(sdl.sdl_len);
+					}
+				// Если это обычный шлюз
+				} else {
+					// Структура IPv4 шлюза
+					struct sockaddr_in gw;
+					// Зануляем структуру адреса шлюза
+					::memset(&gw, 0, sizeof(gw));
+					// Устанавливаем длину структуры
+					gw.sin_len = sizeof(struct sockaddr_in);
+					// Устанавливаем семейство адресов
+					gw.sin_family = AF_INET;
+					// Устанавливаем адрес шлюза
+					gw.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address;
+					// Устанавливаем флаг шлюза
+					rtm->rtm_flags |= RTF_GATEWAY;
+					// Устанавливаем флаг адреса шлюза
+					rtm->rtm_addrs |= RTA_GATEWAY;
+					// Устанавливаем в буфер адрес шлюза
+					::memcpy(cp, &gw, gw.sin_len);
+					// Сдвигаем буфер полезной нагрузки
+					cp += ROUNDUP(gw.sin_len);
+				}
+				/**
+				 * 3. Маска подсети (RTA_NETMASK)
+				 */
+				struct sockaddr_in mask;
+				// Зануляем структуру адреса маски подсети
+				::memset(&mask, 0, sizeof(mask));
+				// Устанавливаем длину структуры
+				mask.sin_len = sizeof(struct sockaddr_in);
+				// Устанавливаем семейство адресов
+				mask.sin_family = AF_INET;
+				// Если адрес назначения является default route
+				if(dst.sin_addr.s_addr == 0)
+					// Default route - mask 0
+					mask.sin_addr.s_addr = 0;
+				// Если префикс задан
+				else if(route.prefix > 0)
+					// Prefix defined
+					mask.sin_addr.s_addr = ::gw::prefix2mask(route.prefix);
+				// Если префикс сети не установлен
+				else {
+					// Устанавливаем флаг хостового маршрута
+					rtm->rtm_flags |= RTF_HOST;
+					// Устанавливаем маску соответствующую префиксу /32
+					mask.sin_addr.s_addr = 0xFFFFFFFF;
+				}
+				// Копируем маску подсети в буфер
+				::memcpy(cp, &mask, mask.sin_len);
+				// Сдвигаем буфер полезной нагрузки
+				cp += ROUNDUP(mask.sin_len);
+				// Полный размер сообщения
+				rtm->rtm_msglen = (cp - buffer);
+				// Записываем маршрут в систему
+				if(!(result = (::write(sock, buffer, rtm->rtm_msglen) > 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+				// Закрываем сокет
+				::close(sock);
 			} break;
 			// Если адрес является IPv6
 			case 16: {
-
+				// Создаём сокет для добавления маршрутов
+				net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+				// Если сокет не создан
+				if(sock == net::invalid_socket_t){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Буфер для добавления маршрута
+				char buffer[1024];
+				// Зануляем буфер для добавления маршрута
+				::memset(buffer, 0, sizeof(buffer));
+				// Структура сообщения для добавления маршрута
+				struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (buffer);
+				// Буфер полезной нагрузки
+				char * cp = (buffer + sizeof(struct rt_msghdr));
+				// Устанавливаем порядковый номер устанавливаемого маршрута
+				rtm->rtm_seq = 1;
+				// Устанавливаем идентификатор процесса
+				rtm->rtm_pid = ::getpid();
+				// Устанавливаем тип сообщения
+				rtm->rtm_type = RTM_ADD;
+				// Устанавливаем версию маршрута
+				rtm->rtm_version = RTM_VERSION;
+				// Устанавливаем флаги: UP и STATIC
+				rtm->rtm_flags = (RTF_UP | RTF_STATIC);
+				// Устанавливаем маску используемых полей
+				rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
+				/**
+				 * 1. Адрес назначения (RTA_DST)
+				 */
+				struct sockaddr_in6 dst;
+				// Зануляем структуру адреса назначения
+				::memset(&dst, 0, sizeof(dst));
+				// Устанавливаем длину структуры
+				dst.sin6_len = sizeof(struct sockaddr_in6);
+				// Устанавливаем семейство адресов
+				dst.sin6_family = AF_INET6;
+				// Получаем адрес назначения
+				::memcpy(&dst.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], 16);
+				// Копируем в буфер адрес назначения
+				::memcpy(cp, &dst, dst.sin6_len);
+				// Сдвигаем буфер полезной нагрузки
+				cp += ROUNDUP(dst.sin6_len);
+				/**
+				 * 2. Адрес шлюза (RTA_GATEWAY)
+				 */
+				// Если передан интерфейс для установки шлюза
+				if(!route.ifname.empty()){
+					// Получаем индекс интерфейса
+					const uint32_t idx = ::if_nametoindex(route.ifname.c_str());
+					// Если найден интерфейс по имени
+					if(idx > 0) {
+						// Структура канального уровня
+						struct sockaddr_dl sdl;
+						// Зануляем структуру адреса канального уровня
+						::memset(&sdl, 0, sizeof(sdl));
+						// Устанавливаем длину структуры
+						sdl.sdl_len = sizeof(struct sockaddr_dl);
+						// Устанавливаем семейство адресов
+						sdl.sdl_family = AF_LINK;
+						// Устанавливаем индекс интерфейса
+						sdl.sdl_index = static_cast<uint16_t>(idx);
+						// Устанавливаем флаг адреса шлюза
+						rtm->rtm_addrs |= RTA_GATEWAY;
+						// Копируем в буфер адрес шлюза
+						::memcpy(cp, &sdl, sdl.sdl_len);
+						// Сдвигаем буфер полезной нагрузки
+						cp += ROUNDUP(sdl.sdl_len);
+					}
+				// Если это обычный шлюз
+				} else {
+					// Структура IPv6 шлюза
+					struct sockaddr_in6 gw;
+					// Зануляем структуру адреса шлюза
+					::memset(&gw, 0, sizeof(gw));
+					// Устанавливаем длину структуры
+					gw.sin6_len = sizeof(struct sockaddr_in6);
+					// Устанавливаем семейство адресов
+					gw.sin6_family = AF_INET6;
+					// Устанавливаем адрес шлюза
+					::memcpy(&gw.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16);
+					// Устанавливаем флаг шлюза
+					rtm->rtm_flags |= RTF_GATEWAY;
+					// Устанавливаем флаг адреса шлюза
+					rtm->rtm_addrs |= RTA_GATEWAY;
+					// Копируем в буфер адрес шлюза
+					::memcpy(cp, &gw, gw.sin6_len);
+					// Сдвигаем буфер полезной нагрузки
+					cp += ROUNDUP(gw.sin6_len);
+				}
+				/**
+				 * 3. Маска подсети (RTA_NETMASK)
+				 */
+				struct sockaddr_in6 mask;
+				// Зануляем структуру адреса маски подсети
+				::memset(&mask, 0, sizeof(mask));
+				// Устанавливаем длину структуры
+				mask.sin6_len = sizeof(struct sockaddr_in6);
+				// Устанавливаем семейство адресов
+				mask.sin6_family = AF_INET6;
+				// Если адрес назначения является default route
+				if(IN6_IS_ADDR_UNSPECIFIED(&dst.sin6_addr)){
+					/**
+					 * Default route - mask 0 (already zeroed)
+					 */
+				// Если префикс задан
+				} else if(route.prefix > 0) {
+					// Текущий префикс
+					uint32_t prefix = static_cast <uint32_t> (route.prefix);
+					// Проходим по байтам
+					for(uint8_t i = 0; i < 16; ++i){
+						// Если префикс больше либо равен 8
+						if(prefix >= 8){
+							// Устанавливаем байт маски подсети
+							mask.sin6_addr.s6_addr[i] = 0xff;
+							// Уменьшаем префикс на 8
+							prefix -= 8;
+						// Если префикс меньше 8, но больше нуля
+						} else if(prefix > 0) {
+							// Устанавливаем байт маски подсети
+							mask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xff << (8 - prefix));
+							// Обнуляем префикс
+							prefix = 0;
+						// Зануляем байт маски подсети
+						} else mask.sin6_addr.s6_addr[i] = 0;
+					}
+				// Если префикс сети не установлен
+				} else {
+					// Устанавливаем маску соответствующую префиксу /128
+					::memset(&mask.sin6_addr, 0xff, 16);
+					// Устанавливаем флаг хостового маршрута
+					rtm->rtm_flags |= RTF_HOST;
+				}
+				// Копируем маску подсети в буфер
+				::memcpy(cp, &mask, mask.sin6_len);
+				// Сдвигаем буфер полезной нагрузки
+				cp += ROUNDUP(mask.sin6_len);
+				// Полный размер сообщения
+				rtm->rtm_msglen = (cp - buffer);
+				// Записываем маршрут в систему
+				if(!(result = (::write(sock, buffer, rtm->rtm_msglen) > 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+				// Закрываем
+				::close(sock);
 			} break;
 			// Во всех остальных случаях
 			default: {
