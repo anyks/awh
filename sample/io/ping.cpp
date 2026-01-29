@@ -146,7 +146,7 @@ int32_t main(int32_t argc, char * argv[]){
 	} __attribute__((packed));
 
 	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
+	engine::io_t io(&fmk, &log);
 	// Создаём объект работы с датами
 	chrono_t chrono(&fmk, &log);
 	// Создаём объект работы с IP-адресами

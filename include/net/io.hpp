@@ -26,179 +26,26 @@
  */
 namespace awh {
 	/**
-	 * Подписываемся на стандартное пространство имён
-	 */
-	using namespace std;
-	/**
-	 * Для операционной системы Linux или FreeBSD
-	 */
-	#if __linux__ || __FreeBSD__
-		/**
-		 * @brief Класс управления протоколом передачи с управлением потоком
-		 *
-		 */
-		typedef class AWH_SHARED_EXPORT StreamControlTransmissionProtocol {
-			private:
-				// Объект работы с сетью
-				eth_t _eth;
-			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
-			public:
-				/**
-				 * @brief Метод получения информационных метаданных SCTP сообщения
-				 *
-				 * @param id идентификатор события
-				 * @return   информационные метаданные SCTP сообщения
-				 */
-				net::sctp::minfo_t messageInfo(const event::id_t id) const noexcept;
-				/**
-				 * @brief Метод установки информационных метаданных SCTP сообщения
-				 *
-				 * @param id   идентификатор события
-				 * @param info информационные метаданные SCTP сообщения
-				 */
-				void messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept;
-			public:
-				/**
-				 * @brief Метод получения параметров статуса инициализации SCTP
-				 *
-				 * @param id идентификатор события
-				 * @return   параметры статуса инициализации SCTP
-				 */
-				net::sctp::status_t status(const event::id_t id) const noexcept;
-				/**
-				 * @brief Метод установки параметров инициализации SCTP
-				 *
-				 * @param id      идентификатор события
-				 * @param initmsg параметры инициализации SCTP события
-				 */
-				void initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept;
-			public:
-				/**
-				 * @brief Метод получения опций подписки SCTP событий
-				 *
-				 * @param id идентификатор события
-				 * @return   список событий SCTP на которые выполнена подписка
-				 */
-				const net::sctp::event_types_t & eventsSubscribed(const event::id_t id) const noexcept;
-				/**
-				 * @brief Метод установки опций подписки SCTP событий
-				 *
-				 * @param id     идентификатор события
-				 * @param events список событий SCTP для подписки
-				 */
-				void eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept;
-			public:
-				/**
-				 * @brief Метод получения таймаута SCTP события
-				 *
-				 * @param id   идентификатор события
-				 * @param type тип таймаута
-				 * @return     значение таймаута в миллисекундах
-				 */
-				uint32_t timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept;
-				/**
-				 * @brief Метод установки таймаута SCTP события
-				 *
-				 * @param id      идентификатор события
-				 * @param type    тип таймаута
-				 * @param timeout значение таймаута в миллисекундах
-				 * @return        результат работы функции
-				 */
-				bool timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
-			public:
-				/**
-				 * @brief Метод установки ключа аутентификации SCTP сокета
-				 *
-				 * @param id  идентификатор события
-				 * @param num номер ключа аутентификации
-				 * @param key ключ аутентификации
-				 * @return    результат работы функции
-				 */
-				bool authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept;
-				/**
-				 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
-				 *
-				 * @param id   идентификатор события
-				 * @param mode режим установки действия события
-				 * @param num  номер ключа аутентификации
-				 * @return     результат работы функции
-				 */
-				bool authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept;
-			public:
-				/**
-				 * @brief Метод установки чанков аутентификации SCTP сокета
-				 *
-				 * @param id     идентификатор события
-				 * @param chunks список чанков подлежащих аутентификации
-				 * @return       результат работы функции
-				 */
-				bool authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept;
-				/**
-				 * @brief Метод извлечения чанков аутентификации SCTP сокета
-				 *
-				 * @param id     идентификатор события
-				 * @param origin источник события
-				 * @param chunks список чанков подлежащих аутентификации
-				 * @return       результат работы функции
-				 */
-				bool authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
-			public:
-				/**
-				 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
-				 *
-				 * @param id    идентификатор события
-				 * @param types список поддерживаемых алгоритмов аутентификации
-				 * @return      результат работы функции
-				 */
-				bool authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept;
-			public:
-				/**
-				 * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
-				 *
-				 * @param id идентификатор события
-				 * @param cb функция обратного вызова
-				 */
-				void on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept;
-				/**
-				 * @brief Методы установки функции обратного вызова на получение SCTP событий
-				 *
-				 * @param id идентификатор события
-				 * @param cb функция обратного вызова
-				 */
-				void on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept;
-			public:
-				/**
-				 * @brief Конструктор
-				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект работы с логами
-				 */
-				explicit StreamControlTransmissionProtocol(const fmk_t * fmk, const log_t * log) noexcept : _eth(fmk, log), _fmk(fmk), _log(log) {}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				virtual ~StreamControlTransmissionProtocol() noexcept {}
-		} sctp_t;
-	#endif
-	/**
-	 * @brief Тип асинхронного движка ввода-вывода
+	 * @brief Пространство имён движков ввода-вывода
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT IO : public engine_t {
-		public:
+	namespace engine {
+		/**
+		 * Подписываемся на стандартное пространство имён
+		 */
+		using namespace std;
+		/**
+		 * Для операционной системы Linux или FreeBSD
+		 */
+		#if __linux__ || __FreeBSD__
 			/**
-			 * @brief Структура управления списками контроля доступа
+			 * @brief Класс управления протоколом передачи с управлением потоком
 			 *
 			 */
-			typedef class AWH_SHARED_EXPORT ControlList {
+			typedef class AWH_SHARED_EXPORT StreamControlTransmissionProtocol {
 				private:
-					// Тип списка контрольного списка
-					event::control_list_t _type;
+					// Объект работы с сетью
+					eth_t _eth;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -206,597 +53,756 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * @brief Метод очистки белого списка события
+					 * @brief Метод получения информационных метаданных SCTP сообщения
 					 *
 					 * @param id идентификатор события
-					 * @return   результат выполнения очистки
+					 * @return   информационные метаданные SCTP сообщения
 					 */
-					bool clear(const event::id_t id) noexcept;
+					net::sctp::minfo_t messageInfo(const event::id_t id) const noexcept;
 					/**
-					 * @brief Метод добавления адреса в белый список события
+					 * @brief Метод установки информационных метаданных SCTP сообщения
 					 *
-					 * @param id    идентификатор события
-					 * @param value значение адреса события
-					 * @return      результат выполнения установки
+					 * @param id   идентификатор события
+					 * @param info информационные метаданные SCTP сообщения
 					 */
-					bool add(const event::id_t id, const string & value) noexcept;
+					void messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept;
+				public:
 					/**
-					 * @brief Метод удаления адреса из белого списка события
-					 *
-					 * @param id    идентификатор события
-					 * @param value адрес для удаления из белого списка
-					 * @return      результат выполнения удаления
-					 */
-					bool remove(const event::id_t id, const string & value) noexcept;
-					/**
-					 * @brief Метод получения белого списка события
+					 * @brief Метод получения параметров статуса инициализации SCTP
 					 *
 					 * @param id идентификатор события
-					 * @return   белый список события
+					 * @return   параметры статуса инициализации SCTP
 					 */
-					const std::unordered_map <string, event::address_t> & get(const event::id_t id) const noexcept;
+					net::sctp::status_t status(const event::id_t id) const noexcept;
+					/**
+					 * @brief Метод установки параметров инициализации SCTP
+					 *
+					 * @param id      идентификатор события
+					 * @param initmsg параметры инициализации SCTP события
+					 */
+					void initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept;
+				public:
+					/**
+					 * @brief Метод получения опций подписки SCTP событий
+					 *
+					 * @param id идентификатор события
+					 * @return   список событий SCTP на которые выполнена подписка
+					 */
+					const net::sctp::event_types_t & eventsSubscribed(const event::id_t id) const noexcept;
+					/**
+					 * @brief Метод установки опций подписки SCTP событий
+					 *
+					 * @param id     идентификатор события
+					 * @param events список событий SCTP для подписки
+					 */
+					void eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept;
+				public:
+					/**
+					 * @brief Метод получения таймаута SCTP события
+					 *
+					 * @param id   идентификатор события
+					 * @param type тип таймаута
+					 * @return     значение таймаута в миллисекундах
+					 */
+					uint32_t timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept;
+					/**
+					 * @brief Метод установки таймаута SCTP события
+					 *
+					 * @param id      идентификатор события
+					 * @param type    тип таймаута
+					 * @param timeout значение таймаута в миллисекундах
+					 * @return        результат работы функции
+					 */
+					bool timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
+				public:
+					/**
+					 * @brief Метод установки ключа аутентификации SCTP сокета
+					 *
+					 * @param id  идентификатор события
+					 * @param num номер ключа аутентификации
+					 * @param key ключ аутентификации
+					 * @return    результат работы функции
+					 */
+					bool authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept;
+					/**
+					 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+					 *
+					 * @param id   идентификатор события
+					 * @param mode режим установки действия события
+					 * @param num  номер ключа аутентификации
+					 * @return     результат работы функции
+					 */
+					bool authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept;
+				public:
+					/**
+					 * @brief Метод установки чанков аутентификации SCTP сокета
+					 *
+					 * @param id     идентификатор события
+					 * @param chunks список чанков подлежащих аутентификации
+					 * @return       результат работы функции
+					 */
+					bool authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept;
+					/**
+					 * @brief Метод извлечения чанков аутентификации SCTP сокета
+					 *
+					 * @param id     идентификатор события
+					 * @param origin источник события
+					 * @param chunks список чанков подлежащих аутентификации
+					 * @return       результат работы функции
+					 */
+					bool authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
+				public:
+					/**
+					 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+					 *
+					 * @param id    идентификатор события
+					 * @param types список поддерживаемых алгоритмов аутентификации
+					 * @return      результат работы функции
+					 */
+					bool authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept;
+				public:
+					/**
+					 * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
+					 *
+					 * @param id идентификатор события
+					 * @param cb функция обратного вызова
+					 */
+					void on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept;
+					/**
+					 * @brief Методы установки функции обратного вызова на получение SCTP событий
+					 *
+					 * @param id идентификатор события
+					 * @param cb функция обратного вызова
+					 */
+					void on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
-					 * @param type тип списка контрольного списка
+					 * @param fmk объект фреймворка
+					 * @param log объект работы с логами
 					 */
-					explicit ControlList(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
-					 _type(type), _fmk(fmk), _log(log) {}
+					explicit StreamControlTransmissionProtocol(const fmk_t * fmk, const log_t * log) noexcept : _eth(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~ControlList() noexcept {}
-			} control_list_t;
-		public:
-			// Объект управления белым списком
-			control_list_t whitelist;
-			// Объект управления чёрным списком
-			control_list_t blacklist;
-		public:
-			/**
-			 * @brief Метод фиксации настроек события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения фиксации
-			 */
-			bool commit(const event::id_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод получения порта события
-			 *
-			 * @param id идентификатор события
-			 * @return   порт события
-			 */
-			uint16_t port(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки порта события
-			 *
-			 * @param id   идентификатор события
-			 * @param port порт события
-			 * @return     результат выполнения установки
-			 */
-			bool port(const event::id_t id, const uint16_t port) noexcept;
-		public:
-			/**
-			 * @brief Метод получения сетевого интерфейса события
-			 *
-			 * @param id идентификатор события
-			 * @return   сетевой интерфейс события
-			 */
-			string iface(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки сетевого интерфейса события
-			 *
-			 * @param id   идентификатор события
-			 * @param name имя сетевого интерфейса для установки
-			 * @return     результат выполнения установки
-			 */
-			bool iface(const event::id_t id, const string & name) noexcept;
-		public:
-			/**
-			 * @brief Метод получения хоста целевой машины
-			 *
-			 * @param id идентификатор события
-			 * @return   хост целевой машины
-			 */
-			string target(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки хоста целевой машины
-			 *
-			 * @param id   идентификатор события
-			 * @param host хост целевой машины
-			 * @return     результат выполнения установки
-			 */
-			bool target(const event::id_t id, const string & target) noexcept;
-		public:
-			/**
-			 * @brief Метод получения адреса события
-			 *
-			 * @param id      идентификатор события
-			 * @param address тип адреса события
-			 * @return        значение адреса события
-			 */
-			string address(const event::id_t id, const event::address_t address) const noexcept;
-			/**
-			 * @brief Метод установки адреса события
-			 *
-			 * @param id      идентификатор события
-			 * @param address тип адреса события
-			 * @param value   значение адреса события
-			 * @return        результат выполнения установки
-			 */
-			bool address(const event::id_t id, const event::address_t address, const string & value) noexcept;
-		public:
-			/**
-			 * @brief Метод активации/деактивации мультикаст группы события
-			 *
-			 * @param id     идентификатор события
-			 * @param mode   режим активации/деактивации
-			 * @param group  мультикаст-группа для активации/деактивации
-			 * @param source адрес сетевого интерфейса с которого выполняется подписка
-			 * @param port   порт мультикаст-группы с которого выполняется подписка
-			 * @return       результат выполнения установки
-			 */
-			bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port = 0) noexcept;
-		public:
-			/**
-			 * @brief Метод удаления события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения удаления
-			 */
-			bool destroy(const event::id_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод создания нового события
-			 *
-			 * @param node     узел события
-			 * @param family   семейство сокета
-			 * @param type     тип сокета
-			 * @param protocol протокол сокета
-			 * @return         идентификатор созданного события
-			 */
-			event::id_t event(const event::node_t node, const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
-		public:
-			/**
-			 * @brief Метод получения пары событий для сокета
-			 *
-			 * @param family   семейство сокета
-			 * @param type     тип сокета
-			 * @param protocol протокол сокета
-			 * @return         пара идентификаторов созданных событий
-			 */
-			std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
-		public:
-			/**
-			 * @brief Метод получения смещения в файле события
-			 *
-			 * @param id   идентификатор события
-			 * @param seek тип смещения в файле события
-			 * @return     смещение в файле события
-			 */
-			size_t seek(const event::id_t id, const event::seek_t seek) noexcept;
-			/**
-			 * @brief Метод установки смещения в файле события
-			 *
-			 * @param id     идентификатор события
-			 * @param seek   тип смещения в файле события
-			 * @param offset смещение в файле события
-			 * @return       результат выполнения установки
-			 */
-			bool seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept;
-		public:
-			/**
-			 * @brief Метод получения опций события
-			 *
-			 * @param id идентификатор события
-			 * @return   опции события
-			 */
-			uint16_t options(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки опций события
-			 *
-			 * @param id      идентификатор события
-			 * @param options опции события для установки
-			 * @return        результат выполнения установки
-			 */
-			bool options(const event::id_t id, const uint16_t options) noexcept;
-			/**
-			 * @brief Метод установки опции события
-			 *
-			 * @param id     идентификатор события
-			 * @param option опция события для установки
-			 * @param mode   режим установки опции события
-			 * @return       результат выполнения установки
-			 */
-			bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept;
-		public:
-			/**
-			 * @brief Метод перемещения данных между событиями
-			 *
-			 * @param eid  идентификатор события-источника
-			 * @param dest идентификатор события-приёмника
-			 * @return     результат выполнения перемещения
-			 */
-			bool splice(const event::id_t eid, const event::id_t dest) noexcept;
-		public:
-			/**
-			 * @brief Метод запуска события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения запуска
-			 */
-			bool launch(const event::id_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод отключения события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения отключения
-			 */
-			bool disconnect(const event::id_t id) noexcept;
-			/**
-			 * @brief Шаблон метода мультиподключения события к удалённым хостам
-			 *
-			 * @tparam Args список идентификаторов событий для подключения
-			 */
-			template <typename... Args>
-			/**
-			 * @brief Метод мультиподключения события к удалённым хостам
-			 *
-			 * @param args список идентификаторов событий для подключения
-			 * @return     результат выполнения подключения
-			 */
-			bool connect(Args&&... args) noexcept {
-				// Выполняем подключение к списку удалённых серверов
-				return this->connect({args...});
-			}
-			/**
-			 * @brief Метод мультиподключения события к удалённым хостам
-			 *
-			 * @param ids список идентификаторов событий для подключения
-			 * @return    результат выполнения подключения
-			 */
-			bool connect(const vector <event::id_t> & ids) noexcept;
-		public:
-			/**
-			 * @brief Метод перевода события в режим прослушивания входящих соединений
-			 *
-			 * @param id  идентификатор события
-			 * @param max максимальное количество входящих соединений
-			 * @return    результат выполнения перевода в режим прослушивания
-			 */
-			bool listen(const event::id_t id, const uint16_t max) noexcept;
-		public:
-			/**
-			 * @brief Метод приёма данных события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения приёма
-			 */
-			bool recv(const event::id_t id) noexcept;
-			/**
-			 * @brief Метод отправки данных события
-			 *
-			 * @param id   идентификатор события
-			 * @param data буфер данных для отправки
-			 * @param size размер данных для отправки
-			 * @return     результат выполнения отправки
-			 */
-			bool send(const event::id_t id, const char * data, const size_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод установки глубины очереди принятия входящих соединений события
-			 *
-			 * @param id       идентификатор события
-			 * @param depth    глубина очереди принятия входящих соединений
-			 * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
-			 */
-			void backlog(const event::id_t id, const uint16_t depth, const bool adaptive = false) noexcept;
-		public:
-			/**
-			 * @brief Метод получения размера буфера события
-			 *
-			 * @param id     идентификатор события
-			 * @param action тип действия события
-			 * @return       размер буфера события
-			 */
-			size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept;
-			/**
-			 * @brief Метод установки размера буфера события
-			 *
-			 * @param id     идентификатор события
-			 * @param action тип действия события
-			 * @param size   размер буфера события
-			 * @return       результат выполнения установки
-			 */
-			bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод получения режима трансляции пакетов для события
-			 *
-			 * @param id идентификатор события
-			 * @return   режим трансляции пакетов (unicast, multicast, broadcast)
-			 */
-			event::delivery_mode_t delivery(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки режима трансляции пакетов для события
-			 *
-			 * @param id       идентификатор события
-			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
-			 * @return         результат выполнения установки
-			 */
-			bool delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept;
-		public:
-			/**
-			 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
-			 *
-			 * @param id идентификатор события
-			 * @return   максимальное количество хопов
-			 */
-			event::hops_t hops(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
-			 *
-			 * @param id     идентификатор события
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param hops   максимальное количество хопов
-			 * @return       результат работы функции
-			 */
-			bool hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
-		public:
-			/**
-			 * @brief Метод получения таймаута события
-			 *
-			 * @param id     идентификатор события
-			 * @param action тип действия события
-			 * @return       значение таймаута в миллисекундах
-			 */
-			uint32_t timeout(const event::id_t id, const event::action_t action) const noexcept;
-			/**
-			 * @brief Метод установки таймаута события
-			 *
-			 * @param id      идентификатор события
-			 * @param action  тип действия события
-			 * @param timeout значение таймаута в миллисекундах
-			 */
-			void timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept;
-		public:
-			/**
-			 * @brief Метод получения действия события
-			 *
-			 * @param id     идентификатор события
-			 * @param action тип действия события
-			 * @return       режим действия события
-			 */
-			event::mode_t action(const event::id_t id, const event::action_t action) const noexcept;
-			/**
-			 * @brief Метод установки действия события
-			 *
-			 * @param id     идентификатор события
-			 * @param action тип действия события
-			 * @param mode   режим установки действия события
-			 * @return       результат выполнения установки
-			 */
-			bool action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept;
-		public:
-			/**
-			 * @brief Метод установки параметров keep-alive для события
-			 *
-			 * @param id    идентификатор события
-			 * @param cnt   количество пакетов keep-alive
-			 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
-			 * @param intvl интервал между пакетами keep-alive в секундах
-			 * @return      результат выполнения установки
-			 */
-			bool keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
-		public:
-			/**
-			 * @brief Метод приостановки события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения приостановки
-			 */
-			bool pause(const event::id_t id) noexcept;
-			/**
-			 * @brief Метод возобновления события
-			 *
-			 * @param id идентификатор события
-			 * @return   результат выполнения возобновления
-			 */
-			bool resume(const event::id_t id) noexcept;
-		public:
-			/**
-			 * @brief Метод проверки состояния события
-			 *
-			 * @param id идентификатор события
-			 * @return   состояние события
-			 */
-			bool isAlive(const event::id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод очистки основного движка фреймворка
-			 *
-			 */
-			void clear() noexcept;
-		public:
-			/**
-			 * @brief Метод принудительного срабатывания события
-			 *
-			 * @return результат выполнения операции
-			 */
-			bool kick() noexcept;
-			/**
-			 * @brief Метод инициализации основного движка фреймворка
-			 *
-			 * @return результат выполнения инициализации
-			 */
-			bool initialize() noexcept;
-			/**
-			 * @brief Метод реинициализации основного движка фреймворка
-			 *
-			 * @return результат выполнения реинициализации
-			 */
-			bool reinitialize() noexcept;
-			/**
-			 * @brief Метод деинициализации основного движка фреймворка
-			 *
-			 * @return результат выполнения деинициализации
-			 */
-			bool deinitialize() noexcept;
-		public:
-			/**
-			 * @brief Метод проверки состояния инициализации основного движка фреймворка
-			 *
-			 * @return состояние инициализации
-			 */
-			bool isInitialized() const noexcept;
-		public:
-			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode режим безопасности потоков
-			 */
-			void threadSafety(const event::mode_t mode) noexcept;
-			/**
-			 * @brief Метод установки параметров пула потоков
-			 *
-			 * @param mode режим работы пула потоков
-			 * @param size количество потоков в пуле
-			 */
-			void threadPool(const event::mode_t mode, const uint16_t size) noexcept;
-		public:
-			/**
-			 * @brief Метод получения количества событий в основном движке фреймворка
-			 *
-			 * @return количество событий
-			 */
-			size_t eventsCount() const noexcept;
-		public:
-			/**
-			 * @brief Метод получения размера отслеживаемого файла
-			 *
-			 * @param id идентификатор события
-			 * @return   размер файла
-			 */
-			size_t size(const event::id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод получения типа события
-			 *
-			 * @param id идентификатор события
-			 * @return   тип события
-			 */
-			event::type_t type(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод получения типа узла события
-			 *
-			 * @param id идентификатор события
-			 * @return   тип узла события
-			 */
-			event::node_t node(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод получения семейства события
-			 *
-			 * @param id идентификатор события
-			 * @return   семейство события
-			 */
-			event::family_t family(const event::id_t id) const noexcept;
-			/**
-			 * @brief Метод получения статуса события
-			 *
-			 * @param id идентификатор события
-			 * @return   статус события
-			 */
-			event::status_t status(const event::id_t id) const noexcept;
-		public:
-			/**
-			 * @brief Метод опроса событий
-			 *
-			 * @param timeout таймаут опроса в миллисекундах
-			 * @return        результат выполнения опроса
-			 */
-			bool poll(const int32_t timeout = -1) noexcept;
-		public:
-			/**
-			 * @brief Методы установки функции обратного вызова на чтение события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::read_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на запись события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::write_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на получение общего события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::event_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на ошибку события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::error_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на изменение статуса события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::status_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на изменение события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::change_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на принятие события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::accept_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на подключение события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::connect_t & cb) noexcept;
-			/**
-			 * @brief Методы установки функции обратного вызова на возрождение события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			void on(const event::id_t id, const event::callback::rebirth_t & cb) noexcept;
-		public:
-			/**
-			 * @brief Конструктор
-			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
-			 */
-			explicit IO(const fmk_t * fmk, const log_t * log) noexcept;
-			/**
-			 * @brief Деструктор
-			 *
-			 */
-			~IO() noexcept;
-	} io_t;
+					virtual ~StreamControlTransmissionProtocol() noexcept {}
+			} sctp_t;
+		#endif
+		/**
+		 * @brief Тип асинхронного движка ввода-вывода
+		 *
+		 */
+		typedef class AWH_SHARED_EXPORT IO : public engine_t {
+			public:
+				/**
+				 * @brief Структура управления списками контроля доступа
+				 *
+				 */
+				typedef class AWH_SHARED_EXPORT ControlList {
+					private:
+						// Тип списка контрольного списка
+						event::control_list_t _type;
+					private:
+						// Объект фреймворка
+						const fmk_t * _fmk;
+						// Объект работы с логами
+						const log_t * _log;
+					public:
+						/**
+						 * @brief Метод очистки белого списка события
+						 *
+						 * @param id идентификатор события
+						 * @return   результат выполнения очистки
+						 */
+						bool clear(const event::id_t id) noexcept;
+						/**
+						 * @brief Метод добавления адреса в белый список события
+						 *
+						 * @param id    идентификатор события
+						 * @param value значение адреса события
+						 * @return      результат выполнения установки
+						 */
+						bool add(const event::id_t id, const string & value) noexcept;
+						/**
+						 * @brief Метод удаления адреса из белого списка события
+						 *
+						 * @param id    идентификатор события
+						 * @param value адрес для удаления из белого списка
+						 * @return      результат выполнения удаления
+						 */
+						bool remove(const event::id_t id, const string & value) noexcept;
+						/**
+						 * @brief Метод получения белого списка события
+						 *
+						 * @param id идентификатор события
+						 * @return   белый список события
+						 */
+						const std::unordered_map <string, event::address_t> & get(const event::id_t id) const noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param type тип списка контрольного списка
+						 */
+						explicit ControlList(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
+						_type(type), _fmk(fmk), _log(log) {}
+						/**
+						 * @brief Деструктор
+						 *
+						 */
+						virtual ~ControlList() noexcept {}
+				} control_list_t;
+			public:
+				// Объект управления белым списком
+				control_list_t whitelist;
+				// Объект управления чёрным списком
+				control_list_t blacklist;
+			public:
+				/**
+				 * @brief Метод фиксации настроек события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения фиксации
+				 */
+				bool commit(const event::id_t id) noexcept;
+			public:
+				/**
+				 * @brief Метод получения порта события
+				 *
+				 * @param id идентификатор события
+				 * @return   порт события
+				 */
+				uint16_t port(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки порта события
+				 *
+				 * @param id   идентификатор события
+				 * @param port порт события
+				 * @return     результат выполнения установки
+				 */
+				bool port(const event::id_t id, const uint16_t port) noexcept;
+			public:
+				/**
+				 * @brief Метод получения сетевого интерфейса события
+				 *
+				 * @param id идентификатор события
+				 * @return   сетевой интерфейс события
+				 */
+				string iface(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки сетевого интерфейса события
+				 *
+				 * @param id   идентификатор события
+				 * @param name имя сетевого интерфейса для установки
+				 * @return     результат выполнения установки
+				 */
+				bool iface(const event::id_t id, const string & name) noexcept;
+			public:
+				/**
+				 * @brief Метод получения хоста целевой машины
+				 *
+				 * @param id идентификатор события
+				 * @return   хост целевой машины
+				 */
+				string target(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки хоста целевой машины
+				 *
+				 * @param id   идентификатор события
+				 * @param host хост целевой машины
+				 * @return     результат выполнения установки
+				 */
+				bool target(const event::id_t id, const string & target) noexcept;
+			public:
+				/**
+				 * @brief Метод получения адреса события
+				 *
+				 * @param id      идентификатор события
+				 * @param address тип адреса события
+				 * @return        значение адреса события
+				 */
+				string address(const event::id_t id, const event::address_t address) const noexcept;
+				/**
+				 * @brief Метод установки адреса события
+				 *
+				 * @param id      идентификатор события
+				 * @param address тип адреса события
+				 * @param value   значение адреса события
+				 * @return        результат выполнения установки
+				 */
+				bool address(const event::id_t id, const event::address_t address, const string & value) noexcept;
+			public:
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы события
+				 *
+				 * @param id     идентификатор события
+				 * @param mode   режим активации/деактивации
+				 * @param group  мультикаст-группа для активации/деактивации
+				 * @param source адрес сетевого интерфейса с которого выполняется подписка
+				 * @param port   порт мультикаст-группы с которого выполняется подписка
+				 * @return       результат выполнения установки
+				 */
+				bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port = 0) noexcept;
+			public:
+				/**
+				 * @brief Метод удаления события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения удаления
+				 */
+				bool destroy(const event::id_t id) noexcept;
+			public:
+				/**
+				 * @brief Метод создания нового события
+				 *
+				 * @param node     узел события
+				 * @param family   семейство сокета
+				 * @param type     тип сокета
+				 * @param protocol протокол сокета
+				 * @return         идентификатор созданного события
+				 */
+				event::id_t event(const event::node_t node, const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+			public:
+				/**
+				 * @brief Метод получения пары событий для сокета
+				 *
+				 * @param family   семейство сокета
+				 * @param type     тип сокета
+				 * @param protocol протокол сокета
+				 * @return         пара идентификаторов созданных событий
+				 */
+				std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+			public:
+				/**
+				 * @brief Метод получения смещения в файле события
+				 *
+				 * @param id   идентификатор события
+				 * @param seek тип смещения в файле события
+				 * @return     смещение в файле события
+				 */
+				size_t seek(const event::id_t id, const event::seek_t seek) noexcept;
+				/**
+				 * @brief Метод установки смещения в файле события
+				 *
+				 * @param id     идентификатор события
+				 * @param seek   тип смещения в файле события
+				 * @param offset смещение в файле события
+				 * @return       результат выполнения установки
+				 */
+				bool seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept;
+			public:
+				/**
+				 * @brief Метод получения опций события
+				 *
+				 * @param id идентификатор события
+				 * @return   опции события
+				 */
+				uint16_t options(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки опций события
+				 *
+				 * @param id      идентификатор события
+				 * @param options опции события для установки
+				 * @return        результат выполнения установки
+				 */
+				bool options(const event::id_t id, const uint16_t options) noexcept;
+				/**
+				 * @brief Метод установки опции события
+				 *
+				 * @param id     идентификатор события
+				 * @param option опция события для установки
+				 * @param mode   режим установки опции события
+				 * @return       результат выполнения установки
+				 */
+				bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept;
+			public:
+				/**
+				 * @brief Метод перемещения данных между событиями
+				 *
+				 * @param eid  идентификатор события-источника
+				 * @param dest идентификатор события-приёмника
+				 * @return     результат выполнения перемещения
+				 */
+				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
+			public:
+				/**
+				 * @brief Метод запуска события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения запуска
+				 */
+				bool launch(const event::id_t id) noexcept;
+			public:
+				/**
+				 * @brief Метод отключения события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения отключения
+				 */
+				bool disconnect(const event::id_t id) noexcept;
+				/**
+				 * @brief Шаблон метода мультиподключения события к удалённым хостам
+				 *
+				 * @tparam Args список идентификаторов событий для подключения
+				 */
+				template <typename... Args>
+				/**
+				 * @brief Метод мультиподключения события к удалённым хостам
+				 *
+				 * @param args список идентификаторов событий для подключения
+				 * @return     результат выполнения подключения
+				 */
+				bool connect(Args&&... args) noexcept {
+					// Выполняем подключение к списку удалённых серверов
+					return this->connect({args...});
+				}
+				/**
+				 * @brief Метод мультиподключения события к удалённым хостам
+				 *
+				 * @param ids список идентификаторов событий для подключения
+				 * @return    результат выполнения подключения
+				 */
+				bool connect(const vector <event::id_t> & ids) noexcept;
+			public:
+				/**
+				 * @brief Метод перевода события в режим прослушивания входящих соединений
+				 *
+				 * @param id  идентификатор события
+				 * @param max максимальное количество входящих соединений
+				 * @return    результат выполнения перевода в режим прослушивания
+				 */
+				bool listen(const event::id_t id, const uint16_t max) noexcept;
+			public:
+				/**
+				 * @brief Метод приёма данных события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения приёма
+				 */
+				bool recv(const event::id_t id) noexcept;
+				/**
+				 * @brief Метод отправки данных события
+				 *
+				 * @param id   идентификатор события
+				 * @param data буфер данных для отправки
+				 * @param size размер данных для отправки
+				 * @return     результат выполнения отправки
+				 */
+				bool send(const event::id_t id, const char * data, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод установки глубины очереди принятия входящих соединений события
+				 *
+				 * @param id       идентификатор события
+				 * @param depth    глубина очереди принятия входящих соединений
+				 * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
+				 */
+				void backlog(const event::id_t id, const uint16_t depth, const bool adaptive = false) noexcept;
+			public:
+				/**
+				 * @brief Метод получения размера буфера события
+				 *
+				 * @param id     идентификатор события
+				 * @param action тип действия события
+				 * @return       размер буфера события
+				 */
+				size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept;
+				/**
+				 * @brief Метод установки размера буфера события
+				 *
+				 * @param id     идентификатор события
+				 * @param action тип действия события
+				 * @param size   размер буфера события
+				 * @return       результат выполнения установки
+				 */
+				bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод получения режима трансляции пакетов для события
+				 *
+				 * @param id идентификатор события
+				 * @return   режим трансляции пакетов (unicast, multicast, broadcast)
+				 */
+				event::delivery_mode_t delivery(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки режима трансляции пакетов для события
+				 *
+				 * @param id       идентификатор события
+				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+				 * @return         результат выполнения установки
+				 */
+				bool delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept;
+			public:
+				/**
+				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+				 *
+				 * @param id идентификатор события
+				 * @return   максимальное количество хопов
+				 */
+				event::hops_t hops(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+				 *
+				 * @param id     идентификатор события
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param hops   максимальное количество хопов
+				 * @return       результат работы функции
+				 */
+				bool hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
+			public:
+				/**
+				 * @brief Метод получения таймаута события
+				 *
+				 * @param id     идентификатор события
+				 * @param action тип действия события
+				 * @return       значение таймаута в миллисекундах
+				 */
+				uint32_t timeout(const event::id_t id, const event::action_t action) const noexcept;
+				/**
+				 * @brief Метод установки таймаута события
+				 *
+				 * @param id      идентификатор события
+				 * @param action  тип действия события
+				 * @param timeout значение таймаута в миллисекундах
+				 */
+				void timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept;
+			public:
+				/**
+				 * @brief Метод получения действия события
+				 *
+				 * @param id     идентификатор события
+				 * @param action тип действия события
+				 * @return       режим действия события
+				 */
+				event::mode_t action(const event::id_t id, const event::action_t action) const noexcept;
+				/**
+				 * @brief Метод установки действия события
+				 *
+				 * @param id     идентификатор события
+				 * @param action тип действия события
+				 * @param mode   режим установки действия события
+				 * @return       результат выполнения установки
+				 */
+				bool action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept;
+			public:
+				/**
+				 * @brief Метод установки параметров keep-alive для события
+				 *
+				 * @param id    идентификатор события
+				 * @param cnt   количество пакетов keep-alive
+				 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
+				 * @param intvl интервал между пакетами keep-alive в секундах
+				 * @return      результат выполнения установки
+				 */
+				bool keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
+			public:
+				/**
+				 * @brief Метод приостановки события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения приостановки
+				 */
+				bool pause(const event::id_t id) noexcept;
+				/**
+				 * @brief Метод возобновления события
+				 *
+				 * @param id идентификатор события
+				 * @return   результат выполнения возобновления
+				 */
+				bool resume(const event::id_t id) noexcept;
+			public:
+				/**
+				 * @brief Метод проверки состояния события
+				 *
+				 * @param id идентификатор события
+				 * @return   состояние события
+				 */
+				bool isAlive(const event::id_t id) const noexcept;
+			public:
+				/**
+				 * @brief Метод очистки основного движка фреймворка
+				 *
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * @brief Метод принудительного срабатывания события
+				 *
+				 * @return результат выполнения операции
+				 */
+				bool kick() noexcept;
+				/**
+				 * @brief Метод инициализации основного движка фреймворка
+				 *
+				 * @return результат выполнения инициализации
+				 */
+				bool initialize() noexcept;
+				/**
+				 * @brief Метод реинициализации основного движка фреймворка
+				 *
+				 * @return результат выполнения реинициализации
+				 */
+				bool reinitialize() noexcept;
+				/**
+				 * @brief Метод деинициализации основного движка фреймворка
+				 *
+				 * @return результат выполнения деинициализации
+				 */
+				bool deinitialize() noexcept;
+			public:
+				/**
+				 * @brief Метод проверки состояния инициализации основного движка фреймворка
+				 *
+				 * @return состояние инициализации
+				 */
+				bool isInitialized() const noexcept;
+			public:
+				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode режим безопасности потоков
+				 */
+				void threadSafety(const event::mode_t mode) noexcept;
+				/**
+				 * @brief Метод установки параметров пула потоков
+				 *
+				 * @param mode режим работы пула потоков
+				 * @param size количество потоков в пуле
+				 */
+				void threadPool(const event::mode_t mode, const uint16_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод получения количества событий в основном движке фреймворка
+				 *
+				 * @return количество событий
+				 */
+				size_t eventsCount() const noexcept;
+			public:
+				/**
+				 * @brief Метод получения размера отслеживаемого файла
+				 *
+				 * @param id идентификатор события
+				 * @return   размер файла
+				 */
+				size_t size(const event::id_t id) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения типа события
+				 *
+				 * @param id идентификатор события
+				 * @return   тип события
+				 */
+				event::type_t type(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод получения типа узла события
+				 *
+				 * @param id идентификатор события
+				 * @return   тип узла события
+				 */
+				event::node_t node(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод получения семейства события
+				 *
+				 * @param id идентификатор события
+				 * @return   семейство события
+				 */
+				event::family_t family(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод получения статуса события
+				 *
+				 * @param id идентификатор события
+				 * @return   статус события
+				 */
+				event::status_t status(const event::id_t id) const noexcept;
+			public:
+				/**
+				 * @brief Метод опроса событий
+				 *
+				 * @param timeout таймаут опроса в миллисекундах
+				 * @return        результат выполнения опроса
+				 */
+				bool poll(const int32_t timeout = -1) noexcept;
+			public:
+				/**
+				 * @brief Методы установки функции обратного вызова на чтение события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::read_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на запись события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::write_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на получение общего события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::event_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на ошибку события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::error_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на изменение статуса события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::status_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на изменение события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::change_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на принятие события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::accept_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на подключение события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::connect_t & cb) noexcept;
+				/**
+				 * @brief Методы установки функции обратного вызова на возрождение события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::rebirth_t & cb) noexcept;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект работы с логами
+				 */
+				explicit IO(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~IO() noexcept;
+		} io_t;
+	};
 };
 
 #endif // __AWH_IO_ENGINE__

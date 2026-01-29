@@ -1222,7 +1222,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool user(::io::user_t *, const io_t *, const log_t *) noexcept;
+	static bool user(::io::user_t *, const engine::io_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события ошибки
 	 *
@@ -1241,7 +1241,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool change(::io::dir_t *, const io_t *, const fmk_t *, const log_t *) noexcept;
+	static bool change(::io::dir_t *, const engine::io_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения
 	 *
@@ -1261,7 +1261,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool connected(::io::client_t *, const io_t *, const eth_t *, const log_t *) noexcept;
+	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события чтения
 	 *
@@ -1272,7 +1272,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool read(net::node_t *, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool read(net::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события записи
 	 *
@@ -1283,7 +1283,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool write(net::node_t *, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool write(net::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события
 	 *
@@ -1294,7 +1294,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool processing(struct kevent &, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool processing(struct kevent &, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
 	 *
@@ -1307,7 +1307,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool origin(::io::server_t *, const char *, const size_t, const io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool origin(::io::server_t *, const char *, const size_t, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 };
 
 /**
@@ -2840,7 +2840,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool user(::io::user_t * node, const io_t * io, const log_t * log) noexcept {
+	static bool user(::io::user_t * node, const engine::io_t * io, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -2858,7 +2858,7 @@ namespace io {
 						// Выполняем извлечение данных из очереди
 						node->callbacks.read(node->id, static_cast <const uint8_t *> (node->events.data()), node->events.size());
 					// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-					else const_cast <io_t *> (io)->send(node->dest, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
+					else const_cast <engine::io_t *> (io)->send(node->dest, static_cast <const char *> (node->events), static_cast <size_t> (node->events));
 					// Выполняем блокировку уникальным мютексом
 					const locker_t <> lock(node->mtx);
 					// Очищаем очередь от прочитанных данных
@@ -3250,7 +3250,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool change(::io::dir_t * node, const io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool change(::io::dir_t * node, const engine::io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -4093,7 +4093,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool connected(::io::client_t * node, const io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool connected(::io::client_t * node, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -4156,7 +4156,7 @@ namespace io {
 					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 				}
 				// Выполняем "пинок" для применения изменений
-				result = const_cast <io_t *> (io)->kick();
+				result = const_cast <engine::io_t *> (io)->kick();
 			}
 		/**
 		 * Если возникает ошибка
@@ -4202,7 +4202,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool read(net::node_t * node, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(net::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -4267,7 +4267,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												else const_cast <io_t *> (io)->send(fs->dest, buffer + offset, size);
+												else const_cast <engine::io_t *> (io)->send(fs->dest, buffer + offset, size);
 												// Отвязываем текущий маппинг
 												::munmap(buffer, fs->size);
 												// Устанавливаем новое смещение в файле
@@ -4433,7 +4433,7 @@ namespace io {
 																// Вызываем функцию обратного вызова для вывода полученных данных
 																ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 														// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-														} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+														} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
 														// Если дескриптор сокета стал недействительным
 														if(ipc->transfer.fd == net::invalid_socket_t)
 															// Формируем отрицательный результат
@@ -4501,7 +4501,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+													} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
 													// Формируем положительный результат
 													return true;
 												// Если произошёл дисконнект
@@ -4614,7 +4614,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(ipc->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -4682,7 +4682,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+											} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
 											// Формируем положительный результат
 											return true;
 										// Если произошёл дисконнект
@@ -4766,7 +4766,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(ipc->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -4834,7 +4834,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
+											} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
 											// Формируем положительный результат
 											return true;
 										// Если произошёл дисконнект
@@ -4981,7 +4981,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
+												} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -5098,7 +5098,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
+											} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
 												// Формируем отрицательный результат
@@ -5213,7 +5213,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+													} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(peer->transfer.fd == net::invalid_socket_t)
 														// Формируем отрицательный результат
@@ -5310,7 +5310,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -5431,7 +5431,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -5502,7 +5502,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+											} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
 												// Формируем отрицательный результат
@@ -5633,7 +5633,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
+												} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -5750,7 +5750,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
+											} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
 												// Формируем отрицательный результат
@@ -5834,7 +5834,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+													} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
 														// Формируем отрицательный результат
@@ -5900,7 +5900,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -5986,7 +5986,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+													} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
 														// Формируем отрицательный результат
@@ -6057,7 +6057,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -6189,7 +6189,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+													} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
 														// Формируем отрицательный результат
@@ -6304,7 +6304,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -6443,7 +6443,7 @@ namespace io {
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+													} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
 														// Формируем отрицательный результат
@@ -6569,7 +6569,7 @@ namespace io {
 														// Вызываем функцию обратного вызова для вывода полученных данных
 														client->callbacks.read(client->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
+												} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, buffer, static_cast <size_t> (bytes));
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
 													// Формируем отрицательный результат
@@ -6897,7 +6897,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool write(net::node_t * node, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool write(net::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -8379,7 +8379,7 @@ namespace io {
 	 * @param log объект работы с логами
 	 * @return    результат выполнения обработки
 	 */
-	static bool processing(struct kevent & ev, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool processing(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		// Значение узла для обработки изменений
 		net::node_t * node = reinterpret_cast <net::node_t *> (ev.udata);
 		// Создаём охранника узла события
@@ -8677,7 +8677,7 @@ namespace io {
 									// Сбрасываем опции события
 									client->state.options = event::options::NONE;
 									// Получаем объект работы с асинхронными событиями
-									io_t * self = const_cast <io_t *> (io);
+									engine::io_t * self = const_cast <engine::io_t *> (io);
 									// Если функция обратного вызова для вывода возрождения установлена
 									if(client->callbacks.rebirth != nullptr)
 										// Вызываем функцию обратного вызова для возрождения клиента
@@ -8814,7 +8814,7 @@ namespace io {
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
 	 */
-	static bool origin(::io::server_t * node, const char * buffer, const size_t size, const io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool origin(::io::server_t * node, const char * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		// Идентификатор сессии источника
 		origin_id_t sid;
 		/**
@@ -8856,7 +8856,7 @@ namespace io {
 						// Вызываем функцию обратного вызова для вывода полученных данных
 						i->second->callbacks.read(i->second->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
 				// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-				} else const_cast <io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (size));
+				} else const_cast <engine::io_t *> (io)->send(i->second->transfer.dest, buffer, static_cast <size_t> (size));
 				// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
 				if((i->second->transfer.fd == net::invalid_socket_t) || (node->fd == net::invalid_socket_t))
 					// Формируем отрицательный результат
@@ -10634,7 +10634,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @return   информационные метаданные SCTP сообщения
 	 */
-	awh::net::sctp::minfo_t awh::StreamControlTransmissionProtocol::messageInfo(const event::id_t id) const noexcept {
+	awh::net::sctp::minfo_t awh::engine::StreamControlTransmissionProtocol::messageInfo(const event::id_t id) const noexcept {
 		// Резузльтат работы функции
 		net::sctp::minfo_t result;
 		/**
@@ -10706,7 +10706,7 @@ namespace sctp {
 	 * @param id   идентификатор события
 	 * @param info информационные метаданные SCTP сообщения
 	 */
-	void awh::StreamControlTransmissionProtocol::messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept {
+	void awh::engine::StreamControlTransmissionProtocol::messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -10972,7 +10972,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @return   параметры статуса инициализации SCTP
 	 */
-	awh::net::sctp::status_t awh::StreamControlTransmissionProtocol::status(const event::id_t id) const noexcept {
+	awh::net::sctp::status_t awh::engine::StreamControlTransmissionProtocol::status(const event::id_t id) const noexcept {
 		// Результат работы функции
 		net::sctp::status_t result;
 		/**
@@ -11176,7 +11176,7 @@ namespace sctp {
 	 * @param id      идентификатор события
 	 * @param initmsg параметры инициализации SCTP события
 	 */
-	void awh::StreamControlTransmissionProtocol::initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept {
+	void awh::engine::StreamControlTransmissionProtocol::initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -11356,7 +11356,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @return   список событий SCTP на которые выполнена подписка
 	 */
-	const awh::net::sctp::event_types_t & awh::StreamControlTransmissionProtocol::eventsSubscribed(const event::id_t id) const noexcept {
+	const awh::net::sctp::event_types_t & awh::engine::StreamControlTransmissionProtocol::eventsSubscribed(const event::id_t id) const noexcept {
 		// Результат работы функции
 		static net::sctp::event_types_t result;
 		/**
@@ -11414,7 +11414,7 @@ namespace sctp {
 	 * @param id     идентификатор события
 	 * @param events список событий SCTP для подписки
 	 */
-	void awh::StreamControlTransmissionProtocol::eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
+	void awh::engine::StreamControlTransmissionProtocol::eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -11533,7 +11533,7 @@ namespace sctp {
 	 * @param type тип таймаута
 	 * @return     значение таймаута в миллисекундах
 	 */
-	uint32_t awh::StreamControlTransmissionProtocol::timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
+	uint32_t awh::engine::StreamControlTransmissionProtocol::timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -11724,7 +11724,7 @@ namespace sctp {
 	 * @param timeout значение таймаута в миллисекундах
 	 * @return        результат работы функции
 	 */
-	bool awh::StreamControlTransmissionProtocol::timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
+	bool awh::engine::StreamControlTransmissionProtocol::timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -11915,7 +11915,7 @@ namespace sctp {
 	 * @param key ключ аутентификации
 	 * @return    результат работы функции
 	 */
-	bool awh::StreamControlTransmissionProtocol::authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept {
+	bool awh::engine::StreamControlTransmissionProtocol::authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -12037,7 +12037,7 @@ namespace sctp {
 	 * @param num  номер ключа аутентификации
 	 * @return     результат работы функции
 	 */
-	bool awh::StreamControlTransmissionProtocol::authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
+	bool awh::engine::StreamControlTransmissionProtocol::authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -12180,7 +12180,7 @@ namespace sctp {
 	 * @param chunks список чанков подлежащих аутентификации
 	 * @return       результат работы функции
 	 */
-	bool awh::StreamControlTransmissionProtocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
+	bool awh::engine::StreamControlTransmissionProtocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -12304,7 +12304,7 @@ namespace sctp {
 	 * @param chunks список чанков подлежащих аутентификации
 	 * @return       результат работы функции
 	 */
-	bool awh::StreamControlTransmissionProtocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+	bool awh::engine::StreamControlTransmissionProtocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -12467,7 +12467,7 @@ namespace sctp {
 	 * @param types список поддерживаемых алгоритмов аутентификации
 	 * @return      результат работы функции
 	 */
-	bool awh::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
+	bool awh::engine::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -12627,7 +12627,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::StreamControlTransmissionProtocol::on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept {
+	void awh::engine::StreamControlTransmissionProtocol::on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -12700,7 +12700,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::StreamControlTransmissionProtocol::on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept {
+	void awh::engine::StreamControlTransmissionProtocol::on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -12775,7 +12775,7 @@ namespace sctp {
  * @param id идентификатор события
  * @return   результат выполнения очистки
  */
-bool awh::IO::ControlList::clear(const event::id_t id) noexcept {
+bool awh::engine::IO::ControlList::clear(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -12884,7 +12884,7 @@ bool awh::IO::ControlList::clear(const event::id_t id) noexcept {
  * @param value значение адреса события
  * @return      результат выполнения установки
  */
-bool awh::IO::ControlList::add(const event::id_t id, const string & value) noexcept {
+bool awh::engine::IO::ControlList::add(const event::id_t id, const string & value) noexcept {
 	// Если адрес для удаления передан
 	if(!value.empty()){
 		/**
@@ -13168,7 +13168,7 @@ bool awh::IO::ControlList::add(const event::id_t id, const string & value) noexc
  * @param value адрес для удаления из белого списка
  * @return      результат выполнения удаления
  */
-bool awh::IO::ControlList::remove(const event::id_t id, const string & value) noexcept {
+bool awh::engine::IO::ControlList::remove(const event::id_t id, const string & value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес для удаления передан
@@ -13329,7 +13329,7 @@ bool awh::IO::ControlList::remove(const event::id_t id, const string & value) no
  * @param id идентификатор события
  * @return   белый список события
  */
-const std::unordered_map <string, event::address_t> & awh::IO::ControlList::get(const event::id_t id) const noexcept {
+const std::unordered_map <string, event::address_t> & awh::engine::IO::ControlList::get(const event::id_t id) const noexcept {
 	// Результат работы функции
 	static const std::unordered_map <string, event::address_t> result;
 	/**
@@ -13430,7 +13430,7 @@ const std::unordered_map <string, event::address_t> & awh::IO::ControlList::get(
  * @param id идентификатор события
  * @return   результат выполнения фиксации
  */
-bool awh::IO::commit(const event::id_t id) noexcept {
+bool awh::engine::IO::commit(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -16737,7 +16737,7 @@ bool awh::IO::commit(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   порт события
  */
-uint16_t awh::IO::port(const event::id_t id) const noexcept {
+uint16_t awh::engine::IO::port(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -16881,7 +16881,7 @@ uint16_t awh::IO::port(const event::id_t id) const noexcept {
  * @param port порт события
  * @return     результат выполнения установки
  */
-bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
+bool awh::engine::IO::port(const event::id_t id, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -17009,7 +17009,7 @@ bool awh::IO::port(const event::id_t id, const uint16_t port) noexcept {
  * @param id идентификатор события
  * @return   сетевой интерфейс события
  */
-string awh::IO::iface(const event::id_t id) const noexcept {
+string awh::engine::IO::iface(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -17215,7 +17215,7 @@ string awh::IO::iface(const event::id_t id) const noexcept {
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
  */
-bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
+bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept {
 	// Результат выполнения функции
 	bool result = false;
 	/**
@@ -17473,7 +17473,7 @@ bool awh::IO::iface(const event::id_t id, const string & name) noexcept {
  * @param id идентификатор события
  * @return   хост целевой машины
  */
-string awh::IO::target(const event::id_t id) const noexcept {
+string awh::engine::IO::target(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -17944,7 +17944,7 @@ string awh::IO::target(const event::id_t id) const noexcept {
  * @param host хост целевой машины
  * @return     результат выполнения установки
  */
-bool awh::IO::target(const event::id_t id, const string & target) noexcept {
+bool awh::engine::IO::target(const event::id_t id, const string & target) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -18459,7 +18459,7 @@ bool awh::IO::target(const event::id_t id, const string & target) noexcept {
  * @param address тип адреса события
  * @return        значение адреса события
  */
-string awh::IO::address(const event::id_t id, const event::address_t address) const noexcept {
+string awh::engine::IO::address(const event::id_t id, const event::address_t address) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -19882,7 +19882,7 @@ string awh::IO::address(const event::id_t id, const event::address_t address) co
  * @param value   значение адреса события
  * @return        результат выполнения установки
  */
-bool awh::IO::address(const event::id_t id, const event::address_t address, const string & value) noexcept {
+bool awh::engine::IO::address(const event::id_t id, const event::address_t address, const string & value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -21738,7 +21738,7 @@ bool awh::IO::address(const event::id_t id, const event::address_t address, cons
  * @param id идентификатор события
  * @return   результат выполнения удаления
  */
-bool awh::IO::destroy(const event::id_t id) noexcept {
+bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -21956,7 +21956,7 @@ bool awh::IO::destroy(const event::id_t id) noexcept {
  * @param protocol протокол сокета
  * @return         идентификатор созданного события
  */
-awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -22608,7 +22608,7 @@ awh::event::id_t awh::IO::event(const event::node_t node, const event::family_t 
  * @param protocol протокол сокета
  * @return         пара идентификаторов созданных событий
  */
-std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Результат работы функции
 	std::array <awh::event::id_t, 2> result = {0,0};
 	/**
@@ -23300,7 +23300,7 @@ std::array <awh::event::id_t, 2> awh::IO::events(const event::family_t family, c
  * @param seek тип смещения в файле события
  * @return     смещение в файле события
  */
-size_t awh::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
+size_t awh::engine::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -23389,7 +23389,7 @@ size_t awh::IO::seek(const event::id_t id, const event::seek_t seek) noexcept {
  * @param offset смещение в файле события
  * @return       результат выполнения установки
  */
-bool awh::IO::seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept {
+bool awh::engine::IO::seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -23480,7 +23480,7 @@ bool awh::IO::seek(const event::id_t id, const event::seek_t seek, const size_t 
  * @param id идентификатор события
  * @return   опции события
  */
-uint16_t awh::IO::options(const event::id_t id) const noexcept {
+uint16_t awh::engine::IO::options(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -23519,7 +23519,7 @@ uint16_t awh::IO::options(const event::id_t id) const noexcept {
  * @param options опции события для установки
  * @return        результат выполнения установки
  */
-bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
+bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -24120,7 +24120,7 @@ bool awh::IO::options(const event::id_t id, const uint16_t options) noexcept {
  * @param mode   режим установки опции события
  * @return       результат выполнения установки
  */
-bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mode) noexcept {
+bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const bool mode) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -24709,7 +24709,7 @@ bool awh::IO::option(const event::id_t id, const uint16_t option, const bool mod
  * @param dest идентификатор события-приёмника
  * @return     результат выполнения перемещения
  */
-bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
+bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -25382,7 +25382,7 @@ bool awh::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения запуска
  */
-bool awh::IO::launch(const event::id_t id) noexcept {
+bool awh::engine::IO::launch(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -25795,7 +25795,7 @@ bool awh::IO::launch(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения отключения
  */
-bool awh::IO::disconnect(const event::id_t id) noexcept {
+bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -25884,7 +25884,7 @@ bool awh::IO::disconnect(const event::id_t id) noexcept {
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
  */
-bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
+bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -26674,7 +26674,7 @@ bool awh::IO::connect(const vector <event::id_t> & ids) noexcept {
  * @param max максимальное количество входящих соединений
  * @return    результат выполнения перевода в режим прослушивания
  */
-bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
+bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -27419,7 +27419,7 @@ bool awh::IO::listen(const event::id_t id, const uint16_t max) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения приёма
  */
-bool awh::IO::recv(const event::id_t id) noexcept {
+bool awh::engine::IO::recv(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -27459,7 +27459,7 @@ bool awh::IO::recv(const event::id_t id) noexcept {
  * @param size размер данных для отправки
  * @return     результат выполнения отправки
  */
-bool awh::IO::send(const event::id_t id, const char * data, const size_t size) noexcept {
+bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -31986,7 +31986,7 @@ bool awh::IO::send(const event::id_t id, const char * data, const size_t size) n
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
  */
-bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port) noexcept {
+bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -32649,7 +32649,7 @@ bool awh::IO::membership(const event::id_t id, const event::mode_t mode, const s
  * @param depth    глубина очереди принятия входящих соединений
  * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
  */
-void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool adaptive) noexcept {
+void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const bool adaptive) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -32715,7 +32715,7 @@ void awh::IO::backlog(const event::id_t id, const uint16_t depth, const bool ada
  * @param action тип действия события
  * @return       размер буфера события
  */
-size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) const noexcept {
+size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t action) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -33024,7 +33024,7 @@ size_t awh::IO::bufferSize(const event::id_t id, const event::action_t action) c
  * @param size   размер буфера события
  * @return       результат выполнения установки
  */
-bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
+bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -33319,7 +33319,7 @@ bool awh::IO::bufferSize(const event::id_t id, const event::action_t action, con
  * @param id идентификатор события
  * @return   режим трансляции пакетов (unicast, multicast, broadcast)
  */
-awh::event::delivery_mode_t awh::IO::delivery(const event::id_t id) const noexcept {
+awh::event::delivery_mode_t awh::engine::IO::delivery(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -33358,7 +33358,7 @@ awh::event::delivery_mode_t awh::IO::delivery(const event::id_t id) const noexce
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
  */
-bool awh::IO::delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept {
+bool awh::engine::IO::delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -33444,7 +33444,7 @@ bool awh::IO::delivery(const event::id_t id, const event::delivery_mode_t delive
  * @param id идентификатор события
  * @return   максимальное количество хопов
  */
-awh::event::hops_t awh::IO::hops(const event::id_t id) const noexcept {
+awh::event::hops_t awh::engine::IO::hops(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -33484,7 +33484,7 @@ awh::event::hops_t awh::IO::hops(const event::id_t id) const noexcept {
  * @param hops   максимальное количество хопов
  * @return       результат работы функции
  */
-bool awh::IO::hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept {
+bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -33589,7 +33589,7 @@ bool awh::IO::hops(const event::id_t id, const event::family_t family, const eve
  * @param action тип действия события
  * @return       значение таймаута в миллисекундах
  */
-uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) const noexcept {
+uint32_t awh::engine::IO::timeout(const event::id_t id, const event::action_t action) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -33698,7 +33698,7 @@ uint32_t awh::IO::timeout(const event::id_t id, const event::action_t action) co
  * @param action  тип действия события
  * @param timeout значение таймаута в миллисекундах
  */
-void awh::IO::timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
+void awh::engine::IO::timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -34003,7 +34003,7 @@ void awh::IO::timeout(const event::id_t id, const event::action_t action, const 
  * @param action тип действия события
  * @return       режим действия события
  */
-awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t action) const noexcept {
+awh::event::mode_t awh::engine::IO::action(const event::id_t id, const event::action_t action) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -34450,7 +34450,7 @@ awh::event::mode_t awh::IO::action(const event::id_t id, const event::action_t a
  * @param mode   режим установки действия события
  * @return       результат выполнения установки
  */
-bool awh::IO::action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept {
+bool awh::engine::IO::action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -35411,7 +35411,7 @@ bool awh::IO::action(const event::id_t id, const event::action_t action, const e
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
  */
-bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -35483,7 +35483,7 @@ bool awh::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t i
  * @param id идентификатор события
  * @return   результат выполнения приостановки
  */
-bool awh::IO::pause(const event::id_t id) noexcept {
+bool awh::engine::IO::pause(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -35799,7 +35799,7 @@ bool awh::IO::pause(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения возобновления
  */
-bool awh::IO::resume(const event::id_t id) noexcept {
+bool awh::engine::IO::resume(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -36074,7 +36074,7 @@ bool awh::IO::resume(const event::id_t id) noexcept {
  * @param id идентификатор события
  * @return   состояние события
  */
-bool awh::IO::isAlive(const event::id_t id) const noexcept {
+bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -36170,7 +36170,7 @@ bool awh::IO::isAlive(const event::id_t id) const noexcept {
  * @brief Метод очистки основного движка фреймворка
  *
  */
-void awh::IO::clear() noexcept {
+void awh::engine::IO::clear() noexcept {
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
 		// Выполняем пинок Kqueue для обработки всех удалений
@@ -36477,7 +36477,7 @@ void awh::IO::clear() noexcept {
  *
  * @return результат выполнения операции
  */
-bool awh::IO::kick() noexcept {
+bool awh::engine::IO::kick() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
@@ -36511,7 +36511,7 @@ bool awh::IO::kick() noexcept {
  *
  * @return результат выполнения инициализации
  */
-bool awh::IO::initialize() noexcept {
+bool awh::engine::IO::initialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если Kqueue ещё не инициализирован
@@ -36569,7 +36569,7 @@ bool awh::IO::initialize() noexcept {
  *
  * @return результат выполнения реинициализации
  */
-bool awh::IO::reinitialize() noexcept {
+bool awh::engine::IO::reinitialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
@@ -37086,7 +37086,7 @@ bool awh::IO::reinitialize() noexcept {
  *
  * @return результат выполнения деинициализации
  */
-bool awh::IO::deinitialize() noexcept {
+bool awh::engine::IO::deinitialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
@@ -37299,7 +37299,7 @@ bool awh::IO::deinitialize() noexcept {
  *
  * @return состояние инициализации
  */
-bool awh::IO::isInitialized() const noexcept {
+bool awh::engine::IO::isInitialized() const noexcept {
 	// Выводим результат проверки состояния инициализации
 	return (::__awh_kq__ != net::invalid_socket_t);
 }
@@ -37308,7 +37308,7 @@ bool awh::IO::isInitialized() const noexcept {
  *
  * @param mode режим безопасности потоков
  */
-void awh::IO::threadSafety(const event::mode_t mode) noexcept {
+void awh::engine::IO::threadSafety(const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -37422,7 +37422,7 @@ void awh::IO::threadSafety(const event::mode_t mode) noexcept {
  * @param mode режим работы пула потоков
  * @param size количество потоков в пуле
  */
-void awh::IO::threadPool(const event::mode_t mode, const uint16_t size) noexcept {
+void awh::engine::IO::threadPool(const event::mode_t mode, const uint16_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -37461,7 +37461,7 @@ void awh::IO::threadPool(const event::mode_t mode, const uint16_t size) noexcept
  *
  * @return количество событий
  */
-size_t awh::IO::eventsCount() const noexcept {
+size_t awh::engine::IO::eventsCount() const noexcept {
 	// Выводим количество событий в основном движке фреймворка
 	return ::__awh_nodes__.size();
 }
@@ -37471,7 +37471,7 @@ size_t awh::IO::eventsCount() const noexcept {
  * @param id идентификатор события
  * @return   размер файла
  */
-size_t awh::IO::size(const event::id_t id) const noexcept {
+size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	/**
@@ -37577,7 +37577,7 @@ size_t awh::IO::size(const event::id_t id) const noexcept {
  * @param id идентификатор события
  * @return   тип события
  */
-awh::event::type_t awh::IO::type(const event::id_t id) const noexcept {
+awh::event::type_t awh::engine::IO::type(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -37615,7 +37615,7 @@ awh::event::type_t awh::IO::type(const event::id_t id) const noexcept {
  * @param id идентификатор события
  * @return   тип узла события
  */
-awh::event::node_t awh::IO::node(const event::id_t id) const noexcept {
+awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -37653,7 +37653,7 @@ awh::event::node_t awh::IO::node(const event::id_t id) const noexcept {
  * @param id идентификатор события
  * @return   семейство события
  */
-awh::event::family_t awh::IO::family(const event::id_t id) const noexcept {
+awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -37691,7 +37691,7 @@ awh::event::family_t awh::IO::family(const event::id_t id) const noexcept {
  * @param id идентификатор события
  * @return   статус события
  */
-awh::event::status_t awh::IO::status(const event::id_t id) const noexcept {
+awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -37729,7 +37729,7 @@ awh::event::status_t awh::IO::status(const event::id_t id) const noexcept {
  * @param timeout таймаут опроса в миллисекундах
  * @return        результат выполнения опроса
  */
-bool awh::IO::poll(const int32_t timeout) noexcept {
+bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 	// Результат выполнения опроса
 	bool result = false;
 	// Если Kqueue инициализирован
@@ -38357,7 +38357,7 @@ bool awh::IO::poll(const int32_t timeout) noexcept {
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::read_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38445,7 +38445,7 @@ void awh::IO::on(const event::id_t id, const event::callback::read_t & cb) noexc
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38538,7 +38538,7 @@ void awh::IO::on(const event::id_t id, const event::callback::write_t & cb) noex
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::event_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38636,7 +38636,7 @@ void awh::IO::on(const event::id_t id, const event::callback::event_t & cb) noex
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::error_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38741,7 +38741,7 @@ void awh::IO::on(const event::id_t id, const event::callback::error_t & cb) noex
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::status_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38846,7 +38846,7 @@ void awh::IO::on(const event::id_t id, const event::callback::status_t & cb) noe
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::change_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38914,7 +38914,7 @@ void awh::IO::on(const event::id_t id, const event::callback::change_t & cb) noe
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::accept_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -38977,7 +38977,7 @@ void awh::IO::on(const event::id_t id, const event::callback::accept_t & cb) noe
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::connect_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -39040,7 +39040,7 @@ void awh::IO::on(const event::id_t id, const event::callback::connect_t & cb) no
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::IO::on(const event::id_t id, const event::callback::rebirth_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, const event::callback::rebirth_t & cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -39103,7 +39103,7 @@ void awh::IO::on(const event::id_t id, const event::callback::rebirth_t & cb) no
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  */
-awh::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
+awh::engine::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
  engine_t(fmk, log),
  whitelist(event::control_list_t::WHITE, fmk, log),
  blacklist(event::control_list_t::BLACK, fmk, log) {
@@ -39116,7 +39116,7 @@ awh::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
  * @brief Деструктор
  *
  */
-awh::IO::~IO() noexcept {
+awh::engine::IO::~IO() noexcept {
 	// Выполняем деинициализацию основного движка фреймворка
 	this->deinitialize();
 }

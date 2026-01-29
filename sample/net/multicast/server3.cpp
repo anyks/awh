@@ -53,7 +53,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект логирования
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
+	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие интервала
 	event::id_t tid = io.event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Добавляем новое событие клиента UDP

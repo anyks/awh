@@ -51,7 +51,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект асинхронного движка ввода-вывода
-		io_t io(&fmk, &log);
+		engine::io_t io(&fmk, &log);
 		/**
 		 * IPv4 событие
 		 */
@@ -466,7 +466,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект асинхронного движка ввода-вывода
-		io_t io(&fmk, &log);
+		engine::io_t io(&fmk, &log);
 		/**
 		 * IPv4 событие
 		 */
@@ -887,7 +887,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект асинхронного движка ввода-вывода
-		io_t io(&fmk, &log);
+		engine::io_t io(&fmk, &log);
 		/**
 		 * IPv4 событие
 		 */
@@ -1302,7 +1302,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект асинхронного движка ввода-вывода
-		io_t io(&fmk, &log);
+		engine::io_t io(&fmk, &log);
 
 		cout << endl << " ******************** IPC ******************** " << endl;
 		cout << " ======================================== UDS " << endl;
@@ -1355,7 +1355,7 @@ int32_t main(int32_t argc, char * argv[]){
 	/*
 	{
 		// Создаём объект асинхронного движка ввода-вывода
-		io_t io(&fmk, &log);
+		engine::io_t io(&fmk, &log);
 
 		cout << endl << " ******************** TIMER ******************** " << endl;
 		cout << " ======================================== TIMER " << endl;
@@ -1380,7 +1380,7 @@ int32_t main(int32_t argc, char * argv[]){
 	}
 	*/
 	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
+	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие отслеживания файла
 	event::id_t fid = io.event(event::node_t::FILE, event::family_t::FSYS);
 	// Добавляем новое событие клиента TCP
@@ -1676,7 +1676,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	/*
 	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
+	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события

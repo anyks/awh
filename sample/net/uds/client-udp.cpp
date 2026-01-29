@@ -47,7 +47,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем уровень логирования
 	// log.level(log_t::level_t::NONE);
 	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
+	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::DATAGRAM);
 	// Инициализируем асинхронный движок ввода-вывода

@@ -48,7 +48,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект логирования
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
-	io_t io(&fmk, &log);
+	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие отслеживания файла
 	event::id_t eid = io.event(event::node_t::FILE, event::family_t::FSYS);
 	// Инициализируем асинхронный движок ввода-вывода
