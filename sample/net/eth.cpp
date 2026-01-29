@@ -49,9 +49,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект для работы с шлюзами
 	gateway_t gateway(&fmk, &log);
 	// Структура маршрута
-	gateway_t::route_t route;
+	gateway_t::route_t route{};
 	// Инициализируем объект адреса назначения в маршруте
-	route.dest = make_unique <net::addr_net_ipv4_t> ();
+	// route.dest = make_unique <net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = make_unique <net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
@@ -123,7 +123,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем внешний порт
 	fwd.externalPort = 8080;
 	// Устанавливаем тип проброса порта
-	fwd.type = portmap_t::type_t::UPNP;
+	// fwd.type = portmap_t::type_t::UPNP;
+	// fwd.type = portmap_t::type_t::PCP;
+	fwd.type = portmap_t::type_t::NAT_PMP;
 	// Устанавливаем протокол проброса порта
 	fwd.proto = portmap_t::proto_t::TCP;
 	// Инициализируем объект внутреннего IPv4-адреса
@@ -174,8 +176,14 @@ int32_t main(int32_t argc, char * argv[]){
 		fwd.internalPort = 8081;
 		// Устанавливаем внешний порт
 		fwd.externalPort = 8080;
+		// Устанавливаем описание проброса порта
+		::memcpy(fwd.description, "AWH Web Server", ::strlen("AWH Web Server") + 1);
+		// Устанавливаем завершение строки описания проброса порта
+		fwd.description[::strlen("AWH Web Server")] = '\0';
 		// Устанавливаем тип проброса порта
-		fwd.type = portmap_t::type_t::UPNP;
+		// fwd.type = portmap_t::type_t::UPNP;
+		// fwd.type = portmap_t::type_t::PCP;
+		fwd.type = portmap_t::type_t::NAT_PMP;
 		// Устанавливаем протокол проброса порта
 		fwd.proto = portmap_t::proto_t::TCP;
 		// Выполняем удаление проброса порта на маршрутизаторе

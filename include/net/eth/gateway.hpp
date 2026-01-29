@@ -92,12 +92,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			explicit Gateway(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Gateway() noexcept {}
+			~Gateway() noexcept;
 	} gateway_t;
 };
 

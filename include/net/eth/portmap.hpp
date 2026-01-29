@@ -20,6 +20,7 @@
  */
 #include "../net.hpp"
 #include "../addr.hpp"
+#include "../eth/gateway.hpp"
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
 
@@ -88,6 +89,9 @@ namespace awh {
 				 description{0}, internalAddress{nullptr}, externalAddress{nullptr} {}
 			} fwd_t;
 		private:
+			// Объект работы с маршрутами
+			gateway_t _gateway;
+		private:
 			// Объект работы с сетевыми аресами
 			mutable net_addr_t _addr;
 		private:
@@ -118,13 +122,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept :
-			 _addr(fmk, log), _fmk(fmk), _log(log) {}
+			explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~PortMapping() noexcept {}
+			~PortMapping() noexcept;
 	} portmap_t;
 };
 
