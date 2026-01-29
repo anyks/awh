@@ -691,9 +691,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 				rtm->rtm_flags = (RTF_UP | RTF_STATIC);
 				// Маска используемых полей
 				rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
-				/**
-				 * 1. Адрес назначения (RTA_DST)
-				 */
+				// Адрес назначения (RTA_DST)
 				struct sockaddr_in dst;
 				// Зануляем объект адреса назначения
 				::memset(&dst, 0, sizeof(dst));
@@ -707,11 +705,17 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 				::memcpy(cp, &dst, dst.sin_len);
 				// Сдвигаем буфер полезной нагрузки
 				cp += ROUNDUP(dst.sin_len);
+				// Получаем флаг установленного сетевого интерфейса
+				const bool isIfname = (!route.ifname.empty());
+				// Получаем флаг маршрута по умолчанию
+				const bool isDefault = (awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address == 0);
+				// Получаем флаг установленного шлюза
+				const bool isGateway = (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0);
 				/**
-				 * 2. Адрес шлюза (RTA_GATEWAY)
+				 * Случай 1: Specific Route + Gateway IP (Ifname не указан) [$ sudo route add -net 1.0.0.0/8 10.0.0.1]
+				 * Случай 4: Default Route + Gateway IP (Ifname игнорируется или не важен) [$ sudo route add default 192.168.7.1]
 				 */
-				// Если задан адрес шлюза
-				if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0){
+				if(isGateway){
 					// Структура IPv4 шлюза
 					struct sockaddr_in gw;
 					// Зануляем структуру адреса шлюза
@@ -722,7 +726,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 					gw.sin_family = AF_INET;
 					// Устанавливаем адрес шлюза
 					gw.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address;
-					// Устанавливаем флаг шлюза
+					// Устанавливаем флаг шлюза (так как это IP)
 					rtm->rtm_flags |= RTF_GATEWAY;
 					// Устанавливаем флаг адреса шлюза
 					rtm->rtm_addrs |= RTA_GATEWAY;
@@ -730,8 +734,53 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 					::memcpy(cp, &gw, gw.sin_len);
 					// Сдвигаем буфер полезной нагрузки
 					cp += ROUNDUP(gw.sin_len);
-				// Если передан интерфейс для установки шлюза
-				} else if(!route.ifname.empty()) {
+				/**
+				 * Случай 3: Default Route + No Gateway IP + Ifname [$ sudo route add default 192.168.7.1]
+				 * Нужно найти IP адрес интерфейса и использовать его как шлюз
+				 */
+				} else if(isDefault && !isGateway && isIfname) {
+					// Флаг нахождения адреса
+					bool found = false;
+					// Список сетевых интерфейсов
+					struct ifaddrs * ifptr = nullptr;
+					// Получаем список сетевых интерфейсов
+					if(::getifaddrs(&ifptr) == 0){
+						// Перебираем интерфейсы
+						for(struct ifaddrs * ifa = ifptr; ifa != nullptr; ifa = ifa->ifa_next){
+							// Если интерфейс совпадает и семейство адресов IPv4
+							if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
+								// Структура IPv4 шлюза
+								struct sockaddr_in gw;
+								// Зануляем структуру адреса шлюза
+								::memset(&gw, 0, sizeof(gw));
+								// Устанавливаем длину структуры
+								gw.sin_len = sizeof(struct sockaddr_in);
+								// Устанавливаем семейство адресов
+								gw.sin_family = AF_INET;
+								// Устанавливаем адрес шлюза (IP интерфейса)
+								gw.sin_addr = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr;
+								// Устанавливаем флаг шлюза (так как это IP)
+								rtm->rtm_flags |= RTF_GATEWAY;
+								// Устанавливаем флаг адреса шлюза
+								rtm->rtm_addrs |= RTA_GATEWAY;
+								// Устанавливаем в буфер адрес шлюза
+								::memcpy(cp, &gw, gw.sin_len);
+								// Сдвигаем буфер полезной нагрузки
+								cp += ROUNDUP(gw.sin_len);
+								// Устанавливаем флаг нахождения
+								found = true;
+								// Прерываем цикл
+								break;
+							}
+						}
+						// Освобождаем список интерфейсов
+						::freeifaddrs(ifptr);
+					}
+				/**
+				 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
+				 * Используем интерфейс как link-layer gateway (-interface)
+				 */
+				} else if(!isDefault && !isGateway && isIfname) {
 					// Получаем индекс интерфейса
 					const uint32_t index = ::if_nametoindex(route.ifname.c_str());
 					// Если найден интерфейс по имени
@@ -746,7 +795,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 						sdl.sdl_family = AF_LINK;
 						// Устанавливаем индекс интерфейса
 						sdl.sdl_index = static_cast <uint16_t> (index);
-						// Устанавливаем флаг адреса шлюза
+						// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
 						rtm->rtm_addrs |= RTA_GATEWAY;
 						// Устанавливаем в буфер адрес шлюза
 						::memcpy(cp, &sdl, sdl.sdl_len);
@@ -754,9 +803,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 						cp += ROUNDUP(sdl.sdl_len);
 					}
 				}
-				/**
-				 * 3. Маска подсети (RTA_NETMASK)
-				 */
+				// Маска подсети (RTA_NETMASK)
 				struct sockaddr_in mask;
 				// Зануляем структуру адреса маски подсети
 				::memset(&mask, 0, sizeof(mask));
@@ -846,9 +893,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 				rtm->rtm_flags = (RTF_UP | RTF_STATIC);
 				// Устанавливаем маску используемых полей
 				rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
-				/**
-				 * 1. Адрес назначения (RTA_DST)
-				 */
+				// Адрес назначения (RTA_DST)
 				struct sockaddr_in6 dst;
 				// Зануляем структуру адреса назначения
 				::memset(&dst, 0, sizeof(dst));
@@ -862,13 +907,19 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 				::memcpy(cp, &dst, dst.sin6_len);
 				// Сдвигаем буфер полезной нагрузки
 				cp += ROUNDUP(dst.sin6_len);
-				/**
-				 * 2. Адрес шлюза (RTA_GATEWAY)
-				 */
 				// Нулевой адрес для проверки
 				const uint8_t zeroAddr[16] = {0};
-				// Если задан адрес шлюза
-				if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) != 0){
+				// Получаем флаг установленного сетевого интерфейса
+				const bool isIfname = (!route.ifname.empty());
+				// Получаем флаг маршрута по умолчанию
+				const bool isDefault = IN6_IS_ADDR_UNSPECIFIED(&dst.sin6_addr);
+				// Получаем флаг установленного шлюза
+				const bool isGateway = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) != 0);
+				/**
+				 * Случай 1: Specific Route + Gateway IP (Ifname не указан) [$ sudo route add -net 1.0.0.0/8 10.0.0.1]
+				 * Случай 4: Default Route + Gateway IP (Ifname игнорируется или не важен) [$ sudo route add default 192.168.7.1]
+				 */
+				if(isGateway){
 					// Структура IPv6 шлюза
 					struct sockaddr_in6 gw;
 					// Зануляем структуру адреса шлюза
@@ -887,8 +938,53 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 					::memcpy(cp, &gw, gw.sin6_len);
 					// Сдвигаем буфер полезной нагрузки
 					cp += ROUNDUP(gw.sin6_len);
-				// Если передан интерфейс для установки шлюза
-				} else if(!route.ifname.empty()) {
+				/**
+				 * Случай 3: Default Route + No Gateway IP + Ifname [$ sudo route add default 192.168.7.1]
+				 * Нужно найти IP адрес интерфейса и использовать его как шлюз
+				 */
+				} else if(isDefault && !isGateway && isIfname) {
+					// Флаг нахождения адреса
+					bool found = false;
+					// Список сетевых интерфейсов
+					struct ifaddrs * ifptr = nullptr;
+					// Получаем список сетевых интерфейсов
+					if(::getifaddrs(&ifptr) == 0){
+						// Перебираем интерфейсы
+						for(struct ifaddrs * ifa = ifptr; ifa != nullptr; ifa = ifa->ifa_next){
+							// Если интерфейс совпадает и семейство адресов IPv6
+							if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET6) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
+								// Структура IPv6 шлюза
+								struct sockaddr_in6 gw;
+								// Зануляем структуру адреса шлюза
+								::memset(&gw, 0, sizeof(gw));
+								// Устанавливаем длину структуры
+								gw.sin6_len = sizeof(struct sockaddr_in6);
+								// Устанавливаем семейство адресов
+								gw.sin6_family = AF_INET6;
+								// Устанавливаем адрес шлюза
+								gw.sin6_addr = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr;
+								// Устанавливаем флаг шлюза
+								rtm->rtm_flags |= RTF_GATEWAY;
+								// Устанавливаем флаг адреса шлюза
+								rtm->rtm_addrs |= RTA_GATEWAY;
+								// Копируем в буфер адрес шлюза
+								::memcpy(cp, &gw, gw.sin6_len);
+								// Сдвигаем буфер полезной нагрузки
+								cp += ROUNDUP(gw.sin6_len);
+								// Устанавливаем флаг нахождения
+								found = true;
+								// Прерываем цикл
+								break;
+							}
+						}
+						// Освобождаем список интерфейсов
+						::freeifaddrs(ifptr);
+					}
+				/**
+				 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
+				 * Используем интерфейс как link-layer gateway (-interface)
+				 */
+				} else if(!isDefault && !isGateway && isIfname) {
 					// Получаем индекс интерфейса
 					const uint32_t index = ::if_nametoindex(route.ifname.c_str());
 					// Если найден интерфейс по имени
@@ -903,7 +999,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 						sdl.sdl_family = AF_LINK;
 						// Устанавливаем индекс интерфейса
 						sdl.sdl_index = static_cast<uint16_t>(index);
-						// Устанавливаем флаг адреса шлюза
+						// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
 						rtm->rtm_addrs |= RTA_GATEWAY;
 						// Копируем в буфер адрес шлюза
 						::memcpy(cp, &sdl, sdl.sdl_len);
@@ -911,9 +1007,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 						cp += ROUNDUP(sdl.sdl_len);
 					}
 				}
-				/**
-				 * 3. Маска подсети (RTA_NETMASK)
-				 */
+				// Маска подсети (RTA_NETMASK)
 				struct sockaddr_in6 mask;
 				// Зануляем структуру адреса маски подсети
 				::memset(&mask, 0, sizeof(mask));
