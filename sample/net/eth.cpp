@@ -16,13 +16,13 @@
  * Подключаем заголовочные файлы стандартной библиотеки C++
  */
 #include <iostream>
-#include <arpa/inet.h>
 
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <net/eth.hpp>
+// #include <net/eth.hpp>
 #include <net/addr.hpp>
+#include <net/eth/gateway.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -42,9 +42,65 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект Ethernet
-	eth_t eth(&fmk, &log);
+	// eth_t eth(&fmk, &log);
 	// Объект работы с сетевыми адресами
 	net_addr_t addr(&fmk, &log);
+	// Создаём объект для работы с шлюзами
+	gateway_t gateway(&fmk, &log);
+	// Структура маршрута
+	gateway_t::route_t route;
+	// Инициализируем объект адреса назначения в маршруте
+	route.dest = make_unique <net::addr_net_ipv4_t> ();
+	// Инициализируем объект адреса шлюза в маршруте
+	route.gateway = make_unique <net::addr_net_ipv4_t> ();
+	// Если получаем маршрут для указанного адреса
+	if(gateway.get(route)){
+		// Выводим информацию о найденном маршруте
+		cout << "Gateway found:" << endl;
+		// Выводим информацию о маршруте
+		cout << " Interface: " << route.ifname << endl;
+		// Устанавливаем полученный IP-адрес
+		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address, net_addr_t::endian_t::LITTLE);
+		// Выводим адрес шлюза по умолчанию
+		cout << "Default Gateway: " << static_cast <string> (addr) << endl;
+		// Устанавливаем полученный IP-адрес
+		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address, net_addr_t::endian_t::LITTLE);
+		// Выводим адрес назначения
+		cout << "Destination: " << static_cast <string> (addr) << "/" << static_cast <uint32_t> (route.prefix) << endl;
+		// Удаляем маршрут по указанному адресу
+		if(gateway.remove(route)){
+			// Выполняем парсинг адреса нового шлюза
+			addr = "192.168.7.131";
+			// Устанавливаем адрес шлюза в маршрут
+			awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+			// Добавляем маршрут с новым шлюзом
+			if(gateway.add(route)){
+				// Если получаем маршрут для указанного адреса
+				if(gateway.get(route)){
+					// Выводим информацию о маршруте
+					cout << " Interface: " << route.ifname << endl;
+					// Устанавливаем полученный IP-адрес
+					addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address, net_addr_t::endian_t::LITTLE);
+					// Выводим адрес шлюза по умолчанию
+					cout << "Default Gateway: " << static_cast <string> (addr) << endl;
+					// Удаляем маршрут по указанному адресу
+					if(gateway.remove(route)){
+						// Выполняем парсинг адреса нового шлюза
+						addr = "192.168.7.1"; // sudo route add default 192.168.7.1
+						// Устанавливаем адрес шлюза в маршрут
+						awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+						// Добавляем маршрут с новым шлюзом
+						if(gateway.add(route))
+							// Выводим сообщение об успешном восстановлении шлюза
+							cout << "Gateway restored successfully." << endl;
+					}
+				}
+			}
+		}
+	// Иначе выводим сообщение об ошибке
+	} else cout << "Gateway not found." << endl;
+	
+	#ifdef __AWH_DISABLE__
 	// Получаем список сетевых интерфейсов системы
 	for(auto & iface : eth.ifaces())
 		// Выводим список сетевых интерфейсов системы
@@ -116,6 +172,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выводим сообщение об успешном удалении проброса порта
 			cout << "Portmapping removed successfully." << endl;
 	}
+	#endif
 	// Выводим результат
 	return EXIT_SUCCESS;
 }
