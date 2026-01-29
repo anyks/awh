@@ -30,7 +30,7 @@
 #include "log.hpp"
 
 /**
- * @brief основное пространство имён
+ * @brief Основное пространство имён
  *
  */
 namespace awh {

@@ -47,9 +47,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Объект работы с сетевыми адресами
 	net_addr_t addr(&fmk, &log);
 	// Создаём объект для работы с шлюзами
-	gateway_t gateway(&fmk, &log);
+	eth::gateway_t gateway(&fmk, &log);
 	// Структура маршрута
-	gateway_t::route_t route{};
+	eth::gateway_t::route_t route{};
 	// Инициализируем объект адреса назначения в маршруте
 	// route.dest = make_unique <net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса шлюза в маршруте
@@ -113,9 +113,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок примера проброса порта
 	cout << " --- Portmapping Example --- " << endl;
 	// Создаём объект для работы с пробросом портов
-	portmap_t portmap(&fmk, &log);
+	eth::portmap_t portmap(&fmk, &log);
 	// Создаём структуру проброса порта на маршрутизаторе
-	portmap_t::fwd_t fwd{};
+	eth::portmap_t::fwd_t fwd{};
 	// Заполняем параметры проброса порта
 	fwd.lifeTime = 3600;
 	// Устанавливаем внутренний порт
@@ -123,11 +123,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем внешний порт
 	fwd.externalPort = 8080;
 	// Устанавливаем тип проброса порта
-	// fwd.type = portmap_t::type_t::UPNP;
-	fwd.type = portmap_t::type_t::PCP;
-	// fwd.type = portmap_t::type_t::NAT_PMP;
+	// fwd.type = eth::portmap_t::type_t::UPNP;
+	fwd.type = eth::portmap_t::type_t::PCP;
+	// fwd.type = eth::portmap_t::type_t::NAT_PMP;
 	// Устанавливаем протокол проброса порта
-	fwd.proto = portmap_t::proto_t::TCP;
+	fwd.proto = eth::portmap_t::proto_t::TCP;
 	// Инициализируем объект внутреннего IPv4-адреса
 	fwd.internalAddress = make_unique <net::addr_net_ipv4_t> ();
 	// Инициализируем объект внешнего IPv4-адреса
@@ -147,7 +147,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем проброс порта на маршрутизаторе
 	if(portmap.mapping(fwd, event::mode_t::ENABLED)){
 		// Получаем список проброшенных портов на маршрутизаторе
-		const vector <portmap_t::fwd_t> & map = portmap.mappings();
+		const vector <eth::portmap_t::fwd_t> & map = portmap.mappings();
 		/**
 		 * Выводим информацию о проброшенных портах на маршрутизаторе
 		 */
@@ -171,7 +171,7 @@ int32_t main(int32_t argc, char * argv[]){
 				<< " Description: " << fwd.description << ", TTL: " << fwd.lifeTime << " seconds" << endl;
 		}
 		// Удаляем проброс порта на маршрутизаторе
-		fwd = portmap_t::fwd_t();
+		fwd = eth::portmap_t::fwd_t();
 		// Устанавливаем внутренний порт
 		fwd.internalPort = 8081;
 		// Устанавливаем внешний порт
@@ -181,11 +181,11 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем завершение строки описания проброса порта
 		fwd.description[::strlen("AWH Web Server")] = '\0';
 		// Устанавливаем тип проброса порта
-		// fwd.type = portmap_t::type_t::UPNP;
-		fwd.type = portmap_t::type_t::PCP;
-		// fwd.type = portmap_t::type_t::NAT_PMP;
+		// fwd.type = eth::portmap_t::type_t::UPNP;
+		fwd.type = eth::portmap_t::type_t::PCP;
+		// fwd.type = eth::portmap_t::type_t::NAT_PMP;
 		// Устанавливаем протокол проброса порта
-		fwd.proto = portmap_t::proto_t::TCP;
+		fwd.proto = eth::portmap_t::proto_t::TCP;
 		// Выполняем удаление проброса порта на маршрутизаторе
 		if(portmap.mapping(fwd, event::mode_t::DISABLED))
 			// Выводим сообщение об успешном удалении проброса порта

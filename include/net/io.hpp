@@ -21,7 +21,7 @@
 #include "engine.hpp"
 
 /**
- * @brief основное пространство имён
+ * @brief Основное пространство имён
  *
  */
 namespace awh {

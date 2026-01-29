@@ -23,82 +23,88 @@
 #include "../../sys/log.hpp"
 
 /**
- * @brief основное пространство имён
+ * @brief Основное пространство имён
  *
  */
 namespace awh {
 	/**
-	 * Подписываемся на стандартное пространство имён
-	 */
-	using namespace std;
-	/**
-	 * @brief Класс для работы с шлюзами
+	 * @brief Пространство имён Ethernet протоколов
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Gateway {
-		public:
-			/**
-			 * @brief Структура маршрута
-			 *
-			 */
-			typedef struct Route {
-				// Сетевой интерфейс
-				string ifname;
-				// Префикс сети
-				uint8_t prefix;
-				// Адрес назначения
-				unique_ptr <net::addr_t> dest;
-				// Шлюз
-				unique_ptr <net::addr_t> gateway;
+	namespace eth {
+		/**
+		 * Подписываемся на стандартное пространство имён
+		 */
+		using namespace std;
+		/**
+		 * @brief Класс для работы с шлюзами
+		 *
+		 */
+		typedef class AWH_SHARED_EXPORT Gateway {
+			public:
+				/**
+				 * @brief Структура маршрута
+				 *
+				 */
+				typedef struct Route {
+					// Сетевой интерфейс
+					string ifname;
+					// Префикс сети
+					uint8_t prefix;
+					// Адрес назначения
+					unique_ptr <net::addr_t> dest;
+					// Шлюз
+					unique_ptr <net::addr_t> gateway;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Route() noexcept :
+					ifname{""}, prefix(0),
+					dest(nullptr), gateway(nullptr) {}
+				} route_t;
+			private:
+				// Объект фреймворка
+				const fmk_t * _fmk;
+				// Объект работы с логами
+				const log_t * _log;
+			public:
+				/**
+				 * @brief Метод получения маршрута для указанного адреса
+				 *
+				 * @param route объект для извлечения маршрута
+				 * @return      результат получения маршрута
+				 */
+				bool get(route_t & route) const noexcept;
+				/**
+				 * @brief Метод добавления маршрута
+				 *
+				 * @param route объект маршрута для добавления
+				 * @return      результат добавления маршрута
+				 */
+				bool add(const route_t & route) const noexcept;
+				/**
+				 * @brief Метод удаления маршрута
+				 *
+				 * @param route объект маршрута для удаления
+				 * @return      результат удаления маршрута
+				 */
+				bool remove(const route_t & route) const noexcept;
+			public:
 				/**
 				 * @brief Конструктор
 				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект работы с логами
 				 */
-				explicit Route() noexcept :
-				 ifname{""}, prefix(0),
-				 dest(nullptr), gateway(nullptr) {}
-			} route_t;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
-		public:
-			/**
-			 * @brief Метод получения маршрута для указанного адреса
-			 *
-			 * @param route объект для извлечения маршрута
-			 * @return      результат получения маршрута
-			 */
-			bool get(route_t & route) const noexcept;
-			/**
-			 * @brief Метод добавления маршрута
-			 *
-			 * @param route объект маршрута для добавления
-			 * @return      результат добавления маршрута
-			 */
-			bool add(const route_t & route) const noexcept;
-			/**
-			 * @brief Метод удаления маршрута
-			 *
-			 * @param route объект маршрута для удаления
-			 * @return      результат удаления маршрута
-			 */
-			bool remove(const route_t & route) const noexcept;
-		public:
-			/**
-			 * @brief Конструктор
-			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
-			 */
-			explicit Gateway(const fmk_t * fmk, const log_t * log) noexcept;
-			/**
-			 * @brief Деструктор
-			 *
-			 */
-			~Gateway() noexcept;
-	} gateway_t;
+				explicit Gateway(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Gateway() noexcept;
+		} gateway_t;
+	};
 };
 
 #endif // __AWH_GATEWAY__

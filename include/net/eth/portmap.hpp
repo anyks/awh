@@ -30,105 +30,111 @@
  */
 namespace awh {
 	/**
-	 * Подписываемся на стандартное пространство имён
-	 */
-	using namespace std;
-	/**
-	 * @brief Класс для работы с пробросом портов
+	 * @brief Пространство имён Ethernet протоколов
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT PortMapping {
-		public:
-			/**
-			 * @brief Типы протоколов сокетов
-			 *
-			 */
-			enum class proto_t : uint8_t {
-				NONE = 0x00, // Сокет не определён
-				UDP  = 0x01, // Сокет UDP
-				TCP  = 0x02, // Сокет TCP
-			};
-			/**
-			 * @brief Типы проброса порта на маршрутизаторе
-			 *
-			 */
-			enum class type_t : uint8_t {
-				NONE    = 0x00, // Тип не определён
-				PCP     = 0x01, // Тип проброса PCP
-				UPNP    = 0x02, // Тип проброса UPnP
-				NAT_PMP = 0x03  // Тип проброса NAT-PMP
-			};
-			/**
-			 * @brief Структура проброса порта на маршрутизаторе
-			 *
-			 */
-			typedef struct Forwarding {
-				// Тип проброса порта
-				type_t type;
-				// Протокол проброса порта
-				proto_t proto;
-				// Время жизни проброса порта в секундах
-				uint32_t lifeTime;
-				// Внутренний порт
-				uint16_t internalPort;
-				// Внешний порт
-				uint16_t externalPort;
-				// Описание проброса порта
-				char description[128];
-				// Внутренний IP-адрес
-				unique_ptr <net::addr_t> internalAddress;
-				// Внешний IP-адрес
-				unique_ptr <net::addr_t> externalAddress;
+	namespace eth {
+		/**
+		 * Подписываемся на стандартное пространство имён
+		 */
+		using namespace std;
+		/**
+		 * @brief Класс для работы с пробросом портов
+		 *
+		 */
+		typedef class AWH_SHARED_EXPORT PortMapping {
+			public:
+				/**
+				 * @brief Типы протоколов сокетов
+				 *
+				 */
+				enum class proto_t : uint8_t {
+					NONE = 0x00, // Сокет не определён
+					UDP  = 0x01, // Сокет UDP
+					TCP  = 0x02, // Сокет TCP
+				};
+				/**
+				 * @brief Типы проброса порта на маршрутизаторе
+				 *
+				 */
+				enum class type_t : uint8_t {
+					NONE    = 0x00, // Тип не определён
+					PCP     = 0x01, // Тип проброса PCP
+					UPNP    = 0x02, // Тип проброса UPnP
+					NAT_PMP = 0x03  // Тип проброса NAT-PMP
+				};
+				/**
+				 * @brief Структура проброса порта на маршрутизаторе
+				 *
+				 */
+				typedef struct Forwarding {
+					// Тип проброса порта
+					type_t type;
+					// Протокол проброса порта
+					proto_t proto;
+					// Время жизни проброса порта в секундах
+					uint32_t lifeTime;
+					// Внутренний порт
+					uint16_t internalPort;
+					// Внешний порт
+					uint16_t externalPort;
+					// Описание проброса порта
+					char description[128];
+					// Внутренний IP-адрес
+					unique_ptr <net::addr_t> internalAddress;
+					// Внешний IP-адрес
+					unique_ptr <net::addr_t> externalAddress;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Forwarding() noexcept :
+					type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
+					internalPort(0), externalPort(0), description{0},
+					internalAddress{nullptr}, externalAddress{nullptr} {}
+				} fwd_t;
+			private:
+				// Объект работы с маршрутами
+				gateway_t _gateway;
+			private:
+				// Объект работы с сетевыми аресами
+				mutable net_addr_t _addr;
+			private:
+				// Объект фреймворка
+				const fmk_t * _fmk;
+				// Объект работы с логами
+				const log_t * _log;
+			public:
+				/**
+				 * @brief Метод получения списка проброшенных портов на маршрутизаторе
+				 *
+				 * @return список параметров проброшенных портов на маршрутизаторе
+				 */
+				vector <fwd_t> mappings() const noexcept;
+			public:
+				/**
+				 * @brief Метод установки/удаления проброса портов на маршрутизаторе
+				 *
+				 * @param fwd  объект параметров проброса порта
+				 * @param mode режим включения/выключения проброса порта
+				 * @return     результат выполнения установки
+				 */
+				bool mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept;
+			public:
 				/**
 				 * @brief Конструктор
 				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект работы с логами
 				 */
-				explicit Forwarding() noexcept :
-				 type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
-				 internalPort(0), externalPort(0), description{0},
-				 internalAddress{nullptr}, externalAddress{nullptr} {}
-			} fwd_t;
-		private:
-			// Объект работы с маршрутами
-			gateway_t _gateway;
-		private:
-			// Объект работы с сетевыми аресами
-			mutable net_addr_t _addr;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
-		public:
-			/**
-			 * @brief Метод получения списка проброшенных портов на маршрутизаторе
-			 *
-			 * @return список параметров проброшенных портов на маршрутизаторе
-			 */
-			vector <fwd_t> mappings() const noexcept;
-		public:
-			/**
-			 * @brief Метод установки/удаления проброса портов на маршрутизаторе
-			 *
-			 * @param fwd  объект параметров проброса порта
-			 * @param mode режим включения/выключения проброса порта
-			 * @return     результат выполнения установки
-			 */
-			bool mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept;
-		public:
-			/**
-			 * @brief Конструктор
-			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
-			 */
-			explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept;
-			/**
-			 * @brief Деструктор
-			 *
-			 */
-			~PortMapping() noexcept;
-	} portmap_t;
+				explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~PortMapping() noexcept;
+		} portmap_t;
+	};
 };
 
 #endif // __AWH_PORTMAP__

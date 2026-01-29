@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 /**
- * @brief основное пространство имён
+ * @brief Основное пространство имён
  *
  */
 namespace awh {

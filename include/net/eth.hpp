@@ -33,7 +33,7 @@
 #endif
 
 /**
- * @brief основное пространство имён
+ * @brief Основное пространство имён
  *
  */
 namespace awh {
@@ -52,7 +52,7 @@ namespace awh {
 		#if __linux__ || __FreeBSD__
 			public:
 				// Объект управления протоколом передачи с управлением потоком
-				sctp_t sctp;
+				eth::sctp_t sctp;
 		#endif
 		private:
 			// Объект фреймворка

@@ -78,7 +78,7 @@ namespace gw {
  * @param route объект для извлечения маршрута
  * @return      результат получения маршрута
  */
-bool awh::Gateway::get(route_t & route) const noexcept {
+bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -663,7 +663,7 @@ bool awh::Gateway::get(route_t & route) const noexcept {
  * @param route объект маршрута для добавления
  * @return      результат добавления маршрута
  */
-bool awh::Gateway::add(const route_t & route) const noexcept {
+bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1168,7 +1168,7 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
  * @param route объект маршрута для удаления
  * @return      результат удаления маршрута
  */
-bool awh::Gateway::remove(const route_t & route) const noexcept {
+bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1869,9 +1869,9 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  */
-awh::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *
  */
-awh::Gateway::~Gateway() noexcept {}
+awh::eth::Gateway::~Gateway() noexcept {}

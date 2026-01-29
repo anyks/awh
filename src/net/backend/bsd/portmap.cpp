@@ -53,7 +53,7 @@ using namespace std;
  *
  * @return список параметров проброшенных портов на маршрутизаторе
  */
-vector <awh::PortMapping::fwd_t> awh::PortMapping::mappings() const noexcept {
+vector <awh::eth::PortMapping::fwd_t> awh::eth::PortMapping::mappings() const noexcept {
 	// Результат работы функции
 	vector <fwd_t> result;
 	/**
@@ -226,7 +226,7 @@ vector <awh::PortMapping::fwd_t> awh::PortMapping::mappings() const noexcept {
  * @param mode режим включения/выключения проброса порта
  * @return     результат выполнения установки
  */
-bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept {
+bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1570,10 +1570,10 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  */
-awh::PortMapping::PortMapping(const fmk_t * fmk, const log_t * log) noexcept :
+awh::eth::PortMapping::PortMapping(const fmk_t * fmk, const log_t * log) noexcept :
  _gateway(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *
  */
-awh::PortMapping::~PortMapping() noexcept {}
+awh::eth::PortMapping::~PortMapping() noexcept {}
