@@ -292,8 +292,8 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 				}
 				// Если получаем маршрут для указанного адреса
 				if(this->_gateway.get(route)){
-					// Выполняем созание UDP сокета
-					net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+					// Выполняем создание UDP сокета
+					net::socket_t sock = ::socket(family, SOCK_DGRAM, 0);
 					// Если сокет не создан
 					if(sock == net::invalid_socket_t){
 						/**
@@ -324,18 +324,46 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 						// Выводим результат
 						return result;
 					}
+					// Флаги установки опции
+					const int32_t flags = 1;
+					// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
+					if(static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									fwd.lifetime,
+									fwd.description,
+									fwd.internalPort,
+									fwd.externalPort,
+									static_cast <uint16_t> (fwd.type),
+									static_cast <uint16_t> (fwd.proto),
+									static_cast <uint16_t> (mode)
+								),
+								log_t::flag_t::CRITICAL, ::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
 					// PCP MAP request (RFC 6887)
 					uint8_t request[60] = {0};
 					// Устанавливаем значение версии
 					request[0] = 2;
 					// Устанавливаем опкод MAP (Client Request)
 					request[1] = 1;
-					/**
-					 * Client IP Address (Header offset 8) -> ::ffff:192.168.x.x
-					 * IPv4-mapped IPv6 address
-					 */
-					request[18] = 0xFF;
-					request[19] = 0xFF;
 					// Размер объекта подключения
 					socklen_t size = 0;
 					// Параметры подключения к шлюзу
@@ -346,6 +374,12 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 					switch(family){
 						// Если адрес является IPv4
 						case AF_INET: {
+							/**
+							 * Client IP Address (Header offset 8) -> ::ffff:192.168.x.x
+							 * IPv4-mapped IPv6 address
+							 */
+							request[18] = 0xFF;
+							request[19] = 0xFF;
 							// Объект адреса шлюза
 							struct sockaddr_in gw = {0};
 							// Целевой адрес для "подключения" (чтобы узнать свой IP)
@@ -422,7 +456,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 								// Извлекаем локальный адрес сокета
 								::getsockname(sock, reinterpret_cast <struct sockaddr *> (&dst), &length);
 								// Добавляем локальный IP-адрес клиента
-								::memcpy(request + 20, &dst.sin6_addr, 16);
+								::memcpy(request + 8, &dst.sin6_addr, 16);
 							}
 							// Закрываем сокет
 							::close(sock);
@@ -463,7 +497,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							::memcpy(&addr, &gw, size);
 						} break;
 					}
-					// Выполняем созание UDP сокета
+					// Выполняем создание UDP сокета
 					sock = ::socket(family, SOCK_DGRAM, 0);
 					// Если сокет не создан
 					if(sock == net::invalid_socket_t){
@@ -495,8 +529,6 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 						// Выводим результат
 						return result;
 					}
-					// Флаги установки опции
-					const int32_t flags = 1;
 					// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
 					if(static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)))){
 						/**
@@ -1068,8 +1100,8 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 				}
 				// Если получаем маршрут для указанного адреса
 				if(this->_gateway.get(route)){
-					// Выполняем созание UDP сокета
-					net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+					// Выполняем создание UDP сокета
+					net::socket_t sock = ::socket(family, SOCK_DGRAM, 0);
 					// Если сокет не создан
 					if(sock == net::invalid_socket_t){
 						/**
@@ -1257,8 +1289,22 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 					::memset(request, 0, sizeof(request));
 					// Устанавливаем версию протокола NAT-PMP
 					request[0] = 0;
-					// Устанавливаем опкод = 1 (map UDP)
-					request[1] = 1;
+					/**
+					 * Определяем протокол проброса порта
+					 */
+					switch(static_cast <uint8_t> (fwd.proto)){
+						// Если протокол проброса порта является TCP
+						case static_cast <uint8_t> (proto_t::TCP):
+							// Устанавливаем опкод = 2 (map TCP)
+							request[1] = 2;
+						break;
+						// Если протокол проброса порта является UDP
+						case static_cast <uint8_t> (proto_t::UDP):
+						default:
+							// Устанавливаем опкод = 1 (map UDP)
+							request[1] = 1;
+						break;
+					}
 					// Устанавливаем зарезервировано
 					request[2] = 0;
 					request[3] = 0;
@@ -1352,7 +1398,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 					// Устанавливаем терминальный нулевой символ в буфере
 					buffer[bytes] = '\0';
 					// === 5. Парсим ответ ===
-					if((bytes >= 16) && (static_cast <uint8_t> (buffer[1]) == 129)){
+					if((bytes >= 16) && (static_cast <uint8_t> (buffer[1]) == (request[1] | 128))){
 						// Успех (Result code = 0) проверяем в map_resp[2..3]
 						const uint16_t code = ntohs(* reinterpret_cast <const uint16_t *> (buffer + 2));
 						// Если возникла ошибка

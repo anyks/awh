@@ -124,8 +124,8 @@ int32_t main(int32_t argc, char * argv[]){
 	fwd.externalPort = 8080;
 	// Устанавливаем тип проброса порта
 	// fwd.type = portmap_t::type_t::UPNP;
-	// fwd.type = portmap_t::type_t::PCP;
-	fwd.type = portmap_t::type_t::NAT_PMP;
+	fwd.type = portmap_t::type_t::PCP;
+	// fwd.type = portmap_t::type_t::NAT_PMP;
 	// Устанавливаем протокол проброса порта
 	fwd.proto = portmap_t::proto_t::TCP;
 	// Инициализируем объект внутреннего IPv4-адреса
@@ -182,8 +182,8 @@ int32_t main(int32_t argc, char * argv[]){
 		fwd.description[::strlen("AWH Web Server")] = '\0';
 		// Устанавливаем тип проброса порта
 		// fwd.type = portmap_t::type_t::UPNP;
-		// fwd.type = portmap_t::type_t::PCP;
-		fwd.type = portmap_t::type_t::NAT_PMP;
+		fwd.type = portmap_t::type_t::PCP;
+		// fwd.type = portmap_t::type_t::NAT_PMP;
 		// Устанавливаем протокол проброса порта
 		fwd.proto = portmap_t::proto_t::TCP;
 		// Выполняем удаление проброса порта на маршрутизаторе
