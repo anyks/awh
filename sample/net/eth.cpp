@@ -68,19 +68,25 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим адрес назначения
 		cout << "Destination: " << static_cast <string> (addr) << "/" << static_cast <uint32_t> (route.prefix) << endl;
 		
-		route.ifname = "";
+		// route.ifname = "";
 		
 		// Удаляем маршрут по указанному адресу
 		if(gateway.remove(route)){
 			
 			
 
-			return 0;
+			// return 0;
+
+			// sudo route add default 192.168.7.1
+			// sudo route delete default 0.0.0.0
 			
 			// Выполняем парсинг адреса нового шлюза
 			addr = "192.168.7.131";
 			// Устанавливаем адрес шлюза в маршрут
-			awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+			// awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+			
+			route.ifname = "en0";
+			
 			// Добавляем маршрут с новым шлюзом
 			if(gateway.add(route)){
 				// Если получаем маршрут для указанного адреса
@@ -94,7 +100,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Удаляем маршрут по указанному адресу
 					if(gateway.remove(route)){
 						// Выполняем парсинг адреса нового шлюза
-						addr = "192.168.7.1"; // sudo route add default 192.168.7.1
+						addr = "192.168.7.1"; 
 						// Устанавливаем адрес шлюза в маршрут
 						awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
 						// Добавляем маршрут с новым шлюзом

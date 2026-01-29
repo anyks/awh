@@ -182,8 +182,6 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 					struct sockaddr_in * gw = nullptr;
 					// Объект сетевого интерфейса маршрута
 					struct sockaddr_dl * ifp = nullptr;
-					// Объект адреса интерфейса
-					struct sockaddr_in * ifa = nullptr;
 					// Объект назначения маршрута
 					struct sockaddr_in * dst = nullptr;
 					// Объект маски подсети маршрута
@@ -234,15 +232,6 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 								// Извлекаем сетевой интерфейс маршрута
 								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
 						}
-						// Устанавливаем текущий адрес маршрута
-						sa = advance(sa);
-					}
-					// Если присутствует адрес интерфейса в маршруте
-					if(rtm->rtm_addrs & RTA_IFA){
-						// Если адрес интерфейса является IPv4
-						if(sa->sa_family == AF_INET)
-							// Извлекаем адрес интерфейса маршрута
-							ifa = reinterpret_cast <struct sockaddr_in *> (sa);
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
@@ -300,19 +289,6 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						} else if(rtm->rtm_flags & RTF_HOST)
 							// Если это хостовый маршрут без маски, то /32
 							route.prefix = 32;
-						// Индекс интерфейса
-						const uint32_t ifIndex = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
-						// Проверяем является ли шлюз локальным адресом
-						const bool isLocal = ((gw == nullptr) || ((ifa != nullptr) && (gw->sin_addr.s_addr == ifa->sin_addr.s_addr)));
-						// Заполняем имя интерфейса
-						if((ifIndex > 0) && isLocal){
-							// Получаем имя интерфейса
-							char ifname[IF_NAMESIZE];
-							// Заполняем имя интерфейса
-							if(::if_indextoname(ifIndex, ifname))
-								// Устанавливаем имя интерфейса
-								route.ifname = ifname;
-						}
 						// Выходим из цикла (первый найденный)
 						break;
 					}
@@ -460,8 +436,6 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 					struct sockaddr_in6 * gw = nullptr;
 					// Объект сетевого интерфейса маршрута
 					struct sockaddr_dl * ifp = nullptr;
-					// Объект адреса интерфейса
-					struct sockaddr_in6 * ifa = nullptr;
 					// Объект назначения маршрута
 					struct sockaddr_in6 * dst = nullptr;
 					// Объект маски подсети маршрута
@@ -512,15 +486,6 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 								// Извлекаем сетевой интерфейс маршрута
 								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
 						}
-						// Устанавливаем текущий адрес маршрута
-						sa = advance(sa);
-					}
-					// Если присутствует адрес интерфейса в маршруте
-					if(rtm->rtm_addrs & RTA_IFA){
-						// Если адрес интерфейса является IPv6
-						if(sa->sa_family == AF_INET6)
-							// Извлекаем адрес интерфейса маршрута
-							ifa = reinterpret_cast <struct sockaddr_in6 *> (sa);
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
@@ -581,19 +546,6 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						} else if(rtm->rtm_flags & RTF_HOST)
 							// Если это хостовый маршрут без маски, то /128
 							route.prefix = 128;
-						//Индекс интерфейса
-						const uint32_t ifIndex = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
-						// Проверяем является ли шлюз локальным адресом
-						const bool isLocal = ((gw == nullptr) || ((ifa != nullptr) && (::memcmp(&gw->sin6_addr, &ifa->sin6_addr, 16) == 0)));
-						// Если задан сетевой интерфейс
-						if((ifIndex > 0) && isLocal){
-							// Получаем имя интерфейса
-							char ifname[IF_NAMESIZE];
-							// Заполняем имя интерфейса
-							if(::if_indextoname(ifIndex, ifname))
-								// Устанавливаем имя интерфейса
-								route.ifname = ifname;
-						}
 						// Выходим из цикла (первый найденный)
 						break;
 					}
@@ -758,31 +710,8 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 				/**
 				 * 2. Адрес шлюза (RTA_GATEWAY)
 				 */
-				// Если передан интерфейс для установки шлюза
-				if(!route.ifname.empty()){
-					// Получаем индекс интерфейса
-					const uint32_t idx = ::if_nametoindex(route.ifname.c_str());
-					// Если найден интерфейс по имени
-					if(idx > 0) {
-						// Структура канального уровня
-						struct sockaddr_dl sdl;
-						// Зануляем структуру адреса канального уровня
-						::memset(&sdl, 0, sizeof(sdl));
-						// Устанавливаем длину структуры
-						sdl.sdl_len = sizeof(struct sockaddr_dl);
-						// Устанавливаем семейство адресов
-						sdl.sdl_family = AF_LINK;
-						// Устанавливаем индекс интерфейса
-						sdl.sdl_index = static_cast <uint16_t> (idx);
-						// Устанавливаем флаг адреса шлюза
-						rtm->rtm_addrs |= RTA_GATEWAY;
-						// Устанавливаем в буфер адрес шлюза
-						::memcpy(cp, &sdl, sdl.sdl_len);
-						// Сдвигаем буфер полезной нагрузки
-						cp += ROUNDUP(sdl.sdl_len);
-					}
-				// Если это обычный шлюз
-				} else {
+				// Если задан адрес шлюза
+				if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0){
 					// Структура IPv4 шлюза
 					struct sockaddr_in gw;
 					// Зануляем структуру адреса шлюза
@@ -801,6 +730,29 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 					::memcpy(cp, &gw, gw.sin_len);
 					// Сдвигаем буфер полезной нагрузки
 					cp += ROUNDUP(gw.sin_len);
+				// Если передан интерфейс для установки шлюза
+				} else if(!route.ifname.empty()) {
+					// Получаем индекс интерфейса
+					const uint32_t index = ::if_nametoindex(route.ifname.c_str());
+					// Если найден интерфейс по имени
+					if(index > 0) {
+						// Структура канального уровня
+						struct sockaddr_dl sdl;
+						// Зануляем структуру адреса канального уровня
+						::memset(&sdl, 0, sizeof(sdl));
+						// Устанавливаем длину структуры
+						sdl.sdl_len = sizeof(struct sockaddr_dl);
+						// Устанавливаем семейство адресов
+						sdl.sdl_family = AF_LINK;
+						// Устанавливаем индекс интерфейса
+						sdl.sdl_index = static_cast <uint16_t> (index);
+						// Устанавливаем флаг адреса шлюза
+						rtm->rtm_addrs |= RTA_GATEWAY;
+						// Устанавливаем в буфер адрес шлюза
+						::memcpy(cp, &sdl, sdl.sdl_len);
+						// Сдвигаем буфер полезной нагрузки
+						cp += ROUNDUP(sdl.sdl_len);
+					}
 				}
 				/**
 				 * 3. Маска подсети (RTA_NETMASK)
@@ -913,31 +865,10 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 				/**
 				 * 2. Адрес шлюза (RTA_GATEWAY)
 				 */
-				// Если передан интерфейс для установки шлюза
-				if(!route.ifname.empty()){
-					// Получаем индекс интерфейса
-					const uint32_t idx = ::if_nametoindex(route.ifname.c_str());
-					// Если найден интерфейс по имени
-					if(idx > 0) {
-						// Структура канального уровня
-						struct sockaddr_dl sdl;
-						// Зануляем структуру адреса канального уровня
-						::memset(&sdl, 0, sizeof(sdl));
-						// Устанавливаем длину структуры
-						sdl.sdl_len = sizeof(struct sockaddr_dl);
-						// Устанавливаем семейство адресов
-						sdl.sdl_family = AF_LINK;
-						// Устанавливаем индекс интерфейса
-						sdl.sdl_index = static_cast<uint16_t>(idx);
-						// Устанавливаем флаг адреса шлюза
-						rtm->rtm_addrs |= RTA_GATEWAY;
-						// Копируем в буфер адрес шлюза
-						::memcpy(cp, &sdl, sdl.sdl_len);
-						// Сдвигаем буфер полезной нагрузки
-						cp += ROUNDUP(sdl.sdl_len);
-					}
-				// Если это обычный шлюз
-				} else {
+				// Нулевой адрес для проверки
+				const uint8_t zeroAddr[16] = {0};
+				// Если задан адрес шлюза
+				if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) != 0){
 					// Структура IPv6 шлюза
 					struct sockaddr_in6 gw;
 					// Зануляем структуру адреса шлюза
@@ -956,6 +887,29 @@ bool awh::Gateway::add(const route_t & route) const noexcept {
 					::memcpy(cp, &gw, gw.sin6_len);
 					// Сдвигаем буфер полезной нагрузки
 					cp += ROUNDUP(gw.sin6_len);
+				// Если передан интерфейс для установки шлюза
+				} else if(!route.ifname.empty()) {
+					// Получаем индекс интерфейса
+					const uint32_t index = ::if_nametoindex(route.ifname.c_str());
+					// Если найден интерфейс по имени
+					if(index > 0) {
+						// Структура канального уровня
+						struct sockaddr_dl sdl;
+						// Зануляем структуру адреса канального уровня
+						::memset(&sdl, 0, sizeof(sdl));
+						// Устанавливаем длину структуры
+						sdl.sdl_len = sizeof(struct sockaddr_dl);
+						// Устанавливаем семейство адресов
+						sdl.sdl_family = AF_LINK;
+						// Устанавливаем индекс интерфейса
+						sdl.sdl_index = static_cast<uint16_t>(index);
+						// Устанавливаем флаг адреса шлюза
+						rtm->rtm_addrs |= RTA_GATEWAY;
+						// Копируем в буфер адрес шлюза
+						::memcpy(cp, &sdl, sdl.sdl_len);
+						// Сдвигаем буфер полезной нагрузки
+						cp += ROUNDUP(sdl.sdl_len);
+					}
 				}
 				/**
 				 * 3. Маска подсети (RTA_NETMASK)
@@ -1264,12 +1218,12 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 					if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0)
 						// Устанавливаем флаг совпадения по адресу шлюза маршрута
 						match = ((gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
-					// Если имя сетевого интерфейса задано
-					if(!route.ifname.empty()){
+					// Если имя сетевого интерфейса задано (и шлюз НЕ задан)
+					else if(!route.ifname.empty()) {
 						// Получаем индекс сетевого интерфейса
-						const uint32_t idx = ::if_nametoindex(route.ifname.c_str());
+						const uint32_t index = ::if_nametoindex(route.ifname.c_str());
 						// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-						match = ((ifp != nullptr) && (ifp->sdl_index == idx));
+						match = ((ifp != nullptr) && (ifp->sdl_index == index));
 					}
 					// Если адрес не совпадает
 					if(!match){
@@ -1299,12 +1253,10 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						rtd->rtm_version = RTM_VERSION;
 						// Устанавливаем флаги маршрута
 						rtd->rtm_flags = rtm->rtm_flags;
-						// Устанавливаем адреса маршрута
-						rtd->rtm_addrs = rtm->rtm_addrs;
+						// Устанавливаем адреса маршрута (только поддерживаемые)
+						rtd->rtm_addrs = (rtm->rtm_addrs & (RTA_DST | RTA_GATEWAY | RTA_NETMASK | RTA_IFP));
 						// Объект для чтения адресов из исходного маршрута
 						struct sockaddr * src = reinterpret_cast <struct sockaddr *> (rtm + 1);
-						// Флаг, указывающий, что шлюз является ссылочным (AF_LINK)
-						bool isGatewayLink = false;
 						// Если присутствуют адреса в маршруте
 						if(rtm->rtm_addrs & RTA_DST){
 							// Копируем адрес назначения маршрута
@@ -1316,14 +1268,14 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						}
 						// Если присутствует шлюз в маршруте
 						if(rtm->rtm_addrs & RTA_GATEWAY){
-							// Если адрес шлюза является ссылочным
-							if(src->sa_family == AF_LINK)
-								// Устанавливаем флаг маршрута
-								isGatewayLink = true;
-							// Копируем адрес шлюза маршрута
-							::memcpy(payload, src, src->sa_len);
-							// Смещаем указатель полезной нагрузки
-							payload += ROUNDUP(src->sa_len);
+							// Если адрес шлюза НЕ является ссылочным (AF_LINK)
+							if(src->sa_family != AF_LINK){
+								// Копируем адрес шлюза маршрута
+								::memcpy(payload, src, src->sa_len);
+								// Смещаем указатель полезной нагрузки
+								payload += ROUNDUP(src->sa_len);
+							// Иначе снимаем флаг шлюза
+							} else rtd->rtm_addrs &= ~RTA_GATEWAY;
 							// Устанавливаем текущий адрес маршрута
 							src = advance(src);
 						}
@@ -1336,16 +1288,16 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем текущий адрес маршрута
 							src = advance(src);
 						}
+						// Если присутствует маска клонирования в маршруте
+						if(rtm->rtm_addrs & RTA_GENMASK)
+							// Устанавливаем текущий адрес маршрута
+							src = advance(src);
 						// Если присутствует сетевой интерфейс в маршруте
 						if(rtm->rtm_addrs & RTA_IFP){
-							// Проверяем, не скопирован ли уже как GATEWAY (AF_LINK)
-							if(!isGatewayLink){
-								// Копируем сетевой интерфейс маршрута
-								::memcpy(payload, src, src->sa_len);
-								// Смещаем указатель полезной нагрузки
-								payload += ROUNDUP(src->sa_len);
-							// Убираем флаг интерфейса из копии
-							} else rtd->rtm_addrs &= ~RTA_IFP;
+							// Копируем сетевой интерфейс маршрута
+							::memcpy(payload, src, src->sa_len);
+							// Смещаем указатель полезной нагрузки
+							payload += ROUNDUP(src->sa_len);
 						}
 						// Устанавливаем длину сообщения маршрута
 						rtd->rtm_msglen = (payload - buffer);
@@ -1589,11 +1541,11 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						// Устанавливаем флаг совпадения по адресу шлюза маршрута
 						match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16) == 0));
 					// Если имя сетевого интерфейса задано
-					if(!route.ifname.empty()){
+					else if(!route.ifname.empty()) {
 						// Получаем индекс сетевого интерфейса
-						const uint32_t idx = ::if_nametoindex(route.ifname.c_str());
+						const uint32_t index = ::if_nametoindex(route.ifname.c_str());
 						// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-						match = match && ((ifp != nullptr) && (ifp->sdl_index == idx));
+						match = match && ((ifp != nullptr) && (ifp->sdl_index == index));
 					}
 					// Если адрес не совпадает
 					if(!match){
@@ -1623,12 +1575,10 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						rtd->rtm_version = RTM_VERSION;
 						// Устанавливаем флаги маршрута
 						rtd->rtm_flags = rtm->rtm_flags;
-						// Устанавливаем адреса маршрута
-						rtd->rtm_addrs = rtm->rtm_addrs;
+						// Устанавливаем адреса маршрута (только поддерживаемые)
+						rtd->rtm_addrs = (rtm->rtm_addrs & (RTA_DST | RTA_GATEWAY | RTA_NETMASK | RTA_IFP));
 						// Объект для чтения адресов из исходного маршрута
 						struct sockaddr * src = reinterpret_cast <struct sockaddr *> (rtm + 1);
-						// Флаг, указывающий, что шлюз является ссылочным (AF_LINK)
-						bool isGatewayLink = false;
 						// Если присутствуют адреса в маршруте
 						if(rtm->rtm_addrs & RTA_DST){
 							// Копируем адрес назначения маршрута
@@ -1640,14 +1590,14 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						}
 						// Если присутствует шлюз в маршруте
 						if(rtm->rtm_addrs & RTA_GATEWAY){
-							// Если адрес шлюза является ссылочным
-							if(src->sa_family == AF_LINK)
-								// Устанавливаем флаг маршрута
-								isGatewayLink = true;
-							// Копируем адрес шлюза маршрута
-							::memcpy(payload, src, src->sa_len);
-							// Смещаем указатель полезной нагрузки
-							payload += ROUNDUP(src->sa_len);
+							// Если адрес шлюза НЕ является ссылочным (AF_LINK)
+							if(src->sa_family != AF_LINK){
+								// Копируем адрес шлюза маршрута
+								::memcpy(payload, src, src->sa_len);
+								// Смещаем указатель полезной нагрузки
+								payload += ROUNDUP(src->sa_len);
+							// Иначе снимаем флаг шлюза
+							} else rtd->rtm_addrs &= ~RTA_GATEWAY;
 							// Устанавливаем текущий адрес маршрута
 							src = advance(src);
 						}
@@ -1660,16 +1610,16 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем текущий адрес маршрута
 							src = advance(src);
 						}
+						// Если присутствует маска клонирования в маршруте
+						if(rtm->rtm_addrs & RTA_GENMASK)
+							// Устанавливаем текущий адрес маршрута
+							src = advance(src);
 						// Если присутствует сетевой интерфейс в маршруте
 						if(rtm->rtm_addrs & RTA_IFP){
-							// Проверяем, не скопирован ли уже как GATEWAY (AF_LINK)
-							if(!isGatewayLink){
-								// Копируем сетевой интерфейс маршрута
-								::memcpy(payload, src, src->sa_len);
-								// Смещаем указатель полезной нагрузки
-								payload += ROUNDUP(src->sa_len);
-							// Убираем флаг интерфейса из копии
-							} else rtd->rtm_addrs &= ~RTA_IFP;
+							// Копируем сетевой интерфейс маршрута
+							::memcpy(payload, src, src->sa_len);
+							// Смещаем указатель полезной нагрузки
+							payload += ROUNDUP(src->sa_len);
 						}
 						// Устанавливаем длину сообщения маршрута
 						rtd->rtm_msglen = (payload - buffer);
