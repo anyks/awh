@@ -23,6 +23,7 @@
 // #include <net/eth.hpp>
 #include <net/addr.hpp>
 #include <net/eth/gateway.hpp>
+#include <net/eth/portmap.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -109,79 +110,85 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	// Иначе выводим сообщение об ошибке
 	} else cout << "Gateway not found." << endl;
+	// Выводим заголовок примера проброса порта
+	cout << " --- Portmapping Example --- " << endl;
+	// Создаём объект для работы с пробросом портов
+	portmap_t portmap(&fmk, &log);
+	// Создаём структуру проброса порта на маршрутизаторе
+	portmap_t::fwd_t fwd{};
+	// Заполняем параметры проброса порта
+	fwd.lifetime = 3600;
+	// Устанавливаем внутренний порт
+	fwd.internalPort = 8081;
+	// Устанавливаем внешний порт
+	fwd.externalPort = 8080;
+	// Устанавливаем тип проброса порта
+	fwd.type = portmap_t::type_t::UPNP;
+	// Устанавливаем протокол проброса порта
+	fwd.proto = portmap_t::proto_t::TCP;
+	// Инициализируем объект внутреннего IPv4-адреса
+	fwd.internalAddress = make_unique <net::addr_net_ipv4_t> ();
+	// Инициализируем объект внешнего IPv4-адреса
+	fwd.externalAddress = make_unique <net::addr_net_ipv4_t> ();
+	// Выполняем парсинг внутреннего IPv4-адреса
+	addr = "192.168.7.215";
+	// Устанавливаем внутренний IPv4-адрес в пробросе порта
+	awh_cast <net::addr_net_ipv4_t *> (fwd.internalAddress.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+	// Выполняем парсинг внешнего IPv4-адреса
+	addr = "123.456.78.90";
+	// Устанавливаем внешний IPv4-адрес в пробросе порта
+	awh_cast <net::addr_net_ipv4_t *> (fwd.externalAddress.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+	// Устанавливаем описание проброса порта
+	::memcpy(fwd.description, "AWH Web Server", ::strlen("AWH Web Server") + 1);
+	// Устанавливаем завершение строки описания проброса порта
+	fwd.description[::strlen("AWH Web Server")] = '\0';
+	// Выполняем проброс порта на маршрутизаторе
+	if(portmap.mapping(fwd, event::mode_t::ENABLED)){
+		// Получаем список проброшенных портов на маршрутизаторе
+		const vector <portmap_t::fwd_t> & map = portmap.mappings();
+		/**
+		 * Выводим информацию о проброшенных портах на маршрутизаторе
+		 */
+		for(auto & fwd : map){
+			// Если внутренний адрес является IPv4
+			if(fwd.internalAddress->size == 4){
+				// Устанавливаем полученный внутренний IPv4-адрес
+				addr.v4(awh_cast <net::addr_net_ipv4_t *> (fwd.internalAddress.get())->address, net_addr_t::endian_t::LITTLE);
+				// Выводим адрес внутреннего IPv4-адреса
+				cout << "Internal IP: " << static_cast <string> (addr) << ":" << fwd.internalPort << endl;
+			}
+			// Если внешний адрес является IPv4
+			if(fwd.externalAddress->size == 4){
+				// Устанавливаем полученный внешний IPv4-адрес
+				addr.v4(awh_cast <net::addr_net_ipv4_t *> (fwd.externalAddress.get())->address, net_addr_t::endian_t::LITTLE);
+				// Выводим адрес внешнего IPv4-адреса
+				cout << "External IP: " << static_cast <string> (addr) << ":" << fwd.externalPort << endl;
+			}
+			// Выводим информацию о проброшенных портах
+			cout << " Protocol: " << static_cast <uint16_t> (fwd.proto) << " Type: " << static_cast <uint16_t> (fwd.type)
+				<< " Description: " << fwd.description << ", TTL: " << fwd.lifetime << " seconds" << endl;
+		}
+		// Удаляем проброс порта на маршрутизаторе
+		fwd = portmap_t::fwd_t();
+		// Устанавливаем внутренний порт
+		fwd.internalPort = 8081;
+		// Устанавливаем внешний порт
+		fwd.externalPort = 8080;
+		// Устанавливаем тип проброса порта
+		fwd.type = portmap_t::type_t::UPNP;
+		// Устанавливаем протокол проброса порта
+		fwd.proto = portmap_t::proto_t::TCP;
+		// Выполняем удаление проброса порта на маршрутизаторе
+		if(portmap.mapping(fwd, event::mode_t::DISABLED))
+			// Выводим сообщение об успешном удалении проброса порта
+			cout << "Portmapping removed successfully." << endl;
+	}
 	
 	#ifdef __AWH_DISABLE__
 	// Получаем список сетевых интерфейсов системы
 	for(auto & iface : eth.ifaces())
 		// Выводим список сетевых интерфейсов системы
 		cout << "Interface: " << iface << endl;
-	// Выводим заголовок примера проброса порта
-	cout << " --- Gateway Example --- " << endl;
-	// Временный объект для извлечения сетевого интерфейса
-	net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
-	// Получаем шлюз по умолчанию
-	eth.gateway(source);
-	// Устанавливаем полученный IP-адрес
-	addr.v4(awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
-	// Выводим адрес шлюза по умолчанию
-	cout << "Default Gateway: " << static_cast <string> (addr) << endl;
-	// Устанавливаем полученный MAC-адрес в объект события
-	addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-	// Выводим адрес MAC-адрес шлюза по умолчанию
-	cout << "Default MAC Gateway: " << static_cast <string> (addr) << endl;
-
-	awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = inet_addr("192.168.7.1"); // 192.168.7.131
-
-	eth.gateway(source.ip);
-
-	// Получаем шлюз по умолчанию
-	eth.gateway(source);
-	// Устанавливаем полученный IP-адрес
-	addr.v4(awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
-	// Выводим адрес шлюза по умолчанию
-	cout << "Default Gateway: " << static_cast <string> (addr) << endl;
-	// Устанавливаем полученный MAC-адрес в объект события
-	addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
-	// Выводим адрес MAC-адрес шлюза по умолчанию
-	cout << "Default MAC Gateway: " << static_cast <string> (addr) << endl;
-
-	// Выводим заголовок примера проброса порта
-	cout << " --- Portmapping Example --- " << endl;
-	// Создаём структуру проброса порта на маршрутизаторе
-	net::portmap_t portmap;
-	// Заполняем параметры проброса порта
-	portmap.ttl = 3600;
-	portmap.internalPort = 8081;
-	portmap.externalPort = 8080;
-	portmap.type = net::portmap_type_t::UPNP;
-	portmap.protocol = event::protocol_t::TCP;
-	portmap.internalAddr = "192.168.1.100";
-	portmap.externalAddr = "123.456.78.90";
-	portmap.description = "AWH Web Server";
-	// Выполняем проброс порта на маршрутизаторе
-	if(eth.mapping(portmap, event::mode_t::ENABLED)){
-		// Получаем список проброшенных портов на маршрутизаторе
-		const vector <net::portmap_t> & map = eth.mappings();
-		/**
-		 * Выводим информацию о проброшенных портах на маршрутизаторе
-		 */
-		for(auto & item : map){
-			// Выводим информацию о проброшенных портах
-			cout << "Portmapping: " << item.internalAddr << ":" << item.internalPort << " -> " << item.externalAddr << ":" << item.externalPort
-				<< " Protocol: " << static_cast <uint16_t> (item.protocol) << " Type: " << static_cast <uint16_t> (item.type)
-				<< " Description: " << item.description << " TTL: " << item.ttl << " seconds" << endl;
-		}
-		// Удаляем проброс порта на маршрутизаторе
-		portmap = net::portmap_t();
-		portmap.internalPort = 8081;
-		portmap.externalPort = 8080;
-		portmap.type = net::portmap_type_t::UPNP;
-		portmap.protocol = event::protocol_t::TCP;
-		// Выполняем удаление проброса порта на маршрутизаторе
-		if(eth.mapping(portmap, event::mode_t::DISABLED))
-			// Выводим сообщение об успешном удалении проброса порта
-			cout << "Portmapping removed successfully." << endl;
-	}
 	#endif
 	// Выводим результат
 	return EXIT_SUCCESS;

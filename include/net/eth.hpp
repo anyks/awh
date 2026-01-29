@@ -171,28 +171,6 @@ namespace awh {
 			void netboost() const noexcept;
 		public:
 			/**
-			 * @brief Метод удаления шлюза по умолчанию
-			 *
-			 * @return результат удаления шлюза по умолчанию
-			 */
-			bool gatewayRemove() const noexcept;
-			/**
-			 * @brief Метод получения шлюза по умолчанию
-			 *
-			 * @param source объект источника сетевых адресов
-			 * @return       адрес шлюза по умолчанию
-			 */
-			bool gateway(net::src_t & source) const noexcept;
-			/**
-			 * @brief Метод получения шлюза по умолчанию для указанного сетевого интерфейса
-			 *
-			 * @param addr  адрес сетевого подключения
-			 * @param iface имя сетевого интерфейса
-			 * @return      адрес шлюза по умолчанию
-			 */
-			bool gateway(const unique_ptr <net::addr_t> & addr, const string & iface = "") const noexcept;
-		public:
-			/**
 			 * @brief Метод получения списка сетевых интерфейсов системы
 			 *
 			 * @return список сетевых интерфейсов системы
@@ -214,21 +192,6 @@ namespace awh {
 			 * @return     результат включения/выключения интерфейса
 			 */
 			bool iface(const string & name, const event::mode_t mode, const int32_t mtu = 1400) const noexcept;
-		public:
-			/**
-			 * @brief Метод получения списка проброшенных портов на маршрутизаторе
-			 *
-			 * @return список проброшенных портов на маршрутизаторе
-			 */
-			// vector <net::portmap_t> mappings() const noexcept;
-			/**
-			 * @brief Метод проброса порта на маршрутизаторе
-			 *
-			 * @param portmap параметры проброса порта
-			 * @param mode    режим включения/выключения проброса порта
-			 * @return        результат выполнения установки
-			 */
-			// bool mapping(const net::portmap_t & portmap, const event::mode_t mode) const noexcept;
 		public:
 			/**
 			 * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса

@@ -18,9 +18,10 @@
 /**
  * Наши модули
  */
-#include "net.hpp"
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
+#include "../net.hpp"
+#include "../addr.hpp"
+#include "../../sys/fmk.hpp"
+#include "../../sys/log.hpp"
 
 /**
  * @brief основное пространство имён
@@ -87,6 +88,9 @@ namespace awh {
 				 description{0}, internalAddress{nullptr}, externalAddress{nullptr} {}
 			} fwd_t;
 		private:
+			// Объект работы с сетевыми аресами
+			mutable net_addr_t _addr;
+		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
@@ -114,7 +118,8 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 */
-			explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept :
+			 _addr(fmk, log), _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

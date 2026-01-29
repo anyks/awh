@@ -413,6 +413,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/eth.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/kqueue.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/gateway.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/portmap.cpp"
     )
 endif()
 
