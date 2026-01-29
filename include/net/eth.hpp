@@ -23,9 +23,9 @@
 #include "../sys/log.hpp"
 
 /**
- * Для операционной системы FreeBSD
+ * Для операционной системы Linux или FreeBSD
  */
-#if __FreeBSD__
+#if __linux__ || __FreeBSD__
 	/**
 	 * Подключаем заголовочный модуль SCTP протокола
 	 */
