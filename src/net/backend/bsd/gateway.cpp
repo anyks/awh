@@ -179,12 +179,14 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						break;
 					// Объект текущего маршрута
 					struct sockaddr_in * gw = nullptr;
+					// Объект сетевого интерфейса маршрута
+					struct sockaddr_dl * ifp = nullptr;
+					// Объект адреса интерфейса
+					struct sockaddr_in * ifa = nullptr;
 					// Объект назначения маршрута
 					struct sockaddr_in * dst = nullptr;
 					// Объект маски подсети маршрута
 					struct sockaddr_in * mask = nullptr;
-					// Объект сетевого интерфейса маршрута
-					struct sockaddr_dl * ifp = nullptr;
 					// Объект текущего адреса маршрута
 					struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (rtm + 1);
 					// Если присутствуют адреса в маршруте
@@ -224,6 +226,15 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						if(sa->sa_family == AF_LINK)
 							// Извлекаем сетевой интерфейс маршрута
 							ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+						// Устанавливаем текущий адрес маршрута
+						sa = advance(sa);
+					}
+					// Если присутствует адрес интерфейса в маршруте
+					if(rtm->rtm_addrs & RTA_IFA){
+						// Если адрес интерфейса является IPv4
+						if(sa->sa_family == AF_INET)
+							// Извлекаем адрес интерфейса маршрута
+							ifa = reinterpret_cast <struct sockaddr_in *> (sa);
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
@@ -283,8 +294,10 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 							route.prefix = 32;
 						// Индекс интерфейса
 						const uint32_t ifIndex = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
+						// Проверяем является ли шлюз локальным адресом
+						const bool isLocal = ((gw == nullptr) || ((ifa != nullptr) && (gw->sin_addr.s_addr == ifa->sin_addr.s_addr)));
 						// Заполняем имя интерфейса
-						if(ifIndex > 0){
+						if((ifIndex > 0) && isLocal){
 							// Получаем имя интерфейса
 							char ifname[IF_NAMESIZE];
 							// Заполняем имя интерфейса
@@ -396,12 +409,14 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						break;
 					// Объект текущего маршрута
 					struct sockaddr_in6 * gw = nullptr;
+					// Объект сетевого интерфейса маршрута
+					struct sockaddr_dl * ifp = nullptr;
+					// Объект адреса интерфейса
+					struct sockaddr_in6 * ifa = nullptr;
 					// Объект назначения маршрута
 					struct sockaddr_in6 * dst = nullptr;
 					// Объект маски подсети маршрута
 					struct sockaddr_in6 * mask = nullptr;
-					// Объект сетевого интерфейса маршрута
-					struct sockaddr_dl * ifp = nullptr;
 					// Объект текущего адреса маршрута
 					struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (rtm + 1);
 					// Если присутствуют адреса в маршруте
@@ -441,6 +456,15 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						if(sa->sa_family == AF_LINK)
 							// Извлекаем сетевой интерфейс маршрута
 							ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+						// Устанавливаем текущий адрес маршрута
+						sa = advance(sa);
+					}
+					// Если присутствует адрес интерфейса в маршруте
+					if(rtm->rtm_addrs & RTA_IFA){
+						// Если адрес интерфейса является IPv6
+						if(sa->sa_family == AF_INET6)
+							// Извлекаем адрес интерфейса маршрута
+							ifa = reinterpret_cast <struct sockaddr_in6 *> (sa);
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
@@ -503,8 +527,10 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 							route.prefix = 128;
 						//Индекс интерфейса
 						const uint32_t ifIndex = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
+						// Проверяем является ли шлюз локальным адресом
+						const bool isLocal = ((gw == nullptr) || ((ifa != nullptr) && (::memcmp(&gw->sin6_addr, &ifa->sin6_addr, 16) == 0)));
 						// Если задан сетевой интерфейс
-						if(ifIndex > 0){
+						if((ifIndex > 0) && isLocal){
 							// Получаем имя интерфейса
 							char ifname[IF_NAMESIZE];
 							// Заполняем имя интерфейса
@@ -1217,7 +1243,8 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 								::memcpy(payload, src, src->sa_len);
 								// Смещаем указатель полезной нагрузки
 								payload += ROUNDUP(src->sa_len);
-							}
+							// Убираем флаг интерфейса из копии
+							} else rtd->rtm_addrs &= ~RTA_IFP;
 						}
 						// Устанавливаем длину сообщения маршрута
 						rtd->rtm_msglen = (payload - buffer);
@@ -1536,7 +1563,8 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 								::memcpy(payload, src, src->sa_len);
 								// Смещаем указатель полезной нагрузки
 								payload += ROUNDUP(src->sa_len);
-							}
+							// Убираем флаг интерфейса из копии
+							} else rtd->rtm_addrs &= ~RTA_IFP;
 						}
 						// Устанавливаем длину сообщения маршрута
 						rtd->rtm_msglen = (payload - buffer);

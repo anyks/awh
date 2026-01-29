@@ -69,6 +69,9 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << "Destination: " << static_cast <string> (addr) << "/" << static_cast <uint32_t> (route.prefix) << endl;
 		// Удаляем маршрут по указанному адресу
 		if(gateway.remove(route)){
+			
+			// return 0;
+			
 			// Выполняем парсинг адреса нового шлюза
 			addr = "192.168.7.131";
 			// Устанавливаем адрес шлюза в маршрут
