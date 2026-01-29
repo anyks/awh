@@ -32,6 +32,7 @@
  * Подключаем системные заголовки
  */
 #include <fcntl.h>
+#include <ifaddrs.h>
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <arpa/inet.h>
@@ -220,12 +221,19 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
+					// Если присутствует маска клонирования в маршруте
+					if(rtm->rtm_addrs & RTA_GENMASK)
+						// Устанавливаем текущий адрес маршрута
+						sa = advance(sa);
 					// Если присутствует сетевой интерфейс в маршруте
-					if((rtm->rtm_addrs & RTA_IFP) && (ifp == nullptr)){
-						// Если адрес сетевого интерфейса является ссылочным
-						if(sa->sa_family == AF_LINK)
-							// Извлекаем сетевой интерфейс маршрута
-							ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+					if(rtm->rtm_addrs & RTA_IFP){
+						// Если сетевой интерфейс не был извлечён
+						if(ifp == nullptr){
+							// Если адрес сетевого интерфейса является ссылочным
+							if(sa->sa_family == AF_LINK)
+								// Извлекаем сетевой интерфейс маршрута
+								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+						}
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
@@ -310,6 +318,47 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 					}
 					// Переходим к следующему маршруту
 					begin += rtm->rtm_msglen;
+				}
+				// Если найден маршрут
+				if(result){
+					// Получаем список сетевых интерфейсов
+					struct ifaddrs * ptr = nullptr;
+					// Выполняем получение списка сетевых интерфейсов
+					if(::getifaddrs(&ptr) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// Перебираем все сетевые интерфейсы
+					for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+						// Если не IPv4 адреса
+						if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
+							// Переходим к следующему интерфейсу
+							continue;
+						// Получаем указатель на структуру IPv4
+						struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
+						// Если адреса совпадают
+						if(sin->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address){
+							// Устанавливаем результат
+							route.ifname = ifa->ifa_name;
+							// Завершаем поиск
+							break;
+						}
+					}
+					// Освобождаем память списка сетевых интерфейсов
+					::freeifaddrs(ptr);
 				}
 			} break;
 			// Если адрес является IPv6
@@ -450,12 +499,19 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
+					// Если присутствует маска клонирования в маршруте
+					if(rtm->rtm_addrs & RTA_GENMASK)
+						// Устанавливаем текущий адрес маршрута
+						sa = advance(sa);
 					// Если присутствует сетевой интерфейс в маршруте
-					if((rtm->rtm_addrs & RTA_IFP) && (ifp == nullptr)){
-						// Если адрес сетевого интерфейса является ссылочным
-						if(sa->sa_family == AF_LINK)
-							// Извлекаем сетевой интерфейс маршрута
-							ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+					if(rtm->rtm_addrs & RTA_IFP){
+						// Если сетевой интерфейс не был извлечён
+						if(ifp == nullptr){
+							// Если адрес сетевого интерфейса является ссылочным
+							if(sa->sa_family == AF_LINK)
+								// Извлекаем сетевой интерфейс маршрута
+								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+						}
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
@@ -543,6 +599,47 @@ bool awh::Gateway::get(route_t & route) const noexcept {
 					}
 					// Переходим к следующему маршруту
 					begin += rtm->rtm_msglen;
+				}
+				// Если найден маршрут
+				if(result){
+					// Получаем список сетевых интерфейсов
+					struct ifaddrs * ptr = nullptr;
+					// Выполняем получение списка сетевых интерфейсов
+					if(::getifaddrs(&ptr) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// Перебираем все сетевые интерфейсы
+					for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+						// Если не IPv6 адреса
+						if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
+							// Переходим к следующему интерфейсу
+							continue;
+						// Получаем указатель на структуру IPv6
+						struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+						// Если адреса совпадают
+						if(::memcmp(&sin->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], sizeof(in6_addr)) == 0){
+							// Устанавливаем результат
+							route.ifname = ifa->ifa_name;
+							// Завершаем поиск
+							break;
+						}
+					}
+					// Освобождаем память списка сетевых интерфейсов
+					::freeifaddrs(ptr);
 				}
 			} break;
 			// Во всех остальных случаях
@@ -1125,6 +1222,10 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
+					// Если присутствует маска клонирования в маршруте
+					if(rtm->rtm_addrs & RTA_GENMASK)
+						// Устанавливаем текущий адрес маршрута
+						sa = advance(sa);
 					// Если присутствует сетевой интерфейс в маршруте
 					if((rtm->rtm_addrs & RTA_IFP) && (ifp == nullptr)){
 						// Если адрес сетевого интерфейса является ссылочным
@@ -1443,6 +1544,10 @@ bool awh::Gateway::remove(const route_t & route) const noexcept {
 						// Устанавливаем текущий адрес маршрута
 						sa = advance(sa);
 					}
+					// Если присутствует маска клонирования в маршруте
+					if(rtm->rtm_addrs & RTA_GENMASK)
+						// Устанавливаем текущий адрес маршрута
+						sa = advance(sa);
 					// Если присутствует сетевой интерфейс в маршруте
 					if((rtm->rtm_addrs & RTA_IFP) && (ifp == nullptr)){
 						// Если адрес сетевого интерфейса является ссылочным

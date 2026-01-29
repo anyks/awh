@@ -67,10 +67,15 @@ int32_t main(int32_t argc, char * argv[]){
 		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address, net_addr_t::endian_t::LITTLE);
 		// Выводим адрес назначения
 		cout << "Destination: " << static_cast <string> (addr) << "/" << static_cast <uint32_t> (route.prefix) << endl;
+		
+		route.ifname = "";
+		
 		// Удаляем маршрут по указанному адресу
 		if(gateway.remove(route)){
 			
-			// return 0;
+			
+
+			return 0;
 			
 			// Выполняем парсинг адреса нового шлюза
 			addr = "192.168.7.131";
