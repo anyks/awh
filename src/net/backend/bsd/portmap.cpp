@@ -191,7 +191,7 @@ vector <awh::PortMapping::fwd_t> awh::PortMapping::mappings() const noexcept {
 			// Устанавливаем описание проброшенного порта в результирующую запись
 			::memcpy(result.back().description, description, ::strlen(description));
 			// Устанавливаем время аренды проброшенного порта в результирующую запись
-			result.back().lifetime = this->_fmk->atoi <uint32_t> (duration, ::strlen(duration));
+			result.back().lifeTime = this->_fmk->atoi <uint32_t> (duration, ::strlen(duration));
 			// Устанавливаем внутренний порт в результирующую запись
 			result.back().internalPort = this->_fmk->atoi <uint16_t> (internalPort, ::strlen(internalPort));
 			// Устанавливаем внешний порт в результирующую запись
@@ -304,7 +304,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -336,7 +336,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -412,7 +412,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 										"Failed to determine local IP for PCP",
 										__PRETTY_FUNCTION__,
 										std::make_tuple(
-											fwd.lifetime,
+											fwd.lifeTime,
 											fwd.description,
 											fwd.internalPort,
 											fwd.externalPort,
@@ -471,7 +471,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 										"Failed to determine local IP for PCP",
 										__PRETTY_FUNCTION__,
 										std::make_tuple(
-											fwd.lifetime,
+											fwd.lifeTime,
 											fwd.description,
 											fwd.internalPort,
 											fwd.externalPort,
@@ -509,7 +509,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -539,7 +539,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -568,7 +568,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 						// Если необходимо пробросить порт
 						case static_cast <uint8_t> (event::mode_t::ENABLED):
 							// Устанавливаем время жизни (Header offset 4)
-							* reinterpret_cast <uint32_t *> (request + 4) = htonl(fwd.lifetime);
+							* reinterpret_cast <uint32_t *> (request + 4) = htonl(fwd.lifeTime);
 						break;
 						// Если необходимо убрать проброшенный порт
 						case static_cast <uint8_t> (event::mode_t::DISABLED):
@@ -621,7 +621,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -659,7 +659,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -696,7 +696,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 									"PCP Error Code: %d",
 									__PRETTY_FUNCTION__,
 									std::make_tuple(
-										fwd.lifetime,
+										fwd.lifeTime,
 										fwd.description,
 										fwd.internalPort,
 										fwd.externalPort,
@@ -735,7 +735,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 												"Response was forged by an attacker on PCP",
 												__PRETTY_FUNCTION__,
 												std::make_tuple(
-													fwd.lifetime,
+													fwd.lifeTime,
 													fwd.description,
 													fwd.internalPort,
 													fwd.externalPort,
@@ -764,7 +764,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 											"Port PCP mapping failed",
 											__PRETTY_FUNCTION__,
 											std::make_tuple(
-												fwd.lifetime,
+												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
 												fwd.externalPort,
@@ -798,7 +798,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 												"Response was forged by an attacker on PCP",
 												__PRETTY_FUNCTION__,
 												std::make_tuple(
-													fwd.lifetime,
+													fwd.lifeTime,
 													fwd.description,
 													fwd.internalPort,
 													fwd.externalPort,
@@ -827,7 +827,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 											"Port PCP unmapping failed",
 											__PRETTY_FUNCTION__,
 											std::make_tuple(
-												fwd.lifetime,
+												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
 												fwd.externalPort,
@@ -859,7 +859,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							"Gateway address could not be obtained",
 							__PRETTY_FUNCTION__,
 							std::make_tuple(
-								fwd.lifetime,
+								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
 								fwd.externalPort,
@@ -906,7 +906,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							std::make_tuple(
-								fwd.lifetime,
+								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
 								fwd.externalPort,
@@ -992,7 +992,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							// Устанавливаем внешний IP-адрес, если он указан
 							&externalAddress[0],
 							// Устанавливаем время жизни проброса порта
-							(fwd.lifetime == 0 ? "0" : std::to_string(fwd.lifetime).c_str())
+							(fwd.lifeTime == 0 ? "0" : std::to_string(fwd.lifeTime).c_str())
 						);
 					} break;
 					// Если необходимо убрать проброшенный порт
@@ -1028,7 +1028,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							std::make_tuple(
-								fwd.lifetime,
+								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
 								fwd.externalPort,
@@ -1112,7 +1112,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -1144,7 +1144,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -1225,7 +1225,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -1261,7 +1261,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -1315,7 +1315,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 						// Если необходимо пробросить порт
 						case static_cast <uint8_t> (event::mode_t::ENABLED):
 							// Устанавливаем время жизни (секунды)
-							* reinterpret_cast <uint32_t *> (request + 8) = htonl(fwd.lifetime);
+							* reinterpret_cast <uint32_t *> (request + 8) = htonl(fwd.lifeTime);
 						break;
 						// Если необходимо убрать проброшенный порт
 						case static_cast <uint8_t> (event::mode_t::DISABLED):
@@ -1339,7 +1339,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -1375,7 +1375,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								std::make_tuple(
-									fwd.lifetime,
+									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
 									fwd.externalPort,
@@ -1412,7 +1412,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 									"NAT-PMP Error Code: %d",
 									__PRETTY_FUNCTION__,
 									std::make_tuple(
-										fwd.lifetime,
+										fwd.lifeTime,
 										fwd.description,
 										fwd.internalPort,
 										fwd.externalPort,
@@ -1449,7 +1449,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 											"Port NAT-PMP mapping failed",
 											__PRETTY_FUNCTION__,
 											std::make_tuple(
-												fwd.lifetime,
+												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
 												fwd.externalPort,
@@ -1481,7 +1481,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 											"Port NAT-PMP unmapping failed",
 											__PRETTY_FUNCTION__,
 											std::make_tuple(
-												fwd.lifetime,
+												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
 												fwd.externalPort,
@@ -1513,7 +1513,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 							"Gateway address could not be obtained",
 							__PRETTY_FUNCTION__,
 							std::make_tuple(
-								fwd.lifetime,
+								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
 								fwd.externalPort,
@@ -1545,7 +1545,7 @@ bool awh::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode) cons
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				std::make_tuple(
-					fwd.lifetime,
+					fwd.lifeTime,
 					fwd.description,
 					fwd.internalPort,
 					fwd.externalPort,

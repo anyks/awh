@@ -117,7 +117,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём структуру проброса порта на маршрутизаторе
 	portmap_t::fwd_t fwd{};
 	// Заполняем параметры проброса порта
-	fwd.lifetime = 3600;
+	fwd.lifeTime = 3600;
 	// Устанавливаем внутренний порт
 	fwd.internalPort = 8081;
 	// Устанавливаем внешний порт
@@ -168,7 +168,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 			// Выводим информацию о проброшенных портах
 			cout << " Protocol: " << static_cast <uint16_t> (fwd.proto) << " Type: " << static_cast <uint16_t> (fwd.type)
-				<< " Description: " << fwd.description << ", TTL: " << fwd.lifetime << " seconds" << endl;
+				<< " Description: " << fwd.description << ", TTL: " << fwd.lifeTime << " seconds" << endl;
 		}
 		// Удаляем проброс порта на маршрутизаторе
 		fwd = portmap_t::fwd_t();

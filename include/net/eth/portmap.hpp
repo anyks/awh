@@ -68,7 +68,7 @@ namespace awh {
 				// Протокол проброса порта
 				proto_t proto;
 				// Время жизни проброса порта в секундах
-				uint32_t lifetime;
+				uint32_t lifeTime;
 				// Внутренний порт
 				uint16_t internalPort;
 				// Внешний порт
@@ -84,9 +84,9 @@ namespace awh {
 				 *
 				 */
 				explicit Forwarding() noexcept :
-				 type(type_t::NONE), proto(proto_t::NONE),
-				 lifetime(0), internalPort(0), externalPort(0),
-				 description{0}, internalAddress{nullptr}, externalAddress{nullptr} {}
+				 type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
+				 internalPort(0), externalPort(0), description{0},
+				 internalAddress{nullptr}, externalAddress{nullptr} {}
 			} fwd_t;
 		private:
 			// Объект работы с маршрутами
