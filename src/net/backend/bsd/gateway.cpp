@@ -26,7 +26,6 @@
 #include <vector>
 #include <cstring>
 #include <cstdlib>
-#include <iostream>
 
 /**
  * Подключаем системные заголовки

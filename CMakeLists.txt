@@ -415,6 +415,15 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/gateway.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/portmap.cpp"
     )
+
+    # Если операционной системой является FreeBSD
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+        # Выполняем подключение бэкенда SCTP
+        SET(SOURCE_FILES
+            "${SOURCE_FILES}"
+            "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/sctp.cpp"
+        )
+    endif()
 endif()
 
 # Выполняем подключение исходников
