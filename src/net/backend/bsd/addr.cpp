@@ -309,9 +309,7 @@ void awh::eth::NetAddress::fillSource(const event::node_t node, net::src_t & sou
 					// Если адрес является IPv4
 					case 4: {
 						// Создаем структуру подключения сервера
-						struct sockaddr_in serv;
-						// Обнуляем структуру подключения
-						::memset(&serv, 0, sizeof(serv));
+						struct sockaddr_in serv{0};
 						// Указываем тип сетевого подключения IPv4
 						serv.sin_family = AF_INET;
 						// Устанавливаем порт DNS-сервера
@@ -348,9 +346,7 @@ void awh::eth::NetAddress::fillSource(const event::node_t node, net::src_t & sou
 					// Если адрес является IPv6
 					case 16: {
 						// Создаем структуру подключения сервера
-						struct sockaddr_in6 serv;
-						// Обнуляем структуру подключения
-						::memset(&serv, 0, sizeof(serv));
+						struct sockaddr_in6 serv{0};
 						// Указываем тип сетевого подключения IPv4
 						serv.sin6_family = AF_INET6;
 						// Устанавливаем порт DNS сервера

@@ -32,7 +32,6 @@
  */
 #include <fcntl.h>
 #include <ifaddrs.h>
-#include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -719,9 +718,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Маска используемых полей
 					rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
 					// Адрес назначения (RTA_DST)
-					struct sockaddr_in dst;
-					// Зануляем объект адреса назначения
-					::memset(&dst, 0, sizeof(dst));
+					struct sockaddr_in dst{0};
 					// Устанавливаем длину структуры
 					dst.sin_len = sizeof(struct sockaddr_in);
 					// Устанавливаем семейство адресов
@@ -748,9 +745,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					if(isGateway){
 						// Структура IPv4 шлюза
-						struct sockaddr_in gw;
-						// Зануляем структуру адреса шлюза
-						::memset(&gw, 0, sizeof(gw));
+						struct sockaddr_in gw{0};
 						// Устанавливаем длину структуры
 						gw.sin_len = sizeof(struct sockaddr_in);
 						// Устанавливаем семейство адресов
@@ -781,9 +776,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 								// Если интерфейс совпадает и семейство адресов IPv4
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
 									// Структура IPv4 шлюза
-									struct sockaddr_in gw;
-									// Зануляем структуру адреса шлюза
-									::memset(&gw, 0, sizeof(gw));
+									struct sockaddr_in gw{0};
 									// Устанавливаем длину структуры
 									gw.sin_len = sizeof(struct sockaddr_in);
 									// Устанавливаем семейство адресов
@@ -817,9 +810,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						// Если найден интерфейс по имени
 						if(index > 0) {
 							// Структура канального уровня
-							struct sockaddr_dl sdl;
-							// Зануляем структуру адреса канального уровня
-							::memset(&sdl, 0, sizeof(sdl));
+							struct sockaddr_dl sdl{0};
 							// Устанавливаем длину структуры
 							sdl.sdl_len = sizeof(struct sockaddr_dl);
 							// Устанавливаем семейство адресов
@@ -835,9 +826,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						}
 					}
 					// Маска подсети (RTA_NETMASK)
-					struct sockaddr_in mask;
-					// Зануляем структуру адреса маски подсети
-					::memset(&mask, 0, sizeof(mask));
+					struct sockaddr_in mask{0};
 					// Устанавливаем длину структуры
 					mask.sin_len = sizeof(struct sockaddr_in);
 					// Устанавливаем семейство адресов
@@ -925,9 +914,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Устанавливаем маску используемых полей
 					rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
 					// Адрес назначения (RTA_DST)
-					struct sockaddr_in6 dst;
-					// Зануляем структуру адреса назначения
-					::memset(&dst, 0, sizeof(dst));
+					struct sockaddr_in6 dst{0};
 					// Устанавливаем длину структуры
 					dst.sin6_len = sizeof(struct sockaddr_in6);
 					// Устанавливаем семейство адресов
@@ -956,9 +943,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					if(isGateway){
 						// Структура IPv6 шлюза
-						struct sockaddr_in6 gw;
-						// Зануляем структуру адреса шлюза
-						::memset(&gw, 0, sizeof(gw));
+						struct sockaddr_in6 gw{0};
 						// Устанавливаем длину структуры
 						gw.sin6_len = sizeof(struct sockaddr_in6);
 						// Устанавливаем семейство адресов
@@ -989,9 +974,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 								// Если интерфейс совпадает и семейство адресов IPv6
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET6) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
 									// Структура IPv6 шлюза
-									struct sockaddr_in6 gw;
-									// Зануляем структуру адреса шлюза
-									::memset(&gw, 0, sizeof(gw));
+									struct sockaddr_in6 gw{0};
 									// Устанавливаем длину структуры
 									gw.sin6_len = sizeof(struct sockaddr_in6);
 									// Устанавливаем семейство адресов
@@ -1025,9 +1008,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						// Если найден интерфейс по имени
 						if(index > 0) {
 							// Структура канального уровня
-							struct sockaddr_dl sdl;
-							// Зануляем структуру адреса канального уровня
-							::memset(&sdl, 0, sizeof(sdl));
+							struct sockaddr_dl sdl{0};
 							// Устанавливаем длину структуры
 							sdl.sdl_len = sizeof(struct sockaddr_dl);
 							// Устанавливаем семейство адресов
@@ -1043,9 +1024,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						}
 					}
 					// Маска подсети (RTA_NETMASK)
-					struct sockaddr_in6 mask;
-					// Зануляем структуру адреса маски подсети
-					::memset(&mask, 0, sizeof(mask));
+					struct sockaddr_in6 mask{0};
 					// Устанавливаем длину структуры
 					mask.sin6_len = sizeof(struct sockaddr_in6);
 					// Устанавливаем семейство адресов
@@ -1558,9 +1537,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					// Получаем конец всех маршрутов
 					uint8_t * end = (begin + length);
 					// Получаем маску подсети из переданного префикса
-					struct in6_addr netmsk;
-					// Зануляем маску
-					::memset(&netmsk, 0, sizeof(netmsk));
+					struct in6_addr netmsk{0};
 					// Если префикс задан
 					if(route.prefix > 0){
 						// Текущий префикс

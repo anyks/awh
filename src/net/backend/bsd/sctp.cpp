@@ -196,9 +196,7 @@ bool awh::eth::StreamControlTransmissionProtocol::initMessages(const net::socket
 			// Если протокол SCTP
 			case IPPROTO_SCTP: {
 				// Создаём объект инициализации SCTP сокета
-				struct sctp_initmsg init;
-				// Зануляем объект инициализации SCTP сокета
-				::memset(&init, 0, sizeof(init));
+				struct sctp_initmsg init{0};
 				// Устанавливаем количество попыток инициализации
 				init.sinit_max_attempts = initmsg.attempts;
 				// Устанавливаем таймаут инициализации
@@ -271,9 +269,7 @@ bool awh::eth::StreamControlTransmissionProtocol::eventsSubscribe(const net::soc
 				 */
 				#ifdef __AWH_DISABLED__
 					// Создаём объект подписки на события
-					struct sctp_event event;
-					// Зануляем объект события
-					::memset(&event, 0, sizeof(event));
+					struct sctp_event event{0};
 					// Активируем получение входящих событий
 					event.se_on = 1;
 					// Устанавливаем тип события
@@ -298,9 +294,7 @@ bool awh::eth::StreamControlTransmissionProtocol::eventsSubscribe(const net::soc
 					}
 				#endif
 				// Создаём объект подписки на события
-				struct sctp_event_subscribe subscribe;
-				// Зануляем объект события
-				::memset(&subscribe, 0, sizeof(subscribe));
+				struct sctp_event_subscribe subscribe{0};
 				// Выполняем перебор всех возможных событий SCTP
 				for(auto & event : events){
 					/**
@@ -523,9 +517,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::soc
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект идентификатора ключа аутентификации
-	struct sctp_authkeyid authkeyid;
-	// Зануляем объект идентификатора ключа аутентификации
-	::memset(&authkeyid, 0, sizeof(authkeyid));
+	struct sctp_authkeyid authkeyid{0};
 	// Устанавливаем идентификатор ассоциации
 	authkeyid.scact_assoc_id = id;
 	// Устанавливаем номер ключа аутентификации
@@ -589,9 +581,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::
 	// Если количество чанков аутентификации передано
 	if(!chunks.empty()){
 		// Создаём объект чанка аутентификации SCTP сокета
-		struct sctp_authchunk authchunk;
-		// Зануляем объект чанка аутентификации SCTP сокета
-		::memset(&authchunk, 0, sizeof(authchunk));
+		struct sctp_authchunk authchunk{0};
 		// Выполняем перебор всех переданных чанков аутентификации
 		for(auto & chunk : chunks){
 			/**
@@ -715,9 +705,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::
 	// Результат работы функции
 	bool result = false;
 	// Объект чанков аутентификации SCTP сокета
-	struct sctp_authchunks authchunks;
-	// Зануляем объект чанков аутентификации SCTP сокета
-	::memset(&authchunks, 0, sizeof(authchunks));
+	struct sctp_authchunks authchunks{0};
 	// Устанавливаем идентификатор ассоциации
 	authchunks.gauth_assoc_id = id;
 	// Максимум 256 типов чанков — более чем достаточно
@@ -879,9 +867,7 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 		// Если тип таймаута - DATA
 		case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_rtoinfo params;
-			// Зануляем объект параметров таймаута
-			::memset(&params, 0, sizeof(params));
+			struct sctp_rtoinfo params{0};
 			// Устанавливаем длину объекта параметров таймаута
 			socklen_t length = sizeof(params);
 			// Устанавливаем идентификатор ассоциации
@@ -927,9 +913,7 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 		// Если тип таймаута - COOKIE
 		case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_paddrparams params;
-			// Зануляем объект параметров таймаута
-			::memset(&params, 0, sizeof(params));
+			struct sctp_paddrparams params{0};
 			// Устанавливаем длину объекта параметров таймаута
 			socklen_t length = sizeof(params);
 			// Устанавливаем идентификатор ассоциации
@@ -959,9 +943,7 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 		// Если тип таймаута - COOKIE
 		case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_assocparams params;
-			// Зануляем объект параметров таймаута
-			::memset(&params, 0, sizeof(params));
+			struct sctp_assocparams params{0};
 			// Устанавливаем длину объекта параметров таймаута
 			socklen_t length = sizeof(params);
 			// Устанавливаем идентификатор ассоциации
@@ -1010,9 +992,7 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 		// Если тип таймаута - DATA
 		case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_rtoinfo params;
-			// Зануляем объект параметров таймаута
-			::memset(&params, 0, sizeof(params));
+			struct sctp_rtoinfo params{0};
 			// Устанавливаем идентификатор ассоциации
 			params.srto_assoc_id = id;
 			// Устанавливаем новое значение таймаута
@@ -1057,9 +1037,7 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 		// Если тип таймаута - COOKIE
 		case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_paddrparams params;
-			// Зануляем объект параметров таймаута
-			::memset(&params, 0, sizeof(params));
+			struct sctp_paddrparams params{0};
 			// Устанавливаем идентификатор ассоциации
 			params.spp_assoc_id = id;
 			// Устанавливаем новое значение таймаута
@@ -1090,9 +1068,7 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 		// Если тип таймаута - COOKIE
 		case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_assocparams params;
-			// Зануляем объект параметров таймаута
-			::memset(&params, 0, sizeof(params));
+			struct sctp_assocparams params{0};
 			// Устанавливаем идентификатор ассоциации
 			params.sasoc_assoc_id = id;
 			// Устанавливаем новое значение таймаута

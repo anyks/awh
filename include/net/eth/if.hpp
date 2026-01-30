@@ -137,6 +137,13 @@ namespace awh {
 				 * @brief Метод получения IP-адреса сетевого интерфейса
 				 *
 				 * @param name имя сетевого интерфейса
+				 * @return     IP-адрес сетевого интерфейса
+				 */
+				unique_ptr <net::addr_t> ip(const string & name) const noexcept;
+				/**
+				 * @brief Метод получения IP-адреса сетевого интерфейса
+				 *
+				 * @param name имя сетевого интерфейса
 				 * @param type тип IP-адреса (локальный, глобальный, маска)
 				 * @return     IP-адрес сетевого интерфейса
 				 */

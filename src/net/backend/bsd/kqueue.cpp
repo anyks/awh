@@ -10766,9 +10766,7 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT){
 								// Создаём структуру конечного узла
-								struct sockaddr_storage endpoint;
-								// Заполняем структуру конечного узла
-								::memset(&endpoint, 0, sizeof(endpoint));
+								struct sockaddr_storage endpoint{0};
 								/**
 								 * Определяем тип подключения
 								 */
@@ -10957,9 +10955,7 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT){
 								// Создаём структуру конечного узла
-								struct sockaddr_storage endpoint;
-								// Заполняем структуру конечного узла
-								::memset(&endpoint, 0, sizeof(endpoint));
+								struct sockaddr_storage endpoint{0};
 								/**
 								 * Определяем тип подключения
 								 */
@@ -31235,9 +31231,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
 										awh_cast <net::addr_net_ipv4_t *> (source.get())->address = client->addr.v4(net_addr_t::endian_t::LITTLE);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in endpoint;
-										// Очищаем всю структуру конечной точки
-										::memset(&endpoint, 0, sizeof(endpoint));
+										struct sockaddr_in endpoint{0};
 										// Устанавливаем протокол интернета
 										endpoint.sin_family = AF_INET;
 										// Устанавливаем произвольный порт с которого выполняется подключение
@@ -31368,9 +31362,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], &client->addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in6 endpoint;
-										// Очищаем всю структуру конечной точки
-										::memset(&endpoint, 0, sizeof(endpoint));
+										struct sockaddr_in6 endpoint{0};
 										// Устанавливаем протокол интернета
 										endpoint.sin6_family = AF_INET6;
 										// Устанавливаем произвольный порт с которого выполняется подключение
@@ -31509,9 +31501,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
 										awh_cast <net::addr_net_ipv4_t *> (source.get())->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in endpoint;
-										// Очищаем всю структуру конечной точки
-										::memset(&endpoint, 0, sizeof(endpoint));
+										struct sockaddr_in endpoint{0};
 										// Устанавливаем протокол интернета
 										endpoint.sin_family = AF_INET;
 										// Устанавливаем длину структуры
@@ -31648,9 +31638,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], &server->addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in6 endpoint;
-										// Очищаем всю структуру конечной точки
-										::memset(&endpoint, 0, sizeof(endpoint));
+										struct sockaddr_in6 endpoint{0};
 										// Устанавливаем протокол интернета
 										endpoint.sin6_family = AF_INET6;
 										// Устанавливаем длину структуры

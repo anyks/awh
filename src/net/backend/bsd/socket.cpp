@@ -865,9 +865,7 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 			// Если необходимо отключить сигнал SIGILL
 			case event::options::NO_SIGILL: {
 				// Создаем структуру активации сигнала
-				struct sigaction act;
-				// Зануляем структуру
-				::memset(&act, 0, sizeof(act));
+				struct sigaction act{0};
 				// Устанавливаем флаги перезагрузки
 				act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
 				/**
