@@ -9,7 +9,7 @@ if [ -n "$1" ]; then
 		# Для операционной системы Windows
 		if [[ $OS = "Windows" ]]; then
 			# Удаляем все зависимости библиотеки
-			rm -f "$PREFIX/lib/miniupnpc.lib"
+			rm -f "$PREFIX/lib/libminiupnpc.lib"
 		# Для всех остальных операционных систем
 		else
 			# Удаляем все зависимости библиотеки
@@ -156,16 +156,6 @@ if [ -n "$1" ]; then
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX
-
-			# Создаём каталог MiniUPnP
-			mkdir "$PREFIX/include/miniupnpc"
-
-			# Производим установку заголовочных файлов по нужному пути
-			for i in $(ls "$PREFIX/include" | grep ".*\.h$");
-			do
-				echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/miniupnpc/$i\""
-				mv "$PREFIX/include/$i" "$PREFIX/include/miniupnpc/$i" || exit 1
-			done
 
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
