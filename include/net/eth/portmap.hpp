@@ -20,7 +20,7 @@
  */
 #include "../net.hpp"
 #include "../addr.hpp"
-#include "../eth/gateway.hpp"
+#include "gateway.hpp"
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
 

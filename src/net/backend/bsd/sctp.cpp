@@ -161,13 +161,13 @@ bool awh::eth::StreamControlTransmissionProtocol::status(const net::socket_t soc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Выводим результат
@@ -232,13 +232,13 @@ bool awh::eth::StreamControlTransmissionProtocol::initMessages(const net::socket
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Выводим результат
@@ -389,13 +389,13 @@ bool awh::eth::StreamControlTransmissionProtocol::eventsSubscribe(const net::soc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, events.size()), log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Выводим результат
@@ -448,13 +448,13 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, types.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, types.size()), log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
 		// Очищаем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
@@ -495,13 +495,13 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::soc
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, num, key), log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
 		// Очищаем память под ключ аутентификации
@@ -543,13 +543,13 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::soc
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -562,13 +562,13 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::soc
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode), id, num), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -686,13 +686,13 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, chunks.size()), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, chunks.size()), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 				// Прекращаем дальнейшую обработку чанков аутентификации
 				break;
@@ -846,13 +846,13 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id), log_t::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Выводим результат
@@ -893,13 +893,13 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.srto_initial;
@@ -915,13 +915,13 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
 		// Если тип таймаута - COOKIE
@@ -945,13 +945,13 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.spp_hbinterval;
@@ -973,13 +973,13 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.sasoc_cookie_life;
@@ -1024,13 +1024,13 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1045,13 +1045,13 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
 		// Если тип таймаута - COOKIE
@@ -1077,13 +1077,13 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1104,13 +1104,13 @@ bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t so
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;

@@ -153,12 +153,12 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
 				 */
-				explicit Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+				explicit Socket(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Socket() noexcept {}
+				~Socket() noexcept;
 		} socket_t;
 	};
 };

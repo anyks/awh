@@ -18,6 +18,7 @@
 #include <random>
 #include <cerrno>
 #include <memory>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
 
@@ -47,6 +48,106 @@
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Инкапсулируем статические прототипы функций в пространство имён работы с сокетами
+ */
+namespace options {
+	/**
+	 * @brief Функция разрешения повторного использования адреса сокета
+	 *
+	 * @param sock сетевой сокет
+	 * @param log  объект работы с логами
+	 * @return     результат установки опции
+	 */
+	static bool reuseAddress(const awh::net::socket_t sock, const awh::log_t * log) noexcept {
+		// Флаги установки опции
+		int32_t flags = 1;
+		// Результат работы функции
+		bool result = false;
+		// Разрешаем повторно использовать тот же сокет после отключения
+		if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция установки таймаута сокета
+	 *
+	 * @param sock  сетевой сокет
+	 * @param event событие сокета
+	 * @param msec  время таймаута в миллисекундах
+	 * @return      результат установки таймаута
+	 */
+	static bool timeout(const awh::net::socket_t sock, const awh::net::socket_event_t event, const uint32_t msec, const awh::log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Создаём объект таймаута
+		struct timeval timeout;
+		// Устанавливаем время в секундах
+		timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
+		// Устанавливаем время счётчика (микросекунды)
+		timeout.tv_usec = (msec > 0 ? ((msec % 1000) * 1000) : 0);
+		/**
+		 * Определяем флаг блокировки
+		 */
+		switch(static_cast <uint8_t> (event)){
+			// Если необходимо установить таймаут на чтение
+			case static_cast <uint8_t> (awh::net::socket_event_t::READ): {
+				// Выполняем установку таймаута на чтение данных из сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если необходимо установить таймаут на запись
+			case static_cast <uint8_t> (awh::net::socket_event_t::WRITE): {
+				// Выполняем установку таймаута на запись данных в сокет
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+		// Все удачно
+		return result;
+	}
+};
 
 /**
  * @brief Метод получения списка проброшенных портов на маршрутизаторе
@@ -323,35 +424,8 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 						// Выводим результат
 						return result;
 					}
-					// Флаги установки опции
-					const int32_t flags = 1;
-					// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
-					if(static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									fwd.lifeTime,
-									fwd.description,
-									fwd.internalPort,
-									fwd.externalPort,
-									static_cast <uint16_t> (fwd.type),
-									static_cast <uint16_t> (fwd.proto),
-									static_cast <uint16_t> (mode)
-								),
-								log_t::flag_t::CRITICAL, ::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
+					// Разрешаем повторное использование адреса сокета
+					if(!::options::reuseAddress(sock, this->_log)){
 						// Закрываем сокет
 						::close(sock);
 						// Выводим результат
@@ -528,33 +602,8 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 						// Выводим результат
 						return result;
 					}
-					// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
-					if(static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									fwd.lifeTime,
-									fwd.description,
-									fwd.internalPort,
-									fwd.externalPort,
-									static_cast <uint16_t> (fwd.type),
-									static_cast <uint16_t> (fwd.proto),
-									static_cast <uint16_t> (mode)
-								),
-								log_t::flag_t::CRITICAL, ::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
+					// Разрешаем повторное использование адреса сокета
+					if(!::options::reuseAddress(sock, this->_log)){
 						// Закрываем сокет
 						::close(sock);
 						// Выводим результат
@@ -608,6 +657,13 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 					* reinterpret_cast <uint16_t *> (request + 40) = htons(fwd.internalPort);
 					// Устанавливаем внешний порт (Offset 42) (0 = авто)
 					* reinterpret_cast <uint16_t *> (request + 42) = htons(fwd.externalPort);
+					// Устанавливаем таймаут на запись сокета (5 секунд)
+					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
 					// Отправляем запрос на проброс порта
 					ssize_t bytes = ::sendto(sock, reinterpret_cast <char *> (request), 60, 0, reinterpret_cast <struct sockaddr *> (&addr), size);
 					// Если не удалось отправить запрос
@@ -637,6 +693,13 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
+					// Устанавливаем таймаут на чтение из сокета (5 секунд)
+					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
 						// Выводим результат
@@ -1131,35 +1194,8 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 						// Выводим результат
 						return result;
 					}
-					// Флаги установки опции
-					const int32_t flags = 1;
-					// Разрешаем/запрещаем повторно использовать тот же сокет после отключения
-					if(static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									fwd.lifeTime,
-									fwd.description,
-									fwd.internalPort,
-									fwd.externalPort,
-									static_cast <uint16_t> (fwd.type),
-									static_cast <uint16_t> (fwd.proto),
-									static_cast <uint16_t> (mode)
-								),
-								log_t::flag_t::CRITICAL, ::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
+					// Разрешаем повторное использование адреса сокета
+					if(!::options::reuseAddress(sock, this->_log)){
 						// Закрываем сокет
 						::close(sock);
 						// Выводим результат
@@ -1210,6 +1246,13 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 							::memcpy(&server, &gw, size);
 						} break;
 					}
+					// Устанавливаем таймаут на запись сокета (5 секунд)
+					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
 					// === 3. Шаг 1: Запрос публичного IP (обязательный!) ===
 					uint8_t request[12] = {0}; // версия=0, опкод=0
 					// Отправляем запрос на проброс порта
@@ -1241,6 +1284,13 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
+					// Устанавливаем таймаут на чтение из сокета (5 секунд)
+					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
 						// Выводим результат
@@ -1326,6 +1376,13 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 					* reinterpret_cast <uint16_t *> (request + 4) = htons(fwd.internalPort);
 					// Устанавливаем внешний порт = 0 (авто)
 					* reinterpret_cast <uint16_t *> (request + 6) = htons(fwd.externalPort);
+					// Устанавливаем таймаут на запись сокета (5 секунд)
+					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
 					// Отправляем запрос на проброс порта
 					bytes = ::sendto(sock, reinterpret_cast <char *> (request), 12, 0, reinterpret_cast <struct sockaddr *> (&server), size);
 					// Если не удалось отправить запрос
@@ -1355,6 +1412,13 @@ bool awh::eth::PortMapping::mapping(const fwd_t & fwd, const event::mode_t mode)
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
+						// Закрываем сокет
+						::close(sock);
+						// Выводим результат
+						return result;
+					}
+					// Устанавливаем таймаут на чтение из сокета (5 секунд)
+					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
 						// Выводим результат

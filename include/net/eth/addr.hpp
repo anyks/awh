@@ -18,6 +18,7 @@
 /**
  * Наши модули
  */
+#include "if.hpp"
 #include "../net.hpp"
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
@@ -42,6 +43,9 @@ namespace awh {
 		 */
 		typedef class AWH_SHARED_EXPORT NetAddress {
 			private:
+				// Объект работы с сетевым интерфейсом
+				if_t _iface;
+			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект работы с логами
@@ -52,21 +56,21 @@ namespace awh {
 				 *
 				 * @param source объект источника сетевых адресов
 				 */
-				void fillsource(net::src_t & source) const noexcept;
+				void fillSource(net::src_t & source) const noexcept;
 				/**
 				 * @brief Метод заполнения источника сетевых адресов
 				 *
 				 * @param node   тип узла события
 				 * @param source объект источника сетевых адресов
 				 */
-				void fillsource(const event::node_t node, net::src_t & source) const noexcept;
+				void fillSource(const event::node_t node, net::src_t & source) const noexcept;
 				/**
 				 * @brief Метод заполнения источника сетевых адресов по заданной сети
 				 *
 				 * @param net    сетевой адрес подсети в хостовом порядке
 				 * @param source объект источника сетевых адресов
 				 */
-				void fillsource(const unique_ptr <net::addr_t> & net, net::src_t & source) const noexcept;
+				void fillSource(const unique_ptr <net::addr_t> & net, net::src_t & source) const noexcept;
 			public:
 				/**
 				 * @brief Метод проверки принадлежности IP-адреса подсети
@@ -106,12 +110,12 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
 				 */
-				explicit NetAddress(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+				explicit NetAddress(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~NetAddress() noexcept {}
+				~NetAddress() noexcept;
 		} addr_t;
 	};
 };

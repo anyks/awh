@@ -1199,14 +1199,6 @@ namespace io {
 	 */
 	static bool close(net::node_t *, const log_t *) noexcept;
 	/**
-	 * @brief Прототип функции создания сокета события
-	 *
-	 * @param  узел для которого создаётся сокет
-	 * @param  объект работы с логами
-	 * @return результат создания сокета
-	 */
-	static bool socket(net::node_t *, const log_t *) noexcept;
-	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param  узел в котором произошло событие
@@ -1223,6 +1215,15 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool user(::io::user_t *, const engine::io_t *, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции создания сокета события
+	 *
+	 * @param  узел для которого создаётся сокет
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат создания сокета
+	 */
+	static bool socket(net::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события ошибки
 	 *
@@ -1726,870 +1727,6 @@ namespace io {
 		return false;
 	}
 	/**
-	 * @brief Функция создания сокета события
-	 *
-	 * @param node узел для которого создаётся сокет
-	 * @param log  объект работы с логами
-	 * @return     результат создания сокета
-	 */
-	static bool socket(net::node_t * node, const log_t * log) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			/**
-			 * Определяем семейство события
-			 */
-			switch(static_cast <uint8_t> (node->state.family)){
-				// Для семейства UNIX-доменных сокетов
-				case static_cast <uint8_t> (event::family_t::UDS): {
-					/**
-					 * Определяем тип сокета
-					 */
-					switch(static_cast <uint8_t> (node->state.type)){
-						// Если сокет принадлежит к типу STREAM
-						case static_cast <uint8_t> (event::type_t::STREAM): {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Создаём сокет подключения
-									awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-								break;
-								// Если узел является сервером
-								case static_cast <uint8_t> (event::node_t::SERVER):
-									// Создаём сокет подключения
-									awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-								break;
-							}
-						} break;
-						// Если сокет принадлежит к типу DATAGRAM
-						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Создаём сокет подключения
-									awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-								break;
-								// Если узел является сервером
-								case static_cast <uint8_t> (event::node_t::SERVER):
-									// Создаём сокет подключения
-									awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-								break;
-							}
-						} break;
-						// Если сокет принадлежит к типу SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT):
-									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Создаём сокет подключения
-										awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-									/**
-									 * Для остальных операционных систем
-									 */
-									#else
-										// Создаём сокет подключения
-										awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
-									#endif
-								break;
-								// Если узел является сервером
-								case static_cast <uint8_t> (event::node_t::SERVER):
-									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Создаём сокет подключения
-										awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
-									/**
-									 * Для остальных операционных систем
-									 */
-									#else
-										// Создаём сокет подключения
-										awh_cast <::io::server_t *> (node)->fd = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
-									#endif
-								break;
-							}
-						} break;
-						// Для неизвестного типа сокета
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								log->debug(
-									"A socket for a Unix event cannot be created because it has an invalid initialization type",
-									__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								log->print("A socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-							#endif
-						}
-					}
-				} break;
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Флаг удачного выполнения объединение событий
-					bool ok = true;
-					/**
-					 * Определяем тип сокета
-					 */
-					switch(static_cast <uint8_t> (node->state.type)){
-						// Если сокет принадлежит к типу RAW
-						case static_cast <uint8_t> (event::type_t::RAW): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, 0);
-												break;
-											}
-										} break;
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::RAW): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::TCP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как IGMP
-										case static_cast <uint8_t> (event::protocol_t::IGMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::TCP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Если сокет принадлежит к типу STREAM
-						case static_cast <uint8_t> (event::type_t::STREAM): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как TCP
-										case static_cast <uint8_t> (event::protocol_t::TCP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-												break;
-											}
-										} break;
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как TCP
-										case static_cast <uint8_t> (event::protocol_t::TCP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-												break;
-											}
-										} break;
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Если сокет принадлежит к типу DATAGRAM
-						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как IGMP
-										case static_cast <uint8_t> (event::protocol_t::IGMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол не определён
-										case static_cast <uint8_t> (event::protocol_t::NONE): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
-												break;
-											}
-										} break;
-										// Если протокол определён как UDP
-										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-												break;
-											}
-										} break;
-										// Если протокол определён как ICMP
-										case static_cast <uint8_t> (event::protocol_t::ICMP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Если сокет принадлежит к типу SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-							/**
-							 * Определяем тип подключения
-							 */
-							switch(static_cast <uint8_t> (node->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT): {
-													/**
-													 * Для операционной системы MacOS X, NetBSD, OpenBSD
-													 */
-													#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-														// Создаём сокет подключения
-														awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-													/**
-													 * Для остальных операционных систем
-													 */
-													#else
-														// Создаём сокет подключения
-														awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-													#endif
-												} break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER): {
-													/**
-													 * Для операционной системы MacOS X, NetBSD, OpenBSD
-													 */
-													#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-														// Создаём сокет подключения
-														awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-													/**
-													 * Для остальных операционных систем
-													 */
-													#else
-														// Создаём сокет подключения
-														awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-													#endif
-												} break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем протокол
-									 */
-									switch(static_cast <uint8_t> (node->state.protocol)){
-										// Если протокол определён как SCTP
-										case static_cast <uint8_t> (event::protocol_t::SCTP): {
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (node->state.node)){
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT):
-													// Создаём сокет подключения
-													awh_cast <::io::client_t *> (node)->transfer.fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
-												break;
-												// Если узел является сервером
-												case static_cast <uint8_t> (event::node_t::SERVER):
-													// Создаём сокет подключения
-													awh_cast <::io::server_t *> (node)->fd = ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
-												break;
-											}
-										} break;
-										// Если установлен другой протокол
-										default: ok = false;
-									}
-								} break;
-							}
-							// Если сокет не создан
-							if(!ok){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug(
-										"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
-										__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
-								#endif
-							}
-						} break;
-						// Для неизвестного типа сокета
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								log->debug(
-									"A socket for an IP event cannot be created because it has an invalid initialization type",
-									__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								log->print("A socket for an IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-							#endif
-						}
-					}
-				} break;
-				// Для неизвестного семейства
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						log->debug(
-							"A socket cannot be created, because family it belongs to is not defined",
-							__PRETTY_FUNCTION__,std::make_tuple(node, node->id), log_t::flag_t::WARNING
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						log->print("A socket cannot be created, because family it belongs to is not defined", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Возвращаем результат создания сокета
-					return (awh_cast <::io::client_t *> (node)->transfer.fd != net::invalid_socket_t);
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Возвращаем результат создания сокета
-					return (awh_cast <::io::server_t *> (node)->fd != net::invalid_socket_t);
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат по умолчанию
-		return false;
-	}
-	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param node узел в котором произошло событие
@@ -2900,6 +2037,78 @@ namespace io {
 		}
 		// Выводим результат
 		return result;
+	}
+	/**
+	 * @brief Функция создания сокета события
+	 *
+	 * @param node узел для которого создаётся сокет
+	 * @param eth  объект работы с сетевыми интерфейсами
+	 * @param log  объект работы с логами
+	 * @return     результат создания сокета
+	 */
+	static bool socket(net::node_t * node, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Создаём сокет подключения
+					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.create(node->state.family, node->state.type, node->state.protocol);
+					// Возвращаем результат создания сокета
+					return (awh_cast <::io::client_t *> (node)->transfer.fd != net::invalid_socket_t);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Создаём сокет подключения
+					awh_cast <::io::server_t *> (node)->fd = eth->socket.create(node->state.family, node->state.type, node->state.protocol);
+					// Возвращаем результат создания сокета
+					return (awh_cast <::io::server_t *> (node)->fd != net::invalid_socket_t);
+				}
+				// Для неизвестного типа узла
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug(
+							"Socket creation is not possible for the specified node type",
+							__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("Socket creation is not possible for the specified node type", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
 	}
 	/**
 	 * @brief Функция обработки события ошибки
@@ -3625,7 +2834,7 @@ namespace io {
 								// Устанавливаем полученный IP-адрес во временный объект
 								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (node->endpoint.client).sin_addr.s_addr;
 								// Выполняем извлечение сетевых параметров
-								eth->fillsource(event::node_t::PEER, source);
+								eth->addr.fillSource(event::node_t::PEER, source);
 								// Если чёрный или белый список адресов не пустой
 								if(!node->blacklist.empty() || !node->whitelist.empty()){
 									// Если MAC-адрес успешно получен
@@ -3801,7 +3010,7 @@ namespace io {
 								// Устанавливаем полученный IP-адрес во временный объект
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_addr, 16);
 								// Выполняем извлечение сетевых параметров
-								eth->fillsource(event::node_t::PEER, source);
+								eth->addr.fillSource(event::node_t::PEER, source);
 								// Если чёрный или белый список адресов не пустой
 								if(!node->blacklist.empty() || !node->whitelist.empty()){
 									// Если MAC-адрес успешно получен
@@ -4041,7 +3250,7 @@ namespace io {
 										// Устанавливаем таймаут на получение данных
 										EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 									// Если сокет является блокирующим
-									} else eth->timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+									} else eth->socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 								}
 								// Выводим положительный результат
 								return !guard.isGarbage();
@@ -4153,7 +3362,7 @@ namespace io {
 						// Устанавливаем таймаут на получение данных
 						EV_SET(&::local::change.back(), node->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), node);
 					// Устанавливаем таймаут на получение данных
-					} else eth->timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+					} else eth->socket.timeout(node->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 				}
 				// Выполняем "пинок" для применения изменений
 				result = const_cast <engine::io_t *> (io)->kick();
@@ -8671,7 +7880,7 @@ namespace io {
 								// Устанавливаем статус события в состояние не инициализировано
 								client->state.status.store(event::status_t::NONE, std::memory_order_release);
 								// Обрабатываем событие сокета
-								if(::io::socket(client, log)){
+								if(::io::socket(client, eth, log)){
 									// Запоминаем текущие опции события
 									const uint16_t options = client->state.options;
 									// Сбрасываем опции события
@@ -8764,7 +7973,7 @@ namespace io {
 				// Если в сокете нет ошибок
 				} else {
 					// Если в сокете нет ошибок
-					if(eth->error(ev.ident) == 0){
+					if(eth->socket.error(ev.ident) == 0){
 						// Обрабатываем событие доступности сокета на запись
 						if(!::io::write(node, io, eth, fmk, log))
 							// Пропускаем дальнейшую обработку события
@@ -8984,7 +8193,7 @@ namespace io {
 						// Устанавливаем полученный IP-адрес во временный объект
 						awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 						// Выполняем извлечение сетевых параметров
-						eth->fillsource(event::node_t::PEER, source);
+						eth->addr.fillSource(event::node_t::PEER, source);
 						// Если чёрный или белый список адресов не пустой
 						if(!node->blacklist.empty() || !node->whitelist.empty()){
 							// Временный объект для извлечения сетевого интерфейса
@@ -8992,7 +8201,7 @@ namespace io {
 							// Устанавливаем полученный IP-адрес во временный объект
 							awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 							// Выполняем извлечение сетевых параметров
-							eth->fillsource(event::node_t::PEER, source);
+							eth->addr.fillSource(event::node_t::PEER, source);
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
@@ -9149,7 +8358,7 @@ namespace io {
 						// Устанавливаем полученный IP-адрес во временный объект
 						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (node->endpoint.client).sin6_addr, 16);
 						// Выполняем извлечение сетевых параметров
-						eth->fillsource(event::node_t::PEER, source);
+						eth->addr.fillSource(event::node_t::PEER, source);
 						// Если чёрный или белый список адресов не пустой
 						if(!node->blacklist.empty() || !node->whitelist.empty()){
 							// Если MAC-адрес успешно получен
@@ -17039,7 +16248,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 								// Временный объект для извлечения сетевого интерфейса
 								net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.fillsource(client->source, source);
+								this->_eth.addr.fillSource(client->source, source);
 								// Возвращаем название сетевого интерфейса
 								return source.iface;
 							}
@@ -17048,7 +16257,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 								// Временный объект для извлечения сетевого интерфейса
 								net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.fillsource(client->source, source);
+								this->_eth.addr.fillSource(client->source, source);
 								// Возвращаем название сетевого интерфейса
 								return source.iface;
 							}
@@ -17088,9 +16297,9 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
-									this->_eth.fillsource(network, source);
+									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.fillsource(host->ip, source);
+								} else this->_eth.addr.fillSource(host->ip, source);
 								// Возвращаем название сетевого интерфейса
 								return source.iface;
 							// Если размер IP-адреса не соответствует IPv4
@@ -17148,9 +16357,9 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = ::move(server->addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
-									this->_eth.fillsource(network, source);
+									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.fillsource(host->ip, source);
+								} else this->_eth.addr.fillSource(host->ip, source);
 								// Возвращаем название сетевого интерфейса
 								return source.iface;
 							// Если размер IP-адреса не соответствует IPv4
@@ -17247,7 +16456,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 							// Устанавливаем имя сетевого интерфейса
 							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.fillsource(source);
+							this->_eth.addr.fillSource(source);
 							// Если IP-адрес успешно получен
 							if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
 								// Если источник сетевого адреса не инициализирован
@@ -17295,7 +16504,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 							// Устанавливаем имя сетевого интерфейса
 							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.fillsource(source);
+							this->_eth.addr.fillSource(source);
 							// Если IP-адрес успешно получен
 							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 								// Если источник сетевого адреса не инициализирован
@@ -17353,7 +16562,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 							// Устанавливаем имя сетевого интерфейса
 							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.fillsource(source);
+							this->_eth.addr.fillSource(source);
 							// Если IP-адрес успешно получен
 							if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
 								// Устанавливаем тип адреса
@@ -17363,7 +16572,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
-									result = this->_eth.multicastIface(server->fd, server->state.family, name);
+									result = this->_eth.socket.multicastIface(server->fd, server->state.family, name);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -17401,7 +16610,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 							// Устанавливаем имя сетевого интерфейса
 							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.fillsource(source);
+							this->_eth.addr.fillSource(source);
 							// Если IP-адрес успешно получен
 							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 								// Устанавливаем тип адреса
@@ -17411,7 +16620,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
-									result = this->_eth.multicastIface(server->fd, server->state.family, name);
+									result = this->_eth.socket.multicastIface(server->fd, server->state.family, name);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -18566,7 +17775,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(peer->state.node, source);
+										this->_eth.addr.fillSource(peer->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -18643,7 +17852,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(peer->state.node, source);
+										this->_eth.addr.fillSource(peer->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -18763,7 +17972,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(origin->state.node, source);
+										this->_eth.addr.fillSource(origin->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -18840,7 +18049,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(origin->state.node, source);
+										this->_eth.addr.fillSource(origin->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -18958,7 +18167,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -19033,7 +18242,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -19164,7 +18373,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												// Устанавливаем полученный IP-адрес во временный объект
 												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 												// Выполняем извлечение сетевых параметров
-												this->_eth.fillsource(event::node_t::PEER, source);
+												this->_eth.addr.fillSource(event::node_t::PEER, source);
 												// Если MAC-адрес успешно получен
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
@@ -19212,7 +18421,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -19300,7 +18509,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												// Устанавливаем полученный IP-адрес во временный объект
 												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.fillsource(event::node_t::PEER, source);
+												this->_eth.addr.fillSource(event::node_t::PEER, source);
 												// Если MAC-адрес успешно получен
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
@@ -19348,7 +18557,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Устанавливаем полученный IP-адрес во временный объект
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, source);
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
@@ -20162,7 +19371,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 												// Устанавливаем полученный MAC-адрес во временный объект
 												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(client->addr.mac());
 												// Выполняем извлечение сетевых параметров
-												this->_eth.fillsource(client->state.node, source);
+												this->_eth.addr.fillSource(client->state.node, source);
 												// Если IP-адрес успешно получен
 												if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
 													// Устанавливаем тип адреса
@@ -20213,7 +19422,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 												// Устанавливаем полученный MAC-адрес во временный объект
 												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(client->addr.mac());
 												// Выполняем извлечение сетевых параметров
-												this->_eth.fillsource(client->state.node, source);
+												this->_eth.addr.fillSource(client->state.node, source);
 												// Если IP-адрес успешно получен
 												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 													// Устанавливаем тип адреса
@@ -20305,7 +19514,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 												// Устанавливаем полученный MAC-адрес во временный объект
 												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(server->addr.mac());
 												// Выполняем извлечение сетевых параметров
-												this->_eth.fillsource(server->state.node, source);
+												this->_eth.addr.fillSource(server->state.node, source);
 												// Если IP-адрес успешно получен
 												if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
 													// Устанавливаем тип адреса
@@ -20319,7 +19528,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Если событие является мультикастовым
 													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
+														result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -20357,7 +19566,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 												// Устанавливаем полученный MAC-адрес во временный объект
 												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(server->addr.mac());
 												// Выполняем извлечение сетевых параметров
-												this->_eth.fillsource(server->state.node, source);
+												this->_eth.addr.fillSource(server->state.node, source);
 												// Если IP-адрес успешно получен
 												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 													// Устанавливаем тип адреса
@@ -20371,7 +19580,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Если событие является мультикастовым
 													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
+														result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -20642,7 +19851,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 									// Устанавливаем полученный IP-адрес во временный объект
 									awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
 									// Выполняем извлечение сетевых параметров
-									this->_eth.fillsource(client->state.node, source);
+									this->_eth.addr.fillSource(client->state.node, source);
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
@@ -20775,7 +19984,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Устанавливаем полученный IP-адрес во временный объект
 										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, source);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
@@ -20790,7 +19999,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -20937,7 +20146,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 									// Устанавливаем полученный IP-адрес во временный объект
 									awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
 									// Выполняем извлечение сетевых параметров
-									this->_eth.fillsource(client->state.node, source);
+									this->_eth.addr.fillSource(client->state.node, source);
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
@@ -21070,7 +20279,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Устанавливаем полученный IP-адрес во временный объект
 										awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, source);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
@@ -21085,7 +20294,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -21271,7 +20480,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(network, source);
+										this->_eth.addr.fillSource(network, source);
 										// Если IP-адрес успешно получен
 										if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
 											// Устанавливаем тип адреса
@@ -21369,7 +20578,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(network, source);
+										this->_eth.addr.fillSource(network, source);
 										// Если IP-адрес успешно получен
 										if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 											// Устанавливаем тип адреса
@@ -21500,7 +20709,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(network, source);
+										this->_eth.addr.fillSource(network, source);
 										// Если IP-адрес успешно получен
 										if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
 											// Устанавливаем тип адреса
@@ -21514,7 +20723,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
 										// Если IP-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -21599,7 +20808,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 										// Выполняем извлечение сетевых параметров
-										this->_eth.fillsource(network, source);
+										this->_eth.addr.fillSource(network, source);
 										// Если IP-адрес успешно получен
 										if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 											// Устанавливаем тип адреса
@@ -21613,7 +20822,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.multicastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
 										// Если IP-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -22222,7 +21431,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								// Активируем или деактивируем работу мютексов для передачи данных
 								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Выполняем создание сокета
-								if(!::io::socket(client, this->_log))
+								if(!::io::socket(client, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -22306,7 +21515,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									break;
 								}
 								// Выполняем создание сокета
-								if(!::io::socket(client, this->_log))
+								if(!::io::socket(client, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Если сокет не создан
@@ -22320,7 +21529,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
+											this->_eth.addr.fillSource(event::node_t::NONE, source);
 											// Инициализируем источник сетевого адреса
 											client->source = ::move(source.ip);
 										} break;
@@ -22329,7 +21538,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.fillsource(event::node_t::NONE, source);
+											this->_eth.addr.fillSource(event::node_t::NONE, source);
 											// Инициализируем источник сетевого адреса
 											client->source = ::move(source.ip);
 										} break;
@@ -22433,7 +21642,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								// Выполняем инициализацию объекта адреса файловой системы
 								host->path = make_unique <net::addr_fs_t> ();
 								// Выполняем создание сокета
-								if(!::io::socket(server, this->_log))
+								if(!::io::socket(server, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -22515,7 +21724,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									break;
 								}
 								// Выполняем создание сокета
-								if(!::io::socket(server, this->_log))
+								if(!::io::socket(server, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Возвращаем идентификатор созданного события
@@ -23589,13 +22798,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 							// Если опция передана как IPV6_V6ONLY
 							if(event::options::IPV6_ONLY & options){
 								// Устанавливаем режим отображения IPv4 => IPv6
-								if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
+								if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
 									// Устанавливаем опцию события
 									i->second->state.options |= event::options::IPV6_ONLY;
 							// Если опция не передана как IPV6_V6ONLY
 							} else {
 								// Снимаем режим отображения IPv4 => IPv6
-								if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::IPV6_ONLY)))
+								if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::IPV6_ONLY)))
 									// Снимаем опцию события
 									i->second->state.options &= ~event::options::IPV6_ONLY;
 							}
@@ -23609,13 +22818,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 				// Если опция передана как NO_SIGILL
 				if(event::options::NO_SIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
+					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NO_SIGILL;
 				// Если опция не передана как NO_SIGILL
 				} else {
 					// Снимаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGILL)))
+					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGILL)))
 						// Снимаем игнорирование сигнала SIGILL
 						i->second->state.options &= ~event::options::NO_SIGILL;
 				}
@@ -23629,13 +22838,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 					// Если опция передана как NO_SIGPIPE
 					if(event::options::NO_SIGPIPE & options){
 						// Устанавливаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::NO_SIGPIPE;
 					// Если опция не передана как NO_SIGPIPE
 					} else {
 						// Снимаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGPIPE)))
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGPIPE)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::NO_SIGPIPE;
 					}
@@ -23649,7 +22858,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 					// Если событие установлено как блокирующее
 					if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Устанавливаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
 							// Если установлена опция SM_IO_BLOCK
 							if(event::options::SM_IO_BLOCK & options)
 								// Устанавливаем опцию события
@@ -23741,7 +22950,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 					// Если событие установлено как неблокирующее
 					if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Снимаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
 							// Если установлена опция SM_IO_BLOCK
 							if(i->second->state.options & event::options::SM_IO_BLOCK)
 								// Снимаем опцию события
@@ -23802,7 +23011,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 													// Если таймаут на подключение найден
 													if((j != peer->timeouts.end()) && (j->second > 0))
 														// Устанавливаем таймаут на получение данных
-														this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 												} break;
 												// Если узел является клиентом
 												case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -23824,7 +23033,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 														// Если таймаут на подключение найден
 														if((j != client->timeouts.end()) && (j->second > 0))
 															// Устанавливаем таймаут на получение данных
-															this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 													}
 												} break;
 											}
@@ -23847,13 +23056,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 					// Если опция передана как REUSE_ADDR
 					if(event::options::REUSE_ADDR & options){
 						// Устанавливаем режим повторного использования адреса
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::REUSE_ADDR;
 					// Если опция не передана как REUSE_ADDR
 					} else {
 						// Снимаем режим повторного использования адреса
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_ADDR)))
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_ADDR)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::REUSE_ADDR;
 					}
@@ -23864,13 +23073,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 					// Если опция передана как REUSE_PORT
 					if(event::options::REUSE_PORT & options){
 						// Устанавливаем режим повторного использования порта
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::REUSE_PORT;
 					// Если опция не передана как REUSE_PORT
 					} else {
 						// Снимаем режим повторного использования порта
-						if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_PORT)))
+						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_PORT)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::REUSE_PORT;
 					}
@@ -23883,13 +23092,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 						// Если опция передана как MULTICAST_LOOPBACK
 						if(event::options::MULTICAST_LOOPBACK & options){
 							// Устанавливаем режим обратной связи многоадресной передачи
-							if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
+							if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::MULTICAST_LOOPBACK;
 						// Если опция не передана как MULTICAST_LOOPBACK
 						} else {
 							// Снимаем режим обратной связи многоадресной передачи
-							if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::MULTICAST_LOOPBACK)))
+							if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::MULTICAST_LOOPBACK)))
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::MULTICAST_LOOPBACK;
 						}
@@ -23915,13 +23124,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 									// Если опция передана как HDRINCL
 									if(event::options::HDRINCL & options){
 										// Устанавливаем режим широковещательной передачи
-										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
+										if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::HDRINCL;
 									// Если опция не передана как HDRINCL
 									} else {
 										// Снимаем режим широковещательной передачи
-										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HDRINCL)))
+										if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HDRINCL)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::HDRINCL;
 									}
@@ -23947,13 +23156,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Если опция передана как TCP_CORK
 										if(event::options::TCP_CORK & options){
 											// Активируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
+											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_CORK;
 										// Если опция не передана как TCP_CORK
 										} else {
 											// Деактивируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
+											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_CORK;
 										}
@@ -23964,13 +23173,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Если опция передана как TCP_NODELAY
 										if(event::options::TCP_NO_DELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
+											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_NO_DELAY;
 										// Если опция не передана как TCP_NODELAY
 										} else {
 											// Снимаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
+											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_NO_DELAY;
 										}
@@ -23996,13 +23205,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 								// Если опция передана как BROADCAST
 								if(event::options::BROADCAST & options){
 									// Устанавливаем режим широковещательной передачи
-									if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
+									if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::BROADCAST;
 								// Если опция не передана как BROADCAST
 								} else {
 									// Снимаем режим широковещательной передачи
-									if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::BROADCAST)))
+									if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::BROADCAST)))
 										// Снимаем опцию события
 										i->second->state.options &= ~event::options::BROADCAST;
 								}
@@ -24027,13 +23236,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Если опция передана как TCP_CORK
 										if(event::options::TCP_CORK & options){
 											// Активируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
+											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_CORK;
 										// Если опция не передана как TCP_CORK
 										} else {
 											// Деактивируем алгоритм TCP/CORK
-											if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
+											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_CORK;
 										}
@@ -24045,13 +23254,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 									// Если опция передана как TCP_NODELAY
 									if(event::options::TCP_NO_DELAY & options){
 										// Устанавливаем режим отключения алгоритма Нейгла
-										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
+										if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::TCP_NO_DELAY;
 									// Если опция не передана как TCP_NODELAY
 									} else {
 										// Снимаем режим отключения алгоритма Нейгла
-										if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
+										if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::TCP_NO_DELAY;
 									}
@@ -24075,13 +23284,13 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 				// Если опция передана как CLOSE_ON_EXEC
 				if(event::options::CLOSE_ON_EXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
+					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::CLOSE_ON_EXEC;
 				// Если опция не передана как CLOSE_ON_EXEC
 				} else {
 					// Снимаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::CLOSE_ON_EXEC)))
+					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::CLOSE_ON_EXEC)))
 						// Снимаем опцию события
 						i->second->state.options &= ~event::options::CLOSE_ON_EXEC;
 				}
@@ -24192,7 +23401,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									// Устанавливаем или снимаем режим отображения IPv4 => IPv6
-									if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::IPV6_ONLY))){
+									if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::IPV6_ONLY))){
 										// Если необходимо активировать режим отображения IPv4 => IPv6
 										if(mode)
 											// Устанавливаем опцию события
@@ -24207,7 +23416,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 					// Если опция передана как NO_SIGILL
 					case event::options::NO_SIGILL: {
 						// Отключаем или включаем генерацию сигнала SIGILL при записи в закрытый сокет
-						if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGILL))){
+						if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGILL))){
 							// Если необходимо отключить генерацию сигнала SIGILL
 							if(mode)
 								// Устанавливаем опцию события
@@ -24222,7 +23431,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый сокет
-							if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGPIPE))){
+							if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGPIPE))){
 								// Если необходимо отключить генерацию сигнала SIGPIPE
 								if(mode)
 									// Устанавливаем опцию события
@@ -24241,7 +23450,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 							// Если событие установлено как блокирующее
 							if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем неблокирующий режим ввода/вывода
-								if((result = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
+								if((result = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
 									// Если установлена опция SM_IO_BLOCK
 									if(option == event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
@@ -24333,7 +23542,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 							// Если событие установлено как неблокирующее
 							if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем блокирующий режим ввода/вывода
-								if((result = this->_eth.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
+								if((result = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
 									// Если установлена опция SM_IO_BLOCK
 									if(i->second->state.options & event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
@@ -24392,7 +23601,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 															// Если таймаут на подключение найден
 															if((j != peer->timeouts.end()) && (j->second > 0))
 																// Устанавливаем таймаут на получение данных
-																this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+																this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 														} break;
 														// Если узел является клиентом
 														case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -24412,7 +23621,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 																// Если таймаут на подключение найден
 																if((j != client->timeouts.end()) && (j->second > 0))
 																	// Устанавливаем таймаут на получение данных
-																	this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+																	this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 															}
 														} break;
 													}
@@ -24432,7 +23641,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Устанавливаем или снимаем режим повторного использования адреса сокета
-							if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_ADDR))){
+							if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_ADDR))){
 								// Если необходимо активировать режим повторного использования адреса сокета
 								if(mode)
 									// Устанавливаем опцию события
@@ -24448,7 +23657,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Устанавливаем или снимаем режим повторного использования порта сокета
-							if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_PORT))){
+							if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_PORT))){
 								// Если необходимо активировать режим повторного использования порта сокета
 								if(mode)
 									// Устанавливаем опцию события
@@ -24474,7 +23683,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Устанавливаем или снимаем режим обратной петли для мультикаст-сообщений сокета
-										if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::MULTICAST_LOOPBACK))){
+										if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::MULTICAST_LOOPBACK))){
 											// Если необходимо активировать режим обратной петли для мультикаст-сообщений сокета
 											if(mode)
 												// Устанавливаем опцию события
@@ -24503,7 +23712,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Устанавливаем или снимаем режим включения заголовков для сокета
-										if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::HDRINCL))){
+										if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::HDRINCL))){
 											// Если необходимо активировать режим включения заголовков для сокета
 											if(mode)
 												// Устанавливаем опцию события
@@ -24537,7 +23746,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Устанавливаем или снимаем режим широковещательной передачи для сокета
-										if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::BROADCAST))){
+										if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::BROADCAST))){
 											// Если необходимо активировать режим широковещательной передачи для сокета
 											if(mode)
 												// Устанавливаем опцию события
@@ -24572,7 +23781,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 											// Если сокет принадлежит к типу STREAM
 											case static_cast <uint8_t> (event::type_t::STREAM): {
 												// Устанавливаем или снимаем режим алгоритма TCP/CORK
-												if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
+												if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
 													// Если необходимо активировать режим алгоритма TCP/CORK
 													if(mode)
 														// Устанавливаем опцию события
@@ -24588,7 +23797,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Если сокет принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Устанавливаем или снимаем режим алгоритма TCP/CORK
-													if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
+													if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
 														// Если необходимо активировать режим алгоритма TCP/CORK
 														if(mode)
 															// Устанавливаем опцию события
@@ -24624,7 +23833,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 										// Если сокет принадлежит к типу STREAM
 										case static_cast <uint8_t> (event::type_t::STREAM): {
 											// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-											if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
+											if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
 												// Если необходимо активировать алгоритм Нейгла для TCP сокета
 												if(mode)
 													// Устанавливаем опцию события
@@ -24640,7 +23849,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 											// Если сокет принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 												// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-												if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
+												if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
 													// Если необходимо активировать алгоритм Нейгла для TCP сокета
 													if(mode)
 														// Устанавливаем опцию события
@@ -24669,7 +23878,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 					// Если опция передана как CLOSE_ON_EXEC
 					case event::options::CLOSE_ON_EXEC: {
 						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
-						if((result = this->_eth.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::CLOSE_ON_EXEC))){
+						if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::CLOSE_ON_EXEC))){
 							// Если необходимо активировать режим закрытия сокета при выполнении exec()
 							if(mode)
 								// Устанавливаем опцию события
@@ -25547,7 +24756,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 												// Устанавливаем таймаут на получение данных
 												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 											// Если сокет является блокирующим
-											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+											} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 										}
 									} break;
 									// Если узел является сервером
@@ -25677,7 +24886,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 												// Устанавливаем таймаут на получение данных
 												EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 											// Если сокет является блокирующим
-											} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
+											} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (j->second));
 										}
 									} break;
 									// Если узел является сервером
@@ -27721,7 +26930,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если сокет является полублокирующим
 												} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 													// Переводим сокет в блокирующий режим
-													if(this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+													if(this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
@@ -27735,7 +26944,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если произошла какая-то ошибка при отправке данных
 														} else if(bytes == -1) {
 															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 															// Если установлена функция обратного вызова
 															if(ipc->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -27775,7 +26984,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																return result;
 														}
 														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													}
 												// Если сокет является блокирующим
 												} else {
@@ -27980,7 +27189,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
@@ -27994,7 +27203,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -28029,7 +27238,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28223,7 +27432,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
@@ -28237,7 +27446,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -28272,7 +27481,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28516,13 +27725,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = peer->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
 												if((i != peer->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -28561,7 +27770,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(peer->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -28596,7 +27805,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -28605,7 +27814,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если таймаут на подключение найден
 											if((i != peer->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
-												this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -28851,13 +28060,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является полублокирующим
 											} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+												if(this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = peer->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
 													if((i != peer->timeouts.end()) && (i->second > 0))
 														// Устанавливаем таймаут на отправку данных
-														this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Количество прочитанных байт
 													ssize_t bytes = 0;
 													// Если протокол интернета установлен как SCTP
@@ -28885,7 +28094,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -28920,7 +28129,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -28929,7 +28138,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если таймаут на подключение найден
 												if((i != peer->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
@@ -29151,7 +28360,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
@@ -29165,7 +28374,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -29200,7 +28409,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -29413,7 +28622,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
@@ -29427,7 +28636,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -29462,7 +28671,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -29704,19 +28913,19 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на чтение данных
 												auto i = client->timeouts.find(event::action_t::READ);
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на получение данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 												// Если необходимо установить таймаут на отправку данных
 												i = client->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
@@ -29730,7 +28939,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -29765,7 +28974,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -29774,13 +28983,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если таймаут на подключение найден
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на получение данных
-												this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
+												this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (i->second));
 											// Если необходимо установить таймаут на отправку данных
 											i = client->timeouts.find(event::action_t::WRITE);
 											// Если таймаут на подключение найден
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
-												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
@@ -30005,13 +29214,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = client->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -30050,7 +29259,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -30085,7 +29294,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -30094,7 +29303,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если таймаут на подключение найден
 											if((i != client->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
-												this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											/**
 											 * Если операционной системой является FreeBSD
 											 */
@@ -30324,13 +29533,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+												if(this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
 													if((i != client->timeouts.end()) && (i->second > 0))
 														// Устанавливаем таймаут на отправку данных
-														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Определяем переменную для хранения количества отправленых байт
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
@@ -30344,7 +29553,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -30379,7 +29588,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -30388,7 +29597,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
@@ -30590,13 +29799,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+												if(this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
 													if((i != client->timeouts.end()) && (i->second > 0))
 														// Устанавливаем таймаут на отправку данных
-														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
@@ -30610,7 +29819,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -30645,7 +29854,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -30654,7 +29863,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
@@ -30915,13 +30124,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+												if(this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
 													if((i != client->timeouts.end()) && (i->second > 0))
 														// Устанавливаем таймаут на отправку данных
-														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													/**
 													 * Если операционной системой является FreeBSD
 													 */
@@ -30962,7 +30171,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -30997,7 +30206,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -31006,7 +30215,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -31262,13 +30471,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
 												// Переводим сокет в блокирующий режим
-												if(this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+												if(this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 													// Если необходимо установить таймаут на отправку данных
 													auto i = client->timeouts.find(event::action_t::WRITE);
 													// Если таймаут на подключение найден
 													if((i != client->timeouts.end()) && (i->second > 0))
 														// Устанавливаем таймаут на отправку данных
-														this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													/**
 													 * Если операционной системой является FreeBSD
 													 */
@@ -31309,7 +30518,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если произошла какая-то ошибка при отправке данных
 													} else if(bytes == -1) {
 														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -31344,7 +30553,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -31353,7 +30562,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если таймаут на подключение найден
 												if((i != client->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -31584,13 +30793,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(server->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = server->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
 												if((i != server->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
@@ -31604,7 +30813,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -31639,7 +30848,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -31648,7 +30857,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если таймаут на подключение найден
 											if((i != server->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
-												this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
@@ -31807,13 +31016,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является полублокирующим
 										} else if(server->state.options & event::options::SM_IO_BLOCK) {
 											// Переводим сокет в блокирующий режим
-											if(this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											if(this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Если необходимо установить таймаут на отправку данных
 												auto i = server->timeouts.find(event::action_t::WRITE);
 												// Если таймаут на подключение найден
 												if((i != server->timeouts.end()) && (i->second > 0))
 													// Устанавливаем таймаут на отправку данных
-													this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+													this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
@@ -31827,7 +31036,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если произошла какая-то ошибка при отправке данных
 												} else if(bytes == -1) {
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -31862,7 +31071,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
 												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -31871,7 +31080,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если таймаут на подключение найден
 											if((i != server->timeouts.end()) && (i->second > 0))
 												// Устанавливаем таймаут на отправку данных
-												this->_eth.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
+												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
@@ -32079,11 +31288,11 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если режим действия события является включённым
 											case static_cast <uint8_t> (event::mode_t::ENABLED):
 												// Выполняем добавление в мультикаст-группу
-												return this->_eth.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
 											// Если режим действия события является отключённым
 											case static_cast <uint8_t> (event::mode_t::DISABLED):
 												// Выполняем удаление из мультикаст-группы
-												return this->_eth.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
 										}
 									// Если адрес не удалось определить
 									} else {
@@ -32210,11 +31419,11 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если режим действия события является включённым
 											case static_cast <uint8_t> (event::mode_t::ENABLED):
 												// Выполняем добавление в мультикаст-группу
-												return this->_eth.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
 											// Если режим действия события является отключённым
 											case static_cast <uint8_t> (event::mode_t::DISABLED):
 												// Выполняем удаление из мультикаст-группы
-												return this->_eth.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
 										}
 									// Если адрес не удалось определить
 									} else {
@@ -32359,11 +31568,11 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если режим действия события является включённым
 											case static_cast <uint8_t> (event::mode_t::ENABLED):
 												// Выполняем добавление в мультикаст-группу
-												return this->_eth.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
 											// Если режим действия события является отключённым
 											case static_cast <uint8_t> (event::mode_t::DISABLED):
 												// Выполняем удаление из мультикаст-группы
-												return this->_eth.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
 										}
 									// Если адрес не удалось определить
 									} else {
@@ -32496,11 +31705,11 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если режим действия события является включённым
 											case static_cast <uint8_t> (event::mode_t::ENABLED):
 												// Выполняем добавление в мультикаст-группу
-												return this->_eth.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
 											// Если режим действия события является отключённым
 											case static_cast <uint8_t> (event::mode_t::DISABLED):
 												// Выполняем удаление из мультикаст-группы
-												return this->_eth.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
 										}
 									// Если адрес не удалось определить
 									} else {
@@ -32798,7 +32007,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(ipc->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -32807,7 +32016,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(ipc->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -32838,7 +32047,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(peer->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -32847,7 +32056,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(peer->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -32878,7 +32087,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(origin->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -32887,7 +32096,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(origin->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -32918,7 +32127,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -32927,7 +32136,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -32958,7 +32167,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.bufferSize(server->fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.bufferSize(server->fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -32967,7 +32176,7 @@ size_t awh::engine::IO::bufferSize(const event::id_t id, const event::action_t a
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.bufferSize(server->fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.bufferSize(server->fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -33117,12 +32326,12 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.bufferSize(ipc->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(ipc->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -33149,12 +32358,12 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.bufferSize(peer->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -33181,12 +32390,12 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.bufferSize(origin->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -33209,12 +32418,12 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Извлекаем размер буфера для чтения
-									result = (this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ) > 0);
+									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::READ) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Извлекаем размер буфера для записи
-									result = (this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::WRITE) > 0);
+									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::WRITE) > 0);
 								break;
 							}
 						} break;
@@ -33231,12 +32440,12 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(client->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -33263,12 +32472,12 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.bufferSize(server->fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(server->fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.bufferSize(server->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.bufferSize(server->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -33504,7 +32713,7 @@ bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, c
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(peer->transfer.fd, family, peer->state.delivery, hops)))
+					if((result = this->_eth.socket.hops(peer->transfer.fd, family, peer->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						peer->state.hops = hops;
 				} break;
@@ -33513,7 +32722,7 @@ bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, c
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(origin->transfer.fd, family, origin->state.delivery, hops)))
+					if((result = this->_eth.socket.hops(origin->transfer.fd, family, origin->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						origin->state.hops = hops;
 				} break;
@@ -33522,7 +32731,7 @@ bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, c
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(client->transfer.fd, family, client->state.delivery, hops)))
+					if((result = this->_eth.socket.hops(client->transfer.fd, family, client->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						client->state.hops = hops;
 				} break;
@@ -33531,7 +32740,7 @@ bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, c
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.hops(server->fd, family, server->state.delivery, hops)))
+					if((result = this->_eth.socket.hops(server->fd, family, server->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						server->state.hops = hops;
 				} break;
@@ -35453,7 +34662,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 				// Если протокол установлен как TCP
 				if(i->second->state.protocol == event::protocol_t::TCP)
 					// Устанавливаем параметры keep-alive для сокета события
-					result = this->_eth.keepalive(socket, cnt, idle, intvl);
+					result = this->_eth.socket.keepalive(socket, cnt, idle, intvl);
 			}
 		}
 	/**
@@ -35959,7 +35168,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									// Устанавливаем таймаут на получение данных
 									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
 								// Если сокет является блокирующим
-								} else this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+								} else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -36020,7 +35229,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									// Устанавливаем таймаут на получение данных
 									EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
 								// Если сокет является блокирующим
-								} else this->_eth.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+								} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -36096,7 +35305,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 						// Выполняем поиск таймаута для действия чтения
 						auto j = peer->timeouts.find(event::action_t::READ);
 						// Выводим результат проверки
-						return ((j != peer->timeouts.end()) ? (this->_eth.error(peer->transfer.fd) == 0) : true);
+						return ((j != peer->timeouts.end()) ? (this->_eth.socket.error(peer->transfer.fd) == 0) : true);
 					}
 				} break;
 				// Если узел является одноранговым узлом-источником
@@ -36140,7 +35349,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 						// Выполняем поиск таймаута для действия чтения
 						auto j = client->timeouts.find(event::action_t::READ);
 						// Выводим результат проверки
-						return ((j != client->timeouts.end()) ? (this->_eth.error(client->transfer.fd) == 0) : true);
+						return ((j != client->timeouts.end()) ? (this->_eth.socket.error(client->transfer.fd) == 0) : true);
 					}
 				} break;
 			}
@@ -36784,7 +35993,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Устанавливаем таймаут на получение данных
 								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
 							// Если сокет является блокирующим
-							} else this->_eth.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+							} else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
 						}
 						// Увеличиваем значение итератора
 						++i;
