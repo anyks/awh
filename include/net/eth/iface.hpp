@@ -1,5 +1,5 @@
 /**
- * @file: if.hpp
+ * @file: iface.hpp
  * @date: 2026-01-28
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2026
  */
 
-#ifndef __AWH_IF__
-#define __AWH_IF__
+#ifndef __AWH_IFACE__
+#define __AWH_IFACE__
 
 /**
  * Наши модули
@@ -181,8 +181,8 @@ namespace awh {
 				 *
 				 */
 				~Interface() noexcept;
-		} if_t;
+		} iface_t;
 	};
 };
 
-#endif // __AWH_IF__
+#endif // __AWH_IFACE__

@@ -1,5 +1,5 @@
 /**
- * @file: if.cpp
+ * @file: iface.cpp
  * @date: 2026-01-28
  * @license: GPL-3.0
  *
@@ -24,16 +24,12 @@
 /**
  * Подключаем системные заголовки
  */
-#include <netinet/if_ether.h>
-
-/**
- * Подключаем заголовочные файлы проекта
- */
 #include <fcntl.h>
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netinet/if_ether.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -41,7 +37,11 @@
 #include <sys/sys_domain.h>
 #include <net/if.h>
 #include <net/if_dl.h>
-#include <net/eth/if.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <net/eth/iface.hpp>
 
 /**
  * Для операционной системы MacOS X, NetBSD, OpenBSD

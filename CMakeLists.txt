@@ -400,9 +400,9 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
         "${SOURCE_FILES}"
-        "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/if.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/eth.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/addr.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/iface.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/kqueue.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/socket.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/gateway.cpp"

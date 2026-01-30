@@ -35,8 +35,8 @@
 /**
  * Подключаем заголовочный модуль работы с сетевым интерфейсом
  */
-#include "eth/if.hpp"
 #include "eth/addr.hpp"
+#include "eth/iface.hpp"
 #include "eth/socket.hpp"
 #include "eth/gateway.hpp"
 #include "eth/portmap.hpp"
@@ -56,10 +56,10 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT Ethernet {
 		public:
-			// Объект управления сетевым интерфейсом
-			eth::if_t iface;
 			// Объект работы с сетевыми адресами
 			eth::addr_t addr;
+			// Объект управления сетевым интерфейсом
+			eth::iface_t iface;
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */

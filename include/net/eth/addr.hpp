@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include "if.hpp"
+#include "iface.hpp"
 #include "../net.hpp"
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
@@ -44,7 +44,7 @@ namespace awh {
 		typedef class AWH_SHARED_EXPORT NetAddress {
 			private:
 				// Объект работы с сетевым интерфейсом
-				if_t _iface;
+				iface_t _iface;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;

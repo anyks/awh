@@ -252,7 +252,7 @@ namespace options {
 	 * @param log объект работы с логами
 	 */
 	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
-	 iface(fmk, log), addr(fmk, log), sctp(fmk, log), socket(fmk, log),
+	 addr(fmk, log), iface(fmk, log), sctp(fmk, log), socket(fmk, log),
 	 gateway(fmk, log), portmap(fmk, log), _fmk(fmk), _log(log) {
 		/**
 		 * Выполняем настройку сетевых параметров
@@ -270,7 +270,7 @@ namespace options {
 	 * @param log объект работы с логами
 	 */
 	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
-	 iface(fmk, log), addr(fmk, log), socket(fmk, log),
+	 addr(fmk, log), iface(fmk, log), socket(fmk, log),
 	 gateway(fmk, log), portmap(fmk, log), _fmk(fmk), _log(log) {
 		/**
 		 * Выполняем настройку сетевых параметров
