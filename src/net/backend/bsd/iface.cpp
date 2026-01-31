@@ -55,18 +55,18 @@
 #include <net/eth/iface.hpp>
 
 /**
- * Для операционной системы MacOS X, NetBSD, OpenBSD
+ * Для операционной системы MacOS X
  */
-#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+#if __APPLE__ || __MACH__
 	/**
 	 * Подключаем заголовочные файлы для работы с UTUN интерфейсами
 	 */
 	#include <net/if_utun.h>
 	#include <sys/kern_control.h>
 /**
- * Для операционной системы FreeBSD
+ * Для операционной системы FreeBSD, NetBSD, OpenBSD
  */
-#elif __FreeBSD__
+#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	/**
 	 * Подключаем заголовочные файлы для работы с TUN интерфейсами
 	 */
@@ -248,9 +248,9 @@ awh::net::socket_t awh::eth::Interface::tunnel(string & name) const noexcept {
 	// Результат работы функции
 	awh::net::socket_t result = net::invalid_socket_t;
 	/**
-	 * Для операционной системы MacOS X, NetBSD, OpenBSD
+	 * Для операционной системы MacOS X
 	 */
-	#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+	#if __APPLE__ || __MACH__
 		// Объект контроллера
 		struct ctl_info ctlInfo{0};
 		// Устанавливаем имя контроллера UTUN
@@ -360,9 +360,9 @@ awh::net::socket_t awh::eth::Interface::tunnel(string & name) const noexcept {
 		// Обрезаем имя интерфейса по нулевому символу
 		name.resize(::strlen(name.c_str()));
 	/**
-	 * Для операционной системы FreeBSD
+	 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 	 */
-	#elif __FreeBSD__
+	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Создаём сокет для управления UTUN интерфейсом
 		result = ::open("/dev/tun", O_RDWR);
 		// Если сокет не создан
