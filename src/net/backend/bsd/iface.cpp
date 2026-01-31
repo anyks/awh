@@ -28,10 +28,6 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/in_var.h>
-#include <netinet/if_ether.h>
-#include <netinet6/in6_var.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -40,6 +36,10 @@
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <netinet/in.h>
+#include <netinet/in_var.h>
+#include <netinet/if_ether.h>
+#include <netinet6/in6_var.h>
 
 /**
  * Определяем константу времени жизни, если она не задана
