@@ -117,21 +117,37 @@ namespace awh {
 				string name(const unique_ptr <net::addr_t> & addr) const noexcept;
 			public:
 				/**
-				 * @brief Метод получения режима сетевого интерфейса
+				 * @brief Метод получения MTU сетевого интерфейса
 				 *
 				 * @param name имя сетевого интерфейса
-				 * @return     режим сетевого интерфейса
+				 * @return     MTU сетевого интерфейса
 				 */
-				event::mode_t mode(const string & name) const noexcept;
+				uint16_t mtu(const string & name) const noexcept;
 				/**
-				 * @brief Метод включения/выключения сетевого интерфейса
+				 * @brief Метод установки MTU сетевого интерфейса
 				 *
 				 * @param name имя сетевого интерфейса
-				 * @param mode режим включения/выключения интерфейса
 				 * @param mtu  размер MTU интерфейса
-				 * @return     результат включения/выключения интерфейса
+				 * @return     результат установки MTU сетевого интерфейса
 				 */
-				bool mode(const string & name, const event::mode_t mode, const int32_t mtu = 1400) const noexcept;
+				bool mtu(const string & name, const uint16_t mtu) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения установленных флагов сетевого интерфейса
+				 *
+				 * @param name имя сетевого интерфейса
+				 * @return     флаги сетевого интерфейса
+				 */
+				unordered_set <event::eth_flag_t> flags(const string & name) const noexcept;
+				/**
+				 * @brief Метод установки флага сетевого интерфейса
+				 *
+				 * @param name имя сетевого интерфейса
+				 * @param flag флаг сетевого интерфейса
+				 * @param mode режим включения/выключения флага
+				 * @return     результат установки флага сетевого интерфейса
+				 */
+				bool flag(const string & name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения IP-адреса сетевого интерфейса

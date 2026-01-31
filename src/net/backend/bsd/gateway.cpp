@@ -124,7 +124,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					// Буфер данных для получения маршрутов
 					vector <uint8_t> buffer(length, 0);
 					// Извлекаем маршруты в буфер
-					if(::sysctl(mib, 6, buffer.data(), &length, nullptr, 0) < 0){
+					if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -375,7 +375,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					// Буфер данных для получения маршрутов
 					vector <uint8_t> buffer(length, 0);
 					// Извлекаем маршруты в буфер
-					if(::sysctl(mib, 6, buffer.data(), &length, nullptr, 0) < 0){
+					if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1194,7 +1194,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					// Буфер данных для получения маршрутов
 					vector <uint8_t> buffer(length, 0);
 					// Извлекаем маршруты в буфер
-					if(::sysctl(mib, 6, buffer.data(), &length, nullptr, 0) < 0){
+					if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1495,7 +1495,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					// Буфер данных для получения маршрутов
 					vector <uint8_t> buffer(length, 0);
 					// Извлекаем маршруты в буфер
-					if(::sysctl(mib, 6, buffer.data(), &length, nullptr, 0) < 0){
+					if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
 						/**
 						 * Если включён режим отладки
 						 */

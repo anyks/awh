@@ -101,6 +101,24 @@ namespace awh {
 			NETWORK = 0x06  // Сетевой адрес
 		};
 		/**
+		 * @brief Флаги сетевых интерфейсов
+		 *
+		 */
+		enum class eth_flag_t : uint8_t {
+			NONE         = 0x00, // Флаг не определён
+			UP           = 0x01, // Флаг интерфейс поднят
+			DEBUG 	     = 0x02, // Флаг debug режим
+			NOARP 	     = 0x03, // Флаг отключён ARP
+			ALLMULTI     = 0x04, // Флаг приём всех multicast-пакетов
+			PROMISC      = 0x05, // Флаг promiscuous режим
+			DYNAMIC      = 0x06, // Флаг динамический интерфейс (DHCP и т.д. только Linux)
+			RUNNING      = 0x07, // Флаг интерфейс работает
+			BROADCAST    = 0x08, // Флаг broadcast
+			MULTICAST    = 0x09, // Флаг multicast
+			LOOPBACK     = 0x0A, // Флаг loopback интерфейс
+			POINTTOPOINT = 0x0B  // Флаг point-to-point
+		};
+		/**
 		 * @brief Типы трансляции пакетов
 		 *
 		 */

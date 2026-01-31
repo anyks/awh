@@ -32,13 +32,14 @@
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
 #include <netinet6/in6_var.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/kern_control.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/sys_domain.h>
+#include <sys/kern_control.h>
 #include <net/if.h>
 #include <net/if_dl.h>
+#include <net/if_types.h>
 
 /**
  * Определяем константу времени жизни, если она не задана
@@ -105,7 +106,79 @@ namespace iface {
  * @return     результат удаления сетевого интерфейса
  */
 bool awh::eth::Interface::destroy(const string & name) const noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	// Если название сетевого интерфейса передано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём сокет для управления интерфейсом
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(!(result = (sock != net::invalid_socket_t))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Настраиваем интерфейс
+			struct ifreq ifr{0};
+			// Копируем имя интерфейса
+			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			// Устанавливаем завершающий ноль
+			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			// Удаляем интерфейс
+			if(!(result = (::ioctl(sock, SIOCIFDESTROY, &ifr) == 0))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+			// Закрываем сокет
+			::close(sock);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод получения списка сетевых интерфейсов системы
@@ -286,7 +359,7 @@ awh::net::socket_t awh::eth::Interface::tunnel(string & name) const noexcept {
 			return net::invalid_socket_t;
 		}
 		// Обрезаем имя интерфейса по нулевому символу
-		name.resize(length);
+		name.resize(::strlen(name.c_str()));
 	/**
 	 * Для операционной системы FreeBSD
 	 */
@@ -373,7 +446,63 @@ awh::net::socket_t awh::eth::Interface::tunnel(string & name) const noexcept {
  * @return     результат проверки доступности сетевого интерфейса
  */
 bool awh::eth::Interface::isAvailable(const string & name) const noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если название сетевого интерфейса передано
+		if(!name.empty()){
+			// Получаем список сетевых интерфейсов
+			struct ifaddrs * ptr = nullptr;
+			// Выполняем получение списка сетевых интерфейсов
+			if(::getifaddrs(&ptr) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+				#endif
+				// Выводим пустой результат
+				return result;
+			}
+			// Перебираем все сетевые интерфейсы
+			for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next)
+				// Добавляем имя сетевого интерфейса в результирующий список
+				if((result = this->_fmk->compare(ifa->ifa_name, name)))
+					// Завершаем поиск
+					break;
+			// Освобождаем память списка сетевых интерфейсов
+			::freeifaddrs(ptr);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводиим результат
+	return result;
 }
 /**
  * @brief Метод проверки туннельного сетевого интерфейса
@@ -382,7 +511,87 @@ bool awh::eth::Interface::isAvailable(const string & name) const noexcept {
  * @return     результат проверки туннельного сетевого интерфейса
  */
 bool awh::eth::Interface::isTunnel(const string & name) const noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	// Если имя интерфейса задано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем список сетевых интерфейсов
+			struct ifaddrs * ptr = nullptr;
+			// Выполняем получение списка сетевых интерфейсов
+			if(::getifaddrs(&ptr) == 0){
+				// Перебираем все сетевые интерфейсы
+				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+					// Если имя интерфейса совпадает
+					if(this->_fmk->compare(ifa->ifa_name, name)){
+						/**
+						 * Проверяем флаги на любой записи интерфейса (IPv4/IPv6/Link)
+						 * Туннель обычно Point-to-Point и не Broadcast
+						 */
+						result = ((ifa->ifa_flags & IFF_POINTOPOINT) && !(ifa->ifa_flags & IFF_BROADCAST));
+						// Дополнительная точная проверка через AF_LINK
+						if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
+							// Получаем структуру адреса канального уровня
+							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+							// Определяем тип интерфейса
+							switch(sdl->sdl_type){
+								// Если это виртуальный интерфейс (PPP)
+								case IFT_PPP:
+								// Если это виртуальный интерфейс (GIF)
+								case IFT_GIF:
+								/**
+								 * Если определён тип интерфейса Tunnel
+								 */
+								#ifdef IFT_TUNNEL
+									// Если это виртуальный интерфейс (Tunnel)
+									case IFT_TUNNEL:
+								#endif
+								/**
+								 * Если определён тип интерфейса STF
+								 */
+								#ifdef IFT_STF
+									// Если это виртуальный интерфейс (STF)
+									case IFT_STF:
+								#endif
+									// Устанавливаем результат окончательно
+									result = true;
+									// Прерываем цикл, так как точно нашли
+									goto End;
+							}
+						}
+					}
+				}
+				/**
+				 * Завершаем поиск туннельного интерфейса
+				 */
+				End:
+				// Освобождаем память списка сетевых интерфейсов
+				::freeifaddrs(ptr);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод проверки туннельного сетевого интерфейса по адресу
@@ -391,7 +600,8 @@ bool awh::eth::Interface::isTunnel(const string & name) const noexcept {
  * @return     результат проверки туннельного сетевого интерфейса
  */
 bool awh::eth::Interface::isTunnel(const unique_ptr <net::addr_t> & addr) const noexcept {
-
+	// Возвращаем результат проверки имени интерфейса
+	return this->isTunnel(this->name(addr));
 }
 /**
  * @brief Метод проверки виртуального сетевого интерфейса
@@ -400,7 +610,100 @@ bool awh::eth::Interface::isTunnel(const unique_ptr <net::addr_t> & addr) const 
  * @return     результат проверки виртуального сетевого интерфейса
  */
 bool awh::eth::Interface::isVirtual(const string & name) const noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	// Если имя интерфейса задано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем список сетевых интерфейсов
+			struct ifaddrs * ptr = nullptr;
+			// Выполняем получение списка сетевых интерфейсов
+			if(::getifaddrs(&ptr) == 0){
+				// Перебираем все сетевые интерфейсы
+				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+					// Если имя интерфейса совпадает
+					if(this->_fmk->compare(ifa->ifa_name, name)){
+						// Проверяем флаги: если интерфейс имеет флаги POINTOPOINT или LOOPBACK
+						result = ((ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_flags & IFF_LOOPBACK));
+						// Дополнительная точная проверка через AF_LINK
+						if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
+							// Получаем структуру адреса канального уровня
+							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+							// Определяем тип интерфейса
+							switch(sdl->sdl_type){
+								// Если это виртуальный интерфейс (Loopback)
+								case IFT_LOOP:
+								// Если это виртуальный интерфейс (PPP)
+								case IFT_PPP:
+								// Если это виртуальный интерфейс (GIF)
+								case IFT_GIF:
+								/**
+								 * Если определён тип интерфейса Bridge
+								 */
+								#ifdef IFT_BRIDGE
+									// Если это виртуальный интерфейс (Bridge)
+									case IFT_BRIDGE:
+								#endif
+								/**
+								 * Если определён тип интерфейса VLAN
+								 */
+								#ifdef IFT_L2VLAN
+									// Если это виртуальный интерфейс (VLAN)
+									case IFT_L2VLAN:
+								#endif
+								/**
+								 * Если определён тип интерфейса Tunnel
+								 */
+								#ifdef IFT_TUNNEL
+									// Если это виртуальный интерфейс (Tunnel)
+									case IFT_TUNNEL:
+								#endif
+								/**
+								 * Если определён тип интерфейса STF
+								 */
+								#ifdef IFT_STF
+									// Если это виртуальный интерфейс (STF)
+									case IFT_STF:
+								#endif
+									// Устанавливаем результат
+									result = true;
+									// Прерываем цикл
+									goto End;
+							}
+						}
+					}
+				}
+				/**
+				 * Завершаем поиск виртуального интерфейса
+				 */
+				End:
+				// Освобождаем память списка сетевых интерфейсов
+				::freeifaddrs(ptr);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод проверки виртуального сетевого интерфейса по адресу
@@ -409,7 +712,8 @@ bool awh::eth::Interface::isVirtual(const string & name) const noexcept {
  * @return     результат проверки виртуального сетевого интерфейса
  */
 bool awh::eth::Interface::isVirtual(const unique_ptr <net::addr_t> & addr) const noexcept {
-
+	// Возвращаем результат проверки имени интерфейса
+	return this->isVirtual(this->name(addr));
 }
 /**
  * @brief Метод получения имени сетевого интерфейса по адресу
@@ -528,23 +832,98 @@ string awh::eth::Interface::name(const unique_ptr <net::addr_t> & addr) const no
 	return result;
 }
 /**
- * @brief Метод получения режима сетевого интерфейса
+ * @brief Метод получения MTU сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
- * @return     режим сетевого интерфейса
+ * @return     MTU сетевого интерфейса
  */
-awh::event::mode_t awh::eth::Interface::mode(const string & name) const noexcept {
-
+uint16_t awh::eth::Interface::mtu(const string & name) const noexcept {
+	// Если название сетевого интерфейса передано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём сокет для управления интерфейсом
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(sock == net::invalid_socket_t){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат по умолчанию
+				return false;
+			}
+			// Настраиваем интерфейс
+			struct ifreq ifr{0};
+			// Копируем имя интерфейса
+			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			// Устанавливаем завершающий ноль
+			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			// Извлекаем MTU из интерфейса
+			if(::ioctl(sock, SIOCGIFMTU, &ifr) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Закрываем сокет
+				::close(sock);
+				// Выводим результат по умолчанию
+				return false;
+			}
+			// Закрываем сокет
+			::close(sock);
+			// Выводим результат
+			return static_cast <uint16_t> (ifr.ifr_mtu);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
- * @brief Метод включения/выключения сетевого интерфейса
+ * @brief Метод установки MTU сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
- * @param mode режим включения/выключения интерфейса
  * @param mtu  размер MTU интерфейса
- * @return     результат включения/выключения интерфейса
+ * @return     результат установки MTU сетевого интерфейса
  */
-bool awh::eth::Interface::mode(const string & name, const event::mode_t mode, const int32_t mtu) const noexcept {
+bool awh::eth::Interface::mtu(const string & name, const uint16_t mtu) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -562,7 +941,7 @@ bool awh::eth::Interface::mode(const string & name, const event::mode_t mode, co
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -574,19 +953,19 @@ bool awh::eth::Interface::mode(const string & name, const event::mode_t mode, co
 				return result;
 			}
 			// Настраиваем интерфейс
-			struct ifreq itr{0};
+			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(itr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
 			// Устанавливаем завершающий ноль
-			itr.ifr_name[IFNAMSIZ - 1] = '\0';
+			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 			// Если не удалось получить флаги интерфейса
-			if(!(result = (::ioctl(sock, SIOCGIFFLAGS, &itr) == 0))){
+			if(!(result = (::ioctl(sock, SIOCGIFFLAGS, &ifr) == 0))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -599,29 +978,16 @@ bool awh::eth::Interface::mode(const string & name, const event::mode_t mode, co
 				// Выводим результат
 				return result;
 			}
-			/**
-			 * Определяем режим работы интерфейса
-			 */
-			switch(static_cast <uint8_t> (mode)){
-				// Если необходимо включить интерфейс
-				case static_cast <uint8_t> (event::mode_t::ENABLED):
-					// Добавляем флаги UP и RUNNING
-					itr.ifr_flags |= (IFF_UP | IFF_RUNNING);
-				break;
-				// Если необходимо выключить интерфейс
-				case static_cast <uint8_t> (event::mode_t::DISABLED):
-					// Сбросить флаги UP и RUNNING
-					itr.ifr_flags &= ~(IFF_UP | IFF_RUNNING);
-				break;
-			}
-			// Применяем новые флаги интерфейса
-			if(!(result = (::ioctl(sock, SIOCSIFFLAGS, &itr) == 0))){
+			// Устанавливаем MTU интерфейса
+			ifr.ifr_mtu = static_cast <int32_t> (mtu);
+			// Применяем новый MTU интерфейса
+			if(!(result = (::ioctl(sock, SIOCSIFMTU, &ifr) == 0))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -629,31 +995,6 @@ bool awh::eth::Interface::mode(const string & name, const event::mode_t mode, co
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
-				// Закрываем сокет
-				::close(sock);
-				// Выводим результат
-				return result;
-			}
-			// Если необходимо включить интерфейс
-			if(mode == event::mode_t::ENABLED){
-				// Устанавливаем MTU интерфейса
-				itr.ifr_mtu = mtu;
-				// Применяем новый MTU интерфейса
-				if(!(result = (::ioctl(sock, SIOCSIFMTU, &itr) == 0))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
-				}
 			}
 			// Закрываем сокет
 			::close(sock);
@@ -666,7 +1007,350 @@ bool awh::eth::Interface::mode(const string & name, const event::mode_t mode, co
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (mode), mtu), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, mtu), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения установленных флагов сетевого интерфейса
+ *
+ * @param name имя сетевого интерфейса
+ * @return     флаги сетевого интерфейса
+ */
+unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(const string & name) const noexcept {
+	// Результат работы функции
+	unordered_set <event::eth_flag_t> result;
+	// Если название сетевого интерфейса передано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём сокет для управления интерфейсом
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(sock == net::invalid_socket_t){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Настраиваем интерфейс
+			struct ifreq ifr{0};
+			// Копируем имя интерфейса
+			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			// Устанавливаем завершающий ноль
+			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			// Если не удалось получить флаги интерфейса
+			if(::ioctl(sock, SIOCGIFFLAGS, &ifr) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Закрываем сокет
+				::close(sock);
+				// Выводим результат
+				return result;
+			}
+			// Закрываем сокет
+			::close(sock);
+			// Если сетевой интерфейс в режиме поднят
+			if(ifr.ifr_flags & IFF_UP)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::UP);
+			// Если сетевой интерфейс принимает все multicast-пакеты
+			if(ifr.ifr_flags & IFF_ALLMULTI)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::ALLMULTI);
+			// Если сетевой интерфейс поддерживает broadcast
+			if(ifr.ifr_flags & IFF_BROADCAST)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::BROADCAST);
+			// Если сетевой интерфейс в режиме debug
+			if(ifr.ifr_flags & IFF_DEBUG)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::DEBUG);
+			// Если сетевой интерфейс поддерживает multicast
+			if(ifr.ifr_flags & IFF_MULTICAST)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::MULTICAST);
+			// Если сетевой интерфейс отключил ARP
+			if(ifr.ifr_flags & IFF_NOARP)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::NOARP);
+			// Если сетевой интерфейс в режиме запущен
+			if(ifr.ifr_flags & IFF_RUNNING)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::RUNNING);
+			// Если сетевой интерфейс в режиме promiscuous
+			if(ifr.ifr_flags & IFF_PROMISC)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::PROMISC);
+			// Если сетевой интерфейс является loopback интерфейсом
+			if(ifr.ifr_flags & IFF_LOOPBACK)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::LOOPBACK);
+			// Если сетевой интерфейс является point-to-point интерфейсом
+			if(ifr.ifr_flags & IFF_POINTOPOINT)
+				// Добавляем флаг интерфейса в результат
+				result.emplace(event::eth_flag_t::POINTTOPOINT);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки флага сетевого интерфейса
+ *
+ * @param name имя сетевого интерфейса
+ * @param flag флаг сетевого интерфейса
+ * @param mode режим включения/выключения флага
+ * @return     результат установки флага сетевого интерфейса
+ */
+bool awh::eth::Interface::flag(const string & name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если название сетевого интерфейса передано
+	if(!name.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём сокет для управления интерфейсом
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(!(result = (sock != net::invalid_socket_t))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Настраиваем интерфейс
+			struct ifreq ifr{0};
+			// Копируем имя интерфейса
+			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			// Устанавливаем завершающий ноль
+			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			// Если не удалось получить флаги интерфейса
+			if(!(result = (::ioctl(sock, SIOCGIFFLAGS, &ifr) == 0))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Закрываем сокет
+				::close(sock);
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * Устанавливаем или снимаем флаг интерфейса
+			 */
+			switch(static_cast <uint8_t> (flag)){
+				// Если нужно установить флаг поднятия интерфейса
+				case static_cast <uint8_t> (event::eth_flag_t::UP): {
+					/**
+					 * Определяем режим работы интерфейса
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо включить интерфейс
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Устанавливаем флаг интерфейса
+							ifr.ifr_flags |= IFF_UP;
+						break;
+						// Если необходимо выключить интерфейс
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Снимаем флаг интерфейса
+							ifr.ifr_flags &= ~IFF_UP;
+						break;
+					}
+				} break;
+				// Если нужно установить флаг promiscuous режима
+				case static_cast <uint8_t> (event::eth_flag_t::PROMISC): {
+					/**
+					 * Определяем режим работы интерфейса
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо включить интерфейс
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Устанавливаем флаг интерфейса
+							ifr.ifr_flags |= IFF_PROMISC;
+						break;
+						// Если необходимо выключить интерфейс
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Снимаем флаг интерфейса
+							ifr.ifr_flags &= ~IFF_PROMISC;
+						break;
+					}
+				} break;
+				// Если нужно установить флаг отключения ARP
+				case static_cast <uint8_t> (event::eth_flag_t::NOARP): {
+					/**
+					 * Определяем режим работы интерфейса
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо включить интерфейс
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Устанавливаем флаг интерфейса
+							ifr.ifr_flags |= IFF_NOARP;
+						break;
+						// Если необходимо выключить интерфейс
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Снимаем флаг интерфейса
+							ifr.ifr_flags &= ~IFF_NOARP;
+						break;
+					}
+				} break;
+				// Если нужно установить флаг debug режима
+				case static_cast <uint8_t> (event::eth_flag_t::DEBUG): {
+					/**
+					 * Определяем режим работы интерфейса
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо включить интерфейс
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Устанавливаем флаг интерфейса
+							ifr.ifr_flags |= IFF_DEBUG;
+						break;
+						// Если необходимо выключить интерфейс
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Снимаем флаг интерфейса
+							ifr.ifr_flags &= ~IFF_DEBUG;
+						break;
+					}
+				} break;
+				// Если нужно установить флаг приёма всех multicast-пакетов
+				case static_cast <uint8_t> (event::eth_flag_t::ALLMULTI): {
+					/**
+					 * Определяем режим работы интерфейса
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если необходимо включить интерфейс
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Устанавливаем флаг интерфейса
+							ifr.ifr_flags |= IFF_ALLMULTI;
+						break;
+						// Если необходимо выключить интерфейс
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Снимаем флаг интерфейса
+							ifr.ifr_flags &= ~IFF_ALLMULTI;
+						break;
+					}
+				} break;
+				// Если флаг не поддерживается
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Passed network interface flag cannot be modified", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Passed network interface flag cannot be modified", log_t::flag_t::WARNING);
+					#endif
+					// Закрываем сокет
+					::close(sock);
+					// Выводим результат
+					return result;
+				}
+			}
+			// Применяем новые флаги интерфейса
+			if(!(result = (::ioctl(sock, SIOCSIFFLAGS, &ifr) == 0))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+			// Закрываем сокет
+			::close(sock);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
