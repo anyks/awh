@@ -18,9 +18,9 @@
 /**
  * Наши модули
  */
-#include "net.hpp"
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
+#include "../net.hpp"
+#include "../../sys/fmk.hpp"
+#include "../../sys/log.hpp"
 
 /**
  * Для операционной системы Linux или FreeBSD
@@ -29,17 +29,17 @@
 	/**
 	 * Подключаем заголовочный модуль SCTP протокола
 	 */
-	#include "eth/sctp.hpp"
+	#include "sctp.hpp"
 #endif
 
 /**
  * Подключаем заголовочный модуль работы с сетевым интерфейсом
  */
-#include "eth/addr.hpp"
-#include "eth/iface.hpp"
-#include "eth/socket.hpp"
-#include "eth/gateway.hpp"
-#include "eth/portmap.hpp"
+#include "addr.hpp"
+#include "iface.hpp"
+#include "socket.hpp"
+#include "gateway.hpp"
+#include "portmap.hpp"
 
 /**
  * @brief Основное пространство имён

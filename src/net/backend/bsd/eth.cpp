@@ -42,7 +42,7 @@
  */
 #include <sys/os.hpp>
 #include <net/fds.hpp>
-#include <net/eth.hpp>
+#include <net/eth/eth.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён

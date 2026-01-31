@@ -26,8 +26,8 @@
 /**
  * Наши модули
  */
-#include "eth.hpp"
 #include "event.hpp"
+#include "eth/eth.hpp"
 
 /**
  * @brief Основное пространство имён
