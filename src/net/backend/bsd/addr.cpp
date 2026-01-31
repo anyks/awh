@@ -57,6 +57,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <net/if_dl.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/if_types.h>
 #include <netinet/in.h> 
 #include <net/route.h>
 #include <netinet/tcp.h>
