@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/kern_control.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
@@ -63,6 +62,7 @@
 	 * Подключаем заголовочные файлы для работы с UTUN интерфейсами
 	 */
 	#include <net/if_utun.h>
+	#include <sys/kern_control.h>
 /**
  * Для операционной системы FreeBSD
  */
