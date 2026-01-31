@@ -37,6 +37,16 @@
 #include <netinet/udp.h>
 
 /**
+ * Для операционной системы FreeBSD
+ */
+#if __FreeBSD__
+	/**
+	 * Подключаем заголовочные файлы для работы с SCTP протоколом
+	 */
+	#include <netinet/sctp.h>
+#endif
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <net/eth/socket.hpp>
