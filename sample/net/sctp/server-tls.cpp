@@ -75,7 +75,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Создаём объект SCTP протокола
-		eth::sctp_t sctp(&fmk, &log);
+		engine::sctp_t sctp(&fmk, &log);
 		// Выполняем подписку на SCTP события
 		sctp.eventsSubscribe(eid, {
 			net::sctp::event_type_t::ASSOC_CHANGE,
