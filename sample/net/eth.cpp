@@ -22,6 +22,7 @@
  */
 // #include <net/eth.hpp>
 #include <net/addr.hpp>
+#include <net/eth/iface.hpp>
 #include <net/eth/gateway.hpp>
 #include <net/eth/portmap.hpp>
 
@@ -42,10 +43,10 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект Ethernet
-	// eth_t eth(&fmk, &log);
 	// Объект работы с сетевыми адресами
 	net_addr_t addr(&fmk, &log);
+	// Создаём объект Ethernet
+	eth::iface_t iface(&fmk, &log);
 	// Создаём объект для работы с шлюзами
 	eth::gateway_t gateway(&fmk, &log);
 	// Структура маршрута
@@ -110,6 +111,37 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	// Иначе выводим сообщение об ошибке
 	} else cout << "Gateway not found." << endl;
+	// Выводим заголовок примера списка сетевых интерфейсов
+	cout << " --- Ifaces Example --- " << endl;
+	// Получаем список сетевых интерфейсов системы
+	for(auto & iface : iface.available())
+		// Выводим список сетевых интерфейсов системы
+		cout << "Interface: " << iface << endl;
+	// Название туннельного интерфейса
+	string tunnel = "";
+	// Создаём туннельный интерфейс
+	cout << " Tunnel interface: " << iface.tunnel(tunnel) << " === " << tunnel << endl;
+	// Получаем IP-адрес туннельного интерфейса
+	auto ip = iface.ip("utun6", event::family_t::IPV4);
+	// Устанавливаем полученный IP-адрес
+	addr.v4(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
+	// Выводим адрес шлюза по умолчанию
+	cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << endl;
+	
+	if(iface.ip(tunnel, ip, ip, 24))
+		cout << " Assigned IPv4 address to " << tunnel << endl;
+	else
+		cout << " Failed to assign IPv4 address to " << tunnel << endl;
+	
+	// Получаем IP-адрес туннельного интерфейса
+	ip = iface.ip("utun5", event::family_t::IPV6);
+	// Устанавливаем полученный IP-адрес
+	addr.v6(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
+	// Выводим адрес шлюза по умолчанию
+	cout << "IPv6 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << endl;
+
+	for(;;);
+
 	// Выводим заголовок примера проброса порта
 	cout << " --- Portmapping Example --- " << endl;
 	// Создаём объект для работы с пробросом портов
@@ -191,13 +223,6 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выводим сообщение об успешном удалении проброса порта
 			cout << "Portmapping removed successfully." << endl;
 	}
-	
-	#ifdef __AWH_DISABLE__
-	// Получаем список сетевых интерфейсов системы
-	for(auto & iface : eth.ifaces())
-		// Выводим список сетевых интерфейсов системы
-		cout << "Interface: " << iface << endl;
-	#endif
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

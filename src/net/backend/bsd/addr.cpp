@@ -201,12 +201,10 @@ void awh::eth::NetAddress::fillSource(net::src_t & source) const noexcept {
 							if(!(ifa->ifa_flags & IFF_UP))
 								// Пропускаем неактивные интерфейсы
 								continue;
-							// Получаем IP-адрес интерфейса
-							struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
 							// Если имя интерфейса совпадает
 							if(this->_fmk->compare(ifa->ifa_name, source.iface)){
 								// Копируем IP-адрес в результат
-								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = sin->sin_addr.s_addr;
+								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
 								// Выходим из цикла
 								break;
 							}
@@ -249,12 +247,10 @@ void awh::eth::NetAddress::fillSource(net::src_t & source) const noexcept {
 							if(!(ifa->ifa_flags & IFF_UP))
 								// Пропускаем неактивные интерфейсы
 								continue;
-							// Получаем указатель на IPv6-адрес
-							struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 							// Если имя интерфейса совпадает
 							if(this->_fmk->compare(ifa->ifa_name, source.iface)){
 								// Копируем IP-адрес в результат
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, sizeof(in6_addr));
 								// Выходим из цикла
 								break;
 							}
