@@ -51,13 +51,14 @@
  * Подключаем системные заголовки
  */
 #include <ifaddrs.h>
-#include <net/if_dl.h>
-#include <net/route.h>
-#include <sys/un.h>
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
+#include <sys/un.h>
+#include <net/if_dl.h>
+#include <netinet/in.h> 
+#include <net/route.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/if_ether.h>
