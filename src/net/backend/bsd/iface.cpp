@@ -470,12 +470,10 @@ bool awh::eth::Interface::isTunnel(const string & name) const noexcept {
 						if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
 							// Получаем структуру адреса канального уровня
 							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
-							// Определяем тип интерфейса
+							/**
+							 * Определяем тип интерфейса
+							 */
 							switch(sdl->sdl_type){
-								// Если это виртуальный интерфейс (PPP)
-								case IFT_PPP:
-								// Если это виртуальный интерфейс (GIF)
-								case IFT_GIF:
 								/**
 								 * Если определён тип интерфейса Tunnel
 								 */
@@ -490,10 +488,15 @@ bool awh::eth::Interface::isTunnel(const string & name) const noexcept {
 									// Если это виртуальный интерфейс (STF)
 									case IFT_STF:
 								#endif
+								// Если это виртуальный интерфейс (PPP)
+								case IFT_PPP:
+								// Если это виртуальный интерфейс (GIF)
+								case IFT_GIF: {
 									// Устанавливаем результат окончательно
 									result = true;
 									// Прерываем цикл, так как точно нашли
 									goto End;
+								}
 							}
 						}
 					}
@@ -566,14 +569,10 @@ bool awh::eth::Interface::isVirtual(const string & name) const noexcept {
 						if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
 							// Получаем структуру адреса канального уровня
 							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
-							// Определяем тип интерфейса
+							/**
+							 * Определяем тип интерфейса
+							 */
 							switch(sdl->sdl_type){
-								// Если это виртуальный интерфейс (Loopback)
-								case IFT_LOOP:
-								// Если это виртуальный интерфейс (PPP)
-								case IFT_PPP:
-								// Если это виртуальный интерфейс (GIF)
-								case IFT_GIF:
 								/**
 								 * Если определён тип интерфейса Bridge
 								 */
@@ -602,10 +601,17 @@ bool awh::eth::Interface::isVirtual(const string & name) const noexcept {
 									// Если это виртуальный интерфейс (STF)
 									case IFT_STF:
 								#endif
+								// Если это виртуальный интерфейс (Loopback)
+								case IFT_LOOP:
+								// Если это виртуальный интерфейс (PPP)
+								case IFT_PPP:
+								// Если это виртуальный интерфейс (GIF)
+								case IFT_GIF: {
 									// Устанавливаем результат
 									result = true;
 									// Прерываем цикл
 									goto End;
+								}
 							}
 						}
 					}
