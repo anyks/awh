@@ -148,6 +148,16 @@ namespace awh {
 				net::socket_t create(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
 			public:
 				/**
+				 * @brief Метод создания пары сокетов
+				 *
+				 * @param family семейство протоколов сокета
+				 * @param type   тип сокета
+				 * @param proto  протокол сокета
+				 * @return       созданный сокет
+				 */
+				array <net::socket_t, 2> pair(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
+			public:
+				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка

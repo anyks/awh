@@ -93,6 +93,22 @@ namespace awh {
 			virtual bool iface(const event::id_t id, const string & name) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения MTU сетевого интерфейса
+			 *
+			 * @param id идентификатор события
+			 * @return   MTU сетевого интерфейса
+			 */
+			virtual uint16_t mtu(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки MTU сетевого интерфейса
+			 *
+			 * @param id  идентификатор события
+			 * @param mtu размер MTU интерфейса
+			 * @return    результат установки MTU сетевого интерфейса
+			 */
+			virtual bool mtu(const event::id_t id, const uint16_t mtu) const noexcept = 0;
+		public:
+			/**
 			 * @brief Метод получения хоста целевой машины
 			 *
 			 * @param id идентификатор события

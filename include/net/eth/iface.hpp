@@ -156,7 +156,7 @@ namespace awh {
 				 * @param family семейство протоколов (IPv4 или IPv6)
 				 * @return       IP-адрес сетевого интерфейса
 				 */
-				unique_ptr <net::addr_t> ip(const string & name, const event::family_t family) const noexcept;
+				unique_ptr <net::addr_t> getAddress(const string & name, const event::family_t family) const noexcept;
 				/**
 				 * @brief Метод установки IP-адреса на сетевой интерфейс
 				 *
@@ -166,17 +166,28 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат установки IP-адреса
 				 */
-				bool ip(const string & name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept;
+				bool setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept;
+			public:
 				/**
-				 * @brief Метод установки IP-адреса на сетевой интерфейс
+				 * @brief Метод изменения параметров сетевого интерфейса точка-точка
+				 *
+				 * @param name   имя сетевого интерфейса
+				 * @param ip     адрес сетевого интерфейса для получения
+				 * @param peer   адрес удалённого пира (для точка-точка)
+				 * @param prefix префикс подсети
+				 * @return       результат изменения параметров сетевого интерфейса точка-точка
+				 */
+				bool getBinding(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
+				/**
+				 * @brief Метод установки параметров сетевого интерфейса точка-точка
 				 *
 				 * @param name   имя сетевого интерфейса
 				 * @param ip     адрес сетевого интерфейса для установки
 				 * @param peer   адрес удалённого пира (для точка-точка)
 				 * @param prefix префикс подсети
-				 * @return       результат установки IP-адреса
+				 * @return       результат установки параметров сетевого интерфейса точка-точка
 				 */
-				bool ip(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
+				bool setBinding(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

@@ -526,6 +526,52 @@ namespace awh {
 			virtual ~InterProcessCommunication() = default;
 		} ipc_t;
 		/**
+		 * @brief Структура туннеля
+		 *
+		 */
+		typedef struct Tunnel : public node_t {
+			// Название сетевого интерфейса
+			string iface;
+			// Источник сетевых адресов
+			unique_ptr <addr_t> source;
+			// Адрес точки назначения
+			unique_ptr <addr_t> target;
+			// Обратные вызовы события
+			callbacks_t callbacks;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Tunnel() noexcept : iface{""}, source(nullptr), target(nullptr) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Tunnel() = default;
+		} tun_t;
+		/**
+		 * @brief Структура посредника
+		 *
+		 */
+		typedef struct Mediator : public node_t {
+			// Источник сетевых адресов
+			unique_ptr <addr_t> source;
+			// Адрес точки назначения
+			unique_ptr <addr_t> target;
+			// Обратные вызовы события
+			peer_callbacks_t callbacks;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Mediator() noexcept : source(nullptr), target(nullptr) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Mediator() = default;
+		} mediator_t;
+		/**
 		 * @brief Структура подключённого клиента
 		 *
 		 */

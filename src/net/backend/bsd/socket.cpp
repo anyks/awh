@@ -2202,6 +2202,237 @@ awh::net::socket_t awh::eth::Socket::create(const event::family_t family, const 
 	return net::invalid_socket_t;
 }
 /**
+ * @brief Метод создания пары сокетов
+ *
+ * @param family семейство протоколов сокета
+ * @param type   тип сокета
+ * @param proto  протокол сокета
+ * @return       созданный сокет
+ */
+array <awh::net::socket_t, 2> awh::eth::Socket::pair(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+	// Результат работы функции
+	array <net::socket_t, 2> result = {
+		net::invalid_socket_t,
+		net::invalid_socket_t
+	};
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства PIPE
+			case static_cast <uint8_t> (event::family_t::PIPE): {
+				// Выполняем инициализацию файловых дескрипторов
+				if(::pipe(&result[0]) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (type),
+								static_cast <uint16_t> (proto)
+							),
+							log_t::flag_t::CRITICAL, ::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства UNIX-доменных сокетов
+			case static_cast <uint8_t> (event::family_t::UDS): {
+				/**
+				 * Определяем тип сокета
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Если сокет принадлежит к типу STREAM
+					case static_cast <uint8_t> (event::type_t::STREAM): {
+						// Выполняем инициализацию файловых дескрипторов
+						if(::socketpair(AF_UNIX, SOCK_STREAM, 0, &result[0]) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (type),
+										static_cast <uint16_t> (proto)
+									),
+									log_t::flag_t::CRITICAL, ::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Если сокет принадлежит к типу DATAGRAM
+					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+						// Выполняем инициализацию файловых дескрипторов
+						if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, &result[0]) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (type),
+										static_cast <uint16_t> (proto)
+									),
+									log_t::flag_t::CRITICAL, ::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					} break;
+					// Если сокет принадлежит к типу SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						/**
+						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 */
+						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+							// Выполняем инициализацию файловых дескрипторов
+							if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, &result[0]) != 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (type),
+											static_cast <uint16_t> (proto)
+										),
+										log_t::flag_t::CRITICAL, ::strerror(errno)
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+							}
+						/**
+						 * Для остальных операционных систем
+						 */
+						#else
+							// Выполняем инициализацию файловых дескрипторов
+							if(::socketpair(AF_UNIX, SOCK_SEQPACKET, 0, &result[0]) != 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (type),
+											static_cast <uint16_t> (proto)
+										),
+										log_t::flag_t::CRITICAL, ::strerror(errno)
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+							}
+						#endif
+					} break;
+					// Для неизвестного типа сокета
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"An event for a Unix event cannot be created because it has an invalid initialization type",
+								__PRETTY_FUNCTION__, std::make_tuple(
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (type),
+									static_cast <uint16_t> (proto)
+								), log_t::flag_t::WARNING
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			} break;
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4):
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Создаём нужное количество сокетов
+				for(net::socket_t & socket : result)
+					// Создаём сокет по указанным параметрам
+					socket = this->create(family, type, proto);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (type),
+					static_cast <uint16_t> (proto)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Конструктор
  *
  * @param fmk объект фреймворка

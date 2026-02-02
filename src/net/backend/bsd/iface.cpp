@@ -96,6 +96,29 @@ namespace iface {
 		// Выводим маску подсети
 		return htonl((0xFFFFFFFFU) << (32 - static_cast <uint32_t> (prefix)));
 	}
+	/**
+	 * @brief Функция преобразования маски подсети в префикс
+	 *
+	 * @param mask маска подсети
+	 * @return     префикс сети
+	 */
+	static uint8_t mask2prefix(const struct in_addr & mask) noexcept {
+		// Результат работы функции
+		uint8_t result = 0;
+		// Преобразуем маску подсети в префикс
+		uint32_t value = ntohl(mask.s_addr);
+		/**
+		 * Пока старший бит равен единице
+		 */
+		while(value & 0x80000000){
+			// Увеличиваем префикс
+			result++;
+			// Сдвигаем значение маски подсети влево
+			value <<= 1;
+		}
+		// Выводим результат
+		return result;
+	}
 };
 
 /**
@@ -1369,7 +1392,7 @@ bool awh::eth::Interface::flag(const string & name, const event::eth_flag_t flag
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       IP-адрес сетевого интерфейса
  */
-unique_ptr <awh::net::addr_t> awh::eth::Interface::ip(const string & name, const event::family_t family) const noexcept {
+unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(const string & name, const event::family_t family) const noexcept {
 	// Результат работы функции
 	unique_ptr <awh::net::addr_t> result = nullptr;
 	// Если название сетевого интерфейса передано
@@ -1487,7 +1510,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::ip(const string & name, const
  * @param prefix префикс подсети
  * @return       результат установки IP-адреса
  */
-bool awh::eth::Interface::ip(const string & name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept {
+bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адрес для установки переданы
@@ -1652,15 +1675,169 @@ bool awh::eth::Interface::ip(const string & name, const unique_ptr <net::addr_t>
 	return result;
 }
 /**
- * @brief Метод установки IP-адреса на сетевой интерфейс
+ * @brief Метод изменения параметров сетевого интерфейса точка-точка
+ *
+ * @param name   имя сетевого интерфейса
+ * @param ip     адрес сетевого интерфейса для получения
+ * @param peer   адрес удалённого пира (для точка-точка)
+ * @param prefix префикс подсети
+ * @return       результат изменения параметров сетевого интерфейса точка-точка
+ */
+bool awh::eth::Interface::getBinding(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если название сетевого интерфейса передано
+	if(!name.empty() && (ip != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Список сетевых интерфейсов
+			struct ifaddrs * ptr = nullptr;
+			// Выполняем получение списка сетевых интерфейсов
+			if(::getifaddrs(&ptr) == 0){
+				// Перебираем все сетевые интерфейсы
+				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+					// Если интерфейс не имеет адреса или имя не совпадает
+					if((ifa->ifa_addr == nullptr) || !this->_fmk->compare(ifa->ifa_name, name))
+						// Переходим к следующему
+						continue;
+					/**
+					 * Определяем тип адреса который мы ищем
+					 */
+					switch(ip->size){
+						// Если ищем IPv4
+						case 4: {
+							// Если семейство адресов совпадает
+							if(ifa->ifa_addr->sa_family == AF_INET){
+								// Преобразуем адрес интерфейса
+								struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
+								// Извлекаем IP-адрес интерфейса
+								awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = sin->sin_addr.s_addr;
+								// Если адрес удалённого пира доступен (P2P интерфейс)
+								if((peer != nullptr) && (ifa->ifa_dstaddr != nullptr) && (ifa->ifa_dstaddr->sa_family == AF_INET)){
+									// Получаем адрес пира
+									struct sockaddr_in * dst = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_dstaddr);
+									// Извлекаем IP-адрес удалённого пира
+									awh_cast <net::addr_net_ipv4_t *> (peer.get())->address = dst->sin_addr.s_addr;
+								}
+								// Если маска подсети доступна
+								if(ifa->ifa_netmask != nullptr){
+									// Преобразуем маску
+									struct sockaddr_in * msk = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_netmask);
+									// Извлекаем префикс подсети
+									prefix = ::iface::mask2prefix(msk->sin_addr);
+								// Если маска подсети недоступна, устанавливаем префикс /32
+								} else prefix = 32;
+								// Устанавливаем флаг успеха
+								result = true;
+								// Прерываем поиск (для IPv4 берем первый попавшийся)
+								goto End;
+							}
+						} break;
+						// Если ищем IPv6
+						case 16: {
+							// Если семейство адресов совпадает
+							if(ifa->ifa_addr->sa_family == AF_INET6){
+								// Получаем адрес интерфейса
+								struct sockaddr_in6 * sin6 = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+								// Если это не Link-Local адрес, или мы еще не нашли никакого адреса
+								bool isLinkLocal = IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr);
+								// Если результат еще не установлен или мы нашли глобальный адрес (перезаписываем Link-Local)
+								if(!result || !isLinkLocal){
+									// Копируем IP-адрес
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &sin6->sin6_addr, sizeof(in6_addr));
+									// Сбрасываем префикс перед расчетом
+									prefix = 0;
+									// Если маска подсети доступна
+									if(ifa->ifa_netmask != nullptr){
+										// Получаем маску подсети
+										struct sockaddr_in6 * msk6 = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_netmask);
+										// Вычисляем префикс
+										for(size_t i = 0; i < 16; ++i){
+											// Получаем байт маски
+											uint8_t byte = msk6->sin6_addr.s6_addr[i];
+											// Считаем биты
+											while(byte & 0x80){
+												// Увеличиваем префикс
+												prefix++;
+												// Сдвигаем байт
+												byte <<= 1;
+											}
+										}
+									// Если маска подсети недоступна, устанавливаем префикс /128
+									} else prefix = 128;
+									// Если пир задан и доступен
+									if((peer != nullptr) && (ifa->ifa_dstaddr != nullptr) && (ifa->ifa_dstaddr->sa_family == AF_INET6)){
+										// Получаем адрес пира
+										struct sockaddr_in6 * dst6 = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_dstaddr);
+										// Копируем адрес пира
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (peer.get())->address[0], &dst6->sin6_addr, sizeof(in6_addr));
+									}
+									// Устанавливаем флаг успеха
+									result = true;
+									// Если найден глобальный адрес, то это наш лучший выбор
+									if(!isLinkLocal)
+										// Прерываем поиск
+										goto End;
+								}
+							}
+						} break;
+					}
+				}
+				/**
+				 * Метка завершения поиска
+				 */
+				End:
+				// Освобождаем память списка сетевых интерфейсов
+				::freeifaddrs(ptr);
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки параметров сетевого интерфейса точка-точка
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
  * @param peer   адрес удалённого пира (для точка-точка)
  * @param prefix префикс подсети
- * @return       результат установки IP-адреса
+ * @return       результат установки параметров сетевого интерфейса точка-точка
  */
-bool awh::eth::Interface::ip(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
+bool awh::eth::Interface::setBinding(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адреса для установки переданы

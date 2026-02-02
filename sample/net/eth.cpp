@@ -122,13 +122,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём туннельный интерфейс
 	cout << " Tunnel interface: " << iface.tunnel(tunnel) << " === " << tunnel << ", isVirtual=" << iface.isVirtual(tunnel) << ", isTunnel=" << iface.isTunnel(tunnel) << endl;
 	// Получаем IP-адрес туннельного интерфейса
-	auto ip = iface.ip("utun6", event::family_t::IPV4);
+	auto ip = iface.getAddress("utun6", event::family_t::IPV4);
 	// Устанавливаем полученный IP-адрес
 	addr.v4(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
 	// Выводим адрес шлюза по умолчанию
 	cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << ", isVirtual=" << iface.isVirtual("utun6") << ", isTunnel=" << iface.isTunnel("utun6") << endl;
 	// Если устанавливаем IP-адрес туннельного интерфейса
-	if(iface.ip(tunnel, ip, ip, 24))
+	if(iface.setBinding(tunnel, ip, ip, 24))
 		// Выводим сообщение об успешной установке IP-адреса
 		cout << " Assigned IPv4 address to " << tunnel << endl;
 	// Иначе выводим сообщение об ошибке
@@ -156,7 +156,7 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}
 	// Получаем IP-адрес туннельного интерфейса
-	ip = iface.ip("utun5", event::family_t::IPV6);
+	ip = iface.getAddress("utun5", event::family_t::IPV6);
 	// Устанавливаем полученный IP-адрес
 	addr.v6(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
 	// Выводим адрес шлюза по умолчанию
