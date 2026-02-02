@@ -24968,10 +24968,15 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 									}
 								}
 							} break;
+							/**
+							 * Для операционной системы MacOS X, NetBSD, OpenBSD
+							 */
+							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+								// Если сокет принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET):
+							#endif
 							// Если сокет принадлежит к типу DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM):
-							// Если сокет принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Если семейство событий принадлежит к IPv4
 								if(i->second->state.family == event::family_t::IPV4){
 									// Если опция передана как BROADCAST
