@@ -63,14 +63,6 @@ namespace awh {
 				unordered_set <string> available() const noexcept;
 			public:
 				/**
-				 * @brief Метод создания TUN/TAP сетевого интерфейса
-				 *
-				 * @param name имя сетевого интерфейса
-				 * @return     дескриптор созданного TUN/TAP сетевого интерфейса
-				 */
-				net::socket_t tunnel(string & name) const noexcept;
-			public:
-				/**
 				 * @brief Метод проверки доступности сетевого интерфейса
 				 *
 				 * @param name имя сетевого интерфейса
@@ -115,6 +107,15 @@ namespace awh {
 				 * @return     имя сетевого интерфейса
 				 */
 				string name(const unique_ptr <net::addr_t> & addr) const noexcept;
+			public:
+				/**
+				 * @brief Метод создания сетевого интерфейса
+				 *
+				 * @param type тип сетевого интерфейса
+				 * @param name имя сетевого интерфейса
+				 * @return     дескриптор созданного сетевого интерфейса
+				 */
+				net::socket_t create(const event::eth_t type, string & name) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения MTU сетевого интерфейса

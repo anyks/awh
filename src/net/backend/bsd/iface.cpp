@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cerrno>
 #include <memory>
+#include <string>
 #include <cstring>
 #include <cstdlib>
 
@@ -28,12 +29,15 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/bpf.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
@@ -119,6 +123,114 @@ namespace iface {
 		// Выводим результат
 		return result;
 	}
+	/**
+	 * @brief Функция создания клонируемого интерфейса
+	 *
+	 * @param driver имя драйвера интерфейса
+	 * @param name   имя сетевого интерфейса
+	 * @param log    объект работы с логами
+	 * @return       дескриптор созданного сетевого интерфейса
+	 */
+	static awh::net::socket_t clonable(const string & driver, string & name, const awh::log_t * log) noexcept {
+		// Если название драйвера передано
+		if(!driver.empty()){
+			/**
+			 * Выполняем перехват ошибок
+			 */
+			try {
+				// Создаём сокет для управления интерфейсом
+				const awh::net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+				// Если создание сокета прошло неудачно
+				if(sock == awh::net::invalid_socket_t){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(driver, name), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+					// Выводим результат
+					return awh::net::invalid_socket_t;
+				}
+				// Структура запроса
+				struct ifreq ifr{0};
+				// Если имя интерфейса задано
+				if(!name.empty()){
+					// Копируем имя интерфейса
+					::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+					// Устанавливаем завершающий ноль
+					ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+					// Удаляем интерфейс
+					if(::ioctl(sock, SIOCIFCREATE, &ifr) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(driver, name), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Выводим результат
+						return awh::net::invalid_socket_t;
+					}
+					// Выводим сокет созданного интерфейса
+					return sock;
+				// Если имя интерфейса не задано
+				} else {
+					/**
+					 * Перебираем возможные индексы
+					 */
+					for(size_t i = 0; i < 128; ++i){
+						// Формируем имя интерфейса
+						::snprintf(ifr.ifr_name, IFNAMSIZ, "%s%zu", driver.c_str(), i);
+						// Пытаемся создать интерфейс
+						if(::ioctl(sock, SIOCIFCREATE, &ifr) == 0){
+							// Сохраняем имя
+							name = ifr.ifr_name;
+							// Возвращаем сокет
+							return sock;
+						}
+						// Если ошибка не EEXIST, прерываем
+						if(errno != EEXIST)
+							// Прерываем цикл
+							break;
+					}
+				}
+				// Закрываем сокет и возвращаем ошибку
+				::close(sock);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(driver, name), awh::log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+		// Выводим результат по умолчанию
+		return awh::net::invalid_socket_t;
+	};
 };
 
 /**
@@ -259,206 +371,6 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 		#endif
 	}
 	// Выводиим результат
-	return result;
-}
-/**
- * @brief Метод создания TUN/TAP сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     дескриптор созданного TUN/TAP сетевого интерфейса
- */
-awh::net::socket_t awh::eth::Interface::tunnel(string & name) const noexcept {
-	// Результат работы функции
-	awh::net::socket_t result = net::invalid_socket_t;
-	/**
-	 * Для операционной системы MacOS X
-	 */
-	#if __APPLE__ || __MACH__
-		// Объект контроллера
-		struct ctl_info ctlInfo{0};
-		// Устанавливаем имя контроллера UTUN
-		::strncpy(ctlInfo.ctl_name, UTUN_CONTROL_NAME, sizeof(ctlInfo.ctl_name));
-		// Создаём сокет для управления UTUN интерфейсом
-		result = ::socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-		// Если сокет не создан
-		if(result == net::invalid_socket_t){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Выводим результат
-			return result;
-		}
-		// Получаем информацию о контроллере UTUN
-		if(::ioctl(result, CTLIOCGINFO, &ctlInfo) == net::invalid_socket_t){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Закрываем сокет
-			::close(result);
-			// Выводим результат
-			return net::invalid_socket_t;
-		}
-		// Создаём структуру адреса управления сокетом
-		struct sockaddr_ctl sc{0};
-		// Устанавливаем идентификатор контроллера
-		sc.sc_id = ctlInfo.ctl_id;
-		// Устанавливаем длину структуры
-		sc.sc_len = sizeof(sc);
-		// Устанавливаем семейство адресов
-		sc.sc_family = AF_SYSTEM;
-		// Устанавливаем тип адреса управления сокетом
-		sc.ss_sysaddr = AF_SYS_CONTROL;
-		/**
-		 * Попытайтесь найти свободный номер устройства вручную или позвольте ядру решить это.
-		 * Если мы хотим реализовать логику «tun -> tun0, tun1»:
-		 * При использовании UTUN привязка с sc_unit = 0 позволяет ядру выбрать следующий доступный «utunX».
-		 * sc_unit = X + 1 запрос utunX.
-		 */
-		// Автоматический выбор номера интерфейса
-		sc.sc_unit = 0;
-		// Выполняем подключение к UTUN интерфейсу
-		if(::connect(result, reinterpret_cast <struct sockaddr *> (&sc), sizeof(sc)) == net::invalid_socket_t){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Закрываем сокет
-			::close(result);
-			// Выводим результат
-			return net::invalid_socket_t;
-		}
-		// Выделяем буфер для имени интерфейса
-		name.resize(IFNAMSIZ, '\0');
-		// Размер буфера имени интерфейса
-		socklen_t length = IFNAMSIZ;
-		// Получаем имя созданного интерфейса
-		if(::getsockopt(result, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, &name[0], &length) == net::invalid_socket_t){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Закрываем сокет
-			::close(result);
-			// Выводим результат
-			return net::invalid_socket_t;
-		}
-		// Обрезаем имя интерфейса по нулевому символу
-		name.resize(::strlen(name.c_str()));
-	/**
-	 * Для операционной системы FreeBSD, NetBSD, OpenBSD
-	 */
-	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-		// Создаём сокет для управления UTUN интерфейсом
-		result = ::open("/dev/tun", O_RDWR);
-		// Если сокет не создан
-		if(result == net::invalid_socket_t){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Выводим результат
-			return result;
-		}
-		// Выделяем буфер для имени интерфейса
-		name.resize(100, '\0');
-		// Получаем имя созданного интерфейса
-		if(::fdevname_r(result, &name[0], 100) == nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Закрываем сокет
-			::close(result);
-			// Выводим результат
-			return net::invalid_socket_t;
-		}
-		/**
-		 * Режим по умолчанию обычно включает заголовок семейства адресов (4 байта).
-		 * При необходимости мы можем попытаться отключить его с помощью TUNSIFHEAD ioctl(fd, TUNSIFHEAD, &zero),
-		 * но реализация MacOS X обрабатывает заголовок, поэтому при желании мы можем сохранить его согласованность.
-		 */
-		// Флаг активации заголовка
-		int32_t flag = 1;
-		// Включаем информацию о пакете TUN (заголовок)
-		if(::ioctl(result, TUNSIFHEAD, &flag) != 0){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Закрываем сокет
-			::close(result);
-			// Выводим результат
-			return net::invalid_socket_t;
-		}
-		// Обрезаем имя интерфейса по нулевому символу
-		name.resize(::strlen(name.c_str()));
-	#endif
-	// Выводим результат
 	return result;
 }
 /**
@@ -851,6 +763,422 @@ string awh::eth::Interface::name(const unique_ptr <net::addr_t> & addr) const no
 		#endif
 	}
 	// Выводим пустой результат
+	return result;
+}
+/**
+ * @brief Метод создания сетевого интерфейса
+ *
+ * @param type тип сетевого интерфейса
+ * @param name имя сетевого интерфейса
+ * @return     дескриптор созданного сетевого интерфейса
+ */
+awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string & name) const noexcept {
+	// Результат работы функции
+	net::socket_t result = net::invalid_socket_t;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип создаваемого интерфейса
+		 */
+		switch(static_cast <uint8_t> (type)){
+			// Если создаётся прямое подключение к сети через драйвер сетевой карты
+			case static_cast <uint8_t> (event::eth_t::NET): {
+				// Если имя интерфейса не задано, пытаемся его определить
+				if(name.empty()){
+					// Получаем список интерфейсов
+					struct ifaddrs * ifap = nullptr;
+					// Если список получен успешно
+					if(::getifaddrs(&ifap) == 0){
+						// Перебираем интерфейсы
+						for(struct ifaddrs * ifa = ifap; ifa != nullptr; ifa = ifa->ifa_next){
+							// Пропускаем интерфейсы без адреса AF_LINK
+							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_LINK))
+								// Переходим к следующему интерфейсу
+								continue;
+							// Получаем структуру адреса канального уровня
+							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+							// Проверяем тип интерфейса (должен быть Ethernet)
+							if(sdl->sdl_type == IFT_ETHER){
+								// Проверяем флаги: не петля, и (активный или можно активировать)
+								if(!(ifa->ifa_flags & IFF_LOOPBACK)){
+									// Сохраняем имя
+									name = ifa->ifa_name;
+									// Прерываем поиск
+									break;
+								}
+							}
+						}
+						// Освобождаем список
+						::freeifaddrs(ifap);
+					}
+				}
+				// Если имя интерфейса определено
+				if(!name.empty()){
+					// Создаём сокет для управления для поднятия интерфейса
+					result = ::socket(AF_INET, SOCK_DGRAM, 0);
+					// Если сокет управления создан
+					if(result != net::invalid_socket_t){
+						// Структура запроса
+						struct ifreq ifr{0};
+						// Копируем имя интерфейса
+						::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+						// Устанавливаем завершающий ноль
+						ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+						// Получаем текущие флаги
+						if(::ioctl(result, SIOCGIFFLAGS, &ifr) == 0){
+							// Устанавливаем флаг UP
+							ifr.ifr_flags |= IFF_UP;
+							// Применяем флаги
+							::ioctl(result, SIOCSIFFLAGS, &ifr);
+						}
+						// Закрываем сокет управления
+						::close(result);
+					}
+					// Теперь открываем BPF устройство для работы с пакетами
+					char buffer[32];
+					// Перебираем устройства BPF
+					for(uint16_t i = 0; i < 256; ++i){
+						// Формируем путь
+						::snprintf(buffer, sizeof(buffer), "/dev/bpf%u", i);
+						// Пытаемся открыть устройство
+						if((result = ::open(buffer, O_RDWR)) != net::invalid_socket_t){
+							// Структура для привязки
+							struct ifreq ifr{0};
+							// Копируем имя интерфейса
+							::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+							// Устанавливаем завершающий ноль
+							ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+							// Пытаемся привязать BPF к интерфейсу
+							if(::ioctl(result, BIOCSETIF, &ifr) == 0){
+								// Включаем немедленный режим (возврат при получении пакета сразу)
+								unsigned int on = 1;
+								// Активируем немедленный режим
+								if(::ioctl(result, BIOCIMMEDIATE, &on) == 0)
+									// Успешно открыли и привязали
+									goto Success;
+							}
+							// Если привязка не удалась, закрываем и пробуем следующий BPF
+							::close(result);
+							// Сбрасываем результат
+							result = net::invalid_socket_t;
+						}
+					}
+					// Метка успешного завершения
+					Success:;
+				}
+			} break;
+			// Если создаётся передача сырых IP-пакетов между точками
+			case static_cast <uint8_t> (event::eth_t::TUN): {
+				/**
+				 * Для операционной системы MacOS X
+				 */
+				#if __APPLE__ || __MACH__
+					// Объект контроллера
+					struct ctl_info ctlInfo{0};
+					// Устанавливаем имя контроллера UTUN
+					::strncpy(ctlInfo.ctl_name, UTUN_CONTROL_NAME, sizeof(ctlInfo.ctl_name));
+					// Создаём сокет для управления UTUN интерфейсом
+					result = ::socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
+					// Если сокет не создан
+					if(result == net::invalid_socket_t){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Выводим результат
+						return result;
+					}
+					// Получаем информацию о контроллере UTUN
+					if(::ioctl(result, CTLIOCGINFO, &ctlInfo) == net::invalid_socket_t){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(result);
+						// Выводим результат
+						return net::invalid_socket_t;
+					}
+					// Создаём структуру адреса управления сокетом
+					struct sockaddr_ctl sc{0};
+					// Устанавливаем идентификатор контроллера
+					sc.sc_id = ctlInfo.ctl_id;
+					// Устанавливаем длину структуры
+					sc.sc_len = sizeof(sc);
+					// Устанавливаем семейство адресов
+					sc.sc_family = AF_SYSTEM;
+					// Устанавливаем тип адреса управления сокетом
+					sc.ss_sysaddr = AF_SYS_CONTROL;
+					/**
+					 * Попытайтесь найти свободный номер устройства вручную или позвольте ядру решить это.
+					 * Если мы хотим реализовать логику «tun -> tun0, tun1»:
+					 * При использовании UTUN привязка с sc_unit = 0 позволяет ядру выбрать следующий доступный «utunX».
+					 * sc_unit = X + 1 запрос utunX.
+					 */
+					// Автоматический выбор номера интерфейса
+					sc.sc_unit = 0;
+					// Выполняем подключение к UTUN интерфейсу
+					if(::connect(result, reinterpret_cast <struct sockaddr *> (&sc), sizeof(sc)) == net::invalid_socket_t){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(result);
+						// Выводим результат
+						return net::invalid_socket_t;
+					}
+					// Выделяем буфер для имени интерфейса
+					name.resize(IFNAMSIZ, '\0');
+					// Размер буфера имени интерфейса
+					socklen_t length = IFNAMSIZ;
+					// Получаем имя созданного интерфейса
+					if(::getsockopt(result, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, &name[0], &length) == net::invalid_socket_t){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(result);
+						// Выводим результат
+						return net::invalid_socket_t;
+					}
+					// Обрезаем имя интерфейса по нулевому символу
+					name.resize(::strlen(name.c_str()));
+				/**
+				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
+				 */
+				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+					// Создаём сокет для управления UTUN интерфейсом
+					result = ::open("/dev/tun", O_RDWR);
+					// Если сокет не создан
+					if(result == net::invalid_socket_t){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Выводим результат
+						return result;
+					}
+					// Выделяем буфер для имени интерфейса
+					name.resize(IFNAMSIZ, '\0');
+					// Получаем имя созданного интерфейса
+					if(::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(result);
+						// Выводим результат
+						return net::invalid_socket_t;
+					}
+					// Обрезаем имя интерфейса по нулевому символу
+					name.resize(::strlen(name.c_str()));
+					/**
+					 * Режим по умолчанию обычно включает заголовок семейства адресов (4 байта).
+					 * При необходимости мы можем попытаться отключить его с помощью TUNSIFHEAD ioctl(fd, TUNSIFHEAD, &zero),
+					 * но реализация MacOS X обрабатывает заголовок, поэтому при желании мы можем сохранить его согласованность.
+					 */
+					// Флаг активации заголовка
+					int32_t flag = 1;
+					// Включаем информацию о пакете TUN (заголовок)
+					if(::ioctl(result, TUNSIFHEAD, &flag) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+						// Закрываем сокет
+						::close(result);
+						// Выводим результат
+						return net::invalid_socket_t;
+					}
+				#endif
+			} break;
+			// Если создаётся передача кадров Ethernet (с MAC-адресами)
+			case static_cast <uint8_t> (event::eth_t::TAP): {
+				/**
+				 * Для операционной системы MacOS X
+				 */
+				#if __APPLE__ || __MACH__
+					/**
+					 * В штатной поставке MacOS X нет /dev/tap.
+					 * Для поддержки tap требуются сторонние расширения (например, tuntaposx).
+					 * Пытаемся найти доступные устройства, если драйвер установлен.
+					 */
+					for(uint8_t i = 0; i < 16; ++i){
+						// Пытаемся открыть устройство
+						if((result = ::open(this->_fmk->format("/dev/tap%u", i).c_str(), O_RDWR)) != net::invalid_socket_t){
+							// Формируем имя интерфейса
+							name = this->_fmk->format("tap%u", i);
+							// Прерываем поиск
+							break;
+						}
+					}
+				/**
+				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
+				 */
+				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+					// Открываем клонирующее устройство
+					if((result = ::open("/dev/tap", O_RDWR)) != net::invalid_socket_t){
+						// Выделяем буфер для имени интерфейса
+						name.resize(IFNAMSIZ, '\0');
+						// Получаем имя созданного интерфейса
+						if(::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+							// Закрываем сокет
+							::close(result);
+							// Выводим результат
+							return net::invalid_socket_t;
+						}
+						// Обрезаем имя интерфейса по нулевому символу
+						name.resize(::strlen(name.c_str()));
+					}
+				#endif
+			} break;
+			// Если создаётся общий туннельный интерфейс (IPv6-in-IPv4, IPv4-in-IPv6, IPv6-in-IPv6)
+			case static_cast <uint8_t> (event::eth_t::GIF):
+				// Создаём клонирующий интерфейс GIF
+				result = ::iface::clonable("gif", name, this->_log);
+			break;
+			// Если создаётся GRE-туннель (включая с ключом)
+			case static_cast <uint8_t> (event::eth_t::GRE):
+				// Создаём клонирующий интерфейс GRE
+				result = ::iface::clonable("gre", name, this->_log);
+			break;
+			// Если создаётся беспроводной интерфейс
+			case static_cast <uint8_t> (event::eth_t::WLAN):
+				// Создаём клонирующий интерфейс WLAN
+				result = ::iface::clonable("wlan", name, this->_log);
+			break;
+			// Если создаётся интерфейс логической сегментации на основе 802.1Q
+			case static_cast <uint8_t> (event::eth_t::VLAN):
+				// Создаём клонирующий интерфейс VLAN
+				result = ::iface::clonable("vlan", name, this->_log);
+			break;
+			// Если создаётся интерфейс агрегации каналов
+			case static_cast <uint8_t> (event::eth_t::BOND):
+				// Создаём клонирующий интерфейс LAGG
+				result = ::iface::clonable("lagg", name, this->_log);
+			break;
+			// Если создаётся интерфейс объединения интерфейсов на уровне L2
+			case static_cast <uint8_t> (event::eth_t::BRIDGE):
+				// Создаём клонирующий интерфейс Bridge
+				result = ::iface::clonable("bridge", name, this->_log);
+			break;
+			// Если создаётся неизвестный тип интерфейса
+			default: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Unsupported network interface type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Unsupported network interface type", log_t::flag_t::WARNING);
+				#endif
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type), name), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
 	return result;
 }
 /**

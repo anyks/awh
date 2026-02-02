@@ -120,7 +120,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Название туннельного интерфейса
 	string tunnel = "";
 	// Создаём туннельный интерфейс
-	cout << " Tunnel interface: " << iface.tunnel(tunnel) << " === " << tunnel << ", isVirtual=" << iface.isVirtual(tunnel) << ", isTunnel=" << iface.isTunnel(tunnel) << endl;
+	cout << " Tunnel interface: " << iface.create(event::eth_t::TUN, tunnel) << " === " << tunnel << ", isVirtual=" << iface.isVirtual(tunnel) << ", isTunnel=" << iface.isTunnel(tunnel) << endl;
 	// Получаем IP-адрес туннельного интерфейса
 	auto ip = iface.getAddress("utun6", event::family_t::IPV4);
 	// Устанавливаем полученный IP-адрес

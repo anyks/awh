@@ -1257,10 +1257,11 @@ namespace io {
 	 * @brief Прототип функции обработки события таймера
 	 *
 	 * @param  узел в котором произошло событие
+	 * @param  объект работы с сетевыми интерфейсами
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool timer(net::node_t *, const log_t *) noexcept;
+	static bool timer(net::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события закрытия
 	 *
@@ -1273,10 +1274,11 @@ namespace io {
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param  узел в котором произошло событие
+	 * @param  объект работы с сетевыми интерфейсами
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool destroy(net::node_t *, const log_t *) noexcept;
+	static bool destroy(net::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки пользовательского события
 	 *
@@ -1439,10 +1441,11 @@ namespace io {
 	 * @brief Функция обработки события таймера
 	 *
 	 * @param node узел в котором произошло событие
+	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool timer(net::node_t * node, const log_t * log) noexcept {
+	static bool timer(net::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -1460,7 +1463,7 @@ namespace io {
 					// Выполняем обработку закрытия подключения
 					if(::io::close(node, log))
 						// Выполняем удаление узла
-						result = ::io::destroy(node, log);
+						result = ::io::destroy(node, eth, log);
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -1469,7 +1472,7 @@ namespace io {
 					// Выполняем обработку закрытия подключения
 					if(::io::close(node, log))
 						// Выполняем удаление узла
-						result = ::io::destroy(node, log);
+						result = ::io::destroy(node, eth, log);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -1478,7 +1481,7 @@ namespace io {
 					// Выполняем обработку закрытия подключения
 					if(::io::close(node, log))
 						// Выполняем удаление узла
-						result = ::io::destroy(node, log);
+						result = ::io::destroy(node, eth, log);
 				} break;
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT): {
@@ -1493,7 +1496,7 @@ namespace io {
 					// Если узел не помечен как мусорный
 					if(!guard.isGarbage())
 						// Выполняем удаление узла
-						result = ::io::destroy(node, log);
+						result = ::io::destroy(node, eth, log);
 				} break;
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
@@ -1818,10 +1821,11 @@ namespace io {
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param node узел в котором произошло событие
+	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool destroy(net::node_t * node, const log_t * log) noexcept {
+	static bool destroy(net::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1957,6 +1961,10 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем текущее значение объекта туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+					// Если туннель создан
+					if(!tunnel->iface.empty())
+						// Выполняем удаление сетевого интерфейса туннеля
+						eth->iface.destroy(tunnel->iface);
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -2497,6 +2505,72 @@ namespace io {
 					if(origin->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
 						origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return !guard.isGarbage();
+				}
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Создаём охранника узла события
+					::local::guard_t guard(node);
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+					// Если установлена функция обратного вызова
+					if(tunnel->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+					// Если установлена функция обратного вызова
+					if(tunnel->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						tunnel->callbacks.error(tunnel->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+						#endif
+					}
+					// Формируем положительный результат
+					return !guard.isGarbage();
+				}
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Создаём охранника узла события
+					::local::guard_t guard(node);
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
+					// Если установлена функция обратного вызова
+					if(mediator->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+					// Если установлена функция обратного вызова
+					if(mediator->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						mediator->callbacks.error(mediator->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -3828,7 +3902,7 @@ namespace io {
 															// Выполняем обработку закрытия подключения
 															if(::io::close(node, log))
 																// Выполняем удаление узла
-																::io::destroy(node, log);
+																::io::destroy(node, eth, log);
 															// Формируем отрицательный результат
 															return false;
 														}
@@ -3855,7 +3929,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -3897,7 +3971,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												// Если мы получили данные из сокета
@@ -3921,7 +3995,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -4009,7 +4083,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -4036,7 +4110,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -4078,7 +4152,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										// Если мы получили данные из сокета
@@ -4102,7 +4176,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -4161,7 +4235,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -4188,7 +4262,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -4230,7 +4304,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										// Если мы получили данные из сокета
@@ -4254,7 +4328,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -4350,7 +4424,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -4403,7 +4477,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -4466,7 +4540,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										// Если мы получили данные из сокета
@@ -4520,7 +4594,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -4589,7 +4663,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -4635,7 +4709,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -4687,7 +4761,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											// Если мы получили данные из сокета
@@ -4732,7 +4806,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -4757,6 +4831,12 @@ namespace io {
 							return true;
 						}
 					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+				
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -4826,7 +4906,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -4853,7 +4933,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -4898,7 +4978,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										// Если мы получили данные из сокета
@@ -4924,7 +5004,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -5002,7 +5082,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -5055,7 +5135,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -5118,7 +5198,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										// Если мы получили данные из сокета
@@ -5172,7 +5252,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -5229,7 +5309,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -5256,7 +5336,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -5296,7 +5376,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											// Если мы получили данные из сокета
@@ -5322,7 +5402,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -5381,7 +5461,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -5408,7 +5488,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -5453,7 +5533,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											// Если мы получили данные из сокета
@@ -5479,7 +5559,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -5558,7 +5638,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -5611,7 +5691,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -5674,7 +5754,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											// Если мы получили данные из сокета
@@ -5726,7 +5806,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -5812,7 +5892,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -5865,7 +5945,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -5939,7 +6019,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											// Если мы получили данные из сокета
@@ -5991,7 +6071,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -6169,7 +6249,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -6223,7 +6303,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -6401,7 +6481,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -6410,7 +6490,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -6507,7 +6587,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -6516,7 +6596,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -6575,7 +6655,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -6584,7 +6664,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -6754,7 +6834,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -6763,7 +6843,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(node, log))
 												// Выполняем удаление узла
-												::io::destroy(node, log);
+												::io::destroy(node, eth, log);
 											// Формируем отрицательный результат
 											return false;
 										}
@@ -6868,7 +6948,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -6877,7 +6957,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -6911,6 +6991,12 @@ namespace io {
 							return true;
 						}
 					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+				
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -7065,7 +7151,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -7074,7 +7160,7 @@ namespace io {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(node, log))
 													// Выполняем удаление узла
-													::io::destroy(node, log);
+													::io::destroy(node, eth, log);
 												// Формируем отрицательный результат
 												return false;
 											}
@@ -7162,7 +7248,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -7171,7 +7257,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -7262,7 +7348,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -7271,7 +7357,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -7388,7 +7474,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -7397,7 +7483,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -7522,7 +7608,7 @@ namespace io {
 														// Выполняем обработку закрытия подключения
 														if(::io::close(node, log))
 															// Выполняем удаление узла
-															::io::destroy(node, log);
+															::io::destroy(node, eth, log);
 														// Формируем отрицательный результат
 														return false;
 													}
@@ -7531,7 +7617,7 @@ namespace io {
 													// Выполняем обработку закрытия подключения
 													if(::io::close(node, log))
 														// Выполняем удаление узла
-														::io::destroy(node, log);
+														::io::destroy(node, eth, log);
 													// Формируем отрицательный результат
 													return false;
 												}
@@ -7634,7 +7720,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(origin, log))
 												// Выполняем удаление узла
-												::io::destroy(origin, log);
+												::io::destroy(origin, eth, log);
 											// Пропускаем итерацию цикла
 											continue;
 										}
@@ -7729,7 +7815,7 @@ namespace io {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(origin, log))
 												// Выполняем удаление узла
-												::io::destroy(origin, log);
+												::io::destroy(origin, eth, log);
 											// Пропускаем итерацию цикла
 											continue;
 										}
@@ -7738,7 +7824,7 @@ namespace io {
 										// Выполняем обработку закрытия подключения
 										if(::io::close(origin, log))
 											// Выполняем удаление узла
-											::io::destroy(origin, log);
+											::io::destroy(origin, eth, log);
 										// Пропускаем итерацию цикла
 										continue;
 									}
@@ -7817,7 +7903,7 @@ namespace io {
 							// Выполняем обработку ошибки
 							if(::io::error(node, ev.data, log))
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 						// Если установлена функция обратного вызова
 						} else if(dir->callbacks.event != nullptr) {
 							// Если мы детектировали событие изменения директории
@@ -7867,7 +7953,7 @@ namespace io {
 									// Вызываем функцию обратного вызова флаг события
 									dir->callbacks.event(dir->id, event::action_t::DELETE);
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 							// Если мы детектировали событие удаления директории
 							} else if(ev.fflags & NOTE_DELETE) {
 								// Если событие удаления директории разрешено
@@ -7875,7 +7961,7 @@ namespace io {
 									// Вызываем функцию обратного вызова флаг события
 									dir->callbacks.event(dir->id, event::action_t::DELETE);
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 							// Если мы детектировали событие изменения атрибутов директории
 							} else if(ev.fflags & NOTE_ATTRIB) {
 								// Если событие изменения атрибутов директории разрешено
@@ -7916,7 +8002,7 @@ namespace io {
 							// Если мы детектировали событие удаления директории
 							} else if(ev.fflags & NOTE_DELETE)
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 							// Если мы детектировали событие изменение жёсткой ссылки директории
 							else if(ev.fflags & NOTE_LINK) {
 								// Если событие изменения директории разрешено
@@ -7938,7 +8024,7 @@ namespace io {
 							// Выполняем обработку ошибки
 							if(::io::error(node, ev.data, log))
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 						// Если установлена функция обратного вызова
 						} else if(fs->callbacks.event != nullptr) {
 							// Если мы детектировали событие изменения файла
@@ -7980,7 +8066,7 @@ namespace io {
 									}
 								}
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 							// Если мы детектировали событие изменения атрибутов файла
 							} else if(ev.fflags & NOTE_ATTRIB) {
 								// Если событие изменения атрибутов файла разрешено
@@ -8028,7 +8114,7 @@ namespace io {
 										fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
 								}
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 							}
 						}
 					} break;
@@ -8049,9 +8135,9 @@ namespace io {
 							// Выполняем обработку ошибки
 							if(::io::error(node, ev.data, log))
 								// Выполняем удаление узла
-								::io::destroy(node, log);
+								::io::destroy(node, eth, log);
 						// Обрабатываем событие таймера
-						} else if(::io::timer(node, log))
+						} else if(::io::timer(node, eth, log))
 							// Пропускаем дальнейшую обработку события
 							return false;
 					} break;
@@ -8064,7 +8150,7 @@ namespace io {
 							// Выполняем обработку ошибки
 							::io::error(node, ev.data, log);
 						// Обрабатываем событие таймаута
-						if(::io::timer(node, log))
+						if(::io::timer(node, eth, log))
 							// Пропускаем дальнейшую обработку события
 							return false;
 					} break;
@@ -8119,7 +8205,7 @@ namespace io {
 							}
 						}
 						// Обрабатываем событие таймаута
-						if(::io::timer(node, log))
+						if(::io::timer(node, eth, log))
 							// Пропускаем дальнейшую обработку события
 							return false;
 					} break;
@@ -8132,7 +8218,7 @@ namespace io {
 					// Выполняем обработку ошибки
 					if(::io::error(node, ev.data, log))
 						// Выполняем удаление узла
-						::io::destroy(node, log);
+						::io::destroy(node, eth, log);
 				// Если событие пользовательского события сработало корректно
 				} else if(::io::user(awh_cast <::io::user_t *> (node), io, log))
 					// Пропускаем дальнейшую обработку события
@@ -8151,7 +8237,7 @@ namespace io {
 						// Выполняем обработку события закрытия
 						::io::close(node, log);
 					// Выполняем удаление узла
-					::io::destroy(node, log);
+					::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
 					return false;
 				// Обрабатываем событие доступности сокета на чтение
@@ -8172,7 +8258,7 @@ namespace io {
 						// Выполняем обработку события закрытия
 						::io::close(node, log);
 					// Выполняем удаление узла
-					::io::destroy(node, log);
+					::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
 					return false;
 				// Если в сокете нет ошибок
@@ -8188,7 +8274,7 @@ namespace io {
 						// Выполняем обработку события закрытия
 						if(::io::close(node, log))
 							// Выполняем удаление узла
-							::io::destroy(node, log);
+							::io::destroy(node, eth, log);
 						// Пропускаем дальнейшую обработку события
 						return false;
 					}
@@ -8207,7 +8293,7 @@ namespace io {
 						// Выполняем обработку события закрытия
 						::io::close(node, log);
 					// Выполняем удаление узла
-					::io::destroy(node, log);
+					::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
 					return false;
 				}
@@ -16501,6 +16587,68 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							#endif
 						}
 					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем текущее значение объекта туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "Active events cannot be committed again";
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем текущее значение объекта посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(mediator->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "Active events cannot be committed again";
+						// Если установлена функция обратного вызова
+						if(mediator->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
@@ -17384,15 +17532,6 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является посредником
-				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-					// Получаем объект посредника
-					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-					// Если идентификатор связанного события установлен
-					if(mediator->dest != 0)
-						// Извлекаем MTU связанного события
-						return this->mtu(mediator->dest);
-				} break;
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем текущее значение объекта туннеля
@@ -17430,6 +17569,15 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 							#endif
 						}
 					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Извлекаем MTU связанного события
+						return this->mtu(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -17637,15 +17785,6 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является посредником
-				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-					// Получаем объект посредника
-					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-					// Если идентификатор связанного события установлен
-					if(mediator->dest != 0)
-						// Устанавливаем MTU связанного события
-						return this->mtu(mediator->dest, mtu);
-				} break;
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем текущее значение объекта туннеля
@@ -17683,6 +17822,15 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 							#endif
 						}
 					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем MTU связанного события
+						return this->mtu(mediator->dest, mtu);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -22415,6 +22563,15 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если идентификатор связанного события установлен
+								if(mediator->dest != 0)
+									// Устанавливаем адрес сети для связанного события
+									return this->address(mediator->dest, address, value);
+							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
@@ -22967,7 +23124,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
-					return ::io::destroy(user, this->_log);
+					return ::io::destroy(user, &this->_eth, this->_log);
 				}
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
@@ -22978,7 +23135,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
-						return ::io::destroy(timer, this->_log);
+						return ::io::destroy(timer, &this->_eth, this->_log);
 					// Если дескриптор сокета активен
 					else {
 						// Объект события для удаления из списка ожидания
@@ -22988,7 +23145,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 						// Выполняем удаление события из списка ожидания
 						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 						// Выполняем удаление узла
-						return ::io::destroy(timer, this->_log);
+						return ::io::destroy(timer, &this->_eth, this->_log);
 					}
 				}
 				// Если узел является директорией
@@ -23009,7 +23166,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 						dir->handle = nullptr;
 					}
 					// Выполняем удаление узла
-					return ::io::destroy(dir, this->_log);
+					return ::io::destroy(dir, &this->_eth, this->_log);
 				}
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -23022,12 +23179,12 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 					// Выполняем удаление события из списка ожидания
 					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 					// Выполняем удаление узла
-					return ::io::destroy(file, this->_log);
+					return ::io::destroy(file, &this->_eth, this->_log);
 				}
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Выполняем удаление узла
-					return ::io::destroy(i->second.get(), this->_log);
+					return ::io::destroy(i->second.get(), &this->_eth, this->_log);
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
@@ -23035,7 +23192,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
-						return ::io::destroy(peer, this->_log);
+						return ::io::destroy(peer, &this->_eth, this->_log);
 					// Если дескриптор сокета активен
 					else {
 						// Если дескриптор сокета инициализирован
@@ -23048,21 +23205,21 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 							break;
 						}
 						// Если дескриптор сокета не инициализирован
-						return ::io::destroy(peer, this->_log);
+						return ::io::destroy(peer, &this->_eth, this->_log);
 					}
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Выполняем удаление узла-источника
-					return ::io::destroy(i->second.get(), this->_log);
+					return ::io::destroy(i->second.get(), &this->_eth, this->_log);
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL):
 					// Выполняем удаление узла туннеля
-					return ::io::destroy(i->second.get(), this->_log);
+					return ::io::destroy(i->second.get(), &this->_eth, this->_log);
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR):
 					// Выполняем удаление узла посредника
-					return ::io::destroy(i->second.get(), this->_log);
+					return ::io::destroy(i->second.get(), &this->_eth, this->_log);
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -23070,7 +23227,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
-						return ::io::destroy(client, this->_log);
+						return ::io::destroy(client, &this->_eth, this->_log);
 					// Если дескриптор сокета активен
 					else {
 						// Если дескриптор сокета инициализирован
@@ -23083,7 +23240,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 							break;
 						}
 						// Если дескриптор сокета не инициализирован
-						return ::io::destroy(client, this->_log);
+						return ::io::destroy(client, &this->_eth, this->_log);
 					}
 				} break;
 				// Если узел является сервером
@@ -23093,7 +23250,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 					// Если дескриптор сокета не инициализирован
 					if(::__awh_kq__ == net::invalid_socket_t)
 						// Выполняем удаление узла
-						return ::io::destroy(server, this->_log);
+						return ::io::destroy(server, &this->_eth, this->_log);
 					// Если дескриптор сокета активен
 					else {
 						// Объект события для удаления из списка ожидания
@@ -23128,7 +23285,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 							}
 						}
 						// Выполняем удаление узла
-						return ::io::destroy(server, this->_log);
+						return ::io::destroy(server, &this->_eth, this->_log);
 					}
 				}
 			}
@@ -23215,7 +23372,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								// Активируем или деактивируем работу мютексов для передачи данных
 								tunnel->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Если файловый дескриптор туннеля создан успешно
-								if((tunnel->fd = this->_eth.iface.tunnel(tunnel->iface)) != net::invalid_socket_t){
+								if((tunnel->fd = this->_eth.iface.create(event::eth_t::TUN, tunnel->iface)) != net::invalid_socket_t){
 									/**
 									 * Определяем тип подключения
 									 */
@@ -24489,6 +24646,15 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 					// Получаем файловый дескриптор события
 					fd = awh_cast <::io::tun_t *> (i->second.get())->fd;
 				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем опции для связанного события
+						return this->options(mediator->dest, options);
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
@@ -25153,6 +25319,15 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 					// Получаем файловый дескриптор события
 					fd = awh_cast <::io::tun_t *> (i->second.get())->fd;
 				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем опции для связанного события
+						return this->option(mediator->dest, option, mode);
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
@@ -25919,6 +26094,37 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									#endif
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a tunnel node";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
@@ -25929,6 +26135,8 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
@@ -26043,6 +26251,37 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									#endif
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a tunnel node";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
@@ -26053,6 +26292,8 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
@@ -26169,6 +26410,37 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									#endif
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a tunnel node";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
@@ -26179,6 +26451,8 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
@@ -26262,6 +26536,37 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									#endif
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a tunnel node";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
@@ -26272,6 +26577,8 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
@@ -26355,6 +26662,37 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									#endif
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a user node, and a tunnel node";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
@@ -26365,12 +26703,140 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
 								origin->transfer.dest = dest;
+								// Выводим положительный результат
+								return true;
+							}
+						}
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем текущее значение объекта туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "Cannot splice events for tunnel node";
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, error);
+						// Если функция обратного вызова для вывода события установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем текущее значение объекта посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									dir->callbacks.status(dir->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a mediator node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
+								// Получаем текущее значение объекта директории
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									timer->callbacks.status(timer->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a mediator node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпроцессным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте посредника
+								mediator->dest = dest;
 								// Выводим положительный результат
 								return true;
 							}
@@ -26458,6 +26924,8 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
@@ -26946,6 +27414,99 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								}
 							}
 						}
+					}
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если установлена функция обратного вызова
+					if(peer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						peer->callbacks.status(peer->id, event::status_t::FAILURE);
+					// Устанавливаем текст ошибки
+					const string error = "This node cannot be launched manually";
+					// Если установлена функция обратного вызова
+					if(peer->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
+					}
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Если установлена функция обратного вызова
+					if(origin->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						origin->callbacks.status(origin->id, event::status_t::FAILURE);
+					// Устанавливаем текст ошибки
+					const string error = "This node cannot be launched manually";
+					// Если установлена функция обратного вызова
+					if(origin->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
+					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем текущее значение объекта посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если установлена функция обратного вызова
+					if(mediator->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+					// Устанавливаем текст ошибки
+					const string error = "This node cannot be launched manually";
+					// Если установлена функция обратного вызова
+					if(mediator->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+					// Если функция обратного вызова вывода ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
 					}
 				} break;
 			}
@@ -27502,6 +28063,68 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											#endif
 										}
 									} break;
+									// Если узел является туннелем
+									case static_cast <uint8_t> (event::node_t::TUNNEL): {
+										// Получаем текущее значение объекта туннеля
+										::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from client node";
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
+									// Если узел является посредником
+									case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+										// Получаем текущее значение объекта посредника
+										::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+										// Если установлена функция обратного вызова
+										if(mediator->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Connection is only allowed from client node";
+										// Если установлена функция обратного вызова
+										if(mediator->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова вывода ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									} break;
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
 										// Получаем текущее значение объекта сервера
@@ -27752,6 +28375,68 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
 										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Event cannot be used to connect";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем текущее значение объекта посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Event cannot be used to connect";
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -28250,6 +28935,68 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									#endif
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем текущее значение объекта туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Listen is only allowed from server node";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем текущее значение объекта посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Listen is only allowed from server node";
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
@@ -28500,6 +29247,68 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем текущее значение объекта туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "Event cannot be used for listening";
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем текущее значение объекта посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(mediator->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "Event cannot be used for listening";
+						// Если установлена функция обратного вызова
+						if(mediator->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -28842,7 +29651,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																// Выполняем обработку закрытия подключения
 																if(::io::close(ipc, this->_log))
 																	// Выполняем удаление узла
-																	::io::destroy(ipc, this->_log);
+																	::io::destroy(ipc, &this->_eth, this->_log);
 																// Выходим из функции
 																return result;
 															// Если произошла ошибка при отправке данных
@@ -28881,7 +29690,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(ipc, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(ipc, this->_log);
+																::io::destroy(ipc, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														}
@@ -28911,7 +29720,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(ipc, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(ipc, this->_log);
+																::io::destroy(ipc, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла какая-то ошибка при отправке данных
@@ -28968,7 +29777,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(ipc, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(ipc, this->_log);
+															::io::destroy(ipc, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла какая-то ошибка при отправке данных
@@ -29101,7 +29910,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(ipc, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(ipc, this->_log);
+															::io::destroy(ipc, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -29140,7 +29949,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(ipc, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(ipc, this->_log);
+														::io::destroy(ipc, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												}
@@ -29170,7 +29979,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(ipc, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(ipc, this->_log);
+														::io::destroy(ipc, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -29222,7 +30031,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(ipc, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(ipc, this->_log);
+													::io::destroy(ipc, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -29344,7 +30153,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(ipc, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(ipc, this->_log);
+															::io::destroy(ipc, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -29383,7 +30192,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(ipc, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(ipc, this->_log);
+														::io::destroy(ipc, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												}
@@ -29413,7 +30222,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(ipc, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(ipc, this->_log);
+														::io::destroy(ipc, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -29465,7 +30274,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(ipc, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(ipc, this->_log);
+													::io::destroy(ipc, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -29637,7 +30446,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(peer, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(peer, this->_log);
+															::io::destroy(peer, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -29676,7 +30485,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(peer, this->_log);
+														::io::destroy(peer, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												}
@@ -29737,7 +30546,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(peer, this->_log);
+														::io::destroy(peer, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -29820,7 +30629,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(peer, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(peer, this->_log);
+													::io::destroy(peer, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -29972,7 +30781,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(peer, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(peer, this->_log);
+																::io::destroy(peer, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -30011,7 +30820,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(peer, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(peer, this->_log);
+															::io::destroy(peer, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													}
@@ -30061,7 +30870,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(peer, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(peer, this->_log);
+															::io::destroy(peer, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла какая-то ошибка при отправке данных
@@ -30133,7 +30942,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(peer, this->_log);
+														::io::destroy(peer, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -30287,7 +31096,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(origin, this->_log);
+														::io::destroy(origin, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла ошибка при отправке данных
@@ -30326,7 +31135,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(origin, this->_log);
+													::io::destroy(origin, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											}
@@ -30341,7 +31150,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(origin, this->_log);
+														::io::destroy(origin, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -30393,7 +31202,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(origin, this->_log);
+													::io::destroy(origin, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -30534,7 +31343,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(origin, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(origin, this->_log);
+															::io::destroy(origin, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -30573,7 +31382,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(origin, this->_log);
+														::io::destroy(origin, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												}
@@ -30603,7 +31412,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(origin, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(origin, this->_log);
+														::io::destroy(origin, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -30655,7 +31464,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(origin, this->_log);
+													::io::destroy(origin, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -30727,6 +31536,14 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								}
 							}
 						}
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30840,7 +31657,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла ошибка при отправке данных
@@ -30879,7 +31696,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(client, this->_log);
+													::io::destroy(client, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											}
@@ -30906,7 +31723,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -30970,7 +31787,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(client, this->_log);
+													::io::destroy(client, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -31126,7 +31943,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла ошибка при отправке данных
@@ -31165,7 +31982,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												}
@@ -31226,7 +32043,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -31309,7 +32126,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(client, this->_log);
+													::io::destroy(client, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -31445,7 +32262,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(client, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(client, this->_log);
+																::io::destroy(client, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -31484,7 +32301,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													}
@@ -31520,7 +32337,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла какая-то ошибка при отправке данных
@@ -31578,7 +32395,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -31711,7 +32528,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(client, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(client, this->_log);
+																::io::destroy(client, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -31750,7 +32567,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													}
@@ -31786,7 +32603,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла какая-то ошибка при отправке данных
@@ -31844,7 +32661,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -32036,7 +32853,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(client, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(client, this->_log);
+																::io::destroy(client, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -32075,7 +32892,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													}
@@ -32138,7 +32955,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла какая-то ошибка при отправке данных
@@ -32223,7 +33040,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -32383,7 +33200,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Выполняем обработку закрытия подключения
 															if(::io::close(client, this->_log))
 																// Выполняем удаление узла
-																::io::destroy(client, this->_log);
+																::io::destroy(client, &this->_eth, this->_log);
 															// Выходим из функции
 															return result;
 														// Если произошла ошибка при отправке данных
@@ -32422,7 +33239,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													}
@@ -32485,7 +33302,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем обработку закрытия подключения
 														if(::io::close(client, this->_log))
 															// Выполняем удаление узла
-															::io::destroy(client, this->_log);
+															::io::destroy(client, &this->_eth, this->_log);
 														// Выходим из функции
 														return result;
 													// Если произошла какая-то ошибка при отправке данных
@@ -32570,7 +33387,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(client, this->_log);
+														::io::destroy(client, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -32720,7 +33537,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(server, this->_log);
+														::io::destroy(server, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла ошибка при отправке данных
@@ -32759,7 +33576,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(server, this->_log);
+													::io::destroy(server, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											}
@@ -32780,7 +33597,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(server, this->_log);
+														::io::destroy(server, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -32838,7 +33655,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(server, this->_log);
+													::io::destroy(server, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -32943,7 +33760,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(server, this->_log);
+														::io::destroy(server, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла ошибка при отправке данных
@@ -32982,7 +33799,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(server, this->_log);
+													::io::destroy(server, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											}
@@ -33003,7 +33820,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем обработку закрытия подключения
 													if(::io::close(server, this->_log))
 														// Выполняем удаление узла
-														::io::destroy(server, this->_log);
+														::io::destroy(server, &this->_eth, this->_log);
 													// Выходим из функции
 													return result;
 												// Если произошла какая-то ошибка при отправке данных
@@ -33061,7 +33878,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем обработку закрытия подключения
 												if(::io::close(server, this->_log))
 													// Выполняем удаление узла
-													::io::destroy(server, this->_log);
+													::io::destroy(server, &this->_eth, this->_log);
 												// Выходим из функции
 												return result;
 											// Если произошла какая-то ошибка при отправке данных
@@ -34559,6 +35376,17 @@ bool awh::engine::IO::delivery(const event::id_t id, const event::delivery_mode_
 					// Выводим результат работы функции
 					return true;
 				}
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем текущее значение объекта посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Устанавливаем максимальное количество хопов для события
+					mediator->state.delivery = delivery;
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем режим трансляции пакетов для связанного события
+						return this->delivery(mediator->dest, delivery);
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем максимальное количество хопов для события
@@ -34691,6 +35519,15 @@ bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, c
 						// Устанавливаем максимальное количество хопов для события
 						origin->state.hops = hops;
 				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем текущее значение объекта посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if((mediator->dest != 0) && (result = this->hops(mediator->dest, family, hops)))
+						// Устанавливаем максимальное количество хопов для события
+						mediator->state.hops = hops;
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -34804,16 +35641,14 @@ uint32_t awh::engine::IO::timeout(const event::id_t id, const event::action_t ac
 						// Выводим значение таймаута для действия события
 						return i->second;
 				} break;
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем объект события сервера
-					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-					// Выполняем поиск таймаута для действия события
-					auto i = server->timeouts.find(action);
-					// Если таймаут для действия события найден
-					if(i != server->timeouts.end())
-						// Выводим значение таймаута для действия события
-						return i->second;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Выводим значение таймаута для связанного события
+						return this->timeout(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -34823,6 +35658,17 @@ uint32_t awh::engine::IO::timeout(const event::id_t id, const event::action_t ac
 					auto i = client->timeouts.find(action);
 					// Если таймаут для действия события найден
 					if(i != client->timeouts.end())
+						// Выводим значение таймаута для действия события
+						return i->second;
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем объект события сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Выполняем поиск таймаута для действия события
+					auto i = server->timeouts.find(action);
+					// Если таймаут для действия события найден
+					if(i != server->timeouts.end())
 						// Выводим значение таймаута для действия события
 						return i->second;
 				} break;
@@ -35032,6 +35878,15 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							}
 						}
 					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем значение таймаута для связанного события
+						this->timeout(mediator->dest, action, timeout);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -35482,6 +36337,52 @@ awh::event::mode_t awh::engine::IO::action(const event::id_t id, const event::ac
 							else return event::mode_t::DISABLED;
 						}
 					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из сокета
+						case static_cast <uint8_t> (event::action_t::READ): {
+							// Если действие на чтение из сокета разрешено
+							if(tunnel->actions & ::action::READ)
+								// Выводим значение установленного режима действия события
+								return event::mode_t::ENABLED;
+							// Выводим значение отключенного режима действия события
+							else return event::mode_t::DISABLED;
+						}
+						// Если действие является записью данных в сокете
+						case static_cast <uint8_t> (event::action_t::WRITE): {
+							// Если действие на запись в сокет разрешено
+							if(tunnel->actions & ::action::WRITE)
+								// Выводим значение установленного режима действия события
+								return event::mode_t::ENABLED;
+							// Выводим значение отключенного режима действия события
+							else return event::mode_t::DISABLED;
+						}
+						// Если действие является закрытием сокета
+						case static_cast <uint8_t> (event::action_t::CLOSE): {
+							// Если действие закрытия сокета разрешено
+							if(tunnel->actions & ::action::CLOSE)
+								// Выводим значение установленного режима действия события
+								return event::mode_t::ENABLED;
+							// Выводим значение отключенного режима действия события
+							else return event::mode_t::DISABLED;
+						}
+					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Извлекаем режим действия для связанного события
+						return this->action(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -36293,6 +37194,99 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
 				}
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением данных из сокета
+						case static_cast <uint8_t> (event::action_t::READ): {
+							// Выполняем блокировку потоков
+							const locker_t <> lock(::local::mtx);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (mode)){
+								// Если режим действия события является включённым
+								case static_cast <uint8_t> (event::mode_t::ENABLED): {
+									// Добавляем действие события в список разрешённых действий
+									tunnel->actions |= ::action::READ;
+									// Активируем событие на чтение данных
+									EV_SET(&::local::change.back(), tunnel->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, tunnel);
+								} break;
+								// Если режим действия события является отключённым
+								case static_cast <uint8_t> (event::mode_t::DISABLED): {
+									// Удаляем действие события из списка разрешённых действий
+									tunnel->actions &= ~::action::READ;
+									// Деактивируем событие на чтение данных
+									EV_SET(&::local::change.back(), tunnel->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+								} break;
+							}
+						} break;
+						// Если действие является записью данных в сокете
+						case static_cast <uint8_t> (event::action_t::WRITE): {
+							// Выполняем блокировку потоков
+							const locker_t <> lock(::local::mtx);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (mode)){
+								// Если режим действия события является включённым
+								case static_cast <uint8_t> (event::mode_t::ENABLED): {
+									// Добавляем действие события в список разрешённых действий
+									tunnel->actions |= ::action::WRITE;
+									// Активируем событие на чтение данных
+									EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, tunnel);
+								} break;
+								// Если режим действия события является отключённым
+								case static_cast <uint8_t> (event::mode_t::DISABLED): {
+									// Удаляем действие события из списка разрешённых действий
+									tunnel->actions &= ~::action::WRITE;
+									// Деактивируем событие на чтение данных
+									EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+								} break;
+							}
+						} break;
+						// Если действие является закрытием сокета
+						case static_cast <uint8_t> (event::action_t::CLOSE): {
+							/**
+							 * Определяем тип действия события
+							 */
+							switch(static_cast <uint8_t> (mode)){
+								// Если режим действия события является включённым
+								case static_cast <uint8_t> (event::mode_t::ENABLED):
+									// Добавляем действие события в список разрешённых действий
+									tunnel->actions |= ::action::CLOSE;
+								break;
+								// Если режим действия события является отключённым
+								case static_cast <uint8_t> (event::mode_t::DISABLED):
+									// Удаляем действие события из списка разрешённых действий
+									tunnel->actions &= ~::action::CLOSE;
+								break;
+							}
+							// Выводим результат выполнения установки
+							return true;
+						}
+					}
+					// Выполняем "пинок" для применения изменений
+					return this->kick();
+				}
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем действие для связанного события
+						return this->action(mediator->dest, action, mode);
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -36614,6 +37608,15 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 					// Получаем файловый дескриптор события
 					socket = awh_cast <::io::peer_t *> (i->second.get())->transfer.fd;
 				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем параметры keep-alive для связанного события
+						return this->keepAlive(mediator->dest, cnt, idle, intvl);
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Получаем файловый дескриптор события
@@ -36845,6 +37848,15 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем паузу для связанного события
+						return this->pause(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -37167,6 +38179,15 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							result = this->kick();
 						}
 					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем объект посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						// Если идентификатор связанного события установлен
+						if(mediator->dest != 0)
+							// Устанавливаем возобновление для связанного события
+							return this->resume(mediator->dest);
+					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
@@ -37304,6 +38325,22 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 						// Проверяем наличие сессии в списке активных сессий
 						return (::__awh_origin_sessions__.find(sid) != ::__awh_origin_sessions__.end());
 					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Если клиент находится в состоянии запущено
+					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+						// Выводим результат проверки
+						return (this->_eth.socket.error(awh_cast <::io::tun_t *> (i->second.get())->fd) == 0);
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Выполняем проверку состояния связанного события
+						return this->isAlive(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -37528,6 +38565,48 @@ void awh::engine::IO::clear() noexcept {
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем объект туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Объекты событий для удаления из списка ожидания
+						struct kevent events[2] = {};
+						// Снимаем событие на чтение из списка ожидания
+						EV_SET(&events[0], tunnel->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+						// Снимаем событие на запись из списка ожидания
+						EV_SET(&events[1], tunnel->fd, EVFILT_WRITE, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+						// Выполняем удаление события из списка ожидания
+						::kevent(::__awh_kq__, &events[0], 2, nullptr, 0, nullptr);
+						// Если установлена функция обратного вызова
+						if(tunnel->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Если имя сетевого интерфейса туннеля установлена
+						if(!tunnel->iface.empty())
+							// Удаляем сетевой интерфейс туннеля
+							this->_eth.iface.destroy(tunnel->iface);
+						// Если дескриптор сокета инициализирован
+						if(tunnel->fd != net::invalid_socket_t)
+							// Закрываем дескриптор сокета
+							::close(tunnel->fd);
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем объект посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(mediator->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							mediator->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::__awh_mtx__);
+						// Производим удаление узла
+						i = ::__awh_nodes__.erase(i);
+					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
@@ -37644,6 +38723,10 @@ void awh::engine::IO::clear() noexcept {
 				i = ::__awh_nodes__.erase(i);
 			}
 		}
+		// Если список активных сессий одноранговых узлов-источников не пуст
+		if(!::__awh_origin_sessions__.empty())
+			// Очищаем список активных сессий одноранговых узлов-источников
+			::__awh_origin_sessions__.clear();
 	}
 }
 /**
@@ -38050,6 +39133,65 @@ bool awh::engine::IO::reinitialize() noexcept {
 						// Удаляем ненужный нам узел
 						i = ::__awh_nodes__.erase(i);
 					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					// Если событие находится в состоянии инициализации
+					if((tunnel->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+					   (tunnel->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)){
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (tunnel->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Выполняем блокировку потоков
+								const locker_t <> lock(::local::mtx);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Устанавливаем событие на чтение но отключаем его
+								EV_SET(&::local::change.back(), tunnel->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Устанавливаем событие на запись но отключаем его
+								EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем блокировку потоков
+								const locker_t <> lock(::local::mtx);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Устанавливаем событие на чтение но отключаем его
+								EV_SET(&::local::change.back(), tunnel->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Устанавливаем событие на запись но отключаем его
+								EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+							} break;
+						}
+					// Если событие находится в состоянии остановки
+					} else {
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::__awh_mtx__);
+						// Удаляем ненужный нам узел
+						i = ::__awh_nodes__.erase(i);
+						// Выходим из текущей итерации цикла
+						break;
+					}
+					// Если событие находится в подключённом состоянии
+					if(tunnel->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::local::mtx);
+						// Добавляем новое событие в список изменений
+						::local::change.push_back((struct kevent){});
+						// Активируем событие на чтение для серверного сокета
+						EV_SET(&::local::change.back(), i->first, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, tunnel);
+					}
+					// Увеличиваем значение итератора
+					++i;
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -38498,6 +39640,36 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					// Если установлена функция обратного вызова
+					if(tunnel->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Если имя сетевого интерфейса туннеля установлена
+					if(!tunnel->iface.empty())
+						// Удаляем сетевой интерфейс туннеля
+						this->_eth.iface.destroy(tunnel->iface);
+					// Выполняем блокировку потоков
+					const locker_t <> lock(::__awh_mtx__);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если установлена функция обратного вызова
+					if(mediator->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						mediator->callbacks.status(i->first, event::status_t::DESTROYED);
+					// Выполняем блокировку потоков
+					const locker_t <> lock(::__awh_mtx__);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -38581,6 +39753,10 @@ bool awh::engine::IO::deinitialize() noexcept {
 			}
 		}
 	}
+	// Если список активных сессий одноранговых узлов-источников не пуст
+	if(!::__awh_origin_sessions__.empty())
+		// Очищаем список активных сессий одноранговых узлов-источников
+		::__awh_origin_sessions__.clear();
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
 		// Выполняем закрытие Kqueue
@@ -38685,6 +39861,24 @@ void awh::engine::IO::threadSafety(const event::mode_t mode) noexcept {
 						const locker_t <> lock(origin->transfer.mtx);
 						// Активируем или деактивируем мютекс передачи данных
 						origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем объект туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t <> lock(tunnel->mtx);
+						// Активируем или деактивируем мютекс передачи данных
+						tunnel->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем объект посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node.second.get());
+						// Выполняем блокировку уникальным мютексом
+						const locker_t <> lock(mediator->mtx);
+						// Активируем или деактивируем мютекс передачи данных
+						mediator->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -39449,6 +40643,88 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 										origin->state.status = origin->state.oldset.load(std::memory_order_acquire);
 								}
 							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем объект туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((tunnel->callbacks.status != nullptr) && ::__awh_processed__.find(tunnel->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(tunnel->id);
+										// Вызываем функцию обратного вызова статуса события
+										tunnel->callbacks.status(tunnel->id, tunnel->state.status.load(std::memory_order_acquire));
+									}
+								}
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										mediator->callbacks.error(mediator->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((mediator->callbacks.status != nullptr) && ::__awh_processed__.find(mediator->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(mediator->id);
+										// Вызываем функцию обратного вызова статуса события
+										mediator->callbacks.status(mediator->id, mediator->state.status.load(std::memory_order_acquire));
+									}
+								}
+							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
@@ -39698,6 +40974,11 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::read_t & c
 					// Устанавливаем функцию обратного вызова на чтение события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на чтение события
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.read = ::move(cb);
+				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на чтение события
@@ -39785,6 +41066,11 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & 
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.write = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на запись события
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -39883,6 +41169,11 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::event_t & 
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на получение общего события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.event = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на получение общего события
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -39989,6 +41280,16 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::error_t & 
 					// Устанавливаем функцию обратного вызова на получение события ошибки
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL):
+					// Устанавливаем функцию обратного вызова на получение события ошибки
+					awh_cast <::io::tun_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на получение события ошибки
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error = ::move(cb);
+				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Устанавливаем функцию обратного вызова на получение события ошибки
@@ -40093,6 +41394,16 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::status_t &
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL):
+					// Устанавливаем функцию обратного вызова на получение статуса события
+					awh_cast <::io::tun_t *> (i->second.get())->callbacks.status = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на получение статуса события
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
