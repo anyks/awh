@@ -368,6 +368,22 @@ namespace awh {
 			 event(nullptr), change(nullptr) {}
 		} fs_callbacks_t;
 		/**
+		 * @brief Структура обратных вызовов посредника
+		 *
+		 */
+		typedef struct MediatorCallbacks : public callbacks_t {
+			// Обратный вызов при чтении события
+			event::callback::read_t read;
+			// Обратный вызов при получении общего события
+			event::callback::event_t event;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit MediatorCallbacks() noexcept :
+			 read(nullptr), event(nullptr) {}
+		} mediator_callbacks_t;
+		/**
 		 * @brief Структура обратных вызовов сервера
 		 *
 		 */
@@ -554,17 +570,15 @@ namespace awh {
 		 *
 		 */
 		typedef struct Mediator : public node_t {
-			// Источник сетевых адресов
-			unique_ptr <addr_t> source;
-			// Адрес точки назначения
-			unique_ptr <addr_t> target;
+			// Адрес хоста посредника
+			unique_ptr <addr_t> host;
 			// Обратные вызовы события
-			peer_callbacks_t callbacks;
+			mediator_callbacks_t callbacks;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Mediator() noexcept : source(nullptr), target(nullptr) {}
+			explicit Mediator() noexcept : host(nullptr) {}
 			/**
 			 * @brief Деструктор
 			 *

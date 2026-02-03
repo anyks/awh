@@ -593,6 +593,13 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с UDP (клиент и сервер)
     option(CMAKE_BUILD_NET_UDP_APP_SAMPLE "Build NET UDP app sample" ON)
 
+    # Устанавливаем имя клиентского приложения работы с TUN
+    SET(CLIENT_APP_NET_TUN_NAME net-tun-client)
+    # Устанавливаем имя серверного приложения работы с TUN
+    SET(SERVER_APP_NET_TUN_NAME net-tun-server)
+    # Указываем что нужно собрать приложение работы с TUN (клиент и сервер)
+    option(CMAKE_BUILD_NET_TUN_APP_SAMPLE "Build NET TUN app sample" ON)
+
     # Устанавливаем имя клиентского приложения работы с UDP Broadcast
     SET(CLIENT_APP_NET_BROADCAST_NAME net-broadcast-client)
     # Устанавливаем имя серверного приложения работы с UDP Broadcast
@@ -930,6 +937,20 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UDP Client/Server: No\n")
     endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с TUN (клиент и сервер)
+    if (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TUN Client/Server: Yes\n")
+        # Выполняем создание приложения работы с TUN клиент
+        add_sample(${CLIENT_APP_NET_TUN_NAME} sample/net/tun/client.cpp net/tun)
+        # Выполняем создание приложения работы с TUN сервер
+        add_sample(${SERVER_APP_NET_TUN_NAME} sample/net/tun/server.cpp net/tun)
+    # Если не нужно собирать семплы для работы с TUN (клиент и сервер)
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample TUN Client/Server: No\n")
+    endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
     if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
@@ -1292,6 +1313,25 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с TUN (клиент и сервер)
+        if (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+           # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_TUN_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_TUN_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
         if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
@@ -1769,6 +1809,27 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с TUN (клиент и сервер)
+        if (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+           # Выполняем сборку приложения клиента
+            target_link_libraries(
+                ${CLIENT_APP_NET_TUN_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения сервера
+            target_link_libraries(
+                ${SERVER_APP_NET_TUN_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
         if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
             # Выполняем сборку приложения клиента
@@ -2232,6 +2293,22 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с TUN (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+                # Выполняем сборку приложения работы с TUN клиентом
+                add_custom_command(TARGET "${CLIENT_APP_NET_TUN_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TUN_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TUN_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с TUN сервером
+                add_custom_command(TARGET "${SERVER_APP_NET_TUN_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TUN_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TUN_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
             if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
                 # Выполняем сборку приложения работы с UDP Broadcast клиентом
@@ -2476,6 +2553,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем анализ приложения работы с UDP сервером
                 pvs_studio_add_target(TARGET ${SERVER_APP_NET_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с TUN (клиент и сервер)
+            if (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+                # Выполняем анализ приложения работы с TUN клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_NET_TUN_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NET_TUN_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с TUN сервером
+                pvs_studio_add_target(TARGET ${SERVER_APP_NET_TUN_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NET_TUN_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
             if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
@@ -2745,6 +2830,14 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение сервера UDP
         install(TARGETS ${SERVER_APP_NET_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с TUN (клиент и сервер)
+    if (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
+        # Устанавливаем приложение клиента TUN
+        install(TARGETS ${CLIENT_APP_NET_TUN_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение сервера TUN
+        install(TARGETS ${SERVER_APP_NET_TUN_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с UDP Broadcast (клиент и сервер)
     if (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})

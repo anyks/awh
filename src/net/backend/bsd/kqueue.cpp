@@ -86,7 +86,6 @@
  */
 #include <sys/os.hpp>
 #include <sys/queue.hpp>
-#include <sys/buffer.hpp>
 #include <sys/locker.hpp>
 #include <sys/threadpool.hpp>
 
@@ -660,8 +659,6 @@ namespace io {
 		endpoint_t endpoint;
 		// Очередь отправки данных
 		awh::queue_t queue;
-		// Бинарный буфер данных
-		awh::buffer_t buffer;
 		// Флаги активированных событий файла
 		uint16_t actions;
 		// Мьютекс для синхронизации потоков
@@ -673,9 +670,8 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t),
-		 addr(fmk, log), actions(::action::NONE),
-		 queue(fmk, log), buffer(fmk, log) {}
+		 fd(net::invalid_socket_t), addr(fmk, log),
+		 actions(::action::NONE), queue(fmk, log) {}
 	} tun_t;
 
 	/**
@@ -687,8 +683,6 @@ namespace io {
 		event::id_t dest;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
-		// Бинарный буфер данных
-		awh::buffer_t buffer;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		/**
@@ -698,7 +692,7 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Mediator(const fmk_t * fmk, const log_t * log) noexcept :
-		 dest(0), addr(fmk, log), buffer(fmk, log) {}
+		 dest(0), addr(fmk, log) {}
 	} mediator_t;
 
 	/**
@@ -1946,10 +1940,15 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем текущее значение объекта туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
-					// Если туннель создан
-					if(!tunnel->iface.empty())
-						// Выполняем удаление сетевого интерфейса туннеля
-						eth->iface.destroy(tunnel->iface);
+					/**
+					 * Для операционной системы FreeBSD
+					 */
+					#if __FreeBSD__
+						// Если туннель создан
+						if(!tunnel->iface.empty())
+							// Выполняем удаление сетевого интерфейса туннеля
+							eth->iface.destroy(tunnel->iface);
+					#endif
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -1986,8 +1985,8 @@ namespace io {
 							addr.sin_family = AF_INET;
 							// Устанавливаем длину структуры
 							addr.sin_len = sizeof(struct sockaddr_in);
-							// Устанавливаем адрес для удаленного подключения целевой машины
-							addr.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (mediator->target.get())->address;
+							// Устанавливаем адрес для хоста целевой машины
+							addr.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address;
 							// Формируем идентификатор источника
 							sid.from(addr);
 						} break;
@@ -2001,8 +2000,8 @@ namespace io {
 							addr.sin6_family = AF_INET6;
 							// Устанавливаем длину структуры
 							addr.sin6_len = sizeof(struct sockaddr_in6);
-							// Устанавливаем адрес для удаленного подключения целевой машины
-							::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->target.get())->address[0], 16);
+							// Устанавливаем адрес для хоста целевой машины
+							::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
 							// Формируем идентификатор источника
 							sid.from(addr);
 						} break;
@@ -4925,7 +4924,7 @@ namespace io {
 																// Вызываем функцию обратного вызова для вывода полученных данных
 																mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
 															// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-															else const_cast <engine::io_t *> (io)->send(mediator->id, buffer, static_cast <size_t> (size));
+															else const_cast <engine::io_t *> (io)->send(mediator->dest, buffer, static_cast <size_t> (size));
 														}
 													}
 												// Если адрес сервера не совпадает с настройками туннеля
@@ -5022,7 +5021,7 @@ namespace io {
 																// Вызываем функцию обратного вызова для вывода полученных данных
 																mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
 															// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-															else const_cast <engine::io_t *> (io)->send(mediator->id, buffer, static_cast <size_t> (size));
+															else const_cast <engine::io_t *> (io)->send(mediator->dest, buffer, static_cast <size_t> (size));
 														}
 													}
 												// Если адрес сервера не совпадает с настройками туннеля
@@ -14211,7 +14210,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Устанавливаем адрес IPv4 для клиента
 												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 32);
 											// Устанавливаем адрес IPv4 для сервера
-											else this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 24);
+											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, 24);
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -14242,7 +14241,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Устанавливаем адрес IPv6 для клиента
 												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 128);
 											// Устанавливаем адрес IPv6 для сервера
-											else this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 64);
+											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, 64);
 										} break;
 									}
 									// Выполняем блокировку потоков
@@ -14332,8 +14331,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						mediator->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-						// Если объект адреса назначения существует
-						if((result = (mediator->target != nullptr))){
+						// Если объект хоста существует
+						if((result = (mediator->host != nullptr))){
 							// Идентификатор сессии источника
 							origin_id_t sid;
 							/**
@@ -14350,8 +14349,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									addr.sin_family = AF_INET;
 									// Устанавливаем длину структуры
 									addr.sin_len = sizeof(struct sockaddr_in);
-									// Устанавливаем адрес для удаленного подключения целевой машины
-									addr.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (mediator->target.get())->address;
+									// Устанавливаем адрес для хоста целевой машины
+									addr.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address;
 									// Формируем идентификатор источника
 									sid.from(addr);
 								} break;
@@ -14365,8 +14364,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									addr.sin6_family = AF_INET6;
 									// Устанавливаем длину структуры
 									addr.sin6_len = sizeof(struct sockaddr_in6);
-									// Устанавливаем адрес для удаленного подключения целевой машины
-									::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->target.get())->address[0], 16);
+									// Устанавливаем адрес для хоста целевой машины
+									::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
 									// Формируем идентификатор источника
 									sid.from(addr);
 								} break;
@@ -14375,7 +14374,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							const locker_t <> lock(::__awh_mtx__);
 							// Регистрируем сессию источника по идентификатору источника
 							result = ::__awh_origin_sessions__.emplace(sid, mediator).second;
-						// Если адреса назначения не существует
+						// Если объекта хоста не существует
 						} else {
 							// Если установлена функция обратного вызова
 							if(mediator->callbacks.status != nullptr)
@@ -19093,8 +19092,8 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
 					// Получаем объект посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-					// Если объект адреса не инициализирован
-					if(mediator->target == nullptr)
+					// Если объект хоста не инициализирован
+					if(mediator->host == nullptr)
 						// Прерываем выполнение
 						break;
 					/**
@@ -19103,8 +19102,8 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 					switch(static_cast <uint8_t> (mediator->state.family)){
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
-							// Получаем объект адреса целевой машины
-							net::addr_net_ipv4_t * target = awh_cast <net::addr_net_ipv4_t *> (mediator->target.get());
+							// Получаем объект хоста целевой машины
+							net::addr_net_ipv4_t * target = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(target->size == 4){
 								// Устанавливаем полученный IP-адрес
@@ -19143,8 +19142,8 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
-							// Получаем объект адреса целевой машины
-							net::addr_net_ipv6_t * target = awh_cast <net::addr_net_ipv6_t *> (mediator->target.get());
+							// Получаем объект хоста целевой машины
+							net::addr_net_ipv6_t * target = awh_cast <net::addr_net_ipv6_t *> (mediator->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(target->size == 16){
 								// Устанавливаем полученный IP-адрес
@@ -19708,16 +19707,16 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем парсинг IPv4-адреса
 								if(mediator->addr.parse(target, net_addr_t::type_t::IPV4)){
-									// Если объект адреса клиента не инициализирован
-									if(mediator->target == nullptr)
-										// Создаём новый объект адреса IPv4 удалённого узла
-										mediator->target = make_unique <net::addr_net_ipv4_t> ();
+									// Если объект хоста не инициализирован
+									if(mediator->host == nullptr)
+										// Создаём новый объект хоста IPv4 удалённого узла
+										mediator->host = make_unique <net::addr_net_ipv4_t> ();
 									// Если тип адреса не установлен
 									if(mediator->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как IPv4
 										mediator->state.address = event::address_t::IPV4;
-									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv4_t *> (mediator->target.get())->address = mediator->addr.v4(net_addr_t::endian_t::LITTLE);
+									// Устанавливаем полученный IP-адрес в хост
+									awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = mediator->addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -19754,16 +19753,16 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем парсинг IPv6-адреса
 								if(mediator->addr.parse(target, net_addr_t::type_t::IPV6)){
-									// Если объект адреса клиента не инициализирован
-									if(mediator->target == nullptr)
-										// Создаём новый объект адреса IPv6 удалённого узла
-										mediator->target = make_unique <net::addr_net_ipv6_t> ();
+									// Если объект хоста не инициализирован
+									if(mediator->host == nullptr)
+										// Создаём новый объект хоста IPv6 удалённого узла
+										mediator->host = make_unique <net::addr_net_ipv6_t> ();
 									// Если тип адреса не установлен
 									if(mediator->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как IPv6
 										mediator->state.address = event::address_t::IPV6;
-									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv6_t *> (mediator->target.get())->address = ::move(mediator->addr.v6(net_addr_t::endian_t::LITTLE));
+									// Устанавливаем полученный IP-адрес в хост
+									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(mediator->addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -21293,12 +21292,12 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
 								// Получаем объект посредника
 								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-								// Если объект адреса посредника не инициализирован
-								if(mediator->source == nullptr)
+								// Если объект хоста посредника не инициализирован
+								if(mediator->host == nullptr)
 									// Прерываем выполнение
 									break;
-								// Устанавливаем полученный IPv4-адрес
-								mediator->addr.v4(awh_cast <net::addr_net_ipv4_t *> (mediator->source.get())->address, net_addr_t::endian_t::LITTLE);
+								// Устанавливаем полученный IPv4-адрес хоста
+								mediator->addr.v4(awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
 								return static_cast <string> (mediator->addr);
 							}
@@ -21473,14 +21472,14 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 							}
 							// Если узел является посредником
 							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-								// Получаем объект посредника
+								// Получаем объект хоста посредника
 								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-								// Если объект адреса посредника не инициализирован
-								if(mediator->source == nullptr)
+								// Если объект хоста посредника не инициализирован
+								if(mediator->host == nullptr)
 									// Прерываем выполнение
 									break;
-								// Устанавливаем полученный IPv6-адрес
-								mediator->addr.v6(awh_cast <net::addr_net_ipv6_t *> (mediator->source.get())->address, net_addr_t::endian_t::LITTLE);
+								// Устанавливаем полученный IPv6-адрес хоста
+								mediator->addr.v6(awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
 								return static_cast <string> (mediator->addr);
 							}
@@ -22398,7 +22397,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(tunnel->state.family == event::family_t::IPV4){
 									// Выполняем парсинг IPv4-адреса
-									if(tunnel->addr.parse(value, net_addr_t::type_t::IPV4)){
+									if((result = tunnel->addr.parse(value, net_addr_t::type_t::IPV4))){
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Если объект адреса не инициализирован
@@ -22473,15 +22472,15 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(mediator->state.family == event::family_t::IPV4){
 									// Выполняем парсинг IPv4-адреса
-									if(mediator->addr.parse(value, net_addr_t::type_t::IPV4)){
+									if((result = mediator->addr.parse(value, net_addr_t::type_t::IPV4))){
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
-										// Если объект адреса не инициализирован
-										if(mediator->source == nullptr)
-											// Создаём новый объект адреса IPv4
-											mediator->source = make_unique <net::addr_net_ipv4_t> ();
-										// Устанавливаем полученный IP-адрес в источник сетевого адреса посредника
-										awh_cast <net::addr_net_ipv4_t *> (mediator->source.get())->address = mediator->addr.v4(net_addr_t::endian_t::LITTLE);
+										// Если объект хоста не инициализирован
+										if(mediator->host == nullptr)
+											// Создаём новый объект хоста IPv4
+											mediator->host = make_unique <net::addr_net_ipv4_t> ();
+										// Устанавливаем полученный IP-адрес хоста в источник сетевого адреса посредника
+										awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = mediator->addr.v4(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -22843,7 +22842,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(tunnel->state.family == event::family_t::IPV6){
 									// Выполняем парсинг IPv6-адреса
-									if(tunnel->addr.parse(value, net_addr_t::type_t::IPV6)){
+									if((result = tunnel->addr.parse(value, net_addr_t::type_t::IPV6))){
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Если объект адреса не инициализирован
@@ -22918,15 +22917,15 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(mediator->state.family == event::family_t::IPV6){
 									// Выполняем парсинг IPv6-адреса
-									if(mediator->addr.parse(value, net_addr_t::type_t::IPV6)){
+									if((result = mediator->addr.parse(value, net_addr_t::type_t::IPV6))){
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
-										// Если объект адреса не инициализирован
-										if(mediator->source == nullptr)
-											// Создаём новый объект адреса IPv6
-											mediator->source = make_unique <net::addr_net_ipv6_t> ();
-										// Устанавливаем полученный IP-адрес в источник сетевого адреса посредника
-										awh_cast <net::addr_net_ipv6_t *> (mediator->source.get())->address = ::move(mediator->addr.v6(net_addr_t::endian_t::LITTLE));
+										// Если объект хоста не инициализирован
+										if(mediator->host == nullptr)
+											// Создаём новый объект хоста IPv6
+											mediator->host = make_unique <net::addr_net_ipv6_t> ();
+										// Устанавливаем полученный IP-адрес в хост посредника
+										awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(mediator->addr.v6(net_addr_t::endian_t::LITTLE));
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -24075,87 +24074,49 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::IPV4):
 					// Для семейства IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
-						/**
-						 * Определяем тип сокета
-						 */
-						switch(static_cast <uint8_t> (type)){
-							// Если сокет принадлежит к типу RAW
-							case static_cast <uint8_t> (event::type_t::RAW):
-							// Если сокет принадлежит к типу STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM):
-							// Если сокет принадлежит к типу DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM):
-							// Если сокет принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Выполняем блокировку потоков
-								const locker_t <> lock(::__awh_mtx__);
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::tun_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект туннеля
-								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (ret.first->second.get());
-								// Активируем или деактивируем работу мютексов для передачи данных
-								tunnel->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-								// Если файловый дескриптор туннеля создан успешно
-								if((tunnel->fd = this->_eth.iface.create(event::eth_t::TUN, tunnel->iface)) != net::invalid_socket_t){
-									/**
-									 * Определяем тип подключения
-									 */
-									switch(static_cast <uint8_t> (tunnel->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Выполняем инициализацию объекта IP-адреса назначения
-											tunnel->target = make_unique <net::addr_net_ipv4_t> ();
-											// Выполняем инициализацию объекта IP-адреса источника
-											tunnel->source = make_unique <net::addr_net_ipv4_t> ();
-										} break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Выполняем инициализацию объекта IP-адреса назначения
-											tunnel->target = make_unique <net::addr_net_ipv6_t> ();
-											// Выполняем инициализацию объекта IP-адреса источника
-											tunnel->source = make_unique <net::addr_net_ipv6_t> ();
-										} break;
-									}
-									// Возвращаем идентификатор созданного события
-									return ret.first->first;
-								// Удаляем созданное событие
-								} else ::__awh_nodes__.erase(ret.first);
-							} break;
-							// Для неизвестного типа сокета
-							default: {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug(
-										"An event for a IP event cannot be created because it has an invalid initialization type",
-										__PRETTY_FUNCTION__, std::make_tuple(
-											static_cast <uint16_t> (node),
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (type),
-											static_cast <uint16_t> (protocol)
-										), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-								#endif
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::__awh_mtx__);
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::tun_t> (this->_fmk, this->_log));
+						// Устанавливаем идентификатор события
+						ret.first->second->id = ret.first->first;
+						// Устанавливаем тип узла события
+						ret.first->second->state.node = node;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = family;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Получаем объект туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (ret.first->second.get());
+						// Активируем или деактивируем работу мютексов для передачи данных
+						tunnel->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+						// Если файловый дескриптор туннеля создан успешно
+						if((tunnel->fd = this->_eth.iface.create(event::eth_t::TUN, tunnel->iface)) != net::invalid_socket_t){
+							/**
+							 * Определяем тип подключения
+							 */
+							switch(static_cast <uint8_t> (tunnel->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Выполняем инициализацию объекта IP-адреса назначения
+									tunnel->target = make_unique <net::addr_net_ipv4_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									tunnel->source = make_unique <net::addr_net_ipv4_t> ();
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Выполняем инициализацию объекта IP-адреса назначения
+									tunnel->target = make_unique <net::addr_net_ipv6_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									tunnel->source = make_unique <net::addr_net_ipv6_t> ();
+								} break;
 							}
-						}
+							// Возвращаем идентификатор созданного события
+							return ret.first->first;
+						// Удаляем созданное событие
+						} else ::__awh_nodes__.erase(ret.first);
 					} break;
 					// Для других семейств событий
 					default: {
@@ -24228,19 +24189,15 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 */
 								switch(static_cast <uint8_t> (mediator->state.family)){
 									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4): {
-										// Выполняем инициализацию объекта IP-адреса назначения
-										mediator->target = make_unique <net::addr_net_ipv4_t> ();
-										// Выполняем инициализацию объекта IP-адреса источника
-										mediator->source = make_unique <net::addr_net_ipv4_t> ();
-									} break;
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Выполняем инициализацию объекта IP-адреса хоста
+										mediator->host = make_unique <net::addr_net_ipv4_t> ();
+									break;
 									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6): {
-										// Выполняем инициализацию объекта IP-адреса назначения
-										mediator->target = make_unique <net::addr_net_ipv6_t> ();
-										// Выполняем инициализацию объекта IP-адреса источника
-										mediator->source = make_unique <net::addr_net_ipv6_t> ();
-									} break;
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Выполняем инициализацию объекта IP-адреса хоста
+										mediator->host = make_unique <net::addr_net_ipv6_t> ();
+									break;
 								}
 								// Возвращаем идентификатор созданного события
 								return ret.first->first;
@@ -27901,63 +27858,16 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние подключения
 						i->second->state.status.store(event::status_t::LAUNCHED, std::memory_order_release);
-						/**
-						 * Определяем тип сокета
-						 */
-						switch(static_cast <uint8_t> (i->second->state.type)){
-							// Если сокет принадлежит к типу RAW
-							case static_cast <uint8_t> (event::type_t::RAW):
-							// Если сокет принадлежит к типу STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM):
-							// Если сокет принадлежит к типу DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM):
-							// Если сокет принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Выполняем блокировку потоков
-								const locker_t <> lock(::local::mtx);
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Получаем текущее значение объекта туннеля
-								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
-								// Активируем событие на запись для туннельного сокета
-								EV_SET(&::local::change.back(), tunnel->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, tunnel);
-								// Выводим положительный результат
-								return true;
-							}
-							// Для остальных типов сокетов
-							default: {
-								// Получаем текущее значение объекта туннеля
-								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
-								// Если установлена функция обратного вызова
-								if(tunnel->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Only RAW, STREAM, DATAGRAM and SEQPACKET socket types are supported for tunnel nodes";
-								// Если установлена функция обратного вызова
-								if(tunnel->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-								// Снимаем флаг ожидания подключения
-								tunnel->state.status.store(event::status_t::INITIAL, std::memory_order_release);
-							}
-						}
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::local::mtx);
+						// Добавляем новое событие в список изменений
+						::local::change.push_back((struct kevent){});
+						// Получаем текущее значение объекта туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Активируем событие на запись для туннельного сокета
+						EV_SET(&::local::change.back(), tunnel->fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, tunnel);
+						// Выводим положительный результат
+						return true;
 					}
 				} break;
 				// Если узел является клиентом
@@ -32378,530 +32288,45 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									family = htonl(AF_INET6);
 								} break;
 							}
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (tunnel->state.type)){
-								// Если сокет принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-									// Размер фактически отправяемых данных и смещение в буфере
-									size_t actual = 0, offset = 0;
-									// Если буфер передачи данных не пустой
-									if(!tunnel->buffer.empty()){
-										{
-											// Выполняем блокировку уникальным мютексом
-											const locker_t <> lock(tunnel->mtx);
-											// Добавляем оставшиеся данные в буфер передачи
-											tunnel->buffer.push(data, size);
-										}
-										/**
-										 * Отправляем данные по частям, так как сокет может быть переполнен
-										 */
-										while((static_cast <size_t> (tunnel->buffer) - offset) > 0){
-											// Получаем размер отправляемых данных
-											::memcpy(&actual, static_cast <const char *> (tunnel->buffer), sizeof(actual));
-											// Увеличиваем смещение в буфере данных
-											offset += sizeof(actual);
-											// Если размер фактически отправляемых данных превышает оставшийся размер буфера
-											if(actual > (static_cast <size_t> (tunnel->buffer) - offset))
-												// Выходим из цикла
-												break;
-											// Если размер фактически отправляемых данных меньше или равен оставшемуся размеру буфера
-											else {
-												// Если сокет является неблокирующим
-												if(tunnel->state.options & event::options::NO_IO_BLOCK){
-													// Если очередь передачи данных пустая
-													if(!(result = !tunnel->queue.empty())){
-														// Устанавливаем размер буфера для записи данных
-														iov[1].iov_len = actual;
-														// Устанавливаем буфер для записи данных
-														iov[1].iov_base = (const_cast <char *> (static_cast <const char *> (tunnel->buffer)) + offset);
-														// Выполняем отправку данных в туннель
-														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-														// Если данные не отправлены
-														if(!(result = (bytes > 0))){
-															// Если мы отправили не все данные
-															if(bytes == -1){
-																// Если нам нужно повторить попытку позже
-																if((result = (errno == EAGAIN))){
-																	// Выполняем блокировку уникальным мютексом
-																	const locker_t <> lock(tunnel->mtx);
-																	// Сохраняем оставшиеся данные для последующей отправки
-																	tunnel->queue.push(static_cast <const char *> (tunnel->buffer) + offset, actual);
-																// Если мы пытаемся отправить данные на несуществующий узел
-																} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-																	// Выполняем обработку закрытия подключения
-																	if(::io::close(tunnel, this->_log))
-																		// Выполняем удаление узла
-																		::io::destroy(tunnel, &this->_eth, this->_log);
-																	// Выходим из функции
-																	return result;
-																// Если произошла ошибка при отправке данных
-																} else {
-																	// Если установлена функция обратного вызова
-																	if(tunnel->callbacks.status != nullptr)
-																		// Вызываем функцию обратного вызова об ошибке отказа
-																		tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-																	// Устанавливаем текст ошибки
-																	const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-																	// Если установлена функция обратного вызова
-																	if(tunnel->callbacks.error != nullptr)
-																		// Вызываем функцию обратного вызова ошибки события
-																		tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-																	// Если функция обратного вызова для вывода события установлена
-																	else {
-																		/**
-																		 * Если включён режим отладки
-																		 */
-																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-																		/**
-																		 * Если режим отладки не включён
-																		 */
-																		#else
-																			// Выводим сообщение об ошибке
-																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																		#endif
-																	}
-																	// Выходим из функции
-																	return result;
-																}
-															// Если произошёл дисконнект
-															} else {
-																// Выполняем обработку закрытия подключения
-																if(::io::close(tunnel, this->_log))
-																	// Выполняем удаление узла
-																	::io::destroy(tunnel, &this->_eth, this->_log);
-																// Выходим из функции
-																return result;
-															}
-														}
-													// Если очередь передачи данных не пуста
-													} else {
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(tunnel->mtx);
-														// Копим данные для дальнейшей отправки
-														tunnel->queue.push(static_cast <const char *> (tunnel->buffer) + offset, actual);
-													}
-												// Если сокет является полублокирующим
-												} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
-													// Переводим сокет в блокирующий режим
-													if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-														// Устанавливаем размер буфера для записи данных
-														iov[1].iov_len = actual;
-														// Устанавливаем буфер для записи данных
-														iov[1].iov_base = (const_cast <char *> (static_cast <const char *> (tunnel->buffer)) + offset);
-														// Выполняем отправку данных в туннель
-														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-														// Если данные отправлены успешно
-														if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(tunnel, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(tunnel, &this->_eth, this->_log);
-															// Выходим из функции
-															return false;
-														// Если произошла какая-то ошибка при отправке данных
-														} else if(bytes == -1) {
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															// Если установлена функция обратного вызова
-															if(tunnel->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-															// Если установлена функция обратного вызова
-															if(tunnel->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																#endif
-															}
-															// Выходим из функции
-															return false;
-														}
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-													}
-												// Если сокет является блокирующим
-												} else {
-													// Устанавливаем размер буфера для записи данных
-													iov[1].iov_len = actual;
-													// Устанавливаем буфер для записи данных
-													iov[1].iov_base = (const_cast <char *> (static_cast <const char *> (tunnel->buffer)) + offset);
-													// Выполняем отправку данных в туннель
-													const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(tunnel, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(tunnel, &this->_eth, this->_log);
-														// Выходим из функции
-														return false;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Если установлена функция обратного вызова
-														if(tunnel->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(tunnel->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return false;
-													}
-													// Устанавливаем результат выполнения функции
-													result = (bytes > 0);
+							// Если сокет является неблокирующим
+							if(tunnel->state.options & event::options::NO_IO_BLOCK){
+								// Если очередь передачи данных пустая
+								if(!(result = !tunnel->queue.empty())){
+									// Устанавливаем размер буфера для записи данных
+									iov[1].iov_len = size;
+									// Устанавливаем буфер для записи данных
+									iov[1].iov_base = const_cast <char *> (data);
+									// Выполняем отправку данных в туннель
+									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+									// Если данные не отправлены
+									if(!(result = (bytes > 0))){
+										// Если мы отправили не все данные
+										if(bytes == -1){
+											// Если нам нужно повторить попытку позже
+											if(errno == EAGAIN){
+												{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(tunnel->mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													tunnel->queue.push(data, size);
+												}{
+													// Выполняем блокировку потоков
+													const locker_t <> lock(::local::mtx);
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Активируем событие на запись для клиентского сокета
+													EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_ENABLE | EV_RECEIPT, 0, 0, tunnel);
 												}
-												// Увеличиваем смещение в буфере данных
-												offset += actual;
-											}
-										}
-										// Выполняем блокировку уникальным мютексом
-										const locker_t <> lock(tunnel->mtx);
-										// Удаляем отправленные данные из буфера передачи
-										tunnel->buffer.erase(offset);
-									// Если буфер передачи данных пустой
-									} else {
-										/**
-										 * Отправляем данные по частям, так как сокет может быть переполнен
-										 */
-										while((size - offset) > 0){
-											// Получаем размер отправляемых данных
-											::memcpy(&actual, data, sizeof(actual));
-											// Увеличиваем смещение в буфере данных
-											offset += sizeof(actual);
-											// Если размер фактически отправляемых данных превышает оставшийся размер буфера
-											if(actual > (size - offset)){
-												// Выполняем блокировку уникальным мютексом
-												const locker_t <> lock(tunnel->mtx);
-												// Добавляем оставшиеся данные в буфер передачи
-												tunnel->buffer.push((const_cast <char *> (data) + offset), size - offset);
-												// Выходим из цикла
-												break;
-											// Если размер фактически отправляемых данных меньше или равен оставшемуся размеру буфера
-											} else {
-												// Если сокет является неблокирующим
-												if(tunnel->state.options & event::options::NO_IO_BLOCK){
-													// Если очередь передачи данных пустая
-													if(!(result = !tunnel->queue.empty())){
-														// Устанавливаем размер буфера для записи данных
-														iov[1].iov_len = actual;
-														// Устанавливаем буфер для записи данных
-														iov[1].iov_base = (const_cast <char *> (data) + offset);
-														// Выполняем отправку данных в туннель
-														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-														// Если данные не отправлены
-														if(!(result = (bytes > 0))){
-															// Если мы отправили не все данные
-															if(bytes == -1){
-																// Если нам нужно повторить попытку позже
-																if(errno == EAGAIN){
-																	// Выполняем блокировку уникальным мютексом
-																	const locker_t <> lock(tunnel->mtx);
-																	// Сохраняем оставшиеся данные для последующей отправки
-																	tunnel->queue.push(const_cast <char *> (data) + offset, actual);
-																// Если мы пытаемся отправить данные на несуществующий узел
-																} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-																	// Выполняем обработку закрытия подключения
-																	if(::io::close(tunnel, this->_log))
-																		// Выполняем удаление узла
-																		::io::destroy(tunnel, &this->_eth, this->_log);
-																	// Выходим из функции
-																	return result;
-																// Если произошла ошибка при отправке данных
-																} else {
-																	// Если установлена функция обратного вызова
-																	if(tunnel->callbacks.status != nullptr)
-																		// Вызываем функцию обратного вызова об ошибке отказа
-																		tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-																	// Устанавливаем текст ошибки
-																	const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-																	// Если установлена функция обратного вызова
-																	if(tunnel->callbacks.error != nullptr)
-																		// Вызываем функцию обратного вызова ошибки события
-																		tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-																	// Если функция обратного вызова для вывода события установлена
-																	else {
-																		/**
-																		 * Если включён режим отладки
-																		 */
-																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-																		/**
-																		 * Если режим отладки не включён
-																		 */
-																		#else
-																			// Выводим сообщение об ошибке
-																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																		#endif
-																	}
-																	// Выходим из функции
-																	return result;
-																}
-															// Если произошёл дисконнект
-															} else {
-																// Выполняем обработку закрытия подключения
-																if(::io::close(tunnel, this->_log))
-																	// Выполняем удаление узла
-																	::io::destroy(tunnel, &this->_eth, this->_log);
-																// Выходим из функции
-																return result;
-															}
-														}
-													// Если очередь передачи данных не пуста
-													} else {
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(tunnel->mtx);
-														// Копим данные для дальнейшей отправки
-														tunnel->queue.push(const_cast <char *> (data) + offset, actual);
-													}
-												// Если сокет является полублокирующим
-												} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
-													// Переводим сокет в блокирующий режим
-													if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-														// Устанавливаем размер буфера для записи данных
-														iov[1].iov_len = actual;
-														// Устанавливаем буфер для записи данных
-														iov[1].iov_base = (const_cast <char *> (data) + offset);
-														// Выполняем отправку данных в туннель
-														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-														// Если данные отправлены успешно
-														if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(tunnel, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(tunnel, &this->_eth, this->_log);
-															// Выходим из функции
-															return false;
-														// Если произошла какая-то ошибка при отправке данных
-														} else if(bytes == -1) {
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															// Если установлена функция обратного вызова
-															if(tunnel->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-															// Если установлена функция обратного вызова
-															if(tunnel->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-																#endif
-															}
-															// Выходим из функции
-															return false;
-														}
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-													}
-												// Если сокет является блокирующим
-												} else {
-													// Устанавливаем размер буфера для записи данных
-													iov[1].iov_len = actual;
-													// Устанавливаем буфер для записи данных
-													iov[1].iov_base = (const_cast <char *> (data) + offset);
-													// Выполняем отправку данных в туннель
-													const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(tunnel, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(tunnel, &this->_eth, this->_log);
-														// Выходим из функции
-														return false;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Если установлена функция обратного вызова
-														if(tunnel->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(tunnel->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return false;
-													}
-													// Устанавливаем результат выполнения функции
-													result = (bytes > 0);
-												}
-												// Увеличиваем смещение в буфере данных
-												offset += actual;
-											}
-										}
-									}
-								} break;
-								// Для остальных типов сокетов
-								default: {
-									// Если сокет является неблокирующим
-									if(tunnel->state.options & event::options::NO_IO_BLOCK){
-										// Если очередь передачи данных пустая
-										if(!(result = !tunnel->queue.empty())){
-											// Устанавливаем размер буфера для записи данных
-											iov[1].iov_len = size;
-											// Устанавливаем буфер для записи данных
-											iov[1].iov_base = const_cast <char *> (data);
-											// Выполняем отправку данных в туннель
-											const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-											// Если данные не отправлены
-											if(!(result = (bytes > 0))){
-												// Если мы отправили не все данные
-												if(bytes == -1){
-													// Если нам нужно повторить попытку позже
-													if(errno == EAGAIN){
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(tunnel->mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														tunnel->queue.push(data, size);
-													// Если мы пытаемся отправить данные на несуществующий узел
-													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(tunnel, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(tunnel, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
-														// Если установлена функция обратного вызова
-														if(tunnel->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(tunnel->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														}
-														// Выходим из функции
-														return result;
-													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(tunnel, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(tunnel, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												}
-											}
-										// Если очередь передачи данных не пуста
-										} else {
-											// Выполняем блокировку уникальным мютексом
-											const locker_t <> lock(tunnel->mtx);
-											// Копим данные для дальнейшей отправки
-											tunnel->queue.push(data, size);
-										}
-									// Если сокет является полублокирующим
-									} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
-										// Переводим сокет в блокирующий режим
-										if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-											// Устанавливаем размер буфера для записи данных
-											iov[1].iov_len = size;
-											// Устанавливаем буфер для записи данных
-											iov[1].iov_base = const_cast <char *> (data);
-											// Выполняем отправку данных в туннель
-											const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+											// Если мы пытаемся отправить данные на несуществующий узел
+											} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
 												// Выполняем обработку закрытия подключения
 												if(::io::close(tunnel, this->_log))
 													// Выполняем удаление узла
 													::io::destroy(tunnel, &this->_eth, this->_log);
 												// Выходим из функции
-												return false;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Переводим сокет обратно в неблокирующий режим
-												this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												return result;
+											// Если произошла ошибка при отправке данных
+											} else {
 												// Если установлена функция обратного вызова
 												if(tunnel->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об ошибке отказа
@@ -32929,99 +32354,135 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													#endif
 												}
 												// Выходим из функции
-												return false;
+												return result;
 											}
-											// Переводим сокет обратно в неблокирующий режим
-											result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-										}
-									// Если сокет является блокирующим
-									} else {
-										// Устанавливаем размер буфера для записи данных
-										iov[1].iov_len = size;
-										// Устанавливаем буфер для записи данных
-										iov[1].iov_base = const_cast <char *> (data);
-										// Выполняем отправку данных в туннель
-										const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-										// Если данные отправлены успешно
-										if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+										// Если произошёл дисконнект
+										} else {
 											// Выполняем обработку закрытия подключения
 											if(::io::close(tunnel, this->_log))
 												// Выполняем удаление узла
 												::io::destroy(tunnel, &this->_eth, this->_log);
 											// Выходим из функции
-											return false;
-										// Если произошла какая-то ошибка при отправке данных
-										} else if(bytes == -1) {
-											// Если установлена функция обратного вызова
-											if(tunnel->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-											// Если установлена функция обратного вызова
-											if(tunnel->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return false;
+											return result;
 										}
-										// Устанавливаем результат выполнения функции
-										result = (bytes > 0);
 									}
+								// Если очередь передачи данных не пуста
+								} else {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(tunnel->mtx);
+									// Копим данные для дальнейшей отправки
+									tunnel->queue.push(data, size);
 								}
+							// Если сокет является полублокирующим
+							} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
+								// Переводим сокет в блокирующий режим
+								if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+									// Устанавливаем размер буфера для записи данных
+									iov[1].iov_len = size;
+									// Устанавливаем буфер для записи данных
+									iov[1].iov_base = const_cast <char *> (data);
+									// Выполняем отправку данных в туннель
+									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+									// Если данные отправлены успешно
+									if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+										// Выполняем обработку закрытия подключения
+										if(::io::close(tunnel, this->_log))
+											// Выполняем удаление узла
+											::io::destroy(tunnel, &this->_eth, this->_log);
+										// Выходим из функции
+										return false;
+									// Если произошла какая-то ошибка при отправке данных
+									} else if(bytes == -1) {
+										// Переводим сокет обратно в неблокирующий режим
+										this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Выходим из функции
+										return false;
+									}
+									// Переводим сокет обратно в неблокирующий режим
+									result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								}
+							// Если сокет является блокирующим
+							} else {
+								// Устанавливаем размер буфера для записи данных
+								iov[1].iov_len = size;
+								// Устанавливаем буфер для записи данных
+								iov[1].iov_base = const_cast <char *> (data);
+								// Выполняем отправку данных в туннель
+								const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+								// Если данные отправлены успешно
+								if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+									// Выполняем обработку закрытия подключения
+									if(::io::close(tunnel, this->_log))
+										// Выполняем удаление узла
+										::io::destroy(tunnel, &this->_eth, this->_log);
+									// Выходим из функции
+									return false;
+								// Если произошла какая-то ошибка при отправке данных
+								} else if(bytes == -1) {
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+									// Выходим из функции
+									return false;
+								}
+								// Устанавливаем результат выполнения функции
+								result = (bytes > 0);
 							}
 						}
 					} break;
 					// Если узел является посредником
-					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-						// Получаем текущее значение объекта посредника
-						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-						// Если идентификатор связанного события установлен
-						if(mediator->dest != 0){
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (mediator->state.type)){
-								// Если сокет принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-									{
-										// Выполняем блокировку уникальным мютексом
-										const locker_t <> lock(mediator->mtx);
-										// Добавляем размер данных в буфер передачи
-										mediator->buffer.push(&size, sizeof(size));
-										// Добавляем оставшиеся данные в буфер передачи
-										mediator->buffer.push(data, size);
-									}
-									// Выполняем отправку данных на связанный узел
-									result = this->send(mediator->dest, static_cast <const char *> (mediator->buffer), static_cast <size_t> (mediator->buffer));
-									// Выполняем блокировку уникальным мютексом
-									const locker_t <> lock(mediator->mtx);
-									// Очищаем буфер передачи данных
-									mediator->buffer.clear();
-								} break;
-								// Для остальных типов сокетов
-								default:
-									// Выполняем отправку данных на связанный узел
-									result = this->send(mediator->dest, data, size);
-							}
-						}
-					} break;
+					case static_cast <uint8_t> (event::node_t::MEDIATOR):
+						// Выполняем отправку данных на связанный узел
+						return this->send(awh_cast <::io::mediator_t *> (i->second.get())->dest, data, size);
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
@@ -40058,10 +39519,15 @@ void awh::engine::IO::clear() noexcept {
 						if(tunnel->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
 							tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
-						// Если имя сетевого интерфейса туннеля установлена
-						if(!tunnel->iface.empty())
-							// Удаляем сетевой интерфейс туннеля
-							this->_eth.iface.destroy(tunnel->iface);
+						/**
+						 * Для операционной системы FreeBSD
+						 */
+						#if __FreeBSD__
+							// Если имя сетевого интерфейса туннеля установлена
+							if(!tunnel->iface.empty())
+								// Удаляем сетевой интерфейс туннеля
+								this->_eth.iface.destroy(tunnel->iface);
+						#endif
 						// Если дескриптор сокета инициализирован
 						if(tunnel->fd != net::invalid_socket_t)
 							// Закрываем дескриптор сокета
@@ -41125,10 +40591,15 @@ bool awh::engine::IO::deinitialize() noexcept {
 					if(tunnel->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
 						tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
-					// Если имя сетевого интерфейса туннеля установлена
-					if(!tunnel->iface.empty())
-						// Удаляем сетевой интерфейс туннеля
-						this->_eth.iface.destroy(tunnel->iface);
+					/**
+					 * Для операционной системы FreeBSD
+					 */
+					#if __FreeBSD__
+						// Если имя сетевого интерфейса туннеля установлена
+						if(!tunnel->iface.empty())
+							// Удаляем сетевой интерфейс туннеля
+							this->_eth.iface.destroy(tunnel->iface);
+					#endif
 					// Выполняем блокировку потоков
 					const locker_t <> lock(::__awh_mtx__);
 					// Производим удаление узла
@@ -42543,11 +42014,6 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & 
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Устанавливаем функцию обратного вызова на запись события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.write = ::move(cb);
-				break;
-				// Если узел является посредником
-				case static_cast <uint8_t> (event::node_t::MEDIATOR):
-					// Устанавливаем функцию обратного вызова на запись события
-					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
