@@ -667,10 +667,10 @@ namespace io {
 	} ipc_t;
 
 	/**
-	 * @brief Структура заголовка туннеля
+	 * @brief Структура буфера туннеля
 	 *
 	 */
-	typedef struct TunnelHeader {
+	typedef struct TunnelBuffer {
 		// Семейство адресов туннеля
 		uint32_t family;
 		// Буфер ввода-вывода заголовка туннеля
@@ -679,13 +679,13 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit TunnelHeader() noexcept : family(0) {
+		explicit TunnelBuffer() noexcept : family(0) {
 			// Устанавливаем базу буфера
 			this->iov[0].iov_base = &this->family;
 			// Устанавливаем длину буфера
 			this->iov[0].iov_len = sizeof(this->family);
 		}
-	} tuns_head_t;
+	} tuns_buffer_t;
 
 	/**
 	 * @brief Структура узла туннеля
@@ -698,8 +698,10 @@ namespace io {
 		queue_t queue;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
-		// Объект заголовков тоннеля
-		tuns_head_t header;
+		// Объект буфера туннеля на чтение
+		tuns_buffer_t read;
+		// Объект буфера туннеля на запись
+		tuns_buffer_t write;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
 		// Флаги активированных событий файла
@@ -4855,9 +4857,9 @@ namespace io {
 						// Буфер для временного хранения данных
 						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
 						// Устанавливаем буфер для чтения данных
-						tunnel->header.iov[1].iov_base = buffer;
+						tunnel->read.iov[1].iov_base = buffer;
 						// Устанавливаем размер буфера для чтения данных
-						tunnel->header.iov[1].iov_len = AWH_MAX_EVENT_BUFFER_SIZE;
+						tunnel->read.iov[1].iov_len = AWH_MAX_EVENT_BUFFER_SIZE;
 						// Если событие является неблокирующим
 						if((tunnel->state.options & event::options::NO_IO_BLOCK) || (tunnel->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -4867,7 +4869,7 @@ namespace io {
 							 */
 							for(;;){
 								// Читаем данные из туннеля
-								bytes = ::readv(tunnel->fd, tunnel->header.iov, 2);
+								bytes = ::readv(tunnel->fd, tunnel->read.iov, 2);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -4910,19 +4912,19 @@ namespace io {
 										return false;
 									}
 								// Если мы получили данные из сокета
-								} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->header.family))) {
+								} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->read.family))) {
 									// Если мы получили семейство протоколов в неверном порядке байт
-									if(tunnel->header.family > 0xFFFF)
+									if(tunnel->read.family > 0xFFFF)
 										// Преобразуем к хостовому порядку
-										tunnel->header.family = ntohl(tunnel->header.family);
+										tunnel->read.family = ntohl(tunnel->read.family);
 									// Определяем версию по первым 4 битам
 									const uint8_t version = ((buffer[0] >> 4) & 0x0F);
 									// Вычисляем размер полезной нагрузки IP-пакета
-									const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->header.family)));
+									const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->read.family)));
 									/**
 									 * Определяем тип IP-пакета
 									 */
-									switch(tunnel->header.family){
+									switch(tunnel->read.family){
 										// Если семейство протоколов является IPv4
 										case AF_INET: {
 											// Если данные соответствуют IPv4-пакету
@@ -5164,7 +5166,7 @@ namespace io {
 						// Если событие является блокирующим
 						} else {
 							// Читаем данные из туннеля
-							const ssize_t bytes = ::readv(tunnel->fd, tunnel->header.iov, 2);
+							const ssize_t bytes = ::readv(tunnel->fd, tunnel->read.iov, 2);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -5200,19 +5202,19 @@ namespace io {
 								// Формируем отрицательный результат
 								return false;
 							// Если мы получили данные из сокета
-							} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->header.family))) {
+							} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->read.family))) {
 								// Если мы получили семейство протоколов в неверном порядке байт
-								if(tunnel->header.family > 0xFFFF)
+								if(tunnel->read.family > 0xFFFF)
 									// Преобразуем к хостовому порядку
-									tunnel->header.family = ntohl(tunnel->header.family);
+									tunnel->read.family = ntohl(tunnel->read.family);
 								// Определяем версию по первым 4 битам
 								const uint8_t version = ((buffer[0] >> 4) & 0x0F);
 								// Вычисляем размер полезной нагрузки IP-пакета
-								const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->header.family)));
+								const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->read.family)));
 								/**
 								 * Определяем тип IP-пакета
 								 */
-								switch(tunnel->header.family){
+								switch(tunnel->read.family){
 									// Если семейство протоколов является IPv4
 									case AF_INET: {
 										// Если данные соответствуют IPv4-пакету
