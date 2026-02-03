@@ -55,6 +55,7 @@
 #include <dirent.h>
 #include <limits.h>
 #include <sys/un.h>
+#include <sys/uio.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/event.h>
@@ -666,6 +667,27 @@ namespace io {
 	} ipc_t;
 
 	/**
+	 * @brief Структура заголовка туннеля
+	 *
+	 */
+	typedef struct TunnelHeader {
+		// Семейство адресов туннеля
+		uint32_t family;
+		// Буфер ввода-вывода заголовка туннеля
+		struct iovec iov[2];
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit TunnelHeader() noexcept : family(0) {
+			// Устанавливаем базу буфера
+			this->iov[0].iov_base = &this->family;
+			// Устанавливаем длину буфера
+			this->iov[0].iov_len = sizeof(this->family);
+		}
+	} tuns_head_t;
+
+	/**
 	 * @brief Структура узла туннеля
 	 *
 	 */
@@ -676,6 +698,8 @@ namespace io {
 		queue_t queue;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
+		// Объект заголовков тоннеля
+		tuns_head_t header;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
 		// Флаги активированных событий файла
@@ -3828,11 +3852,11 @@ namespace io {
 									}
 								}
 							}
-							// Формируем положительный результат
-							return true;
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
@@ -3934,8 +3958,6 @@ namespace io {
 														return false;
 													}
 												}
-												// Формируем положительный результат
-												return true;
 											// Если событие является блокирующим
 											} else {
 												// Выполняем чтение данных из PIPE-сокета
@@ -3988,8 +4010,6 @@ namespace io {
 															ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 													} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
-													// Формируем положительный результат
-													return true;
 												// Если произошёл дисконнект
 												} else {
 													// Выполняем обработку закрытия подключения
@@ -4115,8 +4135,6 @@ namespace io {
 												return false;
 											}
 										}
-										// Формируем положительный результат
-										return true;
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из IPC-сокета
@@ -4169,8 +4187,6 @@ namespace io {
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
-											// Формируем положительный результат
-											return true;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4267,8 +4283,6 @@ namespace io {
 												return false;
 											}
 										}
-										// Формируем положительный результат
-										return true;
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из IPC-сокета
@@ -4321,8 +4335,6 @@ namespace io {
 													ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 											} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
-											// Формируем положительный результат
-											return true;
 										// Если произошёл дисконнект
 										} else {
 											// Выполняем обработку закрытия подключения
@@ -4337,7 +4349,9 @@ namespace io {
 							}
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
@@ -4827,17 +4841,612 @@ namespace io {
 								// Устанавливаем таймаут на получение данных
 								EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
 							}
-							// Формируем положительный результат
-							return true;
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
-				
-				} break;
+					// Если событие чтения разрешено
+					if(tunnel->actions & ::action::READ){
+						// Буфер для временного хранения данных
+						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
+						// Устанавливаем буфер для чтения данных
+						tunnel->header.iov[1].iov_base = buffer;
+						// Устанавливаем размер буфера для чтения данных
+						tunnel->header.iov[1].iov_len = AWH_MAX_EVENT_BUFFER_SIZE;
+						// Если событие является неблокирующим
+						if((tunnel->state.options & event::options::NO_IO_BLOCK) || (tunnel->state.options & event::options::SM_IO_BLOCK)){
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							/**
+							 * Выполняем получение данных пока их не получим
+							 */
+							for(;;){
+								// Читаем данные из туннеля
+								bytes = ::readv(tunnel->fd, tunnel->header.iov, 2);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Если нам нужно повторить попытку позже
+									if(errno == EAGAIN)
+										// Выходим из цикла
+										break;
+									// Если мы получили другую ошибку
+									else {
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = fmk->format("Failed to receive data for tunnel: %s", ::strerror(errno));
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Выполняем обработку закрытия подключения
+										if(::io::close(node, log))
+											// Выполняем удаление узла
+											::io::destroy(node, eth, log);
+										// Формируем отрицательный результат
+										return false;
+									}
+								// Если мы получили данные из сокета
+								} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->header.family))) {
+									// Если мы получили семейство протоколов в неверном порядке байт
+									if(tunnel->header.family > 0xFFFF)
+										// Преобразуем к хостовому порядку
+										tunnel->header.family = ntohl(tunnel->header.family);
+									// Определяем версию по первым 4 битам
+									const uint8_t version = ((buffer[0] >> 4) & 0x0F);
+									// Вычисляем размер полезной нагрузки IP-пакета
+									const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->header.family)));
+									/**
+									 * Определяем тип IP-пакета
+									 */
+									switch(tunnel->header.family){
+										// Если семейство протоколов является IPv4
+										case AF_INET: {
+											// Если данные соответствуют IPv4-пакету
+											if((version == 4) && (size >= 20) && (tunnel->state.family == event::family_t::IPV4)){
+												// Получаем адрес источника IPv4-пакета
+												const uint32_t source = (* reinterpret_cast <uint32_t *> (buffer + 12));
+												// Если адрес сервера совпадает с настройками туннеля
+												if(source == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+													// Идентификатор сессии источника
+													origin_id_t sid;
+													// Устанавливаем полученный IP-адрес назначения
+													::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = (* reinterpret_cast <uint32_t *> (buffer + 16));
+													// Формируем идентификатор источника
+													sid.from(::trust_cast <struct sockaddr_in> (tunnel->endpoint.client));
+													// Ищем сессию по идентификатору источника
+													auto i = ::__awh_origin_sessions__.find(sid);
+													// Если сессия найдена
+													if(i != ::__awh_origin_sessions__.end()){
+														// Получаем текущее значение объекта посредника
+														::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
+														// Если событие находится в состоянии инициализированного
+														if(mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+															// Создаём охранника узла события
+															::local::guard_t guard(mediator);
+															// Если функция обратного вызова для вывода события установлена
+															if(mediator->callbacks.event != nullptr)
+																// Вызываем функцию обратного вызова флаг события
+																mediator->callbacks.event(mediator->id, event::action_t::READ);
+															// Если функция обратного вызова для вывода прочитанных данных установлена
+															if(mediator->callbacks.read != nullptr)
+																// Вызываем функцию обратного вызова для вывода полученных данных
+																mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+														}
+													}
+												// Если адрес сервера не совпадает с настройками туннеля
+												} else {
+													// Если установлена функция обратного вызова
+													if(tunnel->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+													// Устанавливаем полученный IP-адрес
+													tunnel->addr.v4(source, net_addr_t::endian_t::LITTLE);
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+													// Если установлена функция обратного вызова
+													if(tunnel->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											// Если данные не соответствуют IPv4-пакету
+											} else {
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+												// Устанавливаем текст ошибки
+												const string error = "We received a packet from the tunnel that did not match the expected IPv4 address format";
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										} break;
+										// Если семейство протоколов является IPv6
+										case AF_INET6: {
+											// Если данные соответствуют IPv6-пакету
+											if((version == 6) && (size >= 40) && (tunnel->state.family == event::family_t::IPV6)){
+												// Получаем адрес источника IPv6-пакета
+												const uint8_t * source = reinterpret_cast <uint8_t *> (buffer + 8);
+												// Если адрес сервера совпадает с настройками туннеля
+												if(::memcmp(source, &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+													// Идентификатор сессии источника
+													origin_id_t sid;
+													// Устанавливаем полученный IP-адрес назначения
+													::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, reinterpret_cast <uint8_t *> (buffer + 24), 16);
+													// Формируем идентификатор источника
+													sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
+													// Ищем сессию по идентификатору источника
+													auto i = ::__awh_origin_sessions__.find(sid);
+													// Если сессия найдена
+													if(i != ::__awh_origin_sessions__.end()){
+														// Получаем текущее значение объекта посредника
+														::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
+														// Если событие находится в состоянии инициализированного
+														if(mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+															// Создаём охранника узла события
+															::local::guard_t guard(mediator);
+															// Если функция обратного вызова для вывода события установлена
+															if(mediator->callbacks.event != nullptr)
+																// Вызываем функцию обратного вызова флаг события
+																mediator->callbacks.event(mediator->id, event::action_t::READ);
+															// Если функция обратного вызова для вывода прочитанных данных установлена
+															if(mediator->callbacks.read != nullptr)
+																// Вызываем функцию обратного вызова для вывода полученных данных
+																mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+														}
+													}
+												// Если адрес сервера не совпадает с настройками туннеля
+												} else {
+													// Если установлена функция обратного вызова
+													if(tunnel->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+													// Бинарный буфер IP-адреса
+													array <uint8_t, 16> buffer;
+													// Копируем полученный IP-адрес в буфер
+													::memcpy(&buffer[0], source, 16);
+													// Устанавливаем полученный IP-адрес
+													tunnel->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+													// Устанавливаем текст ошибки
+													const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+													// Если установлена функция обратного вызова
+													if(tunnel->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											// Если данные не соответствуют IPv6-пакету
+											} else {
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+												// Устанавливаем текст ошибки
+												const string error = "We received a packet from the tunnel that did not match the expected IPv6 address format";
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										} break;
+										// В остальных случаях
+										default: {
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "We received a packet from the tunnel that did not match the expected IP address format";
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									}
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									if(::io::close(node, log))
+										// Выполняем удаление узла
+										::io::destroy(node, eth, log);
+									// Формируем отрицательный результат
+									return false;
+								}
+							}
+						// Если событие является блокирующим
+						} else {
+							// Читаем данные из туннеля
+							const ssize_t bytes = ::readv(tunnel->fd, tunnel->header.iov, 2);
+							// Если мы получили ошибку
+							if(bytes < 0){
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = fmk->format("Failed to receive data for tunnel: %s", ::strerror(errno));
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+								// Выполняем обработку закрытия подключения
+								if(::io::close(node, log))
+									// Выполняем удаление узла
+									::io::destroy(node, eth, log);
+								// Формируем отрицательный результат
+								return false;
+							// Если мы получили данные из сокета
+							} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->header.family))) {
+								// Если мы получили семейство протоколов в неверном порядке байт
+								if(tunnel->header.family > 0xFFFF)
+									// Преобразуем к хостовому порядку
+									tunnel->header.family = ntohl(tunnel->header.family);
+								// Определяем версию по первым 4 битам
+								const uint8_t version = ((buffer[0] >> 4) & 0x0F);
+								// Вычисляем размер полезной нагрузки IP-пакета
+								const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->header.family)));
+								/**
+								 * Определяем тип IP-пакета
+								 */
+								switch(tunnel->header.family){
+									// Если семейство протоколов является IPv4
+									case AF_INET: {
+										// Если данные соответствуют IPv4-пакету
+										if((version == 4) && (size >= 20) && (tunnel->state.family == event::family_t::IPV4)){
+											// Получаем адрес источника IPv4-пакета
+											const uint32_t source = (* reinterpret_cast <uint32_t *> (buffer + 12));
+											// Если адрес сервера совпадает с настройками туннеля
+											if(source == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+												// Идентификатор сессии источника
+												origin_id_t sid;
+												// Устанавливаем полученный IP-адрес назначения
+												::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = (* reinterpret_cast <uint32_t *> (buffer + 16));
+												// Формируем идентификатор источника
+												sid.from(::trust_cast <struct sockaddr_in> (tunnel->endpoint.client));
+												// Ищем сессию по идентификатору источника
+												auto i = ::__awh_origin_sessions__.find(sid);
+												// Если сессия найдена
+												if(i != ::__awh_origin_sessions__.end()){
+													// Получаем текущее значение объекта посредника
+													::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
+													// Если событие находится в состоянии инициализированного
+													if(mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+														// Создаём охранника узла события
+														::local::guard_t guard(mediator);
+														// Если функция обратного вызова для вывода события установлена
+														if(mediator->callbacks.event != nullptr)
+															// Вызываем функцию обратного вызова флаг события
+															mediator->callbacks.event(mediator->id, event::action_t::READ);
+														// Если функция обратного вызова для вывода прочитанных данных установлена
+														if(mediator->callbacks.read != nullptr)
+															// Вызываем функцию обратного вызова для вывода полученных данных
+															mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+													}
+												}
+											// Если адрес сервера не совпадает с настройками туннеля
+											} else {
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+												// Устанавливаем полученный IP-адрес
+												tunnel->addr.v4(source, net_addr_t::endian_t::LITTLE);
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										// Если данные не соответствуют IPv4-пакету
+										} else {
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "We received a packet from the tunnel that did not match the expected IPv4 address format";
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если семейство протоколов является IPv6
+									case AF_INET6: {
+										// Если данные соответствуют IPv6-пакету
+										if((version == 6) && (size >= 40) && (tunnel->state.family == event::family_t::IPV6)){
+											// Получаем адрес источника IPv6-пакета
+											const uint8_t * source = reinterpret_cast <uint8_t *> (buffer + 8);
+											// Если адрес сервера совпадает с настройками туннеля
+											if(::memcmp(source, &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+												// Идентификатор сессии источника
+												origin_id_t sid;
+												// Устанавливаем полученный IP-адрес назначения
+												::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, reinterpret_cast <uint8_t *> (buffer + 24), 16);
+												// Формируем идентификатор источника
+												sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
+												// Ищем сессию по идентификатору источника
+												auto i = ::__awh_origin_sessions__.find(sid);
+												// Если сессия найдена
+												if(i != ::__awh_origin_sessions__.end()){
+													// Получаем текущее значение объекта посредника
+													::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
+													// Если событие находится в состоянии инициализированного
+													if(mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+														// Создаём охранника узла события
+														::local::guard_t guard(mediator);
+														// Если функция обратного вызова для вывода события установлена
+														if(mediator->callbacks.event != nullptr)
+															// Вызываем функцию обратного вызова флаг события
+															mediator->callbacks.event(mediator->id, event::action_t::READ);
+														// Если функция обратного вызова для вывода прочитанных данных установлена
+														if(mediator->callbacks.read != nullptr)
+															// Вызываем функцию обратного вызова для вывода полученных данных
+															mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+													}
+												}
+											// Если адрес сервера не совпадает с настройками туннеля
+											} else {
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+												// Бинарный буфер IP-адреса
+												array <uint8_t, 16> buffer;
+												// Копируем полученный IP-адрес в буфер
+												::memcpy(&buffer[0], source, 16);
+												// Устанавливаем полученный IP-адрес
+												tunnel->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+												// Устанавливаем текст ошибки
+												const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										// Если данные не соответствуют IPv6-пакету
+										} else {
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "We received a packet from the tunnel that did not match the expected IPv6 address format";
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// В остальных случаях
+									default: {
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "We received a packet from the tunnel that did not match the expected IP address format";
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								}
+							// Если произошёл дисконнект
+							} else {
+								// Выполняем обработку закрытия подключения
+								if(::io::close(node, log))
+									// Выполняем удаление узла
+									::io::destroy(node, eth, log);
+								// Формируем отрицательный результат
+								return false;
+							}
+						}
+					}
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -6092,11 +6701,11 @@ namespace io {
 								// Устанавливаем таймаут на получение данных
 								EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
 							}
-							// Формируем положительный результат
-							return true;
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Если активирован режим прослушивания
@@ -6254,8 +6863,6 @@ namespace io {
 												return false;
 											}
 										}
-										// Выходим из функции
-										return true;
 									// Если событие является блокирующим
 									} else {
 										// Выполняем чтение данных из UDP-сокета или RAW-сокета
@@ -6292,8 +6899,6 @@ namespace io {
 													log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
-											// Выходим из функции
-											return true;
 										// Если мы получили данные из сокета
 										} else if(bytes > 0)
 											// Выполняем обработку полученных данных
@@ -6309,7 +6914,9 @@ namespace io {
 										}
 									}
 								}
-							} break;
+								// Выходим из функции
+								return true;
+							}
 							// Для остальных типов сокетов
 							default: {
 								// Получаем текущее значение объекта сервера
@@ -6684,11 +7291,11 @@ namespace io {
 								// Деактивируем событие на запись данных
 								EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, ipc);
 							}
-							// Формируем положительный результат
-							return true;
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
@@ -6987,17 +7594,19 @@ namespace io {
 									EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 								}
 							}
-							// Формируем положительный результат
-							return true;
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
 				
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -7647,12 +8256,12 @@ namespace io {
 										EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
 								}
-								// Формируем положительный результат
-								return true;
 							}
 						}
 					}
-				} break;
+					// Формируем положительный результат
+					return true;
+				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Проходим по всем сессиям источников
@@ -13461,15 +14070,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											// Устанавливаем порт для локального подключения целевой машины
 											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_port = htons(0);
 											// Устанавливаем адрес для удаленного подключения целевой машины
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address;
-											// Если источник сетевого адреса установлен
-											if(tunnel->source != nullptr)
-												// Устанавливаем адрес для локального подключения
-												::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
-											// Если источник сетевого адреса не установлен, устанавливаем адрес для по умолчанию для локального подключения
-											else ::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = 0;
-											// Если источник сетевого адреса установлен
-											if(awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address > 0)
+											::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address;
+											// Устанавливаем адрес для локального подключения
+											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
+											// Если адрес для удаленного подключения установлен
+											if(awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address > 0)
 												// Устанавливаем адрес IPv4 для клиента
 												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 32);
 											// Устанавливаем адрес IPv4 для сервера
@@ -13496,15 +14101,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											// Устанавливаем порт для локального подключения целевой машины
 											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_port = htons(0);
 											// Устанавливаем адрес для удаленного подключения целевой машины
-											::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
-											// Если источник сетевого адреса установлен
-											if(tunnel->source != nullptr)
-												// Устанавливаем адрес IPv6 для клиента
-												::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
-											// Если источник сетевого адреса не установлен, устанавливаем адрес для по умолчанию для локального подключения
-											else ::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &in6addr_any, 16);
-											// Если источник сетевого адреса установлен
-											if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], (uint8_t[16]){0}, 16) != 0)
+											::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
+											// Устанавливаем адрес IPv6 для клиента
+											::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
+											// Если адрес для удаленного подключения установлен
+											if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], (uint8_t[16]){0}, 16) != 0)
 												// Устанавливаем адрес IPv6 для клиента
 												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 128);
 											// Устанавливаем адрес IPv6 для сервера
