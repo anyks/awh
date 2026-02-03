@@ -477,25 +477,6 @@ namespace io {
 	#endif
 
 	/**
-	 * @brief Структура полезной нагрузки
-	 *
-	 */
-	typedef struct Payload {
-		// Размер ожидаемых данных
-		size_t size;
-		// Бинарный буфер данных
-		awh::buffer_t buffer;
-		/**
-		 * @brief Конструктор
-		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект работы с логами
-		 */
-		explicit Payload(const fmk_t * fmk, const log_t * log) noexcept :
-		 size(0), buffer(fmk, log) {}
-	} payload_t;
-
-	/**
 	 * @brief Структура конечного подключения
 	 *
 	 */
@@ -667,43 +648,20 @@ namespace io {
 	} ipc_t;
 
 	/**
-	 * @brief Структура буфера туннеля
-	 *
-	 */
-	typedef struct TunnelBuffer {
-		// Семейство адресов туннеля
-		uint32_t family;
-		// Буфер ввода-вывода заголовка туннеля
-		struct iovec iov[2];
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit TunnelBuffer() noexcept : family(0) {
-			// Устанавливаем базу буфера
-			this->iov[0].iov_base = &this->family;
-			// Устанавливаем длину буфера
-			this->iov[0].iov_len = sizeof(this->family);
-		}
-	} tuns_buffer_t;
-
-	/**
 	 * @brief Структура узла туннеля
 	 *
 	 */
 	typedef struct Tunnel : public net::tun_t {
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
-		// Очередь отправки данных
-		queue_t queue;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
-		// Объект буфера туннеля на чтение
-		tuns_buffer_t read;
-		// Объект буфера туннеля на запись
-		tuns_buffer_t write;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
+		// Очередь отправки данных
+		awh::queue_t queue;
+		// Бинарный буфер данных
+		awh::buffer_t buffer;
 		// Флаги активированных событий файла
 		uint16_t actions;
 		// Мьютекс для синхронизации потоков
@@ -715,8 +673,9 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), queue(fmk, log),
-		 addr(fmk, log), actions(::action::NONE) {}
+		 fd(net::invalid_socket_t),
+		 addr(fmk, log), actions(::action::NONE),
+		 queue(fmk, log), buffer(fmk, log) {}
 	} tun_t;
 
 	/**
@@ -728,8 +687,8 @@ namespace io {
 		event::id_t dest;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
-		// Объект полезной нагрузки
-		payload_t payload;
+		// Бинарный буфер данных
+		awh::buffer_t buffer;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		/**
@@ -739,7 +698,7 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Mediator(const fmk_t * fmk, const log_t * log) noexcept :
-		 dest(0), addr(fmk, log), payload(fmk, log) {}
+		 dest(0), addr(fmk, log), buffer(fmk, log) {}
 	} mediator_t;
 
 	/**
@@ -4854,12 +4813,20 @@ namespace io {
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
 					// Если событие чтения разрешено
 					if(tunnel->actions & ::action::READ){
+						// Семейство адресов туннеля
+						uint32_t family = 0;
+						// Буфер ввода-вывода заголовка туннеля
+						struct iovec iov[2];
 						// Буфер для временного хранения данных
 						char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
+						// Устанавливаем базу буфера
+						iov[0].iov_base = &family;
+						// Устанавливаем длину буфера
+						iov[0].iov_len = sizeof(family);
 						// Устанавливаем буфер для чтения данных
-						tunnel->read.iov[1].iov_base = buffer;
+						iov[1].iov_base = buffer;
 						// Устанавливаем размер буфера для чтения данных
-						tunnel->read.iov[1].iov_len = AWH_MAX_EVENT_BUFFER_SIZE;
+						iov[1].iov_len = AWH_MAX_EVENT_BUFFER_SIZE;
 						// Если событие является неблокирующим
 						if((tunnel->state.options & event::options::NO_IO_BLOCK) || (tunnel->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -4869,7 +4836,7 @@ namespace io {
 							 */
 							for(;;){
 								// Читаем данные из туннеля
-								bytes = ::readv(tunnel->fd, tunnel->read.iov, 2);
+								bytes = ::readv(tunnel->fd, iov, 2);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -4912,19 +4879,19 @@ namespace io {
 										return false;
 									}
 								// Если мы получили данные из сокета
-								} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->read.family))) {
+								} else if(bytes > static_cast <ssize_t> (sizeof(family))) {
 									// Если мы получили семейство протоколов в неверном порядке байт
-									if(tunnel->read.family > 0xFFFF)
+									if(family > 0xFFFF)
 										// Преобразуем к хостовому порядку
-										tunnel->read.family = ntohl(tunnel->read.family);
+										family = ntohl(family);
 									// Определяем версию по первым 4 битам
 									const uint8_t version = ((buffer[0] >> 4) & 0x0F);
 									// Вычисляем размер полезной нагрузки IP-пакета
-									const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->read.family)));
+									const size_t size = (bytes - static_cast <ssize_t> (sizeof(family)));
 									/**
 									 * Определяем тип IP-пакета
 									 */
-									switch(tunnel->read.family){
+									switch(family){
 										// Если семейство протоколов является IPv4
 										case AF_INET: {
 											// Если данные соответствуют IPv4-пакету
@@ -5166,7 +5133,7 @@ namespace io {
 						// Если событие является блокирующим
 						} else {
 							// Читаем данные из туннеля
-							const ssize_t bytes = ::readv(tunnel->fd, tunnel->read.iov, 2);
+							const ssize_t bytes = ::readv(tunnel->fd, iov, 2);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -5202,19 +5169,19 @@ namespace io {
 								// Формируем отрицательный результат
 								return false;
 							// Если мы получили данные из сокета
-							} else if(bytes > static_cast <ssize_t> (sizeof(tunnel->read.family))) {
+							} else if(bytes > static_cast <ssize_t> (sizeof(family))) {
 								// Если мы получили семейство протоколов в неверном порядке байт
-								if(tunnel->read.family > 0xFFFF)
+								if(family > 0xFFFF)
 									// Преобразуем к хостовому порядку
-									tunnel->read.family = ntohl(tunnel->read.family);
+									family = ntohl(family);
 								// Определяем версию по первым 4 битам
 								const uint8_t version = ((buffer[0] >> 4) & 0x0F);
 								// Вычисляем размер полезной нагрузки IP-пакета
-								const size_t size = (bytes - static_cast <ssize_t> (sizeof(tunnel->read.family)));
+								const size_t size = (bytes - static_cast <ssize_t> (sizeof(family)));
 								/**
 								 * Определяем тип IP-пакета
 								 */
-								switch(tunnel->read.family){
+								switch(family){
 									// Если семейство протоколов является IPv4
 									case AF_INET: {
 										// Если данные соответствуют IPv4-пакету
@@ -7045,6 +7012,19 @@ namespace io {
 												const ssize_t bytes = ::write(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
+													// Если все данные отправлены
+													if(static_cast <size_t> (bytes) == size){
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(ipc->transfer.mtx);
+														// Удаляем запись из очереди отправленых данных
+														ipc->transfer.queue.pop();
+													// Если данные отправлены частично
+													} else {
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(ipc->transfer.mtx);
+														// Увеличиваем смещение передачи данных
+														ipc->transfer.queue.commit(static_cast <size_t> (bytes));
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7055,12 +7035,9 @@ namespace io {
 															return false;
 													}
 													// Если данные отправлены не полностью
-													if(static_cast <size_t> (bytes) < size){
-														// Увеличиваем смещение передачи данных
-														ipc->transfer.queue.commit(static_cast <size_t> (bytes));
+													if(static_cast <size_t> (bytes) < size)
 														// Формируем положительный результат
 														return true;
-													}
 												// Если мы отправили не все данные
 												} else if(bytes == -1) {
 													// Если нам нужно повторить попытку позже
@@ -7151,6 +7128,19 @@ namespace io {
 										const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
+											// Если все данные отправлены
+											if(static_cast <size_t> (bytes) == size){
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(ipc->transfer.mtx);
+												// Удаляем запись из очереди отправленых данных
+												ipc->transfer.queue.pop();
+											// Если данные отправлены частично
+											} else {
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(ipc->transfer.mtx);
+												// Увеличиваем смещение передачи данных
+												ipc->transfer.queue.commit(static_cast <size_t> (bytes));
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7161,12 +7151,9 @@ namespace io {
 													return false;
 											}
 											// Если данные отправлены не полностью
-											if(static_cast <size_t> (bytes) < size){
-												// Увеличиваем смещение передачи данных
-												ipc->transfer.queue.commit(static_cast <size_t> (bytes));
+											if(static_cast <size_t> (bytes) < size)
 												// Формируем положительный результат
 												return true;
-											}
 										// Если мы отправили не все данные
 										} else if(bytes == -1) {
 											// Если нам нужно повторить попытку позже
@@ -7226,6 +7213,12 @@ namespace io {
 										const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (ipc->transfer.queue.data()), ipc->transfer.queue.size(), MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
+											{
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(ipc->transfer.mtx);
+												// Удаляем запись из очереди отправленых данных
+												ipc->transfer.queue.pop();
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(ipc->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7287,10 +7280,6 @@ namespace io {
 										}
 									} break;
 								}
-								// Выполняем блокировку уникальным мютексом
-								const locker_t <> lock(ipc->transfer.mtx);
-								// Удаляем запись из очереди отправленых данных
-								ipc->transfer.queue.pop();
 							}
 							// Если в очереди данных больше не осталось данных для отправки
 							if(ipc->transfer.queue.empty()){
@@ -7354,6 +7343,19 @@ namespace io {
 										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
+											// Если все данные отправлены
+											if(static_cast <size_t> (bytes) == size){
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(peer->transfer.mtx);
+												// Удаляем запись из очереди отправленых данных
+												peer->transfer.queue.pop();
+											// Если данные отправлены частично
+											} else {
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(peer->transfer.mtx);
+												// Увеличиваем смещение передачи данных
+												peer->transfer.queue.commit(static_cast <size_t> (bytes));
+											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7365,8 +7367,6 @@ namespace io {
 											}
 											// Если данные отправлены не полностью
 											if(static_cast <size_t> (bytes) < size){
-												// Увеличиваем смещение передачи данных
-												peer->transfer.queue.commit(static_cast <size_t> (bytes));
 												// Если таймаут не установлен или установлен на запись
 												if((peer->timeout == event::action_t::NONE) || (peer->timeout == event::action_t::WRITE)){
 													// Выполняем проверку на наличие таймаута для события записи
@@ -7490,6 +7490,12 @@ namespace io {
 											else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (peer->transfer.queue.data()), peer->transfer.queue.size(), MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
+												{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(peer->transfer.mtx);
+													// Удаляем запись из очереди отправленых данных
+													peer->transfer.queue.pop();
+												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7499,33 +7505,30 @@ namespace io {
 														// Формируем отрицательный результат
 														return false;
 												}
-												// Если есть данные для отправки в сокет
-												if(!peer->transfer.queue.empty()){
-													// Если таймаут установлен на запись
-													if(peer->timeout == event::action_t::WRITE){
-														// Выполняем проверку на наличие таймаута для события записи
-														auto i = peer->timeouts.find(event::action_t::WRITE);
-														// Если нужный нам таймаут найден
-														if((i != peer->timeouts.end()) && (i->second > 0)){
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Активируем таймаут события
-															peer->timeout = i->first;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
-														// Если нужный нам таймаут не найден
-														} else {
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Деактивируем таймаут события
-															peer->timeout = event::action_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Снимаем таймаут на получение данных
-															EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
+												// Если есть данные для отправки в сокет и таймаут установлен на запись
+												if(!peer->transfer.queue.empty() && (peer->timeout == event::action_t::WRITE)){
+													// Выполняем проверку на наличие таймаута для события записи
+													auto i = peer->timeouts.find(event::action_t::WRITE);
+													// Если нужный нам таймаут найден
+													if((i != peer->timeouts.end()) && (i->second > 0)){
+														// Выполняем блокировку потоков
+														const locker_t <> lock(::local::mtx);
+														// Активируем таймаут события
+														peer->timeout = i->first;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на получение данных
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
+													// Если нужный нам таймаут не найден
+													} else {
+														// Выполняем блокировку потоков
+														const locker_t <> lock(::local::mtx);
+														// Деактивируем таймаут события
+														peer->timeout = event::action_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Снимаем таймаут на получение данных
+														EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
 												}
 											// Если мы отправили не все данные
@@ -7581,10 +7584,6 @@ namespace io {
 										} break;
 									#endif
 								}
-								// Выполняем блокировку уникальным мютексом
-								const locker_t <> lock(peer->transfer.mtx);
-								// Удаляем запись из очереди отправленых данных
-								peer->transfer.queue.pop();
 							}
 							// Если в очереди данных больше не осталось данных для отправки
 							if(peer->transfer.queue.empty()){
@@ -7613,7 +7612,110 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
-				
+					// Если событие записи разрешено
+					if(tunnel->actions & ::action::WRITE){
+						// Если есть данные для отправки в сокет
+						if(!tunnel->queue.empty()){
+							// Семейство адресов туннеля
+							uint32_t family = 0;
+							// Буфер ввода-вывода заголовка туннеля
+							struct iovec iov[2];
+							// Устанавливаем базу буфера
+							iov[0].iov_base = &family;
+							// Устанавливаем длину буфера
+							iov[0].iov_len = sizeof(family);
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (tunnel->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(tunnel->mtx);
+									// Устанавливаем семейство IPv4
+									family = htonl(AF_INET);
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(tunnel->mtx);
+									// Устанавливаем семейство IPv6
+									family = htonl(AF_INET6);
+								} break;
+							}
+							// Устанавливаем размер буфера для записи данных
+							iov[1].iov_len = tunnel->queue.size();
+							// Устанавливаем буфер для записи данных
+							iov[1].iov_base = const_cast <void *> (tunnel->queue.data());
+							// Выполняем отправку данных в туннель
+							const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+							// Если данные отправлены успешно
+							if(bytes > 0){
+								// Выполняем блокировку уникальным мютексом
+								const locker_t <> lock(tunnel->mtx);
+								// Удаляем запись из очереди отправленых данных
+								tunnel->queue.pop();
+							// Если мы отправили не все данные
+							} else if(bytes == -1) {
+								// Если нам нужно повторить попытку позже
+								if(errno == EAGAIN)
+									// Формируем положительный результат
+									return true;
+								// Если произошла ошибка при отправке данных
+								else {
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = fmk->format("Failed to send data from client: %s", ::strerror(errno));
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+									// Выполняем обработку закрытия подключения
+									if(::io::close(node, log))
+										// Выполняем удаление узла
+										::io::destroy(node, eth, log);
+									// Формируем отрицательный результат
+									return false;
+								}
+							// Если произошёл дисконнект
+							} else {
+								// Выполняем обработку закрытия подключения
+								if(::io::close(node, log))
+									// Выполняем удаление узла
+									::io::destroy(node, eth, log);
+								// Формируем отрицательный результат
+								return false;
+							}
+						}
+						// Если в очереди данных больше не осталось данных для отправки
+						if(tunnel->queue.empty()){
+							// Выполняем блокировку потоков
+							const locker_t <> lock(::local::mtx);
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Деактивируем событие на запись данных
+							EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_DISABLE | EV_RECEIPT, 0, 0, tunnel);
+						}
+					}
 					// Формируем положительный результат
 					return true;
 				}
@@ -7673,6 +7775,19 @@ namespace io {
 											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
+												// Если все данные отправлены
+												if(static_cast <size_t> (bytes) == size){
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Удаляем запись из очереди отправленых данных
+													client->transfer.queue.pop();
+												// Если данные отправлены частично
+												} else {
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Увеличиваем смещение передачи данных
+													client->transfer.queue.commit(static_cast <size_t> (bytes));
+												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7684,8 +7799,6 @@ namespace io {
 												}
 												// Если данные отправлены не полностью
 												if(static_cast <size_t> (bytes) < size){
-													// Увеличиваем смещение передачи данных
-													client->transfer.queue.commit(static_cast <size_t> (bytes));
 													// Если таймаут не установлен или установлен на запись
 													if((client->timeout == event::action_t::NONE) || (client->timeout == event::action_t::WRITE)){
 														// Выполняем проверку на наличие таймаута для события записи
@@ -7792,6 +7905,12 @@ namespace io {
 												const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (client->transfer.queue.data()), client->transfer.queue.size(), MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
+													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(client->transfer.mtx);
+														// Удаляем запись из очереди отправленых данных
+														client->transfer.queue.pop();
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7801,33 +7920,30 @@ namespace io {
 															// Формируем отрицательный результат
 															return false;
 													}
-													// Если есть данные для отправки в сокет
-													if(!client->transfer.queue.empty()){
-														// Если таймаут установлен на запись
-														if(client->timeout == event::action_t::WRITE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
-															// Если нужный нам таймаут не найден
-															} else {
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Деактивируем таймаут события
-																client->timeout = event::action_t::NONE;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															}
+													// Если есть данные для отправки в сокет и таймаут установлен на запись
+													if(!client->transfer.queue.empty() && (client->timeout == event::action_t::WRITE)){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 													}
 												// Если мы отправили не все данные
@@ -7892,6 +8008,12 @@ namespace io {
 												);
 												// Если данные отправлены успешно
 												if(bytes > 0){
+													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(client->transfer.mtx);
+														// Удаляем запись из очереди отправленых данных
+														client->transfer.queue.pop();
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -7901,33 +8023,30 @@ namespace io {
 															// Формируем отрицательный результат
 															return false;
 													}
-													// Если есть данные для отправки в сокет
-													if(!client->transfer.queue.empty()){
-														// Если таймаут установлен на запись
-														if(client->timeout == event::action_t::WRITE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
-															// Если нужный нам таймаут не найден
-															} else {
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Деактивируем таймаут события
-																client->timeout = event::action_t::NONE;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															}
+													// Если есть данные для отправки в сокет и таймаут установлен на запись
+													if(!client->transfer.queue.empty() && (client->timeout == event::action_t::WRITE)){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 													}
 												// Если мы отправили не все данные
@@ -8018,6 +8137,12 @@ namespace io {
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
+													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(client->transfer.mtx);
+														// Удаляем запись из очереди отправленых данных
+														client->transfer.queue.pop();
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -8027,33 +8152,30 @@ namespace io {
 															// Формируем отрицательный результат
 															return false;
 													}
-													// Если есть данные для отправки в сокет
-													if(!client->transfer.queue.empty()){
-														// Если таймаут установлен на запись
-														if(client->timeout == event::action_t::WRITE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
-															// Если нужный нам таймаут не найден
-															} else {
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Деактивируем таймаут события
-																client->timeout = event::action_t::NONE;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															}
+													// Если есть данные для отправки в сокет и таймаут установлен на запись
+													if(!client->transfer.queue.empty() && (client->timeout == event::action_t::WRITE)){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 													}
 												// Если мы отправили не все данные
@@ -8152,6 +8274,12 @@ namespace io {
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
+													{
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(client->transfer.mtx);
+														// Удаляем запись из очереди отправленых данных
+														client->transfer.queue.pop();
+													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -8161,33 +8289,30 @@ namespace io {
 															// Формируем отрицательный результат
 															return false;
 													}
-													// Если есть данные для отправки в сокет
-													if(!client->transfer.queue.empty()){
-														// Если таймаут установлен на запись
-														if(client->timeout == event::action_t::WRITE){
-															// Выполняем проверку на наличие таймаута для события записи
-															auto i = client->timeouts.find(event::action_t::WRITE);
-															// Если нужный нам таймаут найден
-															if((i != client->timeouts.end()) && (i->second > 0)){
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Активируем таймаут события
-																client->timeout = i->first;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
-															// Если нужный нам таймаут не найден
-															} else {
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Деактивируем таймаут события
-																client->timeout = event::action_t::NONE;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Снимаем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															}
+													// Если есть данные для отправки в сокет и таймаут установлен на запись
+													if(!client->transfer.queue.empty() && (client->timeout == event::action_t::WRITE)){
+														// Выполняем проверку на наличие таймаута для события записи
+														auto i = client->timeouts.find(event::action_t::WRITE);
+														// Если нужный нам таймаут найден
+														if((i != client->timeouts.end()) && (i->second > 0)){
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Активируем таймаут события
+															client->timeout = i->first;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+														// Если нужный нам таймаут не найден
+														} else {
+															// Выполняем блокировку потоков
+															const locker_t <> lock(::local::mtx);
+															// Деактивируем таймаут события
+															client->timeout = event::action_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Снимаем таймаут на получение данных
+															EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 														}
 													}
 												// Если мы отправили не все данные
@@ -8243,10 +8368,6 @@ namespace io {
 											}
 										} break;
 									}
-									// Выполняем блокировку уникальным мютексом
-									const locker_t <> lock(client->transfer.mtx);
-									// Удаляем запись из очереди отправленых данных
-									client->transfer.queue.pop();
 								}
 								// Если в очереди данных больше не осталось данных для отправки
 								if(client->transfer.queue.empty()){
@@ -8346,6 +8467,12 @@ namespace io {
 									}
 									// Если данные отправлены успешно
 									if(bytes > 0){
+										{
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(origin->transfer.mtx);
+											// Удаляем запись из очереди отправленых данных
+											origin->transfer.queue.pop();
+										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -8447,10 +8574,6 @@ namespace io {
 										// Пропускаем итерацию цикла
 										continue;
 									}
-									// Выполняем блокировку уникальным мютексом
-									const locker_t <> lock(origin->transfer.mtx);
-									// Удаляем запись из очереди отправленых данных
-									origin->transfer.queue.pop();
 								}
 							}
 						}
@@ -27433,9 +27556,51 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							// Если узел является пользовательским событием
 							case static_cast <uint8_t> (event::node_t::NOTIFY):
 							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE):
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Устанавливаем идентификатор события-приёмника в объекте посредника
+								mediator->dest = dest;
+								// Выводим положительный результат
+								return true;
+							}
 							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC):
+							case static_cast <uint8_t> (event::node_t::IPC): {
+								// Проверяем совместимость типов и семейств событий
+								if((i->second->state.type == j->second->state.type) ||
+								   (j->second->state.family == event::family_t::PIPE)){
+									// Устанавливаем идентификатор события-приёмника в объекте посредника
+									mediator->dest = dest;
+									// Выводим положительный результат
+									return true;
+								// Если не совместимы типы или семейства событий
+								} else {
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "Events cannot be combined with each other because they are not compatible";
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										mediator->callbacks.error(mediator->id, event::error_t::INVALID, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
@@ -27446,11 +27611,43 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем идентификатор события-приёмника в объекте посредника
-								mediator->dest = dest;
-								// Выводим положительный результат
-								return true;
-							}
+								// Проверяем совместимость типов и семейств событий
+								if((i->second->state.type == j->second->state.type) &&
+								   (i->second->state.family == j->second->state.family)){
+									// Устанавливаем идентификатор события-приёмника в объекте посредника
+									mediator->dest = dest;
+									// Выводим положительный результат
+									return true;
+								// Если не совместимы типы или семейства событий
+								} else {
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "Events cannot be combined with each other because they are not compatible";
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										mediator->callbacks.error(mediator->id, event::error_t::INVALID, error);
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
 						}
 					} break;
 					// Если узел является клиентом
@@ -32150,11 +32347,680 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 					} break;
 					// Если узел является туннелем
 					case static_cast <uint8_t> (event::node_t::TUNNEL): {
-					
+						// Получаем текущее значение объекта туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Если записи в сокет разрешено
+						if(tunnel->actions & ::action::WRITE){
+							// Семейство адресов туннеля
+							uint32_t family = 0;
+							// Буфер ввода-вывода заголовка туннеля
+							struct iovec iov[2];
+							// Устанавливаем базу буфера
+							iov[0].iov_base = &family;
+							// Устанавливаем длину буфера
+							iov[0].iov_len = sizeof(family);
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (tunnel->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(tunnel->mtx);
+									// Устанавливаем семейство IPv4
+									family = htonl(AF_INET);
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(tunnel->mtx);
+									// Устанавливаем семейство IPv6
+									family = htonl(AF_INET6);
+								} break;
+							}
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (tunnel->state.type)){
+								// Если сокет принадлежит к типу STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM): {
+									// Размер фактически отправяемых данных и смещение в буфере
+									size_t actual = 0, offset = 0;
+									// Если буфер передачи данных не пустой
+									if(!tunnel->buffer.empty()){
+										{
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(tunnel->mtx);
+											// Добавляем оставшиеся данные в буфер передачи
+											tunnel->buffer.push(data, size);
+										}
+										/**
+										 * Отправляем данные по частям, так как сокет может быть переполнен
+										 */
+										while((static_cast <size_t> (tunnel->buffer) - offset) > 0){
+											// Получаем размер отправляемых данных
+											::memcpy(&actual, static_cast <const char *> (tunnel->buffer), sizeof(actual));
+											// Увеличиваем смещение в буфере данных
+											offset += sizeof(actual);
+											// Если размер фактически отправляемых данных превышает оставшийся размер буфера
+											if(actual > (static_cast <size_t> (tunnel->buffer) - offset))
+												// Выходим из цикла
+												break;
+											// Если размер фактически отправляемых данных меньше или равен оставшемуся размеру буфера
+											else {
+												// Если сокет является неблокирующим
+												if(tunnel->state.options & event::options::NO_IO_BLOCK){
+													// Если очередь передачи данных пустая
+													if(!(result = !tunnel->queue.empty())){
+														// Устанавливаем размер буфера для записи данных
+														iov[1].iov_len = actual;
+														// Устанавливаем буфер для записи данных
+														iov[1].iov_base = (const_cast <char *> (static_cast <const char *> (tunnel->buffer)) + offset);
+														// Выполняем отправку данных в туннель
+														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+														// Если данные не отправлены
+														if(!(result = (bytes > 0))){
+															// Если мы отправили не все данные
+															if(bytes == -1){
+																// Если нам нужно повторить попытку позже
+																if((result = (errno == EAGAIN))){
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(tunnel->mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	tunnel->queue.push(static_cast <const char *> (tunnel->buffer) + offset, actual);
+																// Если мы пытаемся отправить данные на несуществующий узел
+																} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+																	// Выполняем обработку закрытия подключения
+																	if(::io::close(tunnel, this->_log))
+																		// Выполняем удаление узла
+																		::io::destroy(tunnel, &this->_eth, this->_log);
+																	// Выходим из функции
+																	return result;
+																// Если произошла ошибка при отправке данных
+																} else {
+																	// Если установлена функция обратного вызова
+																	if(tunnel->callbacks.status != nullptr)
+																		// Вызываем функцию обратного вызова об ошибке отказа
+																		tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+																	// Устанавливаем текст ошибки
+																	const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+																	// Если установлена функция обратного вызова
+																	if(tunnel->callbacks.error != nullptr)
+																		// Вызываем функцию обратного вызова ошибки события
+																		tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+																	// Если функция обратного вызова для вывода события установлена
+																	else {
+																		/**
+																		 * Если включён режим отладки
+																		 */
+																		#if DEBUG_MODE
+																			// Выводим сообщение об ошибке
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+																		/**
+																		 * Если режим отладки не включён
+																		 */
+																		#else
+																			// Выводим сообщение об ошибке
+																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																		#endif
+																	}
+																	// Выходим из функции
+																	return result;
+																}
+															// Если произошёл дисконнект
+															} else {
+																// Выполняем обработку закрытия подключения
+																if(::io::close(tunnel, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(tunnel, &this->_eth, this->_log);
+																// Выходим из функции
+																return result;
+															}
+														}
+													// Если очередь передачи данных не пуста
+													} else {
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(tunnel->mtx);
+														// Копим данные для дальнейшей отправки
+														tunnel->queue.push(static_cast <const char *> (tunnel->buffer) + offset, actual);
+													}
+												// Если сокет является полублокирующим
+												} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
+													// Переводим сокет в блокирующий режим
+													if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+														// Устанавливаем размер буфера для записи данных
+														iov[1].iov_len = actual;
+														// Устанавливаем буфер для записи данных
+														iov[1].iov_base = (const_cast <char *> (static_cast <const char *> (tunnel->buffer)) + offset);
+														// Выполняем отправку данных в туннель
+														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+														// Если данные отправлены успешно
+														if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(tunnel, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(tunnel, &this->_eth, this->_log);
+															// Выходим из функции
+															return false;
+														// Если произошла какая-то ошибка при отправке данных
+														} else if(bytes == -1) {
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															// Если установлена функция обратного вызова
+															if(tunnel->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+															// Устанавливаем текст ошибки
+															const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+															// Если установлена функция обратного вызова
+															if(tunnel->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																#endif
+															}
+															// Выходим из функции
+															return false;
+														}
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													}
+												// Если сокет является блокирующим
+												} else {
+													// Устанавливаем размер буфера для записи данных
+													iov[1].iov_len = actual;
+													// Устанавливаем буфер для записи данных
+													iov[1].iov_base = (const_cast <char *> (static_cast <const char *> (tunnel->buffer)) + offset);
+													// Выполняем отправку данных в туннель
+													const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+													// Если данные отправлены успешно
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(tunnel, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(tunnel, &this->_eth, this->_log);
+														// Выходим из функции
+														return false;
+													// Если произошла какая-то ошибка при отправке данных
+													} else if(bytes == -1) {
+														// Если установлена функция обратного вызова
+														if(tunnel->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(tunnel->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return false;
+													}
+													// Устанавливаем результат выполнения функции
+													result = (bytes > 0);
+												}
+												// Увеличиваем смещение в буфере данных
+												offset += actual;
+											}
+										}
+										// Выполняем блокировку уникальным мютексом
+										const locker_t <> lock(tunnel->mtx);
+										// Удаляем отправленные данные из буфера передачи
+										tunnel->buffer.erase(offset);
+									// Если буфер передачи данных пустой
+									} else {
+										/**
+										 * Отправляем данные по частям, так как сокет может быть переполнен
+										 */
+										while((size - offset) > 0){
+											// Получаем размер отправляемых данных
+											::memcpy(&actual, data, sizeof(actual));
+											// Увеличиваем смещение в буфере данных
+											offset += sizeof(actual);
+											// Если размер фактически отправляемых данных превышает оставшийся размер буфера
+											if(actual > (size - offset)){
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(tunnel->mtx);
+												// Добавляем оставшиеся данные в буфер передачи
+												tunnel->buffer.push((const_cast <char *> (data) + offset), size - offset);
+												// Выходим из цикла
+												break;
+											// Если размер фактически отправляемых данных меньше или равен оставшемуся размеру буфера
+											} else {
+												// Если сокет является неблокирующим
+												if(tunnel->state.options & event::options::NO_IO_BLOCK){
+													// Если очередь передачи данных пустая
+													if(!(result = !tunnel->queue.empty())){
+														// Устанавливаем размер буфера для записи данных
+														iov[1].iov_len = actual;
+														// Устанавливаем буфер для записи данных
+														iov[1].iov_base = (const_cast <char *> (data) + offset);
+														// Выполняем отправку данных в туннель
+														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+														// Если данные не отправлены
+														if(!(result = (bytes > 0))){
+															// Если мы отправили не все данные
+															if(bytes == -1){
+																// Если нам нужно повторить попытку позже
+																if(errno == EAGAIN){
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(tunnel->mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	tunnel->queue.push(const_cast <char *> (data) + offset, actual);
+																// Если мы пытаемся отправить данные на несуществующий узел
+																} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+																	// Выполняем обработку закрытия подключения
+																	if(::io::close(tunnel, this->_log))
+																		// Выполняем удаление узла
+																		::io::destroy(tunnel, &this->_eth, this->_log);
+																	// Выходим из функции
+																	return result;
+																// Если произошла ошибка при отправке данных
+																} else {
+																	// Если установлена функция обратного вызова
+																	if(tunnel->callbacks.status != nullptr)
+																		// Вызываем функцию обратного вызова об ошибке отказа
+																		tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+																	// Устанавливаем текст ошибки
+																	const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+																	// Если установлена функция обратного вызова
+																	if(tunnel->callbacks.error != nullptr)
+																		// Вызываем функцию обратного вызова ошибки события
+																		tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+																	// Если функция обратного вызова для вывода события установлена
+																	else {
+																		/**
+																		 * Если включён режим отладки
+																		 */
+																		#if DEBUG_MODE
+																			// Выводим сообщение об ошибке
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+																		/**
+																		 * Если режим отладки не включён
+																		 */
+																		#else
+																			// Выводим сообщение об ошибке
+																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																		#endif
+																	}
+																	// Выходим из функции
+																	return result;
+																}
+															// Если произошёл дисконнект
+															} else {
+																// Выполняем обработку закрытия подключения
+																if(::io::close(tunnel, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(tunnel, &this->_eth, this->_log);
+																// Выходим из функции
+																return result;
+															}
+														}
+													// Если очередь передачи данных не пуста
+													} else {
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(tunnel->mtx);
+														// Копим данные для дальнейшей отправки
+														tunnel->queue.push(const_cast <char *> (data) + offset, actual);
+													}
+												// Если сокет является полублокирующим
+												} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
+													// Переводим сокет в блокирующий режим
+													if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+														// Устанавливаем размер буфера для записи данных
+														iov[1].iov_len = actual;
+														// Устанавливаем буфер для записи данных
+														iov[1].iov_base = (const_cast <char *> (data) + offset);
+														// Выполняем отправку данных в туннель
+														const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+														// Если данные отправлены успешно
+														if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(tunnel, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(tunnel, &this->_eth, this->_log);
+															// Выходим из функции
+															return false;
+														// Если произошла какая-то ошибка при отправке данных
+														} else if(bytes == -1) {
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															// Если установлена функция обратного вызова
+															if(tunnel->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+															// Устанавливаем текст ошибки
+															const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+															// Если установлена функция обратного вызова
+															if(tunnel->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																#endif
+															}
+															// Выходим из функции
+															return false;
+														}
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													}
+												// Если сокет является блокирующим
+												} else {
+													// Устанавливаем размер буфера для записи данных
+													iov[1].iov_len = actual;
+													// Устанавливаем буфер для записи данных
+													iov[1].iov_base = (const_cast <char *> (data) + offset);
+													// Выполняем отправку данных в туннель
+													const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+													// Если данные отправлены успешно
+													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(tunnel, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(tunnel, &this->_eth, this->_log);
+														// Выходим из функции
+														return false;
+													// Если произошла какая-то ошибка при отправке данных
+													} else if(bytes == -1) {
+														// Если установлена функция обратного вызова
+														if(tunnel->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(tunnel->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return false;
+													}
+													// Устанавливаем результат выполнения функции
+													result = (bytes > 0);
+												}
+												// Увеличиваем смещение в буфере данных
+												offset += actual;
+											}
+										}
+									}
+								} break;
+								// Для остальных типов сокетов
+								default: {
+									// Если сокет является неблокирующим
+									if(tunnel->state.options & event::options::NO_IO_BLOCK){
+										// Если очередь передачи данных пустая
+										if(!(result = !tunnel->queue.empty())){
+											// Устанавливаем размер буфера для записи данных
+											iov[1].iov_len = size;
+											// Устанавливаем буфер для записи данных
+											iov[1].iov_base = const_cast <char *> (data);
+											// Выполняем отправку данных в туннель
+											const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+											// Если данные не отправлены
+											if(!(result = (bytes > 0))){
+												// Если мы отправили не все данные
+												if(bytes == -1){
+													// Если нам нужно повторить попытку позже
+													if(errno == EAGAIN){
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(tunnel->mtx);
+														// Сохраняем оставшиеся данные для последующей отправки
+														tunnel->queue.push(data, size);
+													// Если мы пытаемся отправить данные на несуществующий узел
+													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+														// Выполняем обработку закрытия подключения
+														if(::io::close(tunnel, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(tunnel, &this->_eth, this->_log);
+														// Выходим из функции
+														return result;
+													// Если произошла ошибка при отправке данных
+													} else {
+														// Если установлена функция обратного вызова
+														if(tunnel->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+														// Устанавливаем текст ошибки
+														const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+														// Если установлена функция обратного вызова
+														if(tunnel->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Выходим из функции
+														return result;
+													}
+												// Если произошёл дисконнект
+												} else {
+													// Выполняем обработку закрытия подключения
+													if(::io::close(tunnel, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(tunnel, &this->_eth, this->_log);
+													// Выходим из функции
+													return result;
+												}
+											}
+										// Если очередь передачи данных не пуста
+										} else {
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(tunnel->mtx);
+											// Копим данные для дальнейшей отправки
+											tunnel->queue.push(data, size);
+										}
+									// Если сокет является полублокирующим
+									} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
+										// Переводим сокет в блокирующий режим
+										if(this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+											// Устанавливаем размер буфера для записи данных
+											iov[1].iov_len = size;
+											// Устанавливаем буфер для записи данных
+											iov[1].iov_base = const_cast <char *> (data);
+											// Выполняем отправку данных в туннель
+											const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+											// Если данные отправлены успешно
+											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+												// Выполняем обработку закрытия подключения
+												if(::io::close(tunnel, this->_log))
+													// Выполняем удаление узла
+													::io::destroy(tunnel, &this->_eth, this->_log);
+												// Выходим из функции
+												return false;
+											// Если произошла какая-то ошибка при отправке данных
+											} else if(bytes == -1) {
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+												// Устанавливаем текст ошибки
+												const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+												// Если установлена функция обратного вызова
+												if(tunnel->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													#endif
+												}
+												// Выходим из функции
+												return false;
+											}
+											// Переводим сокет обратно в неблокирующий режим
+											result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+										}
+									// Если сокет является блокирующим
+									} else {
+										// Устанавливаем размер буфера для записи данных
+										iov[1].iov_len = size;
+										// Устанавливаем буфер для записи данных
+										iov[1].iov_base = const_cast <char *> (data);
+										// Выполняем отправку данных в туннель
+										const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+										// Если данные отправлены успешно
+										if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
+											// Выполняем обработку закрытия подключения
+											if(::io::close(tunnel, this->_log))
+												// Выполняем удаление узла
+												::io::destroy(tunnel, &this->_eth, this->_log);
+											// Выходим из функции
+											return false;
+										// Если произошла какая-то ошибка при отправке данных
+										} else if(bytes == -1) {
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+											// Выходим из функции
+											return false;
+										}
+										// Устанавливаем результат выполнения функции
+										result = (bytes > 0);
+									}
+								}
+							}
+						}
 					} break;
 					// Если узел является посредником
 					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-
+						// Получаем текущее значение объекта посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						// Если идентификатор связанного события установлен
+						if(mediator->dest != 0){
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (mediator->state.type)){
+								// Если сокет принадлежит к типу STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM): {
+									{
+										// Выполняем блокировку уникальным мютексом
+										const locker_t <> lock(mediator->mtx);
+										// Добавляем размер данных в буфер передачи
+										mediator->buffer.push(&size, sizeof(size));
+										// Добавляем оставшиеся данные в буфер передачи
+										mediator->buffer.push(data, size);
+									}
+									// Выполняем отправку данных на связанный узел
+									result = this->send(mediator->dest, static_cast <const char *> (mediator->buffer), static_cast <size_t> (mediator->buffer));
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(mediator->mtx);
+									// Очищаем буфер передачи данных
+									mediator->buffer.clear();
+								} break;
+								// Для остальных типов сокетов
+								default:
+									// Выполняем отправку данных на связанный узел
+									result = this->send(mediator->dest, data, size);
+							}
+						}
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
