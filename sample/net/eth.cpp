@@ -52,7 +52,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Структура маршрута
 	eth::gateway_t::route_t route{};
 	// Инициализируем объект адреса назначения в маршруте
-	// route.dest = make_unique <net::addr_net_ipv4_t> ();
+	// route.destination = make_unique <net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = make_unique <net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
@@ -66,7 +66,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим адрес шлюза по умолчанию
 		cout << "Default Gateway: " << static_cast <string> (addr) << endl;
 		// Устанавливаем полученный IP-адрес
-		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address, net_addr_t::endian_t::LITTLE);
+		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address, net_addr_t::endian_t::LITTLE);
 		// Выводим адрес назначения
 		cout << "Destination: " << static_cast <string> (addr) << "/" << static_cast <uint32_t> (route.prefix) << endl;
 		// Удаляем маршрут по указанному адресу

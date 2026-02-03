@@ -51,17 +51,17 @@ namespace awh {
 					string ifname;
 					// Префикс сети
 					uint8_t prefix;
-					// Адрес назначения
-					unique_ptr <net::addr_t> dest;
-					// Шлюз
+					// Шлюз маршрута
 					unique_ptr <net::addr_t> gateway;
+					// Адрес назначения
+					unique_ptr <net::addr_t> destination;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Route() noexcept :
 					ifname{""}, prefix(0),
-					dest(nullptr), gateway(nullptr) {}
+					destination(nullptr), gateway(nullptr) {}
 				} route_t;
 			private:
 				// Объект фреймворка

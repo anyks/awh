@@ -164,12 +164,12 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Получаем индекс интерфейса по имени
 						searchIfIndex = ::if_nametoindex(route.ifname.c_str());
 					// Если адрес назначения не инициализирован
-					if(route.dest == nullptr)
+					if(route.destination == nullptr)
 						// Инициализируем объект адреса назначения в маршруте
-						route.dest = make_unique <net::addr_net_ipv4_t> ();
+						route.destination = make_unique <net::addr_net_ipv4_t> ();
 					// Флаг поиска маршрута по умолчанию (если ничего не задано)
 					const bool lookForDefault = (
-						(awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address == 0) &&
+						(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0) &&
 						(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)
 					);
 					/**
@@ -247,14 +247,14 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							result = ((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0);
 						// Если ищем конкретный маршрут
 						else {
-							// Если задан dest, он должен совпадать
-							if(awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address != 0)
-								// Устанавливаем флаг несовпадения
-								result = ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address);
 							// Если задан gateway, он должен совпадать
 							if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address != 0)
 								// Устанавливаем флаг несовпадения
 								result = ((gw != nullptr ? gw->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address);
+							// Если задан destination, он должен совпадать
+							if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0)
+								// Устанавливаем флаг несовпадения
+								result = ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
 							// Если задан интерфейс
 							if(searchIfIndex != 0)
 								// Если интерфейса в маршруте нет или индекс не совпадает
@@ -262,18 +262,18 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						}
 						// Если маршрут найден
 						if(result){
-							// Если задан адрес назначения
-							if(dst != nullptr)
-								// Устанавливаем адрес назначения
-								awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address = dst->sin_addr.s_addr;
-							// Иначе зануляем адрес назначения
-							else awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address = 0;
 							// Если задан адрес шлюза
 							if(gw != nullptr)
 								// Устанавливаем адрес шлюза
 								awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = gw->sin_addr.s_addr;
 							// Иначе зануляем адрес шлюза
 							else awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
+							// Если задан адрес назначения
+							if(dst != nullptr)
+								// Устанавливаем адрес назначения
+								awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = dst->sin_addr.s_addr;
+							// Иначе зануляем адрес назначения
+							else awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = 0;
 							// Вычисляем префикс
 							route.prefix = 0;
 							// Если задана маска подсети
@@ -409,15 +409,15 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(length));
 					};
 					// Если адрес назначения не инициализирован
-					if(route.dest == nullptr)
+					if(route.destination == nullptr)
 						// Инициализируем объект адреса назначения в маршруте
-						route.dest = make_unique <net::addr_net_ipv6_t> ();
+						route.destination = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем нулевой адрес для сравнения
 					const uint8_t zeroAddr[16] = {0};
-					// Получаем адрес назначения для поиска
-					const uint8_t * searchDest = &awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0];
 					// Получаем адрес шлюза для поиска
 					const uint8_t * searchGw = &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0];
+					// Получаем адрес назначения для поиска
+					const uint8_t * searchDest = &awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0];
 					// Флаг задания адреса шлюза
 					const bool isGw = (::memcmp(searchGw, zeroAddr, 16) != 0);
 					// Флаг задания адреса назначения
@@ -520,18 +520,18 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						}
 						// Если маршрут найден
 						if(result){
-							// Если задан адрес назначения
-							if(dst != nullptr)
-								// Устанавливаем адрес назначения
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], &dst->sin6_addr, 16);
-							// Иначе зануляем адрес назначения
-							else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], 0, 16);
 							// Если задан адрес шлюза
 							if(gw != nullptr)
 								// Устанавливаем адрес шлюза
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], &gw->sin6_addr, 16);
 							// Иначе зануляем адрес шлюза
 							else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 0, 16);
+							// Если задан адрес назначения
+							if(dst != nullptr)
+								// Устанавливаем адрес назначения
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], &dst->sin6_addr, 16);
+							// Иначе зануляем адрес назначения
+							else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], 0, 16);
 							// Вычисляем префикс
 							route.prefix = 0;
 							// Если задана маска подсети
@@ -724,21 +724,21 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Устанавливаем семейство адресов
 					dst.sin_family = AF_INET;
 					// Если адрес назначения не инициализирован
-					if(route.dest == nullptr)
+					if(route.destination == nullptr)
 						// Инициализируем объект адреса назначения в маршруте
-						const_cast <route_t &> (route).dest = make_unique <net::addr_net_ipv4_t> ();
+						const_cast <route_t &> (route).destination = make_unique <net::addr_net_ipv4_t> ();
 					// Получаем адрес назначения
-					dst.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address;
+					dst.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address;
 					// Копируем в буфер адрес назначения
 					::memcpy(cp, &dst, dst.sin_len);
 					// Сдвигаем буфер полезной нагрузки
 					cp += ROUNDUP(dst.sin_len);
 					// Получаем флаг установленного сетевого интерфейса
 					const bool isIfname = (!route.ifname.empty());
-					// Получаем флаг маршрута по умолчанию
-					const bool isDefault = (awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address == 0);
 					// Получаем флаг установленного шлюза
 					const bool isGateway = (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0);
+					// Получаем флаг маршрута по умолчанию
+					const bool isDefault = (awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0);
 					/**
 					 * Случай 1: Specific Route + Gateway IP (Ifname не указан) [$ sudo route add -net 1.0.0.0/8 10.0.0.1]
 					 * Случай 4: Default Route + Gateway IP (Ifname игнорируется или не важен) [$ sudo route add default 192.168.7.1]
@@ -920,11 +920,11 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Устанавливаем семейство адресов
 					dst.sin6_family = AF_INET6;
 					// Если адрес назначения не инициализирован
-					if(route.dest == nullptr)
+					if(route.destination == nullptr)
 						// Инициализируем объект адреса назначения в маршруте
-						const_cast <route_t &> (route).dest = make_unique <net::addr_net_ipv6_t> ();
+						const_cast <route_t &> (route).destination = make_unique <net::addr_net_ipv6_t> ();
 					// Получаем адрес назначения
-					::memcpy(&dst.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], 16);
+					::memcpy(&dst.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], 16);
 					// Копируем в буфер адрес назначения
 					::memcpy(cp, &dst, dst.sin6_len);
 					// Сдвигаем буфер полезной нагрузки
@@ -1325,8 +1325,8 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						const bool isDefault = ((dst != nullptr) && (dst->sin_addr.s_addr == INADDR_ANY));
 						// Если требуется удалить ЛЮБОЙ default route
 						if(isDefault && (netmsk == 0) &&
-						  (route.dest != nullptr ? (awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address == 0) : true) &&
-						  (route.gateway != nullptr ? (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) : true))
+						  (route.gateway != nullptr ? (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) : true) &&
+						  (route.destination != nullptr ? (awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0) : true))
 							// Удаляем ЛЮБОЙ default route
 							goto DeleteRoute;
 						/**
@@ -1338,13 +1338,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по маске подсети маршрута
 							match = ((mask != nullptr) && (mask->sin_addr.s_addr == netmsk));
 						// Если адрес назначения инициализирован
-						if(route.dest != nullptr){
+						if(route.destination != nullptr){
 							// Если адрес назначения маршрута задан
-							if(awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address > 0)
+							if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address > 0)
 								// Устанавливаем флаг совпадения по адресу назначения маршрута
-								match = ((dst != nullptr) && (dst->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.dest.get())->address));
+								match = ((dst != nullptr) && (dst->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address));
 						// Инициализируем объект адреса назначения в маршруте
-						} else const_cast <route_t &> (route).dest = make_unique <net::addr_net_ipv4_t> ();
+						} else const_cast <route_t &> (route).destination = make_unique <net::addr_net_ipv4_t> ();
 						// Если адрес шлюза маршрута задан
 						if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0)
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
@@ -1650,8 +1650,8 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						const uint8_t zeroAddr[16] = {0};
 						// Если требуется удалить ЛЮБОЙ default route
 						if(isDefault && (route.prefix == 0) &&
-						  (route.dest != nullptr ? (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], zeroAddr, 16) == 0) : true) &&
-						  (route.gateway != nullptr ? (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) == 0) : true))
+						  (route.gateway != nullptr ? (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) == 0) : true) &&
+						  (route.destination != nullptr ? (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], zeroAddr, 16) == 0) : true))
 							// Удаляем ЛЮБОЙ default route
 							goto DeleteRouteIPv6;
 						/**
@@ -1663,13 +1663,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по маске подсети маршрута
 							match = ((mask != nullptr) && (::memcmp(&mask->sin6_addr, &netmsk, 16) == 0));
 						// Если адрес назначения инициализирован
-						if(route.dest != nullptr){
+						if(route.destination != nullptr){
 							// Если адрес назначения маршрута задан
-							if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], zeroAddr, 16) != 0)
+							if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], zeroAddr, 16) != 0)
 								// Устанавливаем флаг совпадения по адресу назначения маршрута
-								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.dest.get())->address[0], 16) == 0));
+								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], 16) == 0));
 						// Инициализируем объект адреса назначения в маршруте
-						} else const_cast <route_t &> (route).dest = make_unique <net::addr_net_ipv6_t> ();
+						} else const_cast <route_t &> (route).destination = make_unique <net::addr_net_ipv6_t> ();
 						// Если адрес шлюза маршрута задан
 						if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) != 0)
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута

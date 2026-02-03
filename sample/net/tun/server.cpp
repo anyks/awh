@@ -18,7 +18,7 @@
  * $ sudo ifconfig utun7 10.0.0.1 10.0.0.1 netmask 255.255.255.255 up
  *
  * MacOS X:
- * # Весь трафик для 10.0.0.x отправлять в интерфейс utun7
+ * # Весь трафик для 10.0.0.x отправлять в интерфейс utun7 (сетевой интерфейс сервера)
  * $ sudo route -n add -net 10.0.0.0/24 -interface utun7
  *
  * FreeBSD:
@@ -39,6 +39,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <net/addr.hpp>
+#include <net/eth/gateway.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -64,6 +66,10 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
+	// Создаём объект работы с сетевыми адресами
+	net_addr_t addr(&fmk, &log);
+	// Создаём объект работы с шлюзами
+	eth::gateway_t gateway(&fmk, &log);
 	// Добавляем новое событие туннеля
 	event::id_t tid = io.event(event::node_t::TUNNEL, event::family_t::IPV4);
 	// Добавляем новое событие посредника
@@ -89,7 +95,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "127.0.0.1") && io.address(tid, event::address_t::IPV4, "10.0.0.1")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(mid, "10.0.0.2") && io.target(tid, "0.0.0.0") && io.target(tid, "10.0.0.1")){
+			if(io.target(mid, "10.0.0.2")){
 				// Устанавливаем функцию обратного вызова на событие сервера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -860,6 +866,24 @@ int32_t main(int32_t argc, char * argv[]){
 				if(io.commit(eid) && io.commit(tid) && io.commit(mid)){
 					// Выполняем запуск события
 					if(io.launch(eid) && io.launch(tid)){
+						// Маршрут туннеля
+						eth::gateway_t::route_t route;
+						// Устанавливаем интерфейс туннеля
+						route.ifname = io.iface(tid);
+						// Устанавливаем префикс маршрута туннеля
+						route.prefix = 24;
+						// Создаём шлюз маршрута туннеля
+						route.gateway = make_unique <net::addr_net_ipv4_t> ();
+						// Создаём адрес назначения маршрута туннеля
+						route.destination = make_unique <net::addr_net_ipv4_t> ();
+						// Выполням парсинг адреса назначения маршрута туннеля
+						addr = "10.0.0.0";
+						// Устанавливаем адрес назначения маршрута туннеля
+						awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+						// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
+						if(gateway.add(route))
+							// Выводим сообщение об успешной установке маршрута туннеля
+							cout << " Маршрут туннеля успешно установлен!" << endl;
 						// Выводим сообщение об успешном запуске события
 						cout << " Событие сервера и туннеля успешно запущено!" << endl;
 						/**

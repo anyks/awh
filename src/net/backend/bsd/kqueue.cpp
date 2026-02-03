@@ -14210,7 +14210,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Устанавливаем адрес IPv4 для клиента
 												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 32);
 											// Устанавливаем адрес IPv4 для сервера
-											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, 24);
+											else this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->source, 32);
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -14241,7 +14241,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Устанавливаем адрес IPv6 для клиента
 												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 128);
 											// Устанавливаем адрес IPv6 для сервера
-											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, 64);
+											else this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->source, 128);
 										} break;
 									}
 									// Выполняем блокировку потоков
