@@ -4955,6 +4955,8 @@ namespace io {
 															if(mediator->callbacks.read != nullptr)
 																// Вызываем функцию обратного вызова для вывода полученных данных
 																mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+															// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
+															else const_cast <engine::io_t *> (io)->send(mediator->id, buffer, static_cast <size_t> (size));
 														}
 													}
 												// Если адрес сервера не совпадает с настройками туннеля
@@ -5050,6 +5052,8 @@ namespace io {
 															if(mediator->callbacks.read != nullptr)
 																// Вызываем функцию обратного вызова для вывода полученных данных
 																mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+															// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
+															else const_cast <engine::io_t *> (io)->send(mediator->id, buffer, static_cast <size_t> (size));
 														}
 													}
 												// Если адрес сервера не совпадает с настройками туннеля
@@ -5241,6 +5245,8 @@ namespace io {
 														if(mediator->callbacks.read != nullptr)
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+														// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
+														else const_cast <engine::io_t *> (io)->send(mediator->id, buffer, static_cast <size_t> (size));
 													}
 												}
 											// Если адрес сервера не совпадает с настройками туннеля
@@ -5336,6 +5342,8 @@ namespace io {
 														if(mediator->callbacks.read != nullptr)
 															// Вызываем функцию обратного вызова для вывода полученных данных
 															mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
+														// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
+														else const_cast <engine::io_t *> (io)->send(mediator->id, buffer, static_cast <size_t> (size));
 													}
 												}
 											// Если адрес сервера не совпадает с настройками туннеля
