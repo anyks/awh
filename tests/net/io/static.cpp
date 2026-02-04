@@ -5677,7 +5677,7 @@ TEST_F(IoFixture, IoFsTest){
 	 */
 	{
 		// Устанавливаем функцию обратного вызова на событие таймера
-		this->_io->on(fid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		this->_io->on(fid, [&stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -5730,6 +5730,8 @@ TEST_F(IoFixture, IoFsTest){
 					// this->_io->seek(eid, 1024);
 					// Отправляем тестовое сообщение в файл
 					this->_io->send(eid, "Hello World!!!", 14);
+					// Останавливаем тест
+					stop = true;
 				} break;
 				// Если статус подключения события
 				case static_cast <uint8_t> (awh::event::status_t::CONNECTED):

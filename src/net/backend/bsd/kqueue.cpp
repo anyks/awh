@@ -28633,7 +28633,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												}
 												// Выводим результат работы функции
 												return result;
-											} break;
+											}
 										#endif
 									}
 								}
