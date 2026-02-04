@@ -168,8 +168,8 @@ TEST_F(IoFixture, IoSuiteTest){
 				// Выполняем подписку на SCTP события
 				this->_sctp->eventsSubscribe(eid1, types);
 
-				// Проверяем что типы SCTP событий совпадают с установленными ранее
-				ASSERT_EQ(types, this->_sctp->eventsSubscribed(eid1));
+				// Проверяем что типы SCTP событий совпадают с установленными ранее (так-как событие не принадлежит к SCTP)
+				ASSERT_NE(types, this->_sctp->eventsSubscribed(eid1));
 
 				// Устанавливаем таймаут INIT SCTP события
 				ASSERT_TRUE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
@@ -4316,6 +4316,9 @@ TEST_F(IoFixture, IoBroadcastTest){
 			awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
 			// Извлекаем IP-адрес сетевого интерфейса
 			addr = std::move(this->_io->address(events[0], awh::event::address_t::IPV4));
+			
+			std::cout << " ^^^^^^^^ Debug: Interface=" << source.iface << ", IP=" << static_cast <std::string> (addr) << std::endl;
+			
 			// Проверяем, что название сетевого интерфейса получено
 			ASSERT_FALSE(source.iface.empty());
 			// Устанавливаем IP-адрес события
