@@ -94,8 +94,10 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 		// Удаляем первые данные из буфера
 		this->_buffer->erase(size);
 	}
-	// Удаляем первые данные из буфера
-	this->_buffer->erase(this->_parameter.items.front().size());
+	// Если в параметрах теста остались данные
+	if(!this->_parameter.items.empty())
+		// Удаляем первые данные из буфера
+		this->_buffer->erase(this->_parameter.items.front().size());
 	// Проверяем что первые данные буфера совпадают с исходными данными
 	ASSERT_EQ(static_cast <const char *> (* this->_buffer.get()), static_cast <const std::vector <char> &> (* this->_buffer.get()).data() + static_cast <size_t> (* this->_buffer.get()));
 	// Инициализируем ещё одну копию буфера
