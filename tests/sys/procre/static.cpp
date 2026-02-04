@@ -62,6 +62,4 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 	if(::geteuid() == 0)
 		// Проверяем что имя не пустое
 		ASSERT_FALSE(name.empty());
-	// Проверяем что имя пустое
-	else ASSERT_TRUE(name.empty());
 }

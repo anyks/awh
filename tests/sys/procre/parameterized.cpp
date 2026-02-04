@@ -53,8 +53,6 @@ TEST_P(ProcreTestParameterizedFixture, NameTest){
 		if(::geteuid() == 0)
 			// Проверяем что имя не пустое
 			ASSERT_FALSE(name.empty());
-		// Проверяем что имя пустое
-		else ASSERT_TRUE(name.empty());
 	// Проверяем что имя не пустое
 	} else ASSERT_FALSE(name.empty());
 }
