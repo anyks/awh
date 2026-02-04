@@ -3,19 +3,19 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     # Указываем путь к установленной библиотеке GTest
     find_path(GTEST_INCLUDE_DIR gtest/gtest.h
         PATHS ${GTEST_ROOT}/include
-        NO_DEFAULT_PATH
+        #NO_DEFAULT_PATH
     )
 
     # Ищем библиотеку GTest
     find_library(GTEST_LIBRARY gtest
         PATHS ${GTEST_ROOT}/lib
-        NO_DEFAULT_PATH
+        #NO_DEFAULT_PATH
     )
 
     # Ищем основную библиотеку GTest
     find_library(GTEST_MAIN_LIBRARY gtest_main
         PATHS ${GTEST_ROOT}/lib
-        NO_DEFAULT_PATH
+        #NO_DEFAULT_PATH
     )
 
     # Устанавливаем переменные, как будто find_package(GTest) сработал
