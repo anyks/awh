@@ -201,7 +201,7 @@ TEST_F(EthFixture, EthSuiteTest){
 		// Временный объект для извлечения сетевого интерфейса
 		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 		// Выполняем извлечение сетевых параметров
-		this->_eth->addr.fillSource(awh::event::node_t::CLIENT, source);
+		this->_eth->addr.fillSource(awh::event::node_t::SERVER, source);
 		// Получаем имя сетевого интерфейса по IP-адресу
 		ASSERT_FALSE(source.iface.empty());
 	}
