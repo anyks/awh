@@ -28593,6 +28593,9 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																}
 															}
 														}
+														
+														cout << " !!!!!!!!!!!!!!! " << client->transfer.fd << " == " << addrs.size() << " === " << client->transfer.sctp.id << endl;
+														
 														// Если подключение к удаленному серверу не выполнено
 														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения

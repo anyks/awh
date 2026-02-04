@@ -115,7 +115,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Устанавливаем MTU события
 			// ASSERT_TRUE(this->_io->mtu(eid1, 1800));
 			// Проверяем что MTU получен
-			// ASSERT_EQ(1800, this->_io->mtu(eid1));
+			ASSERT_EQ(1500, this->_io->mtu(eid1));
 			// Устанавливаем сетевой интерфейс события
 			ASSERT_TRUE(this->_io->iface(eid1, source.iface));
 			// Проверяем, что название сетевого интерфейса получено
@@ -259,9 +259,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
 			ASSERT_EQ(source.iface, this->_io->iface(eid2));
 			// Устанавливаем MTU события
-			// ASSERT_TRUE(this->_io->mtu(eid2, 1800));
+			// ASSERT_TRUE(this->_io->mtu(eid2, 1500));
 			// Проверяем что MTU получен
-			// ASSERT_EQ(1800, this->_io->mtu(eid2));
+			ASSERT_EQ(1500, this->_io->mtu(eid2));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
 			ASSERT_EQ(ip, this->_io->address(eid2, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
