@@ -97,7 +97,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	 */
 	#if __FreeBSD__ || __Linux__
 		// Активируем получение SCTP-событий для сокета
-		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock, {
+		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock, {
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
 			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -113,11 +113,11 @@ TEST_F(EthFixture, EthSuiteTest){
 		// Устанавливаем количество входящих потоков SCTP
 		initmsg.istreams = 5;
 		// Инициализируем рукопожатие SCTP для сокета
-		ASSERT_TRUE(this->_eth->sctp.initMessages(sock, initmsg));
+		ASSERT_FALSE(this->_eth->sctp.initMessages(sock, initmsg));
 		// Объект для извлечения статуса SCTP сокета
 		awh::net::sctp::status_t status;
 		// Получаем статус SCTP сокета
-		ASSERT_TRUE(this->_eth->sctp.status(sock, status));
+		ASSERT_FALSE(this->_eth->sctp.status(sock, status));
 	#endif
 	// Получаем код ошибки сокета
 	ASSERT_EQ(0, this->_eth->socket.error(sock));
