@@ -28552,6 +28552,9 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														addrs.front() = ::trust_cast <struct sockaddr> (client->endpoint.server);
 														// Проходим по всем идентификаторам событий для подключения
 														for(size_t j = 1; j < ids.size(); j++){
+															
+															cout << " ^^^^^^^^^^^12 " << (* (ids.begin() + j)) << endl;
+															
 															// Выполняем поиск идентификатора события
 															auto i = ::__awh_nodes__.find(* (ids.begin() + j));
 															// Если идентификатор события найден
