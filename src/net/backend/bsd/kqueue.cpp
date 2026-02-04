@@ -28552,9 +28552,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														addrs.front() = ::trust_cast <struct sockaddr> (client->endpoint.server);
 														// Проходим по всем идентификаторам событий для подключения
 														for(size_t j = 1; j < ids.size(); j++){
-															
-															cout << " ^^^^^^^^^^^12 " << (* (ids.begin() + j)) << endl;
-															
 															// Выполняем поиск идентификатора события
 															auto i = ::__awh_nodes__.find(* (ids.begin() + j));
 															// Если идентификатор события найден
@@ -28596,9 +28593,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																}
 															}
 														}
-														
-														cout << " !!!!!!!!!!!!!!! " << client->transfer.fd << " == " << addrs.size() << " === " << client->transfer.sctp.id << endl;
-														
 														// Если подключение к удаленному серверу не выполнено
 														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения

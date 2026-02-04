@@ -1100,7 +1100,7 @@ TEST_F(IoFixture, IoTCPTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(events[0], true));
+		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(events[0]));
 	}
@@ -2540,7 +2540,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(events[0], true));
+		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(events[0]));
 	}
@@ -3121,7 +3121,7 @@ TEST_F(IoFixture, IoUDSTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(cid));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(cid, true));
+		ASSERT_TRUE(this->_io->connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(cid));
 	}
@@ -3832,7 +3832,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(cid));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(cid, true));
+		ASSERT_TRUE(this->_io->connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(cid));
 	}
@@ -5297,7 +5297,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(events[0], true));
+		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(events[0]));
 	}
@@ -8434,7 +8434,7 @@ TEST_F(IoFixture, IoTLSTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(events[0], true));
+		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(events[0]));
 	}
@@ -9272,7 +9272,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(events[0], true));
+		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(events[0]));
 	}
@@ -10093,7 +10093,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
-		ASSERT_TRUE(this->_io->connect(events[0], true));
+		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(events[0]));
 	}
@@ -10908,7 +10908,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
-			ASSERT_TRUE(this->_io->connect(events[0], true));
+			ASSERT_TRUE(this->_io->connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(this->_io->launch(events[0]));
 		}
@@ -11729,7 +11729,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
-			ASSERT_TRUE(this->_io->connect(events[0], true));
+			ASSERT_TRUE(this->_io->connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(this->_io->launch(events[0]));
 		}
@@ -12632,7 +12632,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
-			ASSERT_TRUE(this->_io->connect(events[0], true));
+			ASSERT_TRUE(this->_io->connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(this->_io->launch(events[0]));
 		}
@@ -13680,7 +13680,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
-			ASSERT_TRUE(this->_io->connect(events[0], true));
+			ASSERT_TRUE(this->_io->connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(this->_io->launch(events[0]));
 		}
@@ -14714,7 +14714,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
-			ASSERT_TRUE(this->_io->connect(events[0], true));
+			ASSERT_TRUE(this->_io->connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(this->_io->launch(events[0]));
 		}
