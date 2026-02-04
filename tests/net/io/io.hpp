@@ -29,20 +29,21 @@
  */
 class IoFixture : public testing::Test {
 	protected:
-		// Объект асинхронного движка ввода-вывода
-		std::unique_ptr <awh::io_t> _io;
+		
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
 		// Объект транспортного уровня безопасности
 		std::unique_ptr <awh::tls_t> _tls;
+		// Объект асинхронного движка ввода-вывода
+		std::unique_ptr <awh::engine::io_t> _io;
 		/**
 		 * Для операционной системы Linux или FreeBSD
 		 */
 		#if __linux__ || __FreeBSD__
 			// Объект управления SCTP протоколом
-			std::unique_ptr <awh::sctp_t> _sctp;
+			std::unique_ptr <awh::engine::sctp_t> _sctp;
 		#endif
 	public:
 		/**

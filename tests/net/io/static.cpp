@@ -63,7 +63,7 @@ TEST_F(IoFixture, ResetAndCreateIoTest){
 	// Проверяем, что объект асинхронного движка ввода-вывода сброшен
 	ASSERT_TRUE(this->_io == nullptr);
 	// Создаём объект асинхронного движка ввода-вывода заново
-	this->_io = std::make_unique <awh::io_t> (this->_fmk.get(), this->_log.get());
+	this->_io = std::make_unique <awh::engine::io_t> (this->_fmk.get(), this->_log.get());
 	// Проверяем, что объект асинхронного движка ввода-вывода создан
 	ASSERT_TRUE(this->_io != nullptr);
 }
@@ -76,7 +76,7 @@ TEST_F(IoFixture, ReCreateIoTest){
 	// Проверяем, что объект асинхронного движка ввода-вывода создан
 	ASSERT_TRUE(this->_io != nullptr);
 	// Создаём объект асинхронного движка ввода-вывода заново
-	this->_io = std::make_unique <awh::io_t> (this->_fmk.get(), this->_log.get());
+	this->_io = std::make_unique <awh::engine::io_t> (this->_fmk.get(), this->_log.get());
 	// Проверяем, что объект асинхронного движка ввода-вывода создан
 	ASSERT_TRUE(this->_io != nullptr);
 }
@@ -93,7 +93,7 @@ TEST_F(IoFixture, IoSuiteTest){
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров
-	eth.fillsource(source);
+	eth.addr.fillSource(source);
 	// Проверяем, что название сетевого интерфейса получено
 	ASSERT_FALSE(source.iface.empty());
 	// Если сетевой интерфейс не принадлежит к VPN
@@ -4307,7 +4307,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Временный объект для извлечения сетевого интерфейса
 		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 		// Выполняем извлечение сетевых параметров
-		eth.fillsource(source);
+		eth.addr.fillSource(source);
 		// Если сетевой интерфейс не принадлежит к VPN
 		if(::memcmp("ut", source.iface.c_str(), 2) != 0){
 			// Устанавливаем сетевой интерфейс события
@@ -7662,21 +7662,8 @@ TEST_F(IoFixture, IoTLSTest){
 		this->_tls->privateKey(cts, "../sh/certificates/server/key.pem");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(cts, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -7819,21 +7806,8 @@ TEST_F(IoFixture, IoTLSTest){
 			ASSERT_GT(ctl, 0);
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки TLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение TLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке TLS
-						this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка TLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке TLS
-						this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
@@ -8158,21 +8132,8 @@ TEST_F(IoFixture, IoTLSTest){
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
 		this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
@@ -8534,39 +8495,13 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		this->_tls->hostname(cts2, "anyks.com");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(cts1, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(cts2, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -8709,21 +8644,8 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			ASSERT_GT(ctl, 0);
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки TLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение TLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке TLS
-						this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка TLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке TLS
-						this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
@@ -9048,21 +8970,8 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
 		this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
@@ -9412,21 +9321,8 @@ TEST_F(IoFixture, IoDTLSTest){
 		this->_tls->privateKey(cts, "../sh/certificates/server/key.pem");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(cts, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -9569,21 +9465,8 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_GT(ctl, 0);
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки TLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение TLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке TLS
-						this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка TLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке TLS
-						this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::state_t state) noexcept -> void {
@@ -9908,21 +9791,8 @@ TEST_F(IoFixture, IoDTLSTest){
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-			/**
-			 * Обрабатываем входящие ошибки TLS
-			 */
-			switch(static_cast <uint8_t> (error)){
-				// Если получено предупреждение TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Предупреждение TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-				break;
-				// Если получена критическая ошибка TLS
-				case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-					// Выводим сообщение о предупреждающей ошибке TLS
-					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-				break;
-			}
+			// Выводим сообщение о предупреждающей ошибке TLS
+			this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
 		this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
@@ -12805,21 +12675,8 @@ TEST_F(IoFixture, IoDTLSTest){
 			this->_tls->privateKey(cts, "../sh/certificates/server/key.pem");
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
 			this->_tls->on(cts, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки DTLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[1], {
@@ -12994,21 +12851,8 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-					/**
-					 * Обрабатываем входящие ошибки DTLS
-					 */
-					switch(static_cast <uint8_t> (error)){
-						// Если получено предупреждение DTLS
-						case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-							// Выводим сообщение о предупреждающей ошибке DTLS
-							this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-						break;
-						// Если получена критическая ошибка DTLS
-						case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-							// Выводим сообщение о предупреждающей ошибке DTLS
-							this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-						break;
-					}
+					// Выводим сообщение о предупреждающей ошибке TLS
+					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 				});
 				// Регистрируем функцию обратного вызова на запись данных DTLS
 				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
@@ -13428,21 +13272,8 @@ TEST_F(IoFixture, IoDTLSTest){
 			});
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки DTLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на запись данных DTLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
@@ -13892,21 +13723,8 @@ TEST_F(IoFixture, IoDTLSTest){
 			this->_tls->privateKey(cts, "../sh/certificates/server/key.pem");
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
 			this->_tls->on(cts, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки DTLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[1], {
@@ -14081,21 +13899,8 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-					/**
-					 * Обрабатываем входящие ошибки DTLS
-					 */
-					switch(static_cast <uint8_t> (error)){
-						// Если получено предупреждение DTLS
-						case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-							// Выводим сообщение о предупреждающей ошибке DTLS
-							this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-						break;
-						// Если получена критическая ошибка DTLS
-						case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-							// Выводим сообщение о предупреждающей ошибке DTLS
-							this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-						break;
-					}
+					// Выводим сообщение о предупреждающей ошибке TLS
+					this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 				});
 				// Регистрируем функцию обратного вызова на запись данных DTLS
 				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {
@@ -14501,21 +14306,8 @@ TEST_F(IoFixture, IoDTLSTest){
 			});
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
-				/**
-				 * Обрабатываем входящие ошибки DTLS
-				 */
-				switch(static_cast <uint8_t> (error)){
-					// Если получено предупреждение DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::WARNING):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Предупреждение DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::WARNING, id, message.c_str());
-					break;
-					// Если получена критическая ошибка DTLS
-					case static_cast <uint8_t> (awh::tls_t::error_t::CRITICAL):
-						// Выводим сообщение о предупреждающей ошибке DTLS
-						this->_log->print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, message.c_str());
-					break;
-				}
+				// Выводим сообщение о предупреждающей ошибке TLS
+				this->_log->print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log_t::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на запись данных DTLS
 			this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const size_t size) noexcept -> void {

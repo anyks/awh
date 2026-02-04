@@ -20,7 +20,7 @@
  */
 #include "../../main.hpp"
 #include "../../../include/sys/log.hpp"
-#include "../../../include/net/eth.hpp"
+#include "../../../include/net/eth/eth.hpp"
 
 /**
  * @brief Класс фикстуры для тестов работы с Ethernet

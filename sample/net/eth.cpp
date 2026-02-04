@@ -122,17 +122,20 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём туннельный интерфейс
 	cout << " Tunnel interface: " << iface.create(event::eth_t::TUN, tunnel) << " === " << tunnel << ", isVirtual=" << iface.isVirtual(tunnel) << ", isTunnel=" << iface.isTunnel(tunnel) << endl;
 	// Получаем IP-адрес туннельного интерфейса
-	auto ip = iface.getAddress("utun6", event::family_t::IPV4);
-	// Устанавливаем полученный IP-адрес
-	addr.v4(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
-	// Выводим адрес шлюза по умолчанию
-	cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << ", isVirtual=" << iface.isVirtual("utun6") << ", isTunnel=" << iface.isTunnel("utun6") << endl;
-	// Если устанавливаем IP-адрес туннельного интерфейса
-	if(iface.setBinding(tunnel, ip, ip, 24))
-		// Выводим сообщение об успешной установке IP-адреса
-		cout << " Assigned IPv4 address to " << tunnel << endl;
-	// Иначе выводим сообщение об ошибке
-	else cout << " Failed to assign IPv4 address to " << tunnel << endl;
+	auto ip = iface.getAddress("utun4", event::family_t::IPV4);
+	// Если IP-адрес получен
+	if(ip != nullptr){
+		// Устанавливаем полученный IP-адрес
+		addr.v4(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
+		// Выводим адрес шлюза по умолчанию
+		cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << ", isVirtual=" << iface.isVirtual("utun4") << ", isTunnel=" << iface.isTunnel("utun4") << endl;
+		// Если устанавливаем IP-адрес туннельного интерфейса
+		if(iface.setAddress(tunnel, ip, ip, 24))
+			// Выводим сообщение об успешной установке IP-адреса
+			cout << " Assigned IPv4 address to " << tunnel << endl;
+		// Иначе выводим сообщение об ошибке
+		else cout << " Failed to assign IPv4 address to " << tunnel << endl;
+	}
 	// Устанавливаем MTU туннельного интерфейса
 	if(iface.mtu(tunnel, 1800))
 		// Выводим сообщение об успешной установке MTU
@@ -156,11 +159,14 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}
 	// Получаем IP-адрес туннельного интерфейса
-	ip = iface.getAddress("utun5", event::family_t::IPV6);
-	// Устанавливаем полученный IP-адрес
-	addr.v6(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
-	// Выводим адрес шлюза по умолчанию
-	cout << "IPv6 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << endl;
+	ip = iface.getAddress("utun3", event::family_t::IPV6);
+	// Если IP-адрес получен
+	if(ip != nullptr){
+		// Устанавливаем полученный IP-адрес
+		addr.v6(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
+		// Выводим адрес шлюза по умолчанию
+		cout << "IPv6 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << endl;
+	}
 	// Выводим заголовок примера проброса порта
 	cout << " --- Portmapping Example --- " << endl;
 	// Создаём объект для работы с пробросом портов

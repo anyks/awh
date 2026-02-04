@@ -74,7 +74,12 @@ int32_t awh::eth::Socket::error(const net::socket_t sock) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(sock),
+				log_t::flag_t::CRITICAL,
+				::strerror(errno)
+			);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -116,7 +121,15 @@ bool awh::eth::Socket::timeout(const net::socket_t sock, const net::socket_event
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event),
+							msec
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -135,7 +148,15 @@ bool awh::eth::Socket::timeout(const net::socket_t sock, const net::socket_event
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event),
+							msec
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -174,7 +195,14 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event)
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -195,7 +223,14 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event)
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -233,7 +268,15 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event),
+							size
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -253,7 +296,15 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event),
+							size
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -272,7 +323,15 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event),
+							size
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -292,7 +351,15 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), size), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event),
+							size
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -334,7 +401,15 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), ifname), log_t::flag_t::WARNING);
+						this->_log->debug(
+							"Unable to get list of network interfaces",
+							__PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								ifname
+							), log_t::flag_t::WARNING
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -370,7 +445,15 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), ifname), log_t::flag_t::WARNING, ::strerror(errno));
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										ifname
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -397,7 +480,15 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), ifname), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								ifname
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -415,7 +506,15 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Interface name is empty", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (family), ifname), log_t::flag_t::WARNING);
+			this->_log->debug(
+				"Interface name is empty",
+				__PRETTY_FUNCTION__,
+				std::make_tuple(
+					sock,
+					static_cast <uint16_t> (family),
+					ifname
+				), log_t::flag_t::WARNING
+			);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -460,7 +559,14 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					sock, cnt,
+					idle, intvl
+				), log_t::flag_t::WARNING,
+				::strerror(errno)
+			);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -478,7 +584,14 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					sock, cnt,
+					idle, intvl
+				), log_t::flag_t::WARNING,
+				::strerror(errno)
+			);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -500,7 +613,14 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(
+						sock, cnt,
+						idle, intvl
+					), log_t::flag_t::WARNING,
+					::strerror(errno)
+				);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -522,7 +642,14 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug(
+					"%s", __PRETTY_FUNCTION__,
+					std::make_tuple(
+						sock, cnt,
+						idle, intvl
+					), log_t::flag_t::WARNING,
+					::strerror(errno)
+				);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -541,7 +668,14 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, cnt, idle, intvl), log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					sock, cnt,
+					idle, intvl
+				), log_t::flag_t::WARNING,
+				::strerror(errno)
+			);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -603,14 +737,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -629,14 +765,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -674,14 +812,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -733,14 +873,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-											sock,
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (mode),
-											option
-										), log_t::flag_t::WARNING,
-										::strerror(errno)
-									);
+										this->_log->debug(
+											"%s", __PRETTY_FUNCTION__,
+											std::make_tuple(
+												sock,
+												static_cast <uint16_t> (family),
+												static_cast <uint16_t> (mode),
+												option
+											), log_t::flag_t::WARNING,
+											::strerror(errno)
+										);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -759,14 +901,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-											sock,
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (mode),
-											option
-										), log_t::flag_t::WARNING,
-										::strerror(errno)
-									);
+										this->_log->debug(
+											"%s", __PRETTY_FUNCTION__,
+											std::make_tuple(
+												sock,
+												static_cast <uint16_t> (family),
+												static_cast <uint16_t> (mode),
+												option
+											), log_t::flag_t::WARNING,
+											::strerror(errno)
+										);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -784,14 +928,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-								sock,
-								static_cast <uint16_t> (family),
-								static_cast <uint16_t> (mode),
-								option
-							), log_t::flag_t::WARNING,
-							::strerror(errno)
-						);
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -811,14 +957,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-								sock,
-								static_cast <uint16_t> (family),
-								static_cast <uint16_t> (mode),
-								option
-							), log_t::flag_t::WARNING,
-							::strerror(errno)
-						);
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -855,14 +1003,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -893,14 +1043,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -921,14 +1073,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -966,14 +1120,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1009,14 +1165,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1039,14 +1197,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1072,14 +1232,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										static_cast <uint16_t> (mode),
-										option
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1101,14 +1263,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										static_cast <uint16_t> (mode),
-										option
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1147,14 +1311,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1183,29 +1349,102 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 						flags = 0;
 					break;
 				}
-				// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
-				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
+				/**
+				 * Если операционной системой является FreeBSD
+				 */
+				#if __FreeBSD__
 					/**
-					 * Если включён режим отладки
+					 * Если версия FreeBSD 12.0 или выше
 					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+					#if __FreeBSD_version >= 1200000
+						// Разрешаем/запрещаем использовать один и тот же порт (с возможностью балансировки нагрузки) для нескольких сокетов
+						if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT_LB, &flags, sizeof(flags))))){
+							// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
+							if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						}
 					/**
-					 * Если режим отладки не включён
+					 * Если версия FreeBSD ниже 12.0
 					 */
 					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
+						if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
 					#endif
-				}
+				/**
+				 * Если операционная система поддерживает SO_REUSEPORT
+				 */
+				#elif SO_REUSEPORT
+					// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
+					if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				#endif
 			} break;
 			// Если необходимо установить опцию CLOSE ON EXEC
 			case event::options::CLOSE_ON_EXEC: {
@@ -1218,14 +1457,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-							sock,
-							static_cast <uint16_t> (family),
-							static_cast <uint16_t> (mode),
-							option
-						), log_t::flag_t::WARNING,
-						::strerror(errno)
-					);
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1251,14 +1492,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										static_cast <uint16_t> (mode),
-										option
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1280,14 +1523,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										static_cast <uint16_t> (mode),
-										option
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1332,14 +1577,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -1358,14 +1605,16 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									std::make_tuple(
+										sock,
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (mode),
+										option
+									), log_t::flag_t::WARNING,
+									::strerror(errno)
+								);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -1415,7 +1664,14 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), log_t::flag_t::WARNING, ::strerror(errno));
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (hops)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1434,7 +1690,14 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), log_t::flag_t::WARNING, ::strerror(errno));
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (hops)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1463,7 +1726,14 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), log_t::flag_t::WARNING, ::strerror(errno));
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (hops)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1482,7 +1752,14 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (hops)), log_t::flag_t::WARNING, ::strerror(errno));
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (hops)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1541,7 +1818,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (mode)
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1589,7 +1873,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (mode)
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1622,7 +1913,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (mode)
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1670,7 +1968,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										std::make_tuple(
+											sock,
+											static_cast <uint16_t> (mode)
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1690,7 +1995,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("It is impossible to work with a multicast group because the IP address types are different", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+				this->_log->debug(
+					"It is impossible to work with a multicast group because the IP address types are different",
+					__PRETTY_FUNCTION__,
+					std::make_tuple(
+						sock,
+						static_cast <uint16_t> (mode)
+					), log_t::flag_t::CRITICAL
+				);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1708,7 +2020,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					sock,
+					static_cast <uint16_t> (mode)
+				), log_t::flag_t::CRITICAL,
+				error.what()
+			);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2183,7 +2502,8 @@ awh::net::socket_t awh::eth::Socket::create(const event::family_t family, const 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__,
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
 				std::make_tuple(
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
@@ -2379,7 +2699,8 @@ array <awh::net::socket_t, 2> awh::eth::Socket::pair(const event::family_t famil
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"An event for a Unix event cannot be created because it has an invalid initialization type",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__,
+								std::make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
@@ -2414,7 +2735,8 @@ array <awh::net::socket_t, 2> awh::eth::Socket::pair(const event::family_t famil
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__,
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
 				std::make_tuple(
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),

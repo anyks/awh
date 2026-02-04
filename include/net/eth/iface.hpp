@@ -178,7 +178,7 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат изменения параметров сетевого интерфейса точка-точка
 				 */
-				bool getBinding(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
+				bool getAddress(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
 				/**
 				 * @brief Метод установки параметров сетевого интерфейса точка-точка
 				 *
@@ -188,7 +188,7 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат установки параметров сетевого интерфейса точка-точка
 				 */
-				bool setBinding(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
+				bool setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

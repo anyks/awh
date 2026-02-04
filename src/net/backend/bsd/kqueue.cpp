@@ -14208,9 +14208,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											// Если адрес для удаленного подключения установлен
 											if(awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address > 0)
 												// Устанавливаем адрес IPv4 для клиента
-												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 32);
+												this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->target, 32);
 											// Устанавливаем адрес IPv4 для сервера
-											else this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->source, 32);
+											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->source, 32);
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -14239,9 +14239,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											// Если адрес для удаленного подключения установлен
 											if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], (uint8_t[16]){0}, 16) != 0)
 												// Устанавливаем адрес IPv6 для клиента
-												this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->target, 128);
+												this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->target, 128);
 											// Устанавливаем адрес IPv6 для сервера
-											else this->_eth.iface.setBinding(tunnel->iface, tunnel->source, tunnel->source, 128);
+											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->source, 128);
 										} break;
 									}
 									// Выполняем блокировку потоков

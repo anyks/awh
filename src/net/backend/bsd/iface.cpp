@@ -2017,7 +2017,7 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
  * @param prefix префикс подсети
  * @return       результат изменения параметров сетевого интерфейса точка-точка
  */
-bool awh::eth::Interface::getBinding(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+bool awh::eth::Interface::getAddress(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -2171,7 +2171,7 @@ bool awh::eth::Interface::getBinding(const string & name, unique_ptr <net::addr_
  * @param prefix префикс подсети
  * @return       результат установки параметров сетевого интерфейса точка-точка
  */
-bool awh::eth::Interface::setBinding(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
+bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адреса для установки переданы
