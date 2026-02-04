@@ -113,7 +113,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем что порт получен
 			ASSERT_EQ(8080, this->_io->port(eid1));
 			// Устанавливаем MTU события
-			// ASSERT_TRUE(this->_io->mtu(eid1, 1800));
+			ASSERT_TRUE(this->_io->mtu(eid1, 1500));
 			// Проверяем что MTU получен
 			ASSERT_EQ(1500, this->_io->mtu(eid1));
 			// Устанавливаем сетевой интерфейс события
@@ -259,7 +259,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
 			ASSERT_EQ(source.iface, this->_io->iface(eid2));
 			// Устанавливаем MTU события
-			// ASSERT_TRUE(this->_io->mtu(eid2, 1500));
+			ASSERT_TRUE(this->_io->mtu(eid2, 1500));
 			// Проверяем что MTU получен
 			ASSERT_EQ(1500, this->_io->mtu(eid2));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
