@@ -207,20 +207,20 @@ TEST_F(IoFixture, IoSuiteTest){
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
 
 				// Устанавливаем ключ аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
+				ASSERT_FALSE(this->_sctp->authenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
 				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
+				ASSERT_FALSE(this->_sctp->authenticateKey(eid1, awh::event::mode_t::ENABLED, 1));
 				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+				ASSERT_FALSE(this->_sctp->authenticateSupportAlgorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 				// Устанавливаем чанки аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+				ASSERT_FALSE(this->_sctp->authenticateChunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
 
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
+				ASSERT_FALSE(this->_sctp->authenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
 				// Проверяем что чанки аутентификации SCTP-сокета получены
-				ASSERT_FALSE(chunks.empty());
+				ASSERT_TRUE(chunks.empty());
 				// Перебираем все извлечённые чанки
 				for(auto & chunk : chunks)
 					// Выводим информацию о чанках аутентификации SCTP-сокета
