@@ -190,11 +190,12 @@ namespace awh {
 			NOT_FOUND        = 0x03, // Объект не найден
 			EVENT_FAIL       = 0x04, // Ошибка события
 			ACCESS_DENIED    = 0x05, // Доступ запрещён
-			ALREADY_EXISTS   = 0x06, // Объект уже существует
-			INVALID_SOCKET   = 0x07, // Ошибка доступа к сокету
-			INVALID_ADDRESS  = 0x08, // Некорректный адрес
-			CONNECTION_FAIL  = 0x09, // Ошибка подключения
-			INSUFFICIENT_RES = 0x0A  // Недостаточно ресурсов
+			PACKET_TOO_BIG   = 0x06, // Слишком большой пакет для записи
+			ALREADY_EXISTS   = 0x07, // Объект уже существует
+			INVALID_SOCKET   = 0x08, // Ошибка доступа к сокету
+			INVALID_ADDRESS  = 0x09, // Некорректный адрес
+			CONNECTION_FAIL  = 0x0A, // Ошибка подключения
+			INSUFFICIENT_RES = 0x0B  // Недостаточно ресурсов
 		};
 		/**
 		 * @brief Происхождение событий

@@ -73,7 +73,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие туннеля
 	event::id_t tid = io.event(event::node_t::TUNNEL, event::family_t::IPV4);
 	// Добавляем новое событие посредника
-	event::id_t mid = io.event(event::node_t::MEDIATOR, event::family_t::IPV4, event::type_t::DATAGRAM);
+	event::id_t mid = io.event(event::node_t::MEDIATOR, event::family_t::IPV4);
 	// Добавляем новое событие сервера UDP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события

@@ -24236,80 +24236,42 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::IPV4):
 					// Для семейства IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Выполняем блокировку потоков
+						const locker_t <> lock(::__awh_mtx__);
+						// Выполняем создание события
+						auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::mediator_t> (this->_fmk, this->_log));
+						// Устанавливаем идентификатор события
+						ret.first->second->id = ret.first->first;
+						// Устанавливаем тип узла события
+						ret.first->second->state.node = node;
+						// Устанавливаем флаг типа сокета
+						ret.first->second->state.type = type;
+						// Устанавливаем флаг семейства сокета
+						ret.first->second->state.family = family;
+						// Устанавливаем флаг протокола сокета
+						ret.first->second->state.protocol = protocol;
+						// Получаем объект посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (ret.first->second.get());
+						// Активируем или деактивируем работу мютексов для передачи данных
+						mediator->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						/**
-						 * Определяем тип сокета
+						 * Определяем тип подключения
 						 */
-						switch(static_cast <uint8_t> (type)){
-							// Если сокет принадлежит к типу RAW
-							case static_cast <uint8_t> (event::type_t::RAW):
-							// Если сокет принадлежит к типу STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM):
-							// Если сокет принадлежит к типу DATAGRAM
-							case static_cast <uint8_t> (event::type_t::DATAGRAM):
-							// Если сокет принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Выполняем блокировку потоков
-								const locker_t <> lock(::__awh_mtx__);
-								// Выполняем создание события
-								auto ret = ::__awh_nodes__.emplace(::io::identifier(), make_unique <::io::mediator_t> (this->_fmk, this->_log));
-								// Устанавливаем идентификатор события
-								ret.first->second->id = ret.first->first;
-								// Устанавливаем тип узла события
-								ret.first->second->state.node = node;
-								// Устанавливаем флаг типа сокета
-								ret.first->second->state.type = type;
-								// Устанавливаем флаг семейства сокета
-								ret.first->second->state.family = family;
-								// Устанавливаем флаг протокола сокета
-								ret.first->second->state.protocol = protocol;
-								// Получаем объект посредника
-								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (ret.first->second.get());
-								// Активируем или деактивируем работу мютексов для передачи данных
-								mediator->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (mediator->state.family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса хоста
-										mediator->host = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса хоста
-										mediator->host = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
-								// Возвращаем идентификатор созданного события
-								return ret.first->first;
-							}
-							// Для неизвестного типа сокета
-							default: {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug(
-										"An event for a IP event cannot be created because it has an invalid initialization type",
-										__PRETTY_FUNCTION__, std::make_tuple(
-											static_cast <uint16_t> (node),
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (type),
-											static_cast <uint16_t> (protocol)
-										), log_t::flag_t::WARNING
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
-								#endif
-							}
+						switch(static_cast <uint8_t> (mediator->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+								// Выполняем инициализацию объекта IP-адреса хоста
+								mediator->host = make_unique <net::addr_net_ipv4_t> ();
+							break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+								// Выполняем инициализацию объекта IP-адреса хоста
+								mediator->host = make_unique <net::addr_net_ipv6_t> ();
+							break;
 						}
-					} break;
+						// Возвращаем идентификатор созданного события
+						return ret.first->first;
+					}
 					// Для других семейств событий
 					default: {
 						/**
@@ -27602,44 +27564,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 								return true;
 							}
 							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC): {
-								// Проверяем совместимость типов и семейств событий
-								if((i->second->state.type == j->second->state.type) ||
-								   (j->second->state.family == event::family_t::PIPE)){
-									// Устанавливаем идентификатор события-приёмника в объекте посредника
-									mediator->dest = dest;
-									// Выводим положительный результат
-									return true;
-								// Если не совместимы типы или семейства событий
-								} else {
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Events cannot be combined with each other because they are not compatible";
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										mediator->callbacks.error(mediator->id, event::error_t::INVALID, error);
-									// Если функция обратного вызова для вывода события установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
+							case static_cast <uint8_t> (event::node_t::IPC):
 							// Если узел является одноранговым узлом
 							case static_cast <uint8_t> (event::node_t::PEER):
 							// Если узел является одноранговым узлом-источником
@@ -27651,10 +27576,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Проверяем совместимость типов и семейств событий
-								if((i->second->state.type == j->second->state.type) &&
-								   (i->second->state.family == j->second->state.family)){
+								if(mediator->state.family == j->second->state.family){
 									// Устанавливаем идентификатор события-приёмника в объекте посредника
-									mediator->dest = dest;
+									mediator->dest = j->second->id;
+									// Устанавливаем тип события в объекте посредника
+									mediator->state.type = j->second->state.type;
+									// Устанавливаем протокол события в объекте посредника
+									mediator->state.protocol = j->second->state.protocol;
 									// Выводим положительный результат
 									return true;
 								// Если не совместимы типы или семейства событий
@@ -30394,7 +30322,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если сокет является неблокирующим
 												if(ipc->state.options & event::options::NO_IO_BLOCK){
 													// Если очередь передачи данных пустая
-													if(ipc->transfer.queue.empty()){
+													if(!(result = !ipc->transfer.queue.empty())){
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
@@ -30415,57 +30343,61 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
 															}
 															// Если функция обратного вызова для вывода записанных данных установлена
-															if(ipc->callbacks.write != nullptr){
+															if(ipc->callbacks.write != nullptr)
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-																// Если дескриптор сокета стал недействительным
-																if(ipc->transfer.fd == net::invalid_socket_t)
-																	// Выходим из функции
-																	return result;
-															}
-														// Если мы отправили не все данные
-														} else if(bytes == -1) {
-															// Если нам нужно повторить попытку позже
-															if((result = (errno == EAGAIN))){
-																{
-																	// Выполняем блокировку уникальным мютексом
-																	const locker_t <> lock(ipc->transfer.mtx);
-																	// Сохраняем оставшиеся данные для последующей отправки
-																	ipc->transfer.queue.push(data, size);
-																}{
-																	// Выполняем блокировку потоков
-																	const locker_t <> lock(::local::mtx);
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Активируем событие на ожидание готовности сокета на запись
-																	EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
+														// Если данные не отправлены
+														} else {
+															// Идентификатор полученной ошибки
+															event::error_t error = event::error_t::NONE;
+															// Если сокет давно закрыт
+															if(bytes == 0)
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
+															// Если произошла другая ошибка
+															else {
+																/**
+																 * Определяем возникшую ошибку
+																 */
+																switch(errno){
+																	// Если ошибки нет
+																	case 0: break;
+																	// Если нам нужно попытаться отправить позже
+																	case EAGAIN: {
+																		{
+																			// Выполняем блокировку уникальным мютексом
+																			const locker_t <> lock(ipc->transfer.mtx);
+																			// Сохраняем оставшиеся данные для последующей отправки
+																			ipc->transfer.queue.push(data, size);
+																		}{
+																			// Выполняем блокировку потоков
+																			const locker_t <> lock(::local::mtx);
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Активируем событие на ожидание готовности сокета на запись
+																			EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
+																		}
+																	} break;
+																	// Если мы получили другую непонятную ошибку
+																	default:
+																		// Устанавливаем идентификатор полученной ошибки
+																		error = event::error_t::INVALID_SOCKET;
 																}
-																// Если функция обратного вызова для вывода записанных данных установлена
-																if(ipc->callbacks.write != nullptr)
-																	// Вызываем функцию обратного вызова для вывода записанных данных
-																	ipc->callbacks.write(ipc->id, 0);
-																// Выходим из функции
-																return result;
-															// Если мы пытаемся отправить данные на несуществующий узел
-															} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-																// Выполняем обработку закрытия подключения
-																if(::io::close(ipc, this->_log))
-																	// Выполняем удаление узла
-																	::io::destroy(ipc, &this->_eth, this->_log);
-																// Выходим из функции
-																return result;
-															// Если произошла ошибка при отправке данных
-															} else {
+															}
+															// Если функция обратного вызова для вывода записанных данных установлена
+															if(ipc->callbacks.write != nullptr)
+																// Вызываем функцию обратного вызова для вывода записанных данных
+																ipc->callbacks.write(ipc->id, 0);
+															// Если данные не записаны в сокет
+															if(!(result = (error == event::error_t::NONE))){
 																// Если установлена функция обратного вызова
 																if(ipc->callbacks.status != nullptr)
 																	// Вызываем функцию обратного вызова об ошибке отказа
 																	ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-																// Устанавливаем текст ошибки
-																const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 																// Если установлена функция обратного вызова
 																if(ipc->callbacks.error != nullptr)
 																	// Вызываем функцию обратного вызова ошибки события
-																	ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+																	ipc->callbacks.error(ipc->id, error, ::strerror(errno));
 																// Если функция обратного вызова для вывода события установлена
 																else {
 																	/**
@@ -30473,26 +30405,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
 																		// Выводим сообщение об ошибке
-																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																		this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																	#endif
 																}
-																// Выходим из функции
-																return result;
+																// Если сокет повреждён
+																if(error == event::error_t::INVALID_SOCKET){
+																	// Выполняем обработку закрытия подключения
+																	if(::io::close(ipc, this->_log))
+																		// Выполняем удаление узла
+																		::io::destroy(ipc, &this->_eth, this->_log);
+																}
 															}
-														// Если произошёл дисконнект
-														} else {
-															// Выполняем обработку закрытия подключения
-															if(::io::close(ipc, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(ipc, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
 														}
 													// Если очередь передачи данных не пуста
 													} else {
@@ -30506,8 +30435,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														if(ipc->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
-														// Выходим из функции
-														return true;
 													}
 												// Если сокет является полублокирующим
 												} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -30516,27 +30443,27 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
-														if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(ipc, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(ipc, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
-														// Если произошла какая-то ошибка при отправке данных
-														} else if(bytes == -1) {
+														if((result = (bytes > 0))){
+															// Если функция обратного вызова для вывода записанных данных установлена
+															if(ipc->callbacks.write != nullptr)
+																// Вызываем функцию обратного вызова для вывода записанных данных
+																ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														// Если данные не отправлены
+														} else {
+															// Если функция обратного вызова для вывода записанных данных установлена
+															if(ipc->callbacks.write != nullptr)
+																// Вызываем функцию обратного вызова для вывода записанных данных
+																ipc->callbacks.write(ipc->id, 0);
 															// Если установлена функция обратного вызова
 															if(ipc->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 															// Если установлена функция обратного вызова
 															if(ipc->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+																ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 															// Если функция обратного вызова для вывода события установлена
 															else {
 																/**
@@ -30544,54 +30471,45 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
-															// Выходим из функции
-															return result;
+															// Выполняем обработку закрытия подключения
+															if(::io::close(ipc, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(ipc, &this->_eth, this->_log);
 														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(ipc->callbacks.write != nullptr){
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-															// Если дескриптор сокета стал недействительным
-															if(ipc->transfer.fd == net::invalid_socket_t)
-																// Выходим из функции
-																return result;
-														}
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 													}
 												// Если сокет является блокирующим
 												} else {
 													// Выполняем отправку данных в TCP/IP сокет
 													const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(ipc, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(ipc, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
+													if((result = (bytes > 0))){
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(ipc->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+													// Если данные не отправлены
+													} else {
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(ipc->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															ipc->callbacks.write(ipc->id, 0);
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+															ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -30599,22 +30517,20 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 															#endif
 														}
+														// Выполняем обработку закрытия подключения
+														if(::io::close(ipc, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(ipc, &this->_eth, this->_log);
 													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(ipc->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-													// Устанавливаем результат выполнения функции
-													result = (static_cast <size_t> (bytes) == size);
 												}
 											} break;
 											// Для других семейств событий
@@ -30653,7 +30569,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(ipc->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(ipc->transfer.queue.empty()){
+											if(!(result = !ipc->transfer.queue.empty())){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
@@ -30674,57 +30590,61 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
-													if(ipc->callbacks.write != nullptr){
+													if(ipc->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(ipc->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
-													}
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														{
-															// Выполняем блокировку уникальным мютексом
-															const locker_t <> lock(ipc->transfer.mtx);
-															// Сохраняем оставшиеся данные для последующей отправки
-															ipc->transfer.queue.push(data, size);
-														}{
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Активируем событие на ожидание готовности сокета на запись
-															EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													// Если сокет давно закрыт
+													if(bytes == 0)
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													// Если произошла другая ошибка
+													else {
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(ipc->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	ipc->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
+																}
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(ipc->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															ipc->callbacks.write(ipc->id, 0);
-														// Выходим из функции
-														return result;
-													// Если мы пытаемся отправить данные на несуществующий узел
-													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(ipc, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(ipc, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(ipc->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														ipc->callbacks.write(ipc->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+															ipc->callbacks.error(ipc->id, error, ::strerror(errno));
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -30732,26 +30652,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 															#endif
 														}
-														// Выходим из функции
-														return result;
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(ipc, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(ipc, &this->_eth, this->_log);
+														}
 													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(ipc, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(ipc, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
 												}
 											// Если очередь передачи данных не пуста
 											} else {
@@ -30765,8 +30682,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(ipc->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
-												// Выходим из функции
-												return true;
 											}
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -30775,27 +30690,27 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(ipc, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(ipc, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(ipc->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если данные не отправлены
+												} else {
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(ipc->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														ipc->callbacks.write(ipc->id, 0);
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+														ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -30803,49 +30718,45 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
+													// Выполняем обработку закрытия подключения
+													if(::io::close(ipc, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(ipc, &this->_eth, this->_log);
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(ipc->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(ipc, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(ipc, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(ipc->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(ipc->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													ipc->callbacks.write(ipc->id, 0);
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об ошибке отказа
 													ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -30853,121 +30764,88 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
+												// Выполняем обработку закрытия подключения
+												if(::io::close(ipc, this->_log))
+													// Выполняем удаление узла
+													::io::destroy(ipc, &this->_eth, this->_log);
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(ipc->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM):
 									// Если сокет принадлежит к типу SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Если установлена функция обратного вызова
-											if(ipc->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(ipc->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
 										// Если сокет является неблокирующим
 										if(ipc->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(ipc->transfer.queue.empty()){
+											if(!(result = !ipc->transfer.queue.empty())){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
-													if(ipc->callbacks.write != nullptr){
+													if(ipc->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(ipc->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если нам нужно попытаться отправить позже
+														case EAGAIN: {
+															{
+																// Выполняем блокировку уникальным мютексом
+																const locker_t <> lock(ipc->transfer.mtx);
+																// Сохраняем оставшиеся данные для последующей отправки
+																ipc->transfer.queue.push(data, size);
+															}{
+																// Выполняем блокировку потоков
+																const locker_t <> lock(::local::mtx);
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Активируем событие на ожидание готовности сокета на запись
+																EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
+															}
+														} break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
 													}
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														{
-															// Выполняем блокировку уникальным мютексом
-															const locker_t <> lock(ipc->transfer.mtx);
-															// Сохраняем оставшиеся данные для последующей отправки
-															ipc->transfer.queue.push(data, size);
-														}{
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Активируем событие на ожидание готовности сокета на запись
-															EV_SET(&::local::change.back(), ipc->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, ipc);
-														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(ipc->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															ipc->callbacks.write(ipc->id, 0);
-														// Выходим из функции
-														return result;
-													// Если мы пытаемся отправить данные на несуществующий узел
-													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(ipc, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(ipc, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(ipc->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														ipc->callbacks.write(ipc->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+															ipc->callbacks.error(ipc->id, error, ::strerror(errno));
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -30975,26 +30853,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 															#endif
 														}
-														// Выходим из функции
-														return result;
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(ipc, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(ipc, &this->_eth, this->_log);
+														}
 													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(ipc, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(ipc, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
 												}
 											// Если очередь передачи данных не пуста
 											} else {
@@ -31008,8 +30883,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(ipc->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
-												// Выходим из функции
-												return true;
 											}
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -31018,27 +30891,121 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(ipc, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(ipc, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(ipc->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														} break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(ipc->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														ipc->callbacks.write(ipc->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(ipc->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(ipc->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(ipc, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(ipc, &this->_eth, this->_log);
+														}
+													}
+												}
+												// Если данные отправлены успешно
+												if(result)
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Выполняем отправку данных в TCP/IP сокет
+											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+											// Если данные отправлены успешно
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(ipc->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(ipc->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													ipc->callbacks.write(ipc->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
+														ipc->callbacks.error(ipc->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -31046,72 +31013,24 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(ipc->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											}
-										// Если сокет является блокирующим
-										} else {
-											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
-											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(ipc, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(ipc, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Если установлена функция обратного вызова
-												if(ipc->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from inter-process communication: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(ipc->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(ipc, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(ipc, &this->_eth, this->_log);
+													}
 												}
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(ipc->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 								}
@@ -31135,7 +31054,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(peer->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(peer->transfer.queue.empty()){
+											if(!(result = !peer->transfer.queue.empty())){
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -31196,71 +31115,75 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr){
+													if(peer->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(peer->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
-													}
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														{
-															// Выполняем блокировку уникальным мютексом
-															const locker_t <> lock(peer->transfer.mtx);
-															// Сохраняем оставшиеся данные для последующей отправки
-															peer->transfer.queue.push(data, size);
-														}{
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Активируем событие на ожидание готовности сокета на запись
-															EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-															// Если таймаут не установлен
-															if(peer->timeout == event::action_t::NONE){
-																// Выполняем проверку на наличие таймаута для события записи
-																auto i = peer->timeouts.find(event::action_t::WRITE);
-																// Если нужный нам таймаут найден
-																if((i != peer->timeouts.end()) && (i->second > 0)){
-																	// Активируем таймаут события
-																	peer->timeout = i->first;
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													// Если сокет давно закрыт
+													if(bytes == 0)
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													// Если произошла другая ошибка
+													else {
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(peer->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	peer->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+																	// Если таймаут не установлен
+																	if(peer->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = peer->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != peer->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			peer->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
+																		}
+																	}
 																}
-															}
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(peer->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															peer->callbacks.write(peer->id, 0);
-														// Выходим из функции
-														return result;
-													// Если мы пытаемся отправить данные на несуществующий узел
-													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(peer, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(peer, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(peer->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														peer->callbacks.write(peer->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															peer->callbacks.status(peer->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+															peer->callbacks.error(peer->id, error, ::strerror(errno));
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -31268,26 +31191,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 															#endif
 														}
-														// Выходим из функции
-														return result;
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(peer, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(peer, &this->_eth, this->_log);
+														}
 													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(peer, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
 												}
 											// Если очередь передачи данных не пуста
 											} else {
@@ -31301,8 +31221,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(peer->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, 0);
-												// Выходим из функции
-												return true;
 											}
 										// Если сокет является полублокирующим
 										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -31342,27 +31260,27 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(peer, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(peer->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если данные не отправлены
+												} else {
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(peer->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														peer->callbacks.write(peer->id, 0);
 													// Если установлена функция обратного вызова
 													if(peer->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														peer->callbacks.status(peer->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(peer->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+														peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -31370,24 +31288,20 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
+													// Выполняем обработку закрытия подключения
+													if(::io::close(peer, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(peer, &this->_eth, this->_log);
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -31425,25 +31339,25 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(peer, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(peer, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(peer->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(peer->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													peer->callbacks.write(peer->id, 0);
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об ошибке отказа
 													peer->callbacks.status(peer->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -31451,22 +31365,20 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
+												// Выполняем обработку закрытия подключения
+												if(::io::close(peer, this->_log))
+													// Выполняем удаление узла
+													::io::destroy(peer, &this->_eth, this->_log);
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(peer->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									/**
@@ -31475,43 +31387,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									#if __FreeBSD__
 										// Если сокет принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													peer->callbacks.status(peer->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
 											// Если сокет является неблокирующим
 											if(peer->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(peer->transfer.queue.empty()){
+												if(!(result = !peer->transfer.queue.empty())){
 													// Количество прочитанных байт
 													ssize_t bytes = 0;
 													// Если протокол интернета установлен как SCTP
@@ -31531,71 +31410,73 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
-														if(peer->callbacks.write != nullptr){
+														if(peer->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-															// Если дескриптор сокета стал недействительным
-															if(peer->transfer.fd == net::invalid_socket_t)
-																// Выходим из функции
-																return result;
-														}
-													// Если мы отправили не все данные
-													} else if(bytes == -1) {
-														// Если нам нужно повторить попытку позже
-														if((result = (errno == EAGAIN))){
-															{
-																// Выполняем блокировку уникальным мютексом
-																const locker_t <> lock(peer->transfer.mtx);
-																// Сохраняем оставшиеся данные для последующей отправки
-																peer->transfer.queue.push(data, size);
-															}{
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Активируем событие на ожидание готовности сокета на запись
-																EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-																// Если таймаут не установлен
-																if(peer->timeout == event::action_t::NONE){
-																	// Выполняем проверку на наличие таймаута для события записи
-																	auto i = peer->timeouts.find(event::action_t::WRITE);
-																	// Если нужный нам таймаут найден
-																	if((i != peer->timeouts.end()) && (i->second > 0)){
-																		// Активируем таймаут события
-																		peer->timeout = i->first;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+															break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(peer->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	peer->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+																	// Если таймаут не установлен
+																	if(peer->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = peer->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != peer->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			peer->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), peer);
+																		}
 																	}
 																}
-															}
-															// Если функция обратного вызова для вывода записанных данных установлена
-															if(peer->callbacks.write != nullptr)
-																// Вызываем функцию обратного вызова для вывода записанных данных
-																peer->callbacks.write(peer->id, 0);
-															// Выходим из функции
-															return result;
-														// Если мы пытаемся отправить данные на несуществующий узел
-														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-															// Выполняем обработку закрытия подключения
-															if(::io::close(peer, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(peer, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
-														// Если произошла ошибка при отправке данных
-														} else {
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(peer->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															peer->callbacks.write(peer->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
 															// Если установлена функция обратного вызова
 															if(peer->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																peer->callbacks.status(peer->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
 															// Если установлена функция обратного вызова
 															if(peer->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
+																peer->callbacks.error(peer->id, error, ::strerror(errno));
 															// Если функция обратного вызова для вывода события установлена
 															else {
 																/**
@@ -31603,26 +31484,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
-															// Выходим из функции
-															return result;
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(peer, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(peer, &this->_eth, this->_log);
+															}
 														}
-													// Если произошёл дисконнект
-													} else {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(peer, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(peer, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
 													}
 												// Если очередь передачи данных не пуста
 												} else {
@@ -31636,8 +31514,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(peer->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, 0);
-													// Выходим из функции
-													return true;
 												}
 											// Если сокет является полублокирующим
 											} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -31666,52 +31542,76 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем отправку данных в TCP/IP сокет
 													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(peer, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(peer, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															peer->callbacks.status(peer->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+													if((result = (bytes > 0))){
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(peer->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE: {
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+																// Переводим сокет обратно в неблокирующий режим
+																this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Выходим из функции
-														return result;
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(peer->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															peer->callbacks.write(peer->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
+															// Если установлена функция обратного вызова
+															if(peer->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																peer->callbacks.status(peer->id, event::status_t::FAILURE);
+															// Если установлена функция обратного вызова
+															if(peer->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																peer->callbacks.error(peer->id, error, ::strerror(errno));
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																#endif
+															}
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(peer, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(peer, &this->_eth, this->_log);
+															}
+														}
 													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Если данные отправлены успешно
+													if(result)
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -31738,48 +31638,70 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в TCP/IP сокет
 												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(peer, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														peer->callbacks.status(peer->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from peer: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(peer->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(peer->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														peer->callbacks.write(peer->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(peer->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															peer->callbacks.status(peer->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(peer->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															peer->callbacks.error(peer->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(peer, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(peer, &this->_eth, this->_log);
+														}
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-												// Устанавливаем результат выполнения функции
-												result = (static_cast <size_t> (bytes) == size);
 											}
 										} break;
 									#endif
@@ -31801,39 +31723,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								switch(static_cast <uint8_t> (origin->state.type)){
 									// Если сокет принадлежит к типу RAW
 									case static_cast <uint8_t> (event::type_t::RAW): {
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Если установлена функция обратного вызова
-											if(origin->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												origin->callbacks.status(origin->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(origin->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												origin->callbacks.error(origin->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
 										// Если сокет является неблокирующим
 										if(origin->state.options & event::options::NO_IO_BLOCK){
 											// Если необходимо установить таймаут на чтение данных
@@ -31870,47 +31759,54 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr){
+												if(origin->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(origin->transfer.fd == net::invalid_socket_t)
-														// Выходим из функции
-														return result;
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если нам нужно попытаться отправить позже
+													case EAGAIN: break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
 												}
-											// Если мы отправили не все данные
-											} else if(bytes == -1) {
-												// Если нам нужно повторить попытку позже
-												if(errno == EAGAIN){
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr){
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, 0);
-														// Если дескриптор сокета стал недействительным
-														if(origin->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
-													}
-												// Если мы пытаемся отправить данные на несуществующий узел
-												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(origin, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(origin, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла ошибка при отправке данных
-												} else {
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(origin->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													origin->callbacks.write(origin->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
+														origin->callbacks.error(origin->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -31918,26 +31814,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(origin, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(origin, &this->_eth, this->_log);
+													}
 												}
-												// Выходим из функции
-												return result;
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(::io::close(origin, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(origin, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
 											}
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
@@ -31946,27 +31839,142 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(origin, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(origin, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(origin->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														} break;
+														// Если сокет является недействительным
+														case EBADF:
+														// Если нет такого ресурса
+														case ENOENT:
+														// Если получатель недоступен
+														case EINVAL:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::EVENT_FAIL;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														}
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(origin->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														origin->callbacks.write(origin->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(origin->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															origin->callbacks.status(origin->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(origin->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															origin->callbacks.error(origin->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(origin, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(origin, &this->_eth, this->_log);
+														}
+													}
+												}
+												// Если данные отправлены успешно
+												if(result)
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Выполняем отправку данных в RAW-сокет
+											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											// Если данные отправлены успешно
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(origin->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(origin->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													origin->callbacks.write(origin->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
+														origin->callbacks.error(origin->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -31974,72 +31982,24 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											}
-										// Если сокет является блокирующим
-										} else {
-											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(origin, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(origin, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Если установлена функция обратного вызова
-												if(origin->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													origin->callbacks.status(origin->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(origin->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(origin, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(origin, &this->_eth, this->_log);
+													}
 												}
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(origin->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									/**
@@ -32051,113 +32011,91 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									#endif
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Если установлена функция обратного вызова
-											if(origin->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												origin->callbacks.status(origin->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(origin->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												origin->callbacks.error(origin->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
 										// Если сокет является неблокирующим
 										if(origin->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(origin->transfer.queue.empty()){
+											if(!(result = !origin->transfer.queue.empty())){
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
 												if((result = (bytes > 0))){
 													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr){
+													if(origin->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(origin->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
-													}
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														{
-															// Выполняем блокировку уникальным мютексом
-															const locker_t <> lock(origin->transfer.mtx);
-															// Сохраняем оставшиеся данные для последующей отправки
-															origin->transfer.queue.push(data, size);
-														}{
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Активируем событие на ожидание готовности сокета на запись
-															EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
-															// Если таймаут не установлен
-															if(origin->timeout == event::action_t::NONE){
-																// Выполняем проверку на наличие таймаута для события записи
-																auto i = origin->timeouts.find(event::action_t::WRITE);
-																// Если нужный нам таймаут найден
-																if((i != origin->timeouts.end()) && (i->second > 0)){
-																	// Активируем таймаут события
-																	origin->timeout = i->first;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если нам нужно попытаться отправить позже
+														case EAGAIN: {
+															{
+																// Выполняем блокировку уникальным мютексом
+																const locker_t <> lock(origin->transfer.mtx);
+																// Сохраняем оставшиеся данные для последующей отправки
+																origin->transfer.queue.push(data, size);
+															}{
+																// Выполняем блокировку потоков
+																const locker_t <> lock(::local::mtx);
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Активируем событие на ожидание готовности сокета на запись
+																EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
+																// Если таймаут не установлен
+																if(origin->timeout == event::action_t::NONE){
+																	// Выполняем проверку на наличие таймаута для события записи
+																	auto i = origin->timeouts.find(event::action_t::WRITE);
+																	// Если нужный нам таймаут найден
+																	if((i != origin->timeouts.end()) && (i->second > 0)){
+																		// Активируем таймаут события
+																		origin->timeout = i->first;
+																		// Добавляем новое событие в список изменений
+																		::local::change.push_back((struct kevent){});
+																		// Устанавливаем таймаут на получение данных
+																		EV_SET(&::local::change.back(), origin->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), origin);
+																	}
 																}
 															}
-														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(origin->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															origin->callbacks.write(origin->id, 0);
-														// Выходим из функции
-														return result;
-													// Если мы пытаемся отправить данные на несуществующий узел
-													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(origin, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(origin, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
+														} break;
+														// Если сокет является недействительным
+														case EBADF:
+														// Если нет такого ресурса
+														case ENOENT:
+														// Если получатель недоступен
+														case EINVAL:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::EVENT_FAIL;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(origin->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														origin->callbacks.write(origin->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
 														// Если установлена функция обратного вызова
 														if(origin->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															origin->callbacks.status(origin->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
 														// Если установлена функция обратного вызова
 														if(origin->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
+															origin->callbacks.error(origin->id, error, ::strerror(errno));
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -32165,26 +32103,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 															#endif
 														}
-														// Выходим из функции
-														return result;
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(origin, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(origin, &this->_eth, this->_log);
+														}
 													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(origin, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(origin, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
 												}
 											// Если очередь передачи данных не пуста
 											} else {
@@ -32198,8 +32133,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(origin->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
-												// Выходим из функции
-												return true;
 											}
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
@@ -32208,27 +32141,142 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(origin, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(origin, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(origin->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														} break;
+														// Если сокет является недействительным
+														case EBADF:
+														// Если нет такого ресурса
+														case ENOENT:
+														// Если получатель недоступен
+														case EINVAL:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::EVENT_FAIL;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														}
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(origin->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														origin->callbacks.write(origin->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(origin->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															origin->callbacks.status(origin->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(origin->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															origin->callbacks.error(origin->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(origin, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(origin, &this->_eth, this->_log);
+														}
+													}
+												}
+												// Если данные отправлены успешно
+												if(result)
 													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											}
+										// Если сокет является блокирующим
+										} else {
+											// Выполняем отправку данных в UDP-сокет
+											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											// Если данные отправлены успешно
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(origin->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(origin->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													origin->callbacks.write(origin->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
+														origin->callbacks.error(origin->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -32236,72 +32284,24 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											}
-										// Если сокет является блокирующим
-										} else {
-											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(origin, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(origin, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Если установлена функция обратного вызова
-												if(origin->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													origin->callbacks.status(origin->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from origin: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(origin->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													origin->callbacks.error(origin->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(origin, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(origin, &this->_eth, this->_log);
+													}
 												}
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(origin->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									// Для остальных типов сокетов
@@ -32382,10 +32382,21 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 									// Если данные не отправлены
 									if(!(result = (bytes > 0))){
-										// Если мы отправили не все данные
-										if(bytes == -1){
-											// Если нам нужно повторить попытку позже
-											if(errno == EAGAIN){
+										// Идентификатор полученной ошибки
+										event::error_t error = event::error_t::NONE;
+										/**
+										 * Определяем возникшую ошибку
+										 */
+										switch(errno){
+											// Если ошибки нет
+											case 0: break;
+											// Если мы получили ошибку отправки слишком большого пакета
+											case EMSGSIZE:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::PACKET_TOO_BIG;
+											break;
+											// Если нам нужно попытаться отправить позже
+											case EAGAIN: {
 												{
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(tunnel->mtx);
@@ -32399,53 +32410,54 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Активируем событие на ожидание готовности сокета на запись
 													EV_SET(&::local::change.back(), tunnel->fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, tunnel);
 												}
-											// Если мы пытаемся отправить данные на несуществующий узел
-											} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
+											} break;
+											// Если сокет является недействительным
+											case EBADF:
+											// Если нет такого ресурса
+											case ENOENT:
+											// Если получатель недоступен
+											case EINVAL:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::INVALID_SOCKET;
+											break;
+											// Если мы получили другую непонятную ошибку
+											default:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::EVENT_FAIL;
+										}
+										// Если данные не записаны в сокет
+										if(!(result = (error == event::error_t::NONE))){
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Если сокет повреждён
+											if(error == event::error_t::INVALID_SOCKET){
 												// Выполняем обработку закрытия подключения
 												if(::io::close(tunnel, this->_log))
 													// Выполняем удаление узла
 													::io::destroy(tunnel, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла ошибка при отправке данных
-											} else {
-												// Если установлена функция обратного вызова
-												if(tunnel->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(tunnel->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
 											}
-										// Если произошёл дисконнект
-										} else {
-											// Выполняем обработку закрытия подключения
-											if(::io::close(tunnel, this->_log))
-												// Выполняем удаление узла
-												::io::destroy(tunnel, &this->_eth, this->_log);
-											// Выходим из функции
-											return result;
 										}
 									}
 								// Если очередь передачи данных не пуста
@@ -32465,49 +32477,79 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									iov[1].iov_base = const_cast <char *> (data);
 									// Выполняем отправку данных в туннель
 									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-									// Если данные отправлены успешно
-									if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-										// Выполняем обработку закрытия подключения
-										if(::io::close(tunnel, this->_log))
-											// Выполняем удаление узла
-											::io::destroy(tunnel, &this->_eth, this->_log);
-										// Выходим из функции
-										return false;
-									// Если произошла какая-то ошибка при отправке данных
-									} else if(bytes == -1) {
-										// Переводим сокет обратно в неблокирующий режим
-										this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-										// Если установлена функция обратного вызова
-										if(tunnel->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-										// Если установлена функция обратного вызова
-										if(tunnel->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-											#endif
+									// Если данные не отправлены
+									if(!(result = (bytes > 0))){
+										// Идентификатор полученной ошибки
+										event::error_t error = event::error_t::NONE;
+										/**
+										 * Определяем возникшую ошибку
+										 */
+										switch(errno){
+											// Если ошибки нет
+											case 0: break;
+											// Если мы получили ошибку отправки слишком большого пакета
+											case EMSGSIZE: {
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::PACKET_TOO_BIG;
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											} break;
+											// Если сокет является недействительным
+											case EBADF:
+											// Если нет такого ресурса
+											case ENOENT:
+											// Если получатель недоступен
+											case EINVAL:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::INVALID_SOCKET;
+											break;
+											// Если мы получили другую непонятную ошибку
+											default: {
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::EVENT_FAIL;
+												// Переводим сокет обратно в неблокирующий режим
+												result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											}
 										}
-										// Выходим из функции
-										return false;
+										// Если данные не записаны в сокет
+										if(!(result = (error == event::error_t::NONE))){
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(tunnel->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Если сокет повреждён
+											if(error == event::error_t::INVALID_SOCKET){
+												// Выполняем обработку закрытия подключения
+												if(::io::close(tunnel, this->_log))
+													// Выполняем удаление узла
+													::io::destroy(tunnel, &this->_eth, this->_log);
+											}
+										}
 									}
-									// Переводим сокет обратно в неблокирующий режим
-									result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									// Если данные отправлены успешно
+									if(result)
+										// Переводим сокет обратно в неблокирующий режим
+										result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								}
 							// Если сокет является блокирующим
 							} else {
@@ -32517,47 +32559,70 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								iov[1].iov_base = const_cast <char *> (data);
 								// Выполняем отправку данных в туннель
 								const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
-								// Если данные отправлены успешно
-								if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-									// Выполняем обработку закрытия подключения
-									if(::io::close(tunnel, this->_log))
-										// Выполняем удаление узла
-										::io::destroy(tunnel, &this->_eth, this->_log);
-									// Выходим из функции
-									return false;
-								// Если произошла какая-то ошибка при отправке данных
-								} else if(bytes == -1) {
-									// Если установлена функция обратного вызова
-									if(tunnel->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Failed to send data from tunnel: %s", ::strerror(errno));
-									// Если установлена функция обратного вызова
-									if(tunnel->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
-									// Если функция обратного вызова для вывода события установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel->id, size), log_t::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-										#endif
+								// Если данные не отправлены
+								if(!(result = (bytes > 0))){
+									// Идентификатор полученной ошибки
+									event::error_t error = event::error_t::NONE;
+									/**
+									 * Определяем возникшую ошибку
+									 */
+									switch(errno){
+										// Если ошибки нет
+										case 0: break;
+										// Если мы получили ошибку отправки слишком большого пакета
+										case EMSGSIZE:
+											// Устанавливаем идентификатор полученной ошибки
+											error = event::error_t::PACKET_TOO_BIG;
+										break;
+										// Если сокет является недействительным
+										case EBADF:
+										// Если нет такого ресурса
+										case ENOENT:
+										// Если получатель недоступен
+										case EINVAL:
+											// Устанавливаем идентификатор полученной ошибки
+											error = event::error_t::INVALID_SOCKET;
+										break;
+										// Если мы получили другую непонятную ошибку
+										default:
+											// Устанавливаем идентификатор полученной ошибки
+											error = event::error_t::EVENT_FAIL;
 									}
-									// Выходим из функции
-									return false;
+									// Если данные не записаны в сокет
+									if(!(result = (error == event::error_t::NONE))){
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+										// Если установлена функция обратного вызова
+										if(tunnel->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											#endif
+										}
+										// Если сокет повреждён
+										if(error == event::error_t::INVALID_SOCKET){
+											// Выполняем обработку закрытия подключения
+											if(::io::close(tunnel, this->_log))
+												// Выполняем удаление узла
+												::io::destroy(tunnel, &this->_eth, this->_log);
+										}
+									}
 								}
-								// Устанавливаем результат выполнения функции
-								result = (bytes > 0);
 							}
 						}
 					} break;
@@ -32579,39 +32644,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								switch(static_cast <uint8_t> (client->state.type)){
 									// Если сокет принадлежит к типу RAW
 									case static_cast <uint8_t> (event::type_t::RAW): {
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Если установлена функция обратного вызова
-											if(client->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												client->callbacks.status(client->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(client->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
 										// Если сокет является неблокирующим
 										if(client->state.options & event::options::NO_IO_BLOCK){
 											// Если таймаут не установлен
@@ -32651,47 +32683,45 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr){
+												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
-														// Выходим из функции
-														return result;
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если нам нужно попытаться отправить позже
+													case EAGAIN: break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
 												}
-											// Если мы отправили не все данные
-											} else if(bytes == -1) {
-												// Если нам нужно повторить попытку позже
-												if(errno == EAGAIN){
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr){
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, 0);
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
-													}
-												// Если мы пытаемся отправить данные на несуществующий узел
-												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла ошибка при отправке данных
-												} else {
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														client->callbacks.error(client->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -32699,26 +32729,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(client, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(client, &this->_eth, this->_log);
+													}
 												}
-												// Выходим из функции
-												return result;
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(client, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
 											}
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -32739,52 +32766,72 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-													// Если установлена функция обратного вызова
-													if(client->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+															// Переводим сокет обратно в неблокирующий режим
+															result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														} break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
 													}
-													// Выходим из функции
-													return result;
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, &this->_eth, this->_log);
+														}
+													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если данные отправлены успешно
+												if(result)
+													// Переводим сокет обратно в неблокирующий режим
+													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -32803,48 +32850,66 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(client, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+												}
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
+													// Если установлена функция обратного вызова
+													if(client->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														client->callbacks.status(client->id, event::status_t::FAILURE);
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, error, ::strerror(errno));
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														#endif
+													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(client, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(client, &this->_eth, this->_log);
+													}
 												}
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(client->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												client->callbacks.write(client->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									// Если сокет принадлежит к типу STREAM
@@ -32852,7 +32917,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(client->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(client->transfer.queue.empty()){
+											if(!(result = !client->transfer.queue.empty())){
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -32913,71 +32978,75 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr){
+													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(client->transfer.fd == net::invalid_socket_t)
-															// Выходим из функции
-															return result;
-													}
-												// Если мы отправили не все данные
-												} else if(bytes == -1) {
-													// Если нам нужно повторить попытку позже
-													if((result = (errno == EAGAIN))){
-														{
-															// Выполняем блокировку уникальным мютексом
-															const locker_t <> lock(client->transfer.mtx);
-															// Сохраняем оставшиеся данные для последующей отправки
-															client->transfer.queue.push(data, size);
-														}{
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Активируем событие на ожидание готовности сокета на запись
-															EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-															// Если таймаут не установлен
-															if(client->timeout == event::action_t::NONE){
-																// Выполняем проверку на наличие таймаута для события записи
-																auto i = client->timeouts.find(event::action_t::WRITE);
-																// Если нужный нам таймаут найден
-																if((i != client->timeouts.end()) && (i->second > 0)){
-																	// Активируем таймаут события
-																	client->timeout = i->first;
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													// Если сокет давно закрыт
+													if(bytes == 0)
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													// Если произошла другая ошибка
+													else {
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(client->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	client->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+																	// Если таймаут не установлен
+																	if(client->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = client->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != client->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			client->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+																		}
+																	}
 																}
-															}
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															client->callbacks.write(client->id, 0);
-														// Выходим из функции
-														return result;
-													// Если мы пытаемся отправить данные на несуществующий узел
-													} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла ошибка при отправке данных
-													} else {
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+															client->callbacks.error(client->id, error, ::strerror(errno));
 														// Если функция обратного вызова для вывода события установлена
 														else {
 															/**
@@ -32985,26 +33054,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 															#endif
 														}
-														// Выходим из функции
-														return result;
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, &this->_eth, this->_log);
+														}
 													}
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
 												}
 											// Если очередь передачи данных не пуста
 											} else {
@@ -33018,8 +33084,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, 0);
-												// Выходим из функции
-												return true;
 											}
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -33059,27 +33123,27 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
 													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если данные не отправлены
+												} else {
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -33087,24 +33151,20 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
+													// Выполняем обработку закрытия подключения
+													if(::io::close(client, this->_log))
+														// Выполняем удаление узла
+														::io::destroy(client, &this->_eth, this->_log);
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -33142,25 +33202,25 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(client, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(client->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													client->callbacks.write(client->id, 0);
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+													client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
 												// Если функция обратного вызова для вывода события установлена
 												else {
 													/**
@@ -33168,135 +33228,102 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
+												// Выполняем обработку закрытия подключения
+												if(::io::close(client, this->_log))
+													// Выполняем удаление узла
+													::io::destroy(client, &this->_eth, this->_log);
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(client->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												client->callbacks.write(client->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Если клиент находится в состоянии подключено
 										if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(client->transfer.queue.empty()){
+												if(!(result = !client->transfer.queue.empty())){
 													// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr){
+														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
-															// Если дескриптор сокета стал недействительным
-															if(client->transfer.fd == net::invalid_socket_t)
-																// Выходим из функции
-																return result;
-														}
-													// Если мы отправили не все данные
-													} else if(bytes == -1) {
-														// Если нам нужно повторить попытку позже
-														if((result = (errno == EAGAIN))){
-															{
-																// Выполняем блокировку уникальным мютексом
-																const locker_t <> lock(client->transfer.mtx);
-																// Сохраняем оставшиеся данные для последующей отправки
-																client->transfer.queue.push(data, size);
-															}{
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Активируем событие на ожидание готовности сокета на запись
-																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-																// Если таймаут не установлен
-																if(client->timeout == event::action_t::NONE){
-																	// Выполняем проверку на наличие таймаута для события записи
-																	auto i = client->timeouts.find(event::action_t::WRITE);
-																	// Если нужный нам таймаут найден
-																	if((i != client->timeouts.end()) && (i->second > 0)){
-																		// Активируем таймаут события
-																		client->timeout = i->first;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+															break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(client->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	client->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+																	// Если таймаут не установлен
+																	if(client->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = client->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != client->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			client->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+																		}
 																	}
 																}
-															}
-															// Если функция обратного вызова для вывода записанных данных установлена
-															if(client->callbacks.write != nullptr)
-																// Вызываем функцию обратного вызова для вывода записанных данных
-																client->callbacks.write(client->id, 0);
-															// Выходим из функции
-															return result;
-														// Если мы пытаемся отправить данные на несуществующий узел
-														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-															// Выполняем обработку закрытия подключения
-															if(::io::close(client, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(client, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
-														// Если произошла ошибка при отправке данных
-														} else {
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																client->callbacks.status(client->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+																client->callbacks.error(client->id, error, ::strerror(errno));
 															// Если функция обратного вызова для вывода события установлена
 															else {
 																/**
@@ -33304,26 +33331,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
-															// Выходим из функции
-															return result;
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
 														}
-													// Если произошёл дисконнект
-													} else {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
 													}
 												// Если очередь передачи данных не пуста
 												} else {
@@ -33337,8 +33361,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
-													// Выходим из функции
-													return true;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -33353,52 +33375,76 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Определяем переменную для хранения количества отправленых байт
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														// Если установлена функция обратного вызова
-														if(client->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+													if((result = (bytes > 0))){
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, static_cast <size_t> (bytes));
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE: {
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+																// Переводим сокет обратно в неблокирующий режим
+																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Выходим из функции
-														return result;
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, error, ::strerror(errno));
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																#endif
+															}
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
+														}
 													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Если данные отправлены успешно
+													if(result)
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -33411,158 +33457,149 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Если установлена функция обратного вызова
-													if(client->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, &this->_eth, this->_log);
+														}
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Устанавливаем результат выполнения функции
-												result = (static_cast <size_t> (bytes) == size);
 											}
 										// Если клиент находится в запущенном состоянии
 										} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(client->transfer.queue.empty()){
+												if(!(result = !client->transfer.queue.empty())){
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr){
+														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
-															// Если дескриптор сокета стал недействительным
-															if(client->transfer.fd == net::invalid_socket_t)
-																// Выходим из функции
-																return result;
-														}
-													// Если мы отправили не все данные
-													} else if(bytes == -1) {
-														// Если нам нужно повторить попытку позже
-														if((result = (errno == EAGAIN))){
-															{
-																// Выполняем блокировку уникальным мютексом
-																const locker_t <> lock(client->transfer.mtx);
-																// Сохраняем оставшиеся данные для последующей отправки
-																client->transfer.queue.push(data, size);
-															}{
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Активируем событие на ожидание готовности сокета на запись
-																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-																// Если таймаут не установлен
-																if(client->timeout == event::action_t::NONE){
-																	// Выполняем проверку на наличие таймаута для события записи
-																	auto i = client->timeouts.find(event::action_t::WRITE);
-																	// Если нужный нам таймаут найден
-																	if((i != client->timeouts.end()) && (i->second > 0)){
-																		// Активируем таймаут события
-																		client->timeout = i->first;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+															break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(client->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	client->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+																	// Если таймаут не установлен
+																	if(client->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = client->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != client->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			client->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+																		}
 																	}
 																}
-															}
-															// Если функция обратного вызова для вывода записанных данных установлена
-															if(client->callbacks.write != nullptr)
-																// Вызываем функцию обратного вызова для вывода записанных данных
-																client->callbacks.write(client->id, 0);
-															// Выходим из функции
-															return result;
-														// Если мы пытаемся отправить данные на несуществующий узел
-														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-															// Выполняем обработку закрытия подключения
-															if(::io::close(client, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(client, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
-														// Если произошла ошибка при отправке данных
-														} else {
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																client->callbacks.status(client->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+																client->callbacks.error(client->id, error, ::strerror(errno));
 															// Если функция обратного вызова для вывода события установлена
 															else {
 																/**
@@ -33570,26 +33607,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
-															// Выходим из функции
-															return result;
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
 														}
-													// Если произошёл дисконнект
-													} else {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
 													}
 												// Если очередь передачи данных не пуста
 												} else {
@@ -33603,8 +33637,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
-													// Выходим из функции
-													return true;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -33619,52 +33651,76 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														// Если установлена функция обратного вызова
-														if(client->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+													if((result = (bytes > 0))){
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, static_cast <size_t> (bytes));
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE: {
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+																// Переводим сокет обратно в неблокирующий режим
+																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Выходим из функции
-														return result;
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, error, ::strerror(errno));
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																#endif
+															}
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
+														}
 													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Если данные отправлены успешно
+													if(result)
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -33677,48 +33733,70 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Если установлена функция обратного вызова
-													if(client->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, &this->_eth, this->_log);
+														}
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Устанавливаем результат выполнения функции
-												result = (static_cast <size_t> (bytes) == size);
 											}
 										// Если клиент ещё не подготовлен для отправки данных
 										} else {
@@ -33754,43 +33832,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 										// Если клиент находится в состоянии подключено
 										if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(client->transfer.queue.empty()){
+												if(!(result = !client->transfer.queue.empty())){
 													/**
 													 * Если операционной системой является FreeBSD
 													 */
@@ -33823,71 +33868,73 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr){
+														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
-															// Если дескриптор сокета стал недействительным
-															if(client->transfer.fd == net::invalid_socket_t)
-																// Выходим из функции
-																return result;
-														}
-													// Если мы отправили не все данные
-													} else if(bytes == -1) {
-														// Если нам нужно повторить попытку позже
-														if((result = (errno == EAGAIN))){
-															{
-																// Выполняем блокировку уникальным мютексом
-																const locker_t <> lock(client->transfer.mtx);
-																// Сохраняем оставшиеся данные для последующей отправки
-																client->transfer.queue.push(data, size);
-															}{
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Активируем событие на ожидание готовности сокета на запись
-																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-																// Если таймаут не установлен
-																if(client->timeout == event::action_t::NONE){
-																	// Выполняем проверку на наличие таймаута для события записи
-																	auto i = client->timeouts.find(event::action_t::WRITE);
-																	// Если нужный нам таймаут найден
-																	if((i != client->timeouts.end()) && (i->second > 0)){
-																		// Активируем таймаут события
-																		client->timeout = i->first;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+															break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(client->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	client->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+																	// Если таймаут не установлен
+																	if(client->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = client->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != client->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			client->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+																		}
 																	}
 																}
-															}
-															// Если функция обратного вызова для вывода записанных данных установлена
-															if(client->callbacks.write != nullptr)
-																// Вызываем функцию обратного вызова для вывода записанных данных
-																client->callbacks.write(client->id, 0);
-															// Выходим из функции
-															return result;
-														// Если мы пытаемся отправить данные на несуществующий узел
-														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-															// Выполняем обработку закрытия подключения
-															if(::io::close(client, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(client, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
-														// Если произошла ошибка при отправке данных
-														} else {
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																client->callbacks.status(client->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+																client->callbacks.error(client->id, error, ::strerror(errno));
 															// Если функция обратного вызова для вывода события установлена
 															else {
 																/**
@@ -33895,26 +33942,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
-															// Выходим из функции
-															return result;
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
 														}
-													// Если произошёл дисконнект
-													} else {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
 													}
 												// Если очередь передачи данных не пуста
 												} else {
@@ -33928,8 +33972,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
-													// Выходим из функции
-													return true;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -33971,52 +34013,76 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														// Если установлена функция обратного вызова
-														if(client->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+													if((result = (bytes > 0))){
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, static_cast <size_t> (bytes));
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE: {
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+																// Переводим сокет обратно в неблокирующий режим
+																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Выходим из функции
-														return result;
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, error, ::strerror(errno));
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																#endif
+															}
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
+														}
 													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Если данные отправлены успешно
+													if(result)
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -34056,88 +34122,77 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Если установлена функция обратного вызова
-													if(client->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, &this->_eth, this->_log);
+														}
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Устанавливаем результат выполнения функции
-												result = (static_cast <size_t> (bytes) == size);
 											}
 										// Если клиент находится в запущенном состоянии
 										} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
-											// Получаем размер буфера данных для записи
-											const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-											// Если мы пытаемся записать в буфер данных больше чем он может принять
-											if(size > bufferSize){
-												// Если установлена функция обратного вызова
-												if(client->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													client->callbacks.status(client->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-												// Если установлена функция обратного вызова
-												if(client->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, event::error_t::INSUFFICIENT_RES, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												}
-												// Выходим из функции
-												return result;
-											}
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(client->transfer.queue.empty()){
+												if(!(result = !client->transfer.queue.empty())){
 													/**
 													 * Если операционной системой является FreeBSD
 													 */
@@ -34170,71 +34225,73 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Если данные отправлены успешно
 													if((result = (bytes > 0))){
 														// Если функция обратного вызова для вывода записанных данных установлена
-														if(client->callbacks.write != nullptr){
+														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, static_cast <size_t> (bytes));
-															// Если дескриптор сокета стал недействительным
-															if(client->transfer.fd == net::invalid_socket_t)
-																// Выходим из функции
-																return result;
-														}
-													// Если мы отправили не все данные
-													} else if(bytes == -1) {
-														// Если нам нужно повторить попытку позже
-														if((result = (errno == EAGAIN))){
-															{
-																// Выполняем блокировку уникальным мютексом
-																const locker_t <> lock(client->transfer.mtx);
-																// Сохраняем оставшиеся данные для последующей отправки
-																client->transfer.queue.push(data, size);
-															}{
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Активируем событие на ожидание готовности сокета на запись
-																EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-																// Если таймаут не установлен
-																if(client->timeout == event::action_t::NONE){
-																	// Выполняем проверку на наличие таймаута для события записи
-																	auto i = client->timeouts.find(event::action_t::WRITE);
-																	// Если нужный нам таймаут найден
-																	if((i != client->timeouts.end()) && (i->second > 0)){
-																		// Активируем таймаут события
-																		client->timeout = i->first;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на получение данных
-																		EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+															break;
+															// Если нам нужно попытаться отправить позже
+															case EAGAIN: {
+																{
+																	// Выполняем блокировку уникальным мютексом
+																	const locker_t <> lock(client->transfer.mtx);
+																	// Сохраняем оставшиеся данные для последующей отправки
+																	client->transfer.queue.push(data, size);
+																}{
+																	// Выполняем блокировку потоков
+																	const locker_t <> lock(::local::mtx);
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Активируем событие на ожидание готовности сокета на запись
+																	EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+																	// Если таймаут не установлен
+																	if(client->timeout == event::action_t::NONE){
+																		// Выполняем проверку на наличие таймаута для события записи
+																		auto i = client->timeouts.find(event::action_t::WRITE);
+																		// Если нужный нам таймаут найден
+																		if((i != client->timeouts.end()) && (i->second > 0)){
+																			// Активируем таймаут события
+																			client->timeout = i->first;
+																			// Добавляем новое событие в список изменений
+																			::local::change.push_back((struct kevent){});
+																			// Устанавливаем таймаут на получение данных
+																			EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (i->second), client);
+																		}
 																	}
 																}
-															}
-															// Если функция обратного вызова для вывода записанных данных установлена
-															if(client->callbacks.write != nullptr)
-																// Вызываем функцию обратного вызова для вывода записанных данных
-																client->callbacks.write(client->id, 0);
-															// Выходим из функции
-															return result;
-														// Если мы пытаемся отправить данные на несуществующий узел
-														} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-															// Выполняем обработку закрытия подключения
-															if(::io::close(client, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(client, &this->_eth, this->_log);
-															// Выходим из функции
-															return result;
-														// Если произошла ошибка при отправке данных
-														} else {
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
+														}
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																client->callbacks.status(client->id, event::status_t::FAILURE);
-															// Устанавливаем текст ошибки
-															const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
+																client->callbacks.error(client->id, error, ::strerror(errno));
 															// Если функция обратного вызова для вывода события установлена
 															else {
 																/**
@@ -34242,26 +34299,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
-															// Выходим из функции
-															return result;
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
 														}
-													// Если произошёл дисконнект
-													} else {
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
 													}
 												// Если очередь передачи данных не пуста
 												} else {
@@ -34275,8 +34329,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
-													// Выходим из функции
-													return true;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -34318,52 +34370,76 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
-													if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(client, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(client, &this->_eth, this->_log);
-														// Выходим из функции
-														return result;
-													// Если произошла какая-то ошибка при отправке данных
-													} else if(bytes == -1) {
-														// Переводим сокет обратно в неблокирующий режим
-														this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														// Если установлена функция обратного вызова
-														if(client->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															client->callbacks.status(client->id, event::status_t::FAILURE);
-														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-														// Если установлена функция обратного вызова
-														if(client->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
+													if((result = (bytes > 0))){
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, static_cast <size_t> (bytes));
+													// Если данные не отправлены
+													} else {
+														// Идентификатор полученной ошибки
+														event::error_t error = event::error_t::NONE;
+														/**
+														 * Определяем возникшую ошибку
+														 */
+														switch(errno){
+															// Если ошибки нет
+															case 0: break;
+															// Если мы получили ошибку отправки слишком большого пакета
+															case EMSGSIZE: {
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::PACKET_TOO_BIG;
+																// Переводим сокет обратно в неблокирующий режим
+																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															} break;
+															// Если мы получили другую непонятную ошибку
+															default:
+																// Устанавливаем идентификатор полученной ошибки
+																error = event::error_t::INVALID_SOCKET;
 														}
-														// Выходим из функции
-														return result;
+														// Если функция обратного вызова для вывода записанных данных установлена
+														if(client->callbacks.write != nullptr)
+															// Вызываем функцию обратного вызова для вывода записанных данных
+															client->callbacks.write(client->id, 0);
+														// Если данные не записаны в сокет
+														if(!(result = (error == event::error_t::NONE))){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, error, ::strerror(errno));
+															// Если функция обратного вызова для вывода события установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																#endif
+															}
+															// Если сокет повреждён
+															if(error == event::error_t::INVALID_SOCKET){
+																// Выполняем обработку закрытия подключения
+																if(::io::close(client, this->_log))
+																	// Выполняем удаление узла
+																	::io::destroy(client, &this->_eth, this->_log);
+															}
+														}
 													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(client->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														client->callbacks.write(client->id, static_cast <size_t> (bytes));
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Если данные отправлены успешно
+													if(result)
+														// Переводим сокет обратно в неблокирующий режим
+														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -34403,48 +34479,70 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												#endif
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(client, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Если установлена функция обратного вызова
-													if(client->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														client->callbacks.status(client->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from client: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(client->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+													}
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(client->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														client->callbacks.write(client->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															client->callbacks.status(client->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(client->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															client->callbacks.error(client->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(client, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(client, &this->_eth, this->_log);
+														}
 													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(client->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													client->callbacks.write(client->id, static_cast <size_t> (bytes));
-												// Устанавливаем результат выполнения функции
-												result = (static_cast <size_t> (bytes) == size);
 											}
 										// Если клиент ещё не подготовлен для отправки данных
 										} else {
@@ -34494,39 +34592,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								switch(static_cast <uint8_t> (server->state.type)){
 									// Если сокет принадлежит к типу RAW
 									case static_cast <uint8_t> (event::type_t::RAW): {
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Если установлена функция обратного вызова
-											if(server->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												server->callbacks.status(server->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(server->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
 										// Если сокет является неблокирующим
 										if(server->state.options & event::options::NO_IO_BLOCK){
 											// Выполняем отправку данных в RAW-сокет
@@ -34534,44 +34599,54 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если данные отправлены успешно
 											if((result = (bytes > 0))){
 												// Если функция обратного вызова для вывода записанных данных установлена
-												if(server->callbacks.write != nullptr){
+												if(server->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(server->fd == net::invalid_socket_t)
-														// Выходим из функции
-														return result;
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если нам нужно попытаться отправить позже
+													case EAGAIN: break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
 												}
-											// Если мы отправили не все данные
-											} else if(bytes == -1) {
-												// Если нам нужно повторить попытку позже
-												if(errno == EAGAIN){
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(server->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														server->callbacks.write(server->id, 0);
-													// Выходим из функции
-													return result;
-												// Если мы пытаемся отправить данные на несуществующий узел
-												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(server, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(server, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла ошибка при отправке данных
-												} else {
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(server->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													server->callbacks.write(server->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														server->callbacks.status(server->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+														server->callbacks.error(server->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -34579,26 +34654,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
-													// Выходим из функции
-													return result;
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(server, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(server, &this->_eth, this->_log);
+													}
 												}
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(::io::close(server, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(server, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
 											}
 										// Если сокет является полублокирующим
 										} else if(server->state.options & event::options::SM_IO_BLOCK) {
@@ -34613,52 +34685,88 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(server, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(server, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-													// Если установлена функция обратного вызова
-													if(server->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														server->callbacks.status(server->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(server->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(server->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														server->callbacks.write(server->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														} break;
+														// Если сокет является недействительным
+														case EBADF:
+														// Если нет такого ресурса
+														case ENOENT:
+														// Если получатель недоступен
+														case EINVAL:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::EVENT_FAIL;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														}
 													}
-													// Выходим из функции
-													return result;
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(server->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														server->callbacks.write(server->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(server->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															server->callbacks.status(server->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(server->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															server->callbacks.error(server->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(server, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(server, &this->_eth, this->_log);
+														}
+													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(server->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													server->callbacks.write(server->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если данные отправлены успешно
+												if(result)
+													// Переводим сокет обратно в неблокирующий режим
+													result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -34671,48 +34779,79 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(server, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(server, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Если установлена функция обратного вызова
-												if(server->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													server->callbacks.status(server->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(server->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(server->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													server->callbacks.write(server->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(server->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													server->callbacks.write(server->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, error, ::strerror(errno));
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														#endif
+													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(server, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(server, &this->_eth, this->_log);
+													}
 												}
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(server->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												server->callbacks.write(server->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									/**
@@ -34724,39 +34863,6 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									#endif
 									// Если сокет принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Получаем размер буфера данных для записи
-										const size_t bufferSize = this->bufferSize(id, event::action_t::WRITE);
-										// Если мы пытаемся записать в буфер данных больше чем он может принять
-										if(size > bufferSize){
-											// Если установлена функция обратного вызова
-											if(server->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												server->callbacks.status(server->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You are trying to send %zu bytes, but send buffer can only accept %zu bytes", size, bufferSize);
-											// Если установлена функция обратного вызова
-											if(server->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::INSUFFICIENT_RES, error);
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-												#endif
-											}
-											// Выходим из функции
-											return result;
-										}
 										// Если сокет является неблокирующим
 										if(server->state.options & event::options::NO_IO_BLOCK){
 											// Выполняем отправку данных в UDP-сокет
@@ -34767,34 +34873,51 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(server->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, static_cast <size_t> (bytes));
-											// Если мы отправили не все данные
-											} else if(bytes == -1) {
-												// Если нам нужно повторить попытку позже
-												if(errno == EAGAIN){
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(server->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														server->callbacks.write(server->id, 0);
-												// Если мы пытаемся отправить данные на несуществующий узел
-												} else if((errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)) {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(server, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(server, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла ошибка при отправке данных
-												} else {
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если нам нужно попытаться отправить позже
+													case EAGAIN: break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(server->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													server->callbacks.write(server->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
 														server->callbacks.status(server->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
+														server->callbacks.error(server->id, error, ::strerror(errno));
 													// Если функция обратного вызова для вывода события установлена
 													else {
 														/**
@@ -34802,26 +34925,23 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(server, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(server, &this->_eth, this->_log);
+													}
 												}
-												// Выходим из функции
-												return result;
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(::io::close(server, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(server, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
 											}
 										// Если сокет является полублокирующим
 										} else if(server->state.options & event::options::SM_IO_BLOCK) {
@@ -34836,52 +34956,85 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
-												if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(server, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(server, &this->_eth, this->_log);
-													// Выходим из функции
-													return result;
-												// Если произошла какая-то ошибка при отправке данных
-												} else if(bytes == -1) {
-													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-													// Если установлена функция обратного вызова
-													if(server->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														server->callbacks.status(server->id, event::status_t::FAILURE);
-													// Устанавливаем текст ошибки
-													const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
-													// Если установлена функция обратного вызова
-													if(server->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
+												if((result = (bytes > 0))){
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(server->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														server->callbacks.write(server->id, static_cast <size_t> (bytes));
+												// Если данные не отправлены
+												} else {
+													// Идентификатор полученной ошибки
+													event::error_t error = event::error_t::NONE;
+													/**
+													 * Определяем возникшую ошибку
+													 */
+													switch(errno){
+														// Если ошибки нет
+														case 0: break;
+														// Если мы получили ошибку отправки слишком большого пакета
+														case EMSGSIZE: {
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::PACKET_TOO_BIG;
+															// Переводим сокет обратно в неблокирующий режим
+															this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+														} break;
+														// Если сокет является недействительным
+														case EBADF:
+														// Если нет такого ресурса
+														case ENOENT:
+														// Если получатель недоступен
+														case EINVAL:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::INVALID_SOCKET;
+														break;
+														// Если мы получили другую непонятную ошибку
+														default:
+															// Устанавливаем идентификатор полученной ошибки
+															error = event::error_t::EVENT_FAIL;
 													}
-													// Выходим из функции
-													return result;
+													// Если функция обратного вызова для вывода записанных данных установлена
+													if(server->callbacks.write != nullptr)
+														// Вызываем функцию обратного вызова для вывода записанных данных
+														server->callbacks.write(server->id, 0);
+													// Если данные не записаны в сокет
+													if(!(result = (error == event::error_t::NONE))){
+														// Если установлена функция обратного вызова
+														if(server->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об ошибке отказа
+															server->callbacks.status(server->id, event::status_t::FAILURE);
+														// Если установлена функция обратного вызова
+														if(server->callbacks.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки события
+															server->callbacks.error(server->id, error, ::strerror(errno));
+														// Если функция обратного вызова для вывода события установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															#endif
+														}
+														// Если сокет повреждён
+														if(error == event::error_t::INVALID_SOCKET){
+															// Выполняем обработку закрытия подключения
+															if(::io::close(server, this->_log))
+																// Выполняем удаление узла
+																::io::destroy(server, &this->_eth, this->_log);
+														}
+													}
 												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(server->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													server->callbacks.write(server->id, static_cast <size_t> (bytes));
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Если данные отправлены успешно
+												if(result)
+													// Переводим сокет обратно в неблокирующий режим
+													result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -34894,48 +35047,79 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if((bytes == 0) || (errno == ENOENT) || (errno == EPIPE) || (errno == ECONNRESET)){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(server, this->_log))
-													// Выполняем удаление узла
-													::io::destroy(server, &this->_eth, this->_log);
-												// Выходим из функции
-												return result;
-											// Если произошла какая-то ошибка при отправке данных
-											} else if(bytes == -1) {
-												// Если установлена функция обратного вызова
-												if(server->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													server->callbacks.status(server->id, event::status_t::FAILURE);
-												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Failed to send data from server: %s", ::strerror(errno));
-												// Если установлена функция обратного вызова
-												if(server->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+											if((result = (bytes > 0))){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(server->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													server->callbacks.write(server->id, static_cast <size_t> (bytes));
+											// Если данные не отправлены
+											} else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если сокет является недействительным
+													case EBADF:
+													// Если нет такого ресурса
+													case ENOENT:
+													// Если получатель недоступен
+													case EINVAL:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(server->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													server->callbacks.write(server->id, 0);
+												// Если данные не записаны в сокет
+												if(!(result = (error == event::error_t::NONE))){
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, error, ::strerror(errno));
+													// Если функция обратного вызова для вывода события установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														#endif
+													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Выполняем обработку закрытия подключения
+														if(::io::close(server, this->_log))
+															// Выполняем удаление узла
+															::io::destroy(server, &this->_eth, this->_log);
+													}
 												}
 											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(server->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												server->callbacks.write(server->id, static_cast <size_t> (bytes));
-											// Устанавливаем результат выполнения функции
-											result = (static_cast <size_t> (bytes) == size);
 										}
 									} break;
 									// Для остальных типов сокетов
