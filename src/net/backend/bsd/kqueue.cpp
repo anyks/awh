@@ -1404,7 +1404,6 @@ namespace io {
 	 * Подписываемся на пространство имён AWH
 	 */
 	using namespace awh;
-
 	/**
 	 * @brief Функция генерации уникального идентификатора
 	 *
@@ -3441,6 +3440,34 @@ namespace io {
 								peer->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Устанавливаем статус события в состояние успешного подключения
 								peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+								// Инициализируем идентификатор события для таймаута чтения данных
+								peer->timeouts2.read.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута записи данных
+								peer->timeouts2.write.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+								peer->bandwidth.read.timeout.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+								peer->bandwidth.write.timeout.id = ::io::identifier();
+								// Устанавливаем таймаут на чтение данных для нового подключения
+								peer->timeouts2.read.delay = node->timeouts2.read.delay;
+								// Устанавливаем таймаут на запись данных для нового подключения
+								peer->timeouts2.write.delay = node->timeouts2.write.delay;
+								// Устанавливаем таймаут пропускной способности на чтение данных для нового подключения
+								peer->bandwidth.read.timeout.delay = node->bandwidth.read.timeout.delay;
+								// Устанавливаем таймаут пропускной способности на запись данных для нового подключения
+								peer->bandwidth.write.timeout.delay = node->bandwidth.write.timeout.delay;
+								// Устанавливаем время пропускной способности на чтение данных для нового подключения
+								peer->bandwidth.read.time = node->bandwidth.read.time;
+								// Устанавливаем лимит пропускной способности на чтение данных для нового подключения
+								peer->bandwidth.read.limit = node->bandwidth.read.limit;
+								// Устанавливаем размер пакета пропускной способности на чтение данных для нового подключения
+								peer->bandwidth.read.batch = node->bandwidth.read.batch;
+								// Устанавливаем время пропускной способности на запись данных для нового подключения
+								peer->bandwidth.write.time = node->bandwidth.write.time;
+								// Устанавливаем лимит пропускной способности на запись данных для нового подключения
+								peer->bandwidth.write.limit = node->bandwidth.write.limit;
+								// Устанавливаем размер пакета пропускной способности на запись данных для нового подключения
+								peer->bandwidth.write.batch = node->bandwidth.write.batch;
 								// Выполняем блокировку потоков
 								const locker_t <> lock(::local::mtx);
 								// Добавляем новое событие в список изменений
@@ -9652,6 +9679,34 @@ namespace io {
 						origin->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						// Устанавливаем статус события в состояние успешного подключения
 						origin->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+						// Инициализируем идентификатор события для таймаута чтения данных
+						origin->timeouts2.read.id = ::io::identifier();
+						// Инициализируем идентификатор события для таймаута записи данных
+						origin->timeouts2.write.id = ::io::identifier();
+						// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+						origin->bandwidth.read.timeout.id = ::io::identifier();
+						// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+						origin->bandwidth.write.timeout.id = ::io::identifier();
+						// Устанавливаем таймаут на чтение данных для нового подключения
+						origin->timeouts2.read.delay = node->timeouts2.read.delay;
+						// Устанавливаем таймаут на запись данных для нового подключения
+						origin->timeouts2.write.delay = node->timeouts2.write.delay;
+						// Устанавливаем таймаут пропускной способности на чтение данных для нового подключения
+						origin->bandwidth.read.timeout.delay = node->bandwidth.read.timeout.delay;
+						// Устанавливаем таймаут пропускной способности на запись данных для нового подключения
+						origin->bandwidth.write.timeout.delay = node->bandwidth.write.timeout.delay;
+						// Устанавливаем время пропускной способности на чтение данных для нового подключения
+						origin->bandwidth.read.time = node->bandwidth.read.time;
+						// Устанавливаем лимит пропускной способности на чтение данных для нового подключения
+						origin->bandwidth.read.limit = node->bandwidth.read.limit;
+						// Устанавливаем размер пакета пропускной способности на чтение данных для нового подключения
+						origin->bandwidth.read.batch = node->bandwidth.read.batch;
+						// Устанавливаем время пропускной способности на запись данных для нового подключения
+						origin->bandwidth.write.time = node->bandwidth.write.time;
+						// Устанавливаем лимит пропускной способности на запись данных для нового подключения
+						origin->bandwidth.write.limit = node->bandwidth.write.limit;
+						// Устанавливаем размер пакета пропускной способности на запись данных для нового подключения
+						origin->bandwidth.write.batch = node->bandwidth.write.batch;
 						// Если сокет является неблокирующим
 						if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 							// Если необходимо установить таймаут на получение данных
@@ -24074,10 +24129,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						ret.first->second->state.protocol = protocol;
 						// Получаем объект туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (ret.first->second.get());
-						// Активируем или деактивируем работу мютексов для передачи данных
-						tunnel->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 						// Если файловый дескриптор туннеля создан успешно
 						if((tunnel->fd = this->_eth.iface.create(event::eth_t::TUN, tunnel->iface)) != net::invalid_socket_t){
+							// Активируем или деактивируем работу мютексов для передачи данных
+							tunnel->mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 							/**
 							 * Определяем тип подключения
 							 */
@@ -24448,20 +24503,35 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_uds_t> ();
-								// Получаем объект хоста UDS-сокета
-								net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
-								// Выполняем инициализацию объекта адреса файловой системы
-								target->path = make_unique <net::addr_fs_t> ();
-								// Активируем или деактивируем работу мютексов для передачи данных
-								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
 								// Выполняем создание сокета
 								if(!::io::socket(client, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								else return ret.first->first;
+								// Если сокет не создан
+								else {
+									// Выполняем инициализацию объекта хоста клиента
+									client->target = make_unique <net::attr_uds_t> ();
+									// Получаем объект хоста UDS-сокета
+									net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
+									// Выполняем инициализацию объекта адреса файловой системы
+									target->path = make_unique <net::addr_fs_t> ();
+									// Активируем или деактивируем работу мютексов для передачи данных
+									client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+									// Инициализируем идентификатор события для таймаута чтения данных
+									client->timeouts2.read.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута записи данных
+									client->timeouts2.write.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута подключения
+									client->timeouts2.connect.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута повторного подключения
+									client->timeouts2.reconnect.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+									client->bandwidth.read.timeout.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+									client->bandwidth.write.timeout.id = ::io::identifier();
+									// Возвращаем идентификатор созданного события
+									return ret.first->first;
+								}
 							} break;
 							// Для неизвестного типа сокета
 							default: {
@@ -24521,31 +24591,31 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста клиента
-								client->target = make_unique <net::attr_net_t> ();
-								// Активируем или деактивируем работу мютексов для передачи данных
-								client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса клиента
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
 								// Выполняем создание сокета
 								if(!::io::socket(client, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
 								// Если сокет не создан
 								else {
+									// Выполняем инициализацию объекта хоста клиента
+									client->target = make_unique <net::attr_net_t> ();
+									// Активируем или деактивируем работу мютексов для передачи данных
+									client->transfer.mtx.enabled = (::local::threadSafety == event::mode_t::ENABLED);
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем инициализацию объекта IP-адреса клиента
+											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем инициализацию объекта IP-адреса клиента
+											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										break;
+									}
 									/**
 									 * Определяем семейство события
 									 */
@@ -24569,6 +24639,18 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 											client->source = ::move(source.ip);
 										} break;
 									}
+									// Инициализируем идентификатор события для таймаута чтения данных
+									client->timeouts2.read.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута записи данных
+									client->timeouts2.write.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута подключения
+									client->timeouts2.connect.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута повторного подключения
+									client->timeouts2.reconnect.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+									client->bandwidth.read.timeout.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+									client->bandwidth.write.timeout.id = ::io::identifier();
 									// Возвращаем идентификатор созданного события
 									return ret.first->first;
 								}
@@ -24661,18 +24743,29 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_uds_t> ();
-								// Получаем объект хоста UDS-сокета
-								net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
-								// Выполняем инициализацию объекта адреса файловой системы
-								host->path = make_unique <net::addr_fs_t> ();
 								// Выполняем создание сокета
 								if(!::io::socket(server, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								else return ret.first->first;
+								// Если сокет не создан
+								else {
+									// Выполняем инициализацию объекта хоста сервера
+									server->host = make_unique <net::attr_uds_t> ();
+									// Получаем объект хоста UDS-сокета
+									net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
+									// Выполняем инициализацию объекта адреса файловой системы
+									host->path = make_unique <net::addr_fs_t> ();
+									// Инициализируем идентификатор события для таймаута чтения данных
+									server->timeouts2.read.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута записи данных
+									server->timeouts2.write.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+									server->bandwidth.read.timeout.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+									server->bandwidth.write.timeout.id = ::io::identifier();
+									// Возвращаем идентификатор созданного события
+									return ret.first->first;
+								}
 							} break;
 							// Для неизвестного типа сокета
 							default: {
@@ -24732,29 +24825,40 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
-								// Выполняем инициализацию объекта хоста сервера
-								server->host = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем тип подключения
-								 */
-								switch(static_cast <uint8_t> (family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
-										// Выполняем инициализацию объекта IP-адреса сервера
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
-								}
 								// Выполняем создание сокета
 								if(!::io::socket(server, &this->_eth, this->_log))
 									// Удаляем созданное событие
 									::__awh_nodes__.erase(ret.first);
-								// Возвращаем идентификатор созданного события
-								else return ret.first->first;
+								// Если сокет не создан
+								else {
+									// Выполняем инициализацию объекта хоста сервера
+									server->host = make_unique <net::attr_net_t> ();
+									/**
+									 * Определяем тип подключения
+									 */
+									switch(static_cast <uint8_t> (family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем инициализацию объекта IP-адреса сервера
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем инициализацию объекта IP-адреса сервера
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										break;
+									}
+									// Инициализируем идентификатор события для таймаута чтения данных
+									server->timeouts2.read.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута записи данных
+									server->timeouts2.write.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+									server->bandwidth.read.timeout.id = ::io::identifier();
+									// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+									server->bandwidth.write.timeout.id = ::io::identifier();
+									// Возвращаем идентификатор созданного события
+									return ret.first->first;
+								}
 							} break;
 							// Для неизвестного типа сокета
 							default: {
@@ -24936,6 +25040,18 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 									} break;
 								}
+								// Инициализируем идентификатор события для таймаута чтения данных
+								client->timeouts2.read.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута записи данных
+								client->timeouts2.write.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута подключения
+								client->timeouts2.connect.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута повторного подключения
+								client->timeouts2.reconnect.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+								client->bandwidth.read.timeout.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+								client->bandwidth.write.timeout.id = ::io::identifier();
 								// Возвращаем идентификатор созданного события
 								result[i] = ret.first->first;
 							} break;
@@ -24978,6 +25094,14 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 									} break;
 								}
+								// Инициализируем идентификатор события для таймаута чтения данных
+								server->timeouts2.read.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута записи данных
+								server->timeouts2.write.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута пропускной способности (чтение)
+								server->bandwidth.read.timeout.id = ::io::identifier();
+								// Инициализируем идентификатор события для таймаута пропускной способности (запись)
+								server->bandwidth.write.timeout.id = ::io::identifier();
 								// Возвращаем идентификатор созданного события
 								result[i] = ret.first->first;
 							} break;
@@ -26138,34 +26262,88 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 														case static_cast <uint8_t> (event::node_t::PEER): {
 															// Получаем текущее значение объекта однорангового узла
 															::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-															// Если необходимо установить таймаут на чтение данных
-															auto j = peer->timeouts.find(event::action_t::READ);
-															// Если таймаут на подключение найден
-															if((j != peer->timeouts.end()) && (j->second > 0)){
-																// Активируем таймаут события
-																peer->timeout = j->first;
+															// Если необходимо активировать таймаут на чтение для однорангового узла
+															if(peer->timeouts2.read.delay > 0){
+																// Устанавливаем статус таймаута на чтение как ожидающий
+																peer->timeouts2.read.status = event::status_t::PENDING;
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), peer);
+																EV_SET(&::local::change.back(), peer->timeouts2.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts2.read.delay), peer);
+															}
+															// Если необходимо активировать таймаут на запись для однорангового узла
+															if(peer->timeouts2.write.delay > 0){
+																// Устанавливаем статус таймаута на запись как ожидающий
+																peer->timeouts2.write.status = event::status_t::PENDING;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на отправку данных
+																EV_SET(&::local::change.back(), peer->timeouts2.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts2.write.delay), peer);
+															}
+															// Если необходимо активировать таймаут ограничителя скорости на чтение для однорангового узла
+															if(peer->bandwidth.read.timeout.delay > 0){
+																// Устанавливаем статус таймаута ограничителя скорости на чтение как ожидающий
+																peer->bandwidth.read.timeout.status = event::status_t::PENDING;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут ограничителя скорости на получение данных
+																EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
 															}
 														} break;
 														// Если узел является клиентом
 														case static_cast <uint8_t> (event::node_t::CLIENT): {
 															// Получаем текущее значение объекта клиента
 															::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-															// Если таймаут уже был активирован
-															if(client->timeout != event::action_t::RECONNECT){
-																// Если необходимо установить таймаут на чтение данных
-																auto j = client->timeouts.find(event::action_t::READ);
-																// Если таймаут на подключение найден
-																if((j != client->timeouts.end()) && (j->second > 0)){
-																	// Активируем таймаут события
-																	client->timeout = j->first;
+															// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
+															if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+																// Если необходимо активировать таймаут на подключение к серверу
+																if(client->timeouts2.connect.delay > 0){
+																	// Устанавливаем статус таймаута на подключение как ожидающий
+																	client->timeouts2.connect.status = event::status_t::PENDING;
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на подключение к серверу
+																	EV_SET(&::local::change.back(), client->timeouts2.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts2.connect.delay), client);
+																}
+															// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
+															} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
+																// Если необходимо активировать таймаут на переподключение к серверу
+																if(client->timeouts2.reconnect.delay > 0){
+																	// Устанавливаем статус таймаута на переподключение как ожидающий
+																	client->timeouts2.reconnect.status = event::status_t::PENDING;
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на переподключение к серверу
+																	EV_SET(&::local::change.back(), client->timeouts2.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts2.reconnect.delay), client);
+																}
+															// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
+															} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
+																// Если необходимо активировать таймаут на чтение для клиента
+																if(client->timeouts2.read.delay > 0){
+																	// Устанавливаем статус таймаута на чтение как ожидающий
+																	client->timeouts2.read.status = event::status_t::PENDING;
 																	// Добавляем новое событие в список изменений
 																	::local::change.push_back((struct kevent){});
 																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (j->second), client);
+																	EV_SET(&::local::change.back(), client->timeouts2.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts2.read.delay), client);
+																}
+																// Если необходимо активировать таймаут на запись для клиента
+																if(client->timeouts2.write.delay > 0){
+																	// Устанавливаем статус таймаута на запись как ожидающий
+																	client->timeouts2.write.status = event::status_t::PENDING;
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут на отправку данных
+																	EV_SET(&::local::change.back(), client->timeouts2.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts2.write.delay), client);
+																}
+																// Если необходимо активировать таймаут ограничителя скорости на чтение для клиента
+																if(client->bandwidth.read.timeout.delay > 0){
+																	// Устанавливаем статус таймаута ограничителя скорости на чтение как ожидающий
+																	client->bandwidth.read.timeout.status = event::status_t::PENDING;
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Устанавливаем таймаут ограничителя скорости на получение данных
+																	EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
 																}
 															}
 														} break;
@@ -26230,39 +26408,89 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 														case static_cast <uint8_t> (event::node_t::PEER): {
 															// Получаем текущее значение объекта однорангового узла
 															::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-															// Если таймаут уже был активирован
-															if(peer->timeout != event::action_t::NONE){
+															// Если таймаут на чтение уже был активирован
+															if(peer->timeouts2.read.status == event::status_t::PENDING){
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Удаляем таймаут на получение данных
-																EV_SET(&::local::change.back(), peer->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															}
-															// Если необходимо установить таймаут на чтение данных
-															auto j = peer->timeouts.find(event::action_t::READ);
-															// Если таймаут на подключение найден
-															if((j != peer->timeouts.end()) && (j->second > 0))
+																EV_SET(&::local::change.back(), peer->timeouts2.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 																// Устанавливаем таймаут на получение данных
-																this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+																this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (peer->timeouts2.read.delay));
+															}
+															// Если таймаут на запись уже был активирован
+															if(peer->timeouts2.write.status == event::status_t::PENDING){
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Удаляем таймаут на запись данных
+																EV_SET(&::local::change.back(), peer->timeouts2.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+															}
+															// Если таймаут ограничителя скорости на чтение уже был активирован
+															if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Удаляем таймаут на получение данных
+																EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+															}
+															// Если таймаут ограничителя скорости на запись уже был активирован
+															if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Удаляем таймаут на получение данных
+																EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+															}
 														} break;
 														// Если узел является клиентом
 														case static_cast <uint8_t> (event::node_t::CLIENT): {
 															// Получаем текущее значение объекта клиента
 															::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-															// Если таймаут уже был активирован и не является таймаутом на переподключение
-															if((client->timeout != event::action_t::NONE) && (client->timeout != event::action_t::RECONNECT)){
+															// Если таймаут на подключение уже был активирован
+															if(client->timeouts2.connect.status == event::status_t::PENDING){
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
-																// Удаляем таймаут на получение данных
-																EV_SET(&::local::change.back(), client->id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-															}
-															// Если таймаут не является таймаутом на переподключение
-															if(client->timeout != event::action_t::RECONNECT){
-																// Если необходимо установить таймаут на чтение данных
-																auto j = client->timeouts.find(event::action_t::READ);
-																// Если таймаут на подключение найден
-																if((j != client->timeouts.end()) && (j->second > 0))
+																// Удаляем таймаут на подключение к серверу
+																EV_SET(&::local::change.back(), client->timeouts2.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																// Устанавливаем таймаут на запись данных
+																this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts2.connect.delay));
+															// Если таймаут на переподключение уже был активирован
+															} else if(client->timeouts2.reconnect.status == event::status_t::PENDING) {
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Удаляем таймаут на переподключение к серверу
+																EV_SET(&::local::change.back(), client->timeouts2.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																// Устанавливаем таймаут на запись данных
+																this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts2.reconnect.delay));
+															// Если таймауты ни на подключение, не на переподключения активированы небыли
+															} else {
+																// Если таймаут на чтение уже был активирован
+																if(client->timeouts2.read.status == event::status_t::PENDING){
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Удаляем таймаут на получение данных
+																	EV_SET(&::local::change.back(), client->timeouts2.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 																	// Устанавливаем таймаут на получение данных
-																	this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (j->second));
+																	this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, static_cast <uint32_t> (client->timeouts2.read.delay));
+																}
+																// Если таймаут на запись уже был активирован
+																if(client->timeouts2.write.status == event::status_t::PENDING){
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Удаляем таймаут на запись данных
+																	EV_SET(&::local::change.back(), client->timeouts2.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																}
+																// Если таймаут ограничителя скорости на чтение уже был активирован
+																if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Удаляем таймаут на получение данных
+																	EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																}
+																// Если таймаут ограничителя скорости на запись уже был активирован
+																if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
+																	// Добавляем новое событие в список изменений
+																	::local::change.push_back((struct kevent){});
+																	// Удаляем таймаут на получение данных
+																	EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																}
 															}
 														} break;
 													}
@@ -36749,23 +36977,37 @@ uint32_t awh::engine::IO::timeout(const event::id_t id, const event::action_t ac
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-					// Выполняем поиск таймаута для действия события
-					auto i = peer->timeouts.find(action);
-					// Если таймаут для действия события найден
-					if(i != peer->timeouts.end())
-						// Выводим значение таймаута для действия события
-						return i->second;
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение таймаута для действия чтения
+							return peer->timeouts2.read.delay;
+						// Если действие является записью
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение таймаута для действия записи
+							return peer->timeouts2.write.delay;
+					}
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем объект события однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-					// Выполняем поиск таймаута для действия события
-					auto i = origin->timeouts.find(action);
-					// Если таймаут для действия события найден
-					if(i != origin->timeouts.end())
-						// Выводим значение таймаута для действия события
-						return i->second;
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение таймаута для действия чтения
+							return origin->timeouts2.read.delay;
+						// Если действие является записью
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение таймаута для действия записи
+							return origin->timeouts2.write.delay;
+					}
 				} break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -36780,23 +37022,45 @@ uint32_t awh::engine::IO::timeout(const event::id_t id, const event::action_t ac
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем объект события клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Выполняем поиск таймаута для действия события
-					auto i = client->timeouts.find(action);
-					// Если таймаут для действия события найден
-					if(i != client->timeouts.end())
-						// Выводим значение таймаута для действия события
-						return i->second;
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение таймаута для действия чтения
+							return client->timeouts2.read.delay;
+						// Если действие является записью
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение таймаута для действия записи
+							return client->timeouts2.write.delay;
+						// Если действие является соединением
+						case static_cast <uint8_t> (event::action_t::CONNECT):
+							// Выводим значение таймаута для действия соединения
+							return client->timeouts2.connect.delay;
+						// Если действие является переподключением
+						case static_cast <uint8_t> (event::action_t::RECONNECT):
+							// Выводим значение таймаута для действия переподключения
+							return client->timeouts2.reconnect.delay;
+					}
 				} break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем объект события сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-					// Выполняем поиск таймаута для действия события
-					auto i = server->timeouts.find(action);
-					// Если таймаут для действия события найден
-					if(i != server->timeouts.end())
-						// Выводим значение таймаута для действия события
-						return i->second;
+					/**
+					 * Определяем тип действия события
+					 */
+					switch(static_cast <uint8_t> (action)){
+						// Если действие является чтением
+						case static_cast <uint8_t> (event::action_t::READ):
+							// Выводим значение таймаута для действия чтения
+							return server->timeouts2.read.delay;
+						// Если действие является записью
+						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Выводим значение таймаута для действия записи
+							return server->timeouts2.write.delay;
+					}
 				} break;
 				// Для других типов узлов
 				default: {
@@ -36919,10 +37183,13 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
+							// Устанавливаем значение таймаута для действия события
+							awh_cast <::io::peer_t *> (i->second.get())->timeouts2.read.delay = timeout;
+						break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <::io::peer_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::peer_t *> (i->second.get())->timeouts2.write.delay = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
@@ -36967,10 +37234,13 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
+							// Устанавливаем значение таймаута для действия события
+							awh_cast <::io::origin_t *> (i->second.get())->timeouts2.read.delay = timeout;
+						break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <::io::peer_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::origin_t *> (i->second.get())->timeouts2.write.delay = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
@@ -37024,14 +37294,23 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
+							// Устанавливаем значение таймаута для действия события
+							awh_cast <::io::client_t *> (i->second.get())->timeouts2.read.delay = timeout;
+						break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
+							// Устанавливаем значение таймаута для действия события
+							awh_cast <::io::client_t *> (i->second.get())->timeouts2.write.delay = timeout;
+						break;
 						// Если действие является подключением
 						case static_cast <uint8_t> (event::action_t::CONNECT):
+							// Устанавливаем значение таймаута для действия события
+							awh_cast <::io::client_t *> (i->second.get())->timeouts2.connect.delay = timeout;
+						break;
 						// Если действие является переподключением
 						case static_cast <uint8_t> (event::action_t::RECONNECT):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <::io::client_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::client_t *> (i->second.get())->timeouts2.reconnect.delay = timeout;
 						break;
 						// Для остальных типов действий
 						default: {
@@ -37076,10 +37355,13 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
+							// Устанавливаем значение таймаута для действия события
+							awh_cast <::io::server_t *> (i->second.get())->timeouts2.read.delay = timeout;
+						break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <::io::server_t *> (i->second.get())->timeouts[action] = timeout;
+							awh_cast <::io::server_t *> (i->second.get())->timeouts2.write.delay = timeout;
 						break;
 						// Для остальных типов действий
 						default: {

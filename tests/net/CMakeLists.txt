@@ -130,7 +130,17 @@ if (${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 eth/eth.cpp
                 eth/static.cpp
+                eth/addr.cpp
+                eth/gateway.cpp
+                eth/iface.cpp
+                eth/portmap.cpp
+                eth/socket.cpp
             )
+            # Если операционной системой является FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Дополняем список источников тестами для работы с Ethernet, специфичными для FreeBSD или Linux
+                list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES eth/sctp.cpp)
+            endif()
         # Если не нужно собрать тесты для работы с Ethernet
         else()
             # Выводим сообщение о сборке тестов для модуля работы с Ethernet

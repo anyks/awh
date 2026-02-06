@@ -276,6 +276,20 @@ namespace awh {
 			 path(make_unique <addr_fs_t> ()) {}
 		} attr_uds_t;
 		/**
+		 * @brief Структура сетевого интерфейса
+		 *
+		 */
+		typedef struct Interface {
+			string name;                             // Название интерфейса
+			uint16_t mtu;                            // MTU интерфейса
+			unordered_set <event::eth_flag_t> flags; // Флаги интерфейса
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Interface() noexcept : name{""}, mtu(0), flags{} {}
+		} iface_t;
+		/**
 		 * @brief Структура очереди ожидания подключения
 		 *
 		 */
@@ -326,6 +340,91 @@ namespace awh {
 			 status(event::status_t::NONE),
 			 oldset(event::status_t::NONE) {}
 		} __attribute__((packed)) state_t;
+		/**
+		 * @brief Структура таймаута
+		 *
+		 */
+		typedef struct Timeout {
+			event::id_t id;	        // Идентификатор таймаута
+			uint32_t delay;         // Задержка таймаута в миллисекундах
+			event::status_t status; // Статус таймаута
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Timeout() noexcept :
+			 id(0), status(event::status_t::NONE), delay(0) {}
+		} __attribute__((packed)) timeout_t;
+		/**
+		 * @brief Структура таймаутов
+		 *
+		 */
+		typedef struct Timeouts {
+			// Таймаут чтения
+			timeout_t read;
+			// Таймаут записи
+			timeout_t write;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Timeouts() = default;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Timeouts() = default;
+		} timeouts_t;
+		/**
+		 * @brief Структура таймаутов клиента
+		 *
+		 */
+		typedef struct TimeoutsClient : public Timeouts {
+			// Таймаут подключения
+			timeout_t connect;
+			// Таймаут переподключения
+			timeout_t reconnect;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit TimeoutsClient() = default;
+		} timeouts_client_t;
+		/**
+		 * @brief Структура пропускной способности записи
+		 *
+		 */
+		typedef struct Ratewidth {
+			// Время последнего обновления пропускной способности в наносекундах
+			uint64_t time;
+			// Лимит пропускной способности в битах в секунду
+			uint64_t limit;
+			// Размер пакета в байтах
+			uint16_t batch;
+			// Таймаут пропускной способности
+			timeout_t timeout;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			 explicit Ratewidth() noexcept :
+			  time(0), limit(0), batch(0) {}
+		} wrate_t;
+		/**
+		 * @brief Структура пропускной способности
+		 *
+		 */
+		typedef struct Bandwidth {
+			// Пропускная способность чтения
+			wrate_t read;
+			// Пропускная способность записи
+			wrate_t write;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			 explicit Bandwidth() = default;
+		} bandwidth_t;
 		/**
 		 * @brief Структура обратных вызовов события
 		 *
@@ -594,6 +693,10 @@ namespace awh {
 			unique_ptr <addr_t> mac;
 			// Хост подключения события
 			unique_ptr <attr_t> remote;
+			// Активные таймауты события подключённого клиента
+			timeouts_t timeouts2;
+			// Пропускная способность события подключённого клиента
+			bandwidth_t bandwidth;
 			// Обратные вызовы события
 			peer_callbacks_t callbacks;
 			// Активные таймауты события
@@ -618,6 +721,10 @@ namespace awh {
 			unique_ptr <addr_t> source;
 			// Целевые параметры подключения
 			unique_ptr <attr_t> target;
+			// Активные таймауты события клиента
+			timeouts_client_t timeouts2;
+			// Пропускная способность события подключённого клиента
+			bandwidth_t bandwidth;
 			// Обратные вызовы события
 			client_callbacks_t callbacks;
 			// Активные таймауты события
@@ -642,6 +749,10 @@ namespace awh {
 			backlog_t backlog;
 			// Параметры хоста сервера
 			unique_ptr <attr_t> host;
+			// Активные таймауты события подключённого клиента
+			timeouts_t timeouts2;
+			// Пропускная способность события подключённого клиента
+			bandwidth_t bandwidth;
 			// Обратные вызовы события
 			server_callbacks_t callbacks;
 			// Активные таймауты события
