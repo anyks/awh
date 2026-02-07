@@ -527,15 +527,305 @@ namespace io {
 	} transfer_t;
 
 	/**
-	 * @brief Структура узла таймера
+	 * @brief Структура очереди ожидания подключения
 	 *
 	 */
-	typedef struct Timer : public net::timer_t {
+	typedef struct Backlog {
+		// Адаптивный режим очереди ожидания подключения
+		bool adaptive;
+		// Максимальное количество подключений
+		uint16_t max;
+		// Количество уже подключённых клиентов
+		uint16_t count;
+		// Размер очереди ожидания подключения
+		uint16_t depth;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Timer() noexcept = default;
+		explicit Backlog() noexcept :
+		 adaptive(false), max(100), count(0), depth(SOMAXCONN) {}
+	} __attribute__((packed)) backlog_t;
+
+	/**
+	 * @brief Структура состояния события
+	 *
+	 */
+	typedef struct State {
+		uint16_t options;                // Флаги опций события
+		event::node_t node;              // Флаг узла события
+		event::hops_t hops;              // Флаг хопов события
+		event::type_t type;              // Флаг типа события
+		event::family_t family;          // Флаг семейства события
+		event::address_t address;        // Флаг адреса события
+		event::protocol_t protocol;      // Флаг протокола события
+		event::delivery_mode_t delivery; // Флаг типа режима доставки события
+		atomic <event::status_t> status; // Флаг статуса события
+		atomic <event::status_t> oldset; // Флаг старого статуса события
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit State() noexcept :
+		 options(event::options::NONE),
+		 node(event::node_t::NONE),
+		 hops(event::hops_t::WORLD),
+		 type(event::type_t::NONE),
+		 family(event::family_t::NONE),
+		 address(event::address_t::NONE),
+		 protocol(event::protocol_t::NONE),
+		 delivery(event::delivery_mode_t::UNICAST),
+		 status(event::status_t::NONE),
+		 oldset(event::status_t::NONE) {}
+	} __attribute__((packed)) state_t;
+
+	/**
+	 * @brief Структура таймаута
+	 *
+	 */
+	typedef struct Timeout {
+		event::id_t id;	        // Идентификатор таймаута
+		uint32_t delay;         // Задержка таймаута в миллисекундах
+		event::status_t status; // Статус таймаута
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Timeout() noexcept :
+		 id(0), status(event::status_t::NONE), delay(0) {}
+	} __attribute__((packed)) timeout_t;
+
+	/**
+	 * @brief Структура таймаутов
+	 *
+	 */
+	typedef struct Timeouts {
+		// Таймаут чтения
+		timeout_t read;
+		// Таймаут записи
+		timeout_t write;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Timeouts() = default;
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Timeouts() = default;
+	} timeouts_t;
+
+	/**
+	 * @brief Структура таймаутов клиента
+	 *
+	 */
+	typedef struct TimeoutsClient : public Timeouts {
+		// Таймаут подключения
+		timeout_t connect;
+		// Таймаут переподключения
+		timeout_t reconnect;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit TimeoutsClient() = default;
+	} timeouts_client_t;
+
+	/**
+	 * @brief Структура пропускной способности записи
+	 *
+	 */
+	typedef struct Ratewidth {
+		// Время последнего обновления пропускной способности в наносекундах
+		uint64_t time;
+		// Лимит пропускной способности в битах в секунду
+		uint32_t limit;
+		// Таймаут пропускной способности
+		timeout_t timeout;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Ratewidth() noexcept : time(0), limit(0) {}
+	} wrate_t;
+
+	/**
+	 * @brief Структура пропускной способности
+	 *
+	 */
+	typedef struct Bandwidth {
+		// Пропускная способность чтения
+		wrate_t read;
+		// Пропускная способность записи
+		wrate_t write;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Bandwidth() = default;
+	} bandwidth_t;
+
+	/**
+	 * @brief Структура обратных вызовов события
+	 *
+	 */
+	typedef struct Callbacks {
+		// Обратный вызов при ошибке события
+		event::callback::error_t error;
+		// Обратный вызов при изменении статуса события
+		event::callback::status_t status;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Callbacks() noexcept : error(nullptr), status(nullptr) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Callbacks() = default;
+	} callbacks_t;
+
+	/**
+	 * @brief Структура обратных вызовов файловой системы
+	 *
+	 */
+	typedef struct FileSystemCallbacks : public callbacks_t {
+		// Обратный вызов при чтении события
+		event::callback::read_t read;
+		// Обратный вызов при записи события
+		event::callback::write_t write;
+		// Обратный вызов при получении общего события
+		event::callback::event_t event;
+		// Обратный вызов при изменении события
+		event::callback::change_t change;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit FileSystemCallbacks() noexcept :
+		 read(nullptr), write(nullptr),
+		 event(nullptr), change(nullptr) {}
+	} fs_callbacks_t;
+
+	/**
+	 * @brief Структура обратных вызовов посредника
+	 *
+	 */
+	typedef struct MediatorCallbacks : public callbacks_t {
+		// Обратный вызов при чтении события
+		event::callback::read_t read;
+		// Обратный вызов при получении общего события
+		event::callback::event_t event;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit MediatorCallbacks() noexcept :
+		 read(nullptr), event(nullptr) {}
+	} mediator_callbacks_t;
+
+	/**
+	 * @brief Структура обратных вызовов сервера
+	 *
+	 */
+	typedef struct ServerCallbacks : public callbacks_t {
+		// Обратный вызов при записи события
+		event::callback::write_t write;
+		// Обратный вызов при получении общего события
+		event::callback::event_t event;
+		// Обратный вызов при принятии события
+		event::callback::accept_t accept;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ServerCallbacks() noexcept :
+		 write(nullptr), event(nullptr), accept(nullptr) {}
+	} server_callbacks_t;
+
+	/**
+	 * @brief Структура обратных вызовов клиента
+	 *
+	 */
+	typedef struct ClientCallbacks : public callbacks_t {
+		// Обратный вызов при чтении события
+		event::callback::read_t read;
+		// Обратный вызов при записи события
+		event::callback::write_t write;
+		// Обратный вызов при получении общего события
+		event::callback::event_t event;
+		// Обратный вызов при подключении события
+		event::callback::connect_t connect;
+		// Обратный вызов при возрождении клиента
+		event::callback::rebirth_t rebirth;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ClientCallbacks() noexcept :
+		 read(nullptr), write(nullptr),
+		 event(nullptr), connect(nullptr),
+		 rebirth(nullptr) {}
+	} client_callbacks_t;
+
+	/**
+	 * @brief Структура обратных вызовов подключённого клиента
+	 *
+	 */
+	typedef struct PeerCallbacks : public callbacks_t {
+		// Обратный вызов при чтении события
+		event::callback::read_t read;
+		// Обратный вызов при записи события
+		event::callback::write_t write;
+		// Обратный вызов при получении общего события
+		event::callback::event_t event;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit PeerCallbacks() noexcept :
+		 read(nullptr), write(nullptr), event(nullptr) {}
+	} peer_callbacks_t;
+
+	/**
+	 * @brief Структура узла события
+	 *
+	 */
+	typedef struct Node {
+		// Идентификатор события
+		event::id_t id;
+		// Состояние события
+		state_t state;
+		// Счётчик ссылок на событие
+		atomic_uint16_t refs;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Node() noexcept : id(0), refs(0) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Node() = default;
+	} node_t;
+
+	/**
+	 * @brief Структура таймера
+	 *
+	 */
+	typedef struct Timer : public node_t {
+		// Задержка времени таймера в миллисекундах
+		uint32_t delay;
+		// Обратные вызовы события
+		callbacks_t callbacks;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Timer() noexcept : delay(0) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -544,14 +834,16 @@ namespace io {
 	} timer_t;
 
 	/**
-	 * @brief Структура узла пользовательского события
+	 * @brief Структура  пользовательского события
 	 *
 	 */
-	typedef struct User : public net::user_t {
+	typedef struct User : public node_t {
 		// Идентификатор события принимающей стороны
 		event::id_t dest;
 		// Очередь пользовательских событий
 		queue_t events;
+		// Обратные вызовы события
+		peer_callbacks_t callbacks;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		/**
@@ -565,10 +857,31 @@ namespace io {
 	} user_t;
 
 	/**
+	 * @brief Структура файловой системы
+	 *
+	 */
+	typedef struct FileSystem : public node_t {
+		// Обратные вызовы события
+		fs_callbacks_t callbacks;
+		// Путь к файлу, каталогу или сокету
+		unique_ptr <net::addr_t> path;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit FileSystem() noexcept : path(nullptr) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~FileSystem() = default;
+	} fs_t;
+
+	/**
 	 * @brief Структура узла файла
 	 *
 	 */
-	typedef struct Filename : public net::fs_t {
+	typedef struct Filename : public fs_t {
 		// Размер буфера данных
 		size_t size;
 		// Время последней модификации файла
@@ -603,7 +916,7 @@ namespace io {
 	 * @brief Структура узла каталога
 	 *
 	 */
-	typedef struct Dirname : public net::fs_t {
+	typedef struct Dirname : public fs_t {
 		// Объект открытого каталога
 		DIR * handle;
 		// Флаги активированных событий файла
@@ -630,37 +943,47 @@ namespace io {
 	} dir_t;
 
 	/**
-	 * @brief Структура узла межпроцессного взаимодействия
+	 * @brief Структура межпроцессного взаимодействия
 	 *
 	 */
-	typedef struct IPC : public net::ipc_t {
+	typedef struct InterProcessCommunication : public node_t {
 		// Объект передачи данных
 		transfer_t transfer;
+		// Обратные вызовы события
+		peer_callbacks_t callbacks;
 		/**
 		 * @brief Конструктор
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit IPC(const fmk_t * fmk, const log_t * log) noexcept :
+		explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept :
 		 transfer(fmk, log) {}
 	} ipc_t;
 
 	/**
-	 * @brief Структура узла туннеля
+	 * @brief Структура туннеля
 	 *
 	 */
-	typedef struct Tunnel : public net::tun_t {
+	typedef struct Tunnel : public node_t {
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
-		// Объект параметров конечной точки
-		endpoint_t endpoint;
-		// Очередь отправки данных
-		awh::queue_t queue;
 		// Флаги активированных событий файла
 		uint16_t actions;
+		// Название сетевого интерфейса
+		string iface;
+		// Объект работы с сетевыми адресами
+		net_addr_t addr;
+		// Очередь отправки данных
+		awh::queue_t queue;
+		// Объект параметров конечной точки
+		endpoint_t endpoint;
+		// Обратные вызовы события
+		callbacks_t callbacks;
+		// Источник сетевых адресов
+		unique_ptr <net::addr_t> source;
+		// Адрес точки назначения
+		unique_ptr <net::addr_t> target;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		/**
@@ -670,19 +993,25 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), addr(fmk, log),
-		 actions(::action::NONE), queue(fmk, log) {}
+		 fd(net::invalid_socket_t),
+		 actions(::action::NONE), iface{""},
+		 addr(fmk, log), queue(fmk, log),
+		 source(nullptr), target(nullptr) {}
 	} tun_t;
 
 	/**
-	 * @brief Структура узла посредника
+	 * @brief Структура посредника
 	 *
 	 */
-	typedef struct Mediator : public net::mediator_t {
+	typedef struct Mediator : public node_t {
 		// Идентификатор события принимающей стороны
 		event::id_t dest;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
+		// Обратные вызовы события
+		mediator_callbacks_t callbacks;
+		// Адрес хоста посредника
+		unique_ptr <net::addr_t> host;
 		// Мьютекс для синхронизации потоков
 		lock_state_t <mutex> mtx;
 		/**
@@ -692,14 +1021,43 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Mediator(const fmk_t * fmk, const log_t * log) noexcept :
-		 dest(0), addr(fmk, log) {}
+		 dest(0), addr(fmk, log), host(nullptr) {}
 	} mediator_t;
+
+	/**
+	 * @brief Структура подключённого клиента
+	 *
+	 */
+	typedef struct Remote : public node_t {
+		// Активные таймауты события подключённого клиента
+		timeouts_t timeouts2;
+		// Пропускная способность события подключённого клиента
+		bandwidth_t bandwidth;
+		// Обратные вызовы события
+		peer_callbacks_t callbacks;
+		// Активные таймауты события
+		unordered_map <event::action_t, uint32_t> timeouts;
+		// MAC-адрес сетевого интерфейса
+		unique_ptr <net::addr_t> mac;
+		// Хост подключения события
+		unique_ptr <net::attr_t> remote;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Remote() noexcept : mac(nullptr), remote(nullptr) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Remote() = default;
+	} remote_t;
 
 	/**
 	 * @brief Структура одноразового узла
 	 *
 	 */
-	typedef struct Peer : public net::peer_t {
+	typedef struct Peer : public remote_t {
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
 		// Объект передачи данных
@@ -724,7 +1082,7 @@ namespace io {
 	 * @brief Структура однорангового узла-источника
 	 *
 	 */
-	typedef struct Origin : public net::peer_t {
+	typedef struct Origin : public remote_t {
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
 		// Объект передачи данных
@@ -748,10 +1106,10 @@ namespace io {
 	} origin_t;
 
 	/**
-	 * @brief Структура узла клиента
+	 * @brief Структура клиента
 	 *
 	 */
-	typedef struct Client : public net::client_t {
+	typedef struct Client : public node_t {
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
 		// Объект передачи данных
@@ -760,6 +1118,18 @@ namespace io {
 		endpoint_t endpoint;
 		// Флаг таймаута события
 		event::action_t timeout;
+		// Активные таймауты события клиента
+		timeouts_client_t timeouts2;
+		// Пропускная способность события подключённого клиента
+		bandwidth_t bandwidth;
+		// Обратные вызовы события
+		client_callbacks_t callbacks;
+		// Активные таймауты события
+		unordered_map <event::action_t, uint32_t> timeouts;
+		// Источник сетевых адресов
+		unique_ptr <net::addr_t> source;
+		// Целевые параметры подключения
+		unique_ptr <net::attr_t> target;
 		/**
 		 * @brief Конструктор
 		 *
@@ -768,22 +1138,29 @@ namespace io {
 		 */
 		explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
 		 addr(fmk, log), transfer(fmk, log),
-		 timeout(event::action_t::NONE) {}
+		 timeout(event::action_t::NONE),
+		 source(nullptr), target(nullptr) {}
 	} client_t;
 
 	/**
-	 * @brief Структура узла сервера
+	 * @brief Структура сервера
 	 *
 	 */
-	typedef struct Server : public net::server_t {
+	typedef struct Server : public node_t {
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Флаги активированных событий файла
 		uint16_t actions;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
+		// Размер очереди ожидания подключения
+		backlog_t backlog;
+		// Активные таймауты события подключённого клиента
+		timeouts_t timeouts2;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
+		// Пропускная способность события подключённого клиента
+		bandwidth_t bandwidth;
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -791,6 +1168,12 @@ namespace io {
 			// Объект SCTP-событий
 			sctp_endpoint_t sctp;
 		#endif
+		// Обратные вызовы события
+		server_callbacks_t callbacks;
+		// Активные таймауты события
+		unordered_map <event::action_t, uint32_t> timeouts;
+		// Параметры хоста сервера
+		unique_ptr <net::attr_t> host;
 		// Чёрный список пиров которым запрещён доступ
 		unordered_map <string, event::address_t> blacklist;
 		// Белый список пиров которым разрешён доступ
@@ -850,12 +1233,12 @@ namespace {
 	 * @brief Глобальная переменная списка узлов событий
 	 *
 	 */
-	unordered_map <event::id_t, unique_ptr <net::node_t>> __awh_nodes__;
+	unordered_map <event::id_t, unique_ptr <::io::node_t>> __awh_nodes__;
 	/**
 	 * @brief Глобальная переменная списка сессий инициаторов запросов
 	 *
 	 */
-	unordered_map <origin_id_t, net::node_t *, origin_id_hash_t> __awh_origin_sessions__;
+	unordered_map <origin_id_t, ::io::node_t *, origin_id_hash_t> __awh_origin_sessions__;
 };
 
 /**
@@ -874,7 +1257,7 @@ namespace {
 	class GuardTransportLayerNode {
 		private:
 			// Объект узла события
-			net::node_t * _node;
+			::io::node_t * _node;
 		public:
 			/**
 			 * @brief Метод проверки статуса узла события как мусорного
@@ -888,7 +1271,7 @@ namespace {
 			 *
 			 * @param node объект узла события
 			 */
-			explicit GuardTransportLayerNode(net::node_t * node) noexcept;
+			explicit GuardTransportLayerNode(::io::node_t * node) noexcept;
 		public:
 			/**
 			 * @brief Запрещаем копирование объекта
@@ -925,7 +1308,7 @@ namespace {
 	 *
 	 * @param node объект узла события
 	 */
-	GuardTransportLayerNode::GuardTransportLayerNode(net::node_t * node) noexcept : _node(node) {
+	GuardTransportLayerNode::GuardTransportLayerNode(::io::node_t * node) noexcept : _node(node) {
 		// Увеличиваем счётчик ссылок узла
 		this->_node->refs.fetch_add(1, std::memory_order_relaxed);
 	}
@@ -1240,7 +1623,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool timer(net::node_t *, const eth_t *, const log_t *) noexcept;
+	static bool timer(::io::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события закрытия
 	 *
@@ -1248,7 +1631,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool close(net::node_t *, const log_t *) noexcept;
+	static bool close(::io::node_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
@@ -1257,7 +1640,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool destroy(net::node_t *, const eth_t *, const log_t *) noexcept;
+	static bool destroy(::io::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки пользовательского события
 	 *
@@ -1275,7 +1658,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат создания сокета
 	 */
-	static bool socket(net::node_t *, const eth_t *, const log_t *) noexcept;
+	static bool socket(::io::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события ошибки
 	 *
@@ -1284,7 +1667,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool error(net::node_t *, const int32_t, const log_t *) noexcept;
+	static bool error(::io::node_t *, const int32_t, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события изменения файла или каталога
 	 *
@@ -1325,7 +1708,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool read(net::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события записи
 	 *
@@ -1336,7 +1719,7 @@ namespace io {
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool write(net::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool write(::io::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события
 	 *
@@ -1392,7 +1775,7 @@ namespace sctp {
 		 * @param log    объект работы с логами
 		 * @return       количество обработанных байт
 		 */
-		static size_t events(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept;
+		static size_t events(::io::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept;
 	#endif
 };
 
@@ -1423,7 +1806,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool timer(net::node_t * node, const eth_t * eth, const log_t * log) noexcept {
+	static bool timer(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -1518,7 +1901,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool close(net::node_t * node, const log_t * log) noexcept {
+	static bool close(::io::node_t * node, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1803,7 +2186,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool destroy(net::node_t * node, const eth_t * eth, const log_t * log) noexcept {
+	static bool destroy(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2197,7 +2580,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат создания сокета
 	 */
-	static bool socket(net::node_t * node, const eth_t * eth, const log_t * log) noexcept {
+	static bool socket(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2269,7 +2652,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool error(net::node_t * node, const int32_t code, const log_t * log) noexcept {
+	static bool error(::io::node_t * node, const int32_t code, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3691,7 +4074,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool read(net::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -6939,7 +7322,7 @@ namespace io {
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool write(net::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -8724,7 +9107,7 @@ namespace io {
 	 */
 	static bool processing(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		// Значение узла для обработки изменений
-		net::node_t * node = reinterpret_cast <net::node_t *> (ev.udata);
+		::io::node_t * node = reinterpret_cast <::io::node_t *> (ev.udata);
 		// Создаём охранника узла события
 		::local::guard_t guard(node);
 		/**
@@ -9818,7 +10201,7 @@ namespace sctp {
 		 * @param log    объект работы с логами
 		 * @return       количество обработанных байт
 		 */
-		static size_t events(net::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept {
+		static size_t events(::io::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept {
 			// Результат работы функции
 			size_t result = 0;
 			// Если буфер данных события корректен и его размер достаточен для обработки
@@ -41457,7 +41840,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Выполняем блокировку потоков
 				const locker_t <> lock(::local::mtx);
 				// Значение узла для обработки изменений
-				net::node_t * node = nullptr;
+				::io::node_t * node = nullptr;
 				// Выполняем переход по всему объекту изменений
 				for(auto i = ::local::result.begin(); i != ::local::result.end();){
 					/**
@@ -41562,7 +41945,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						cout << endl;
 					#endif
 					// Получаем текущее значение узла
-					node = reinterpret_cast <net::node_t *> (i->udata);
+					node = reinterpret_cast <::io::node_t *> (i->udata);
 					// Если узел определён и существует
 					if(node != nullptr){
 						/**
@@ -42071,7 +42454,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Получаем текущее значение события
 					struct kevent & ev = ::__awh_events__[i];
 					// Если узел события не получен, значит узел уже удалён
-					if(reinterpret_cast <net::node_t *> (ev.udata) == nullptr)
+					if(reinterpret_cast <::io::node_t *> (ev.udata) == nullptr)
 						// Пропускаем событие
 						continue;
 					// Если активирован пул потоков
