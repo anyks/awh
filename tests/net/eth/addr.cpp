@@ -16,6 +16,8 @@
  * Подключаем системные заголовочные файлы
  */
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 
 /**
