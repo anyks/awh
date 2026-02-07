@@ -30793,11 +30793,11 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
  * @param id   идентификатор события
  * @param data буфер данных для отправки
  * @param size размер данных для отправки
- * @return     результат выполнения отправки
+ * @return     количество байт данных, отправленных событием
  */
-bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t size) noexcept {
+size_t awh::engine::IO::send(const event::id_t id, const char * data, const size_t size) noexcept {
 	// Результат работы функции
-	bool result = false;
+	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -30857,7 +30857,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										#endif
 									}
 									// Выходим из функции с ошибкой
-									return false;
+									return result;
 								}
 								// Выполняем запись данных в файл
 								::memcpy(buffer + (fs->offset - static_cast <size_t> (offset)), data, size);
@@ -30882,8 +30882,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								if(fs->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									fs->callbacks.write(fs->id, size);
-								// Выводим успешный результат выполнения функции
-								return true;
+								// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+								result = size;
 							}
 						}
 					} break;
@@ -30900,7 +30900,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 						// Выполняем установку события триггера
 						EV_SET(&trigger, i->first, EVFILT_USER, EV_RECEIPT, NOTE_TRIGGER, 0, user);
 						// Триггерим событие Kqueue
-						if(!(result = (::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
+						if(::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -30914,7 +30914,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
-						}
+						// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+						} else result = size;
 					} break;
 					// Если узел является межпроцессным взаимодействием
 					case static_cast <uint8_t> (event::node_t::IPC): {
@@ -30939,11 +30940,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если сокет является неблокирующим
 												if(ipc->state.options & event::options::NO_IO_BLOCK){
 													// Если очередь передачи данных пустая
-													if(!(result = !ipc->transfer.queue.empty())){
+													if(ipc->transfer.queue.empty()){
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
-														if((result = (bytes > 0))){
+														if(bytes > 0){
+															// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+															result = static_cast <size_t> (bytes);
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(ipc->callbacks.write != nullptr){
 																// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31011,7 +31014,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																ipc->callbacks.write(ipc->id, 0);
 															// Если данные не записаны в сокет
-															if(!(result = (error == event::error_t::NONE))){
+															if(error != event::error_t::NONE){
 																// Если установлена функция обратного вызова
 																if(ipc->callbacks.status != nullptr)
 																	// Вызываем функцию обратного вызова об ошибке отказа
@@ -31057,6 +31060,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														if(ipc->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															ipc->callbacks.write(ipc->id, 0);
+														// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+														result = size;
 													}
 												// Если сокет является полублокирующим
 												} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -31065,13 +31070,15 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Выполняем отправку данных в TCP/IP сокет
 														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 														// Если данные отправлены успешно
-														if((result = (bytes > 0))){
+														if(bytes > 0){
+															// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+															result = static_cast <size_t> (bytes);
 															// Если функция обратного вызова для вывода записанных данных установлена
 															if(ipc->callbacks.write != nullptr)
 																// Вызываем функцию обратного вызова для вывода записанных данных
 																ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 															// Переводим сокет обратно в неблокирующий режим
-															result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+															this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 														// Если данные не отправлены
 														} else {
 															// Если функция обратного вызова для вывода записанных данных установлена
@@ -31113,7 +31120,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем отправку данных в TCP/IP сокет
 													const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31191,11 +31200,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(ipc->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(!(result = !ipc->transfer.queue.empty())){
+											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31263,7 +31274,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -31309,6 +31320,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(ipc->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
+												// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+												result = size;
 											}
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -31317,13 +31330,15 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												// Если данные не отправлены
 												} else {
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -31365,7 +31380,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31414,11 +31431,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(ipc->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(!(result = !ipc->transfer.queue.empty())){
+											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31464,7 +31483,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -31510,6 +31529,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(ipc->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
+												// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+												result = size;
 											}
 										// Если сокет является полублокирующим
 										} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -31518,7 +31539,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(ipc->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31534,12 +31557,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если ошибки нет
 														case 0: break;
 														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE: {
+														case EMSGSIZE:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::PACKET_TOO_BIG;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														} break;
+														break;
 														// Если мы получили другую непонятную ошибку
 														default:
 															// Устанавливаем идентификатор полученной ошибки
@@ -31550,7 +31571,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														ipc->callbacks.write(ipc->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -31581,20 +31602,22 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															if(::io::close(ipc, this->_log))
 																// Выполняем удаление узла
 																::io::destroy(ipc, &this->_eth, this->_log);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
 												}
-												// Если данные отправлены успешно
-												if(result)
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в TCP/IP сокет
 											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31624,7 +31647,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													ipc->callbacks.write(ipc->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(ipc->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -31681,7 +31704,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(peer->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(!(result = !peer->transfer.queue.empty())){
+											if(peer->transfer.queue.empty()){
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -31710,7 +31733,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(peer->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -31807,7 +31832,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -31853,6 +31878,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(peer->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, 0);
+												// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+												result = size;
 											}
 										// Если сокет является полублокирующим
 										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -31892,13 +31919,15 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(peer->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												// Если данные не отправлены
 												} else {
 													// Если функция обратного вызова для вывода записанных данных установлена
@@ -31971,7 +32000,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32022,7 +32053,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является неблокирующим
 											if(peer->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(!(result = !peer->transfer.queue.empty())){
+												if(peer->transfer.queue.empty()){
 													// Количество прочитанных байт
 													ssize_t bytes = 0;
 													// Если протокол интернета установлен как SCTP
@@ -32040,7 +32071,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем отправку данных в TCP/IP сокет
 													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(peer->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32100,7 +32133,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															peer->callbacks.write(peer->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(peer->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -32146,6 +32179,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(peer->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, 0);
+													// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+													result = size;
 												}
 											// Если сокет является полублокирующим
 											} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -32174,7 +32209,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем отправку данных в TCP/IP сокет
 													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(peer->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32190,12 +32227,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Если ошибки нет
 															case 0: break;
 															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE: {
+															case EMSGSIZE:
 																// Устанавливаем идентификатор полученной ошибки
 																error = event::error_t::PACKET_TOO_BIG;
-																// Переводим сокет обратно в неблокирующий режим
-																this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															} break;
+															break;
 															// Если мы получили другую непонятную ошибку
 															default:
 																// Устанавливаем идентификатор полученной ошибки
@@ -32206,7 +32241,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															peer->callbacks.write(peer->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(peer->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -32237,13 +32272,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																if(::io::close(peer, this->_log))
 																	// Выполняем удаление узла
 																	::io::destroy(peer, &this->_eth, this->_log);
+																// Выводим результат работы функции
+																return result;
 															}
 														}
 													}
-													// Если данные отправлены успешно
-													if(result)
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -32270,7 +32305,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в TCP/IP сокет
 												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(peer->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32300,7 +32337,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														peer->callbacks.write(peer->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -32389,7 +32426,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32430,7 +32469,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -32471,7 +32510,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32487,12 +32528,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если ошибки нет
 														case 0: break;
 														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE: {
+														case EMSGSIZE:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::PACKET_TOO_BIG;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														} break;
+														break;
 														// Если сокет является недействительным
 														case EBADF:
 														// Если нет такого ресурса
@@ -32503,19 +32542,16 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															error = event::error_t::INVALID_SOCKET;
 														break;
 														// Если мы получили другую непонятную ошибку
-														default: {
+														default:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::EVENT_FAIL;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(origin->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -32546,20 +32582,22 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															if(::io::close(origin, this->_log))
 																// Выполняем удаление узла
 																::io::destroy(origin, &this->_eth, this->_log);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
 												}
-												// Если данные отправлены успешно
-												if(result)
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32598,7 +32636,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -32646,11 +32684,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(origin->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(!(result = !origin->transfer.queue.empty())){
+											if(origin->transfer.queue.empty()){
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32719,7 +32759,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(origin->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -32765,6 +32805,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(origin->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
+												// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+												result = size;
 											}
 										// Если сокет является полублокирующим
 										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
@@ -32773,7 +32815,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32789,12 +32833,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если ошибки нет
 														case 0: break;
 														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE: {
+														case EMSGSIZE:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::PACKET_TOO_BIG;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														} break;
+														break;
 														// Если сокет является недействительным
 														case EBADF:
 														// Если нет такого ресурса
@@ -32805,19 +32847,16 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															error = event::error_t::INVALID_SOCKET;
 														break;
 														// Если мы получили другую непонятную ошибку
-														default: {
+														default:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::EVENT_FAIL;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(origin->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														origin->callbacks.write(origin->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(origin->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -32848,20 +32887,22 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															if(::io::close(origin, this->_log))
 																// Выполняем удаление узла
 																::io::destroy(origin, &this->_eth, this->_log);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
 												}
-												// Если данные отправлены успешно
-												if(result)
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -32900,7 +32941,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													origin->callbacks.write(origin->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -33005,7 +33046,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 							// Если сокет является неблокирующим
 							if(tunnel->state.options & event::options::NO_IO_BLOCK){
 								// Если очередь передачи данных пустая
-								if(!(result = !tunnel->queue.empty())){
+								if(!tunnel->queue.empty()){
 									// Устанавливаем размер буфера для записи данных
 									iov[1].iov_len = size;
 									// Устанавливаем буфер для записи данных
@@ -33013,7 +33054,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									// Выполняем отправку данных в туннель
 									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 									// Если данные не отправлены
-									if(!(result = (bytes > 0))){
+									if(bytes <= 0){
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										/**
@@ -33058,7 +33099,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												error = event::error_t::EVENT_FAIL;
 										}
 										// Если данные не записаны в сокет
-										if(!(result = (error == event::error_t::NONE))){
+										if(error != event::error_t::NONE){
 											// Если установлена функция обратного вызова
 											if(tunnel->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -33091,13 +33132,16 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													::io::destroy(tunnel, &this->_eth, this->_log);
 											}
 										}
-									}
+									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+									} else result = static_cast <size_t> (bytes);
 								// Если очередь передачи данных не пуста
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(tunnel->mtx);
 									// Копим данные для дальнейшей отправки
 									tunnel->queue.push(data, size);
+									// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+									result = size;
 								}
 							// Если сокет является полублокирующим
 							} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
@@ -33110,7 +33154,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 									// Выполняем отправку данных в туннель
 									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 									// Если данные не отправлены
-									if(!(result = (bytes > 0))){
+									if(bytes <= 0){
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										/**
@@ -33120,12 +33164,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если ошибки нет
 											case 0: break;
 											// Если мы получили ошибку отправки слишком большого пакета
-											case EMSGSIZE: {
+											case EMSGSIZE:
 												// Устанавливаем идентификатор полученной ошибки
 												error = event::error_t::PACKET_TOO_BIG;
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											} break;
+											break;
 											// Если сокет является недействительным
 											case EBADF:
 											// Если нет такого ресурса
@@ -33136,15 +33178,12 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												error = event::error_t::INVALID_SOCKET;
 											break;
 											// Если мы получили другую непонятную ошибку
-											default: {
+											default:
 												// Устанавливаем идентификатор полученной ошибки
 												error = event::error_t::EVENT_FAIL;
-												// Переводим сокет обратно в неблокирующий режим
-												result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											}
 										}
 										// Если данные не записаны в сокет
-										if(!(result = (error == event::error_t::NONE))){
+										if(error != event::error_t::NONE){
 											// Если установлена функция обратного вызова
 											if(tunnel->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -33175,13 +33214,14 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(::io::close(tunnel, this->_log))
 													// Выполняем удаление узла
 													::io::destroy(tunnel, &this->_eth, this->_log);
+												// Выводим результат работы функции
+												return result;
 											}
 										}
-									}
-									// Если данные отправлены успешно
-									if(result)
-										// Переводим сокет обратно в неблокирующий режим
-										result = this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+									} else result = static_cast <size_t> (bytes);
+									// Переводим сокет обратно в неблокирующий режим
+									this->_eth.socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								}
 							// Если сокет является блокирующим
 							} else {
@@ -33192,7 +33232,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 								// Выполняем отправку данных в туннель
 								const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 								// Если данные не отправлены
-								if(!(result = (bytes > 0))){
+								if(bytes <= 0){
 									// Идентификатор полученной ошибки
 									event::error_t error = event::error_t::NONE;
 									/**
@@ -33221,7 +33261,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											error = event::error_t::EVENT_FAIL;
 									}
 									// Если данные не записаны в сокет
-									if(!(result = (error == event::error_t::NONE))){
+									if(bytes <= 0){
 										// Если установлена функция обратного вызова
 										if(tunnel->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -33254,7 +33294,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												::io::destroy(tunnel, &this->_eth, this->_log);
 										}
 									}
-								}
+								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+								} else result = static_cast <size_t> (bytes);
 							}
 						}
 					} break;
@@ -33313,7 +33354,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33345,7 +33388,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -33398,7 +33441,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33414,19 +33459,17 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если ошибки нет
 														case 0: break;
 														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE: {
+														case EMSGSIZE:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::PACKET_TOO_BIG;
-															// Переводим сокет обратно в неблокирующий режим
-															result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														} break;
+														break;
 														// Если мы получили другую непонятную ошибку
 														default:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::INVALID_SOCKET;
 													}
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -33457,13 +33500,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															if(::io::close(client, this->_log))
 																// Выполняем удаление узла
 																::io::destroy(client, &this->_eth, this->_log);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
 												}
-												// Если данные отправлены успешно
-												if(result)
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -33482,7 +33525,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33508,7 +33553,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														error = event::error_t::INVALID_SOCKET;
 												}
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -33549,7 +33594,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 										// Если сокет является неблокирующим
 										if(client->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
-											if(!(result = !client->transfer.queue.empty())){
+											if(client->transfer.queue.empty()){
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -33578,7 +33623,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr){
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33675,7 +33722,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -33721,6 +33768,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, 0);
+												// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+												result = size;
 											}
 										// Если сокет является полублокирующим
 										} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -33760,7 +33809,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33839,7 +33890,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33888,11 +33941,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(!(result = !client->transfer.queue.empty())){
+												if(client->transfer.queue.empty()){
 													// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33952,7 +34007,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -33998,6 +34053,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
+													// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+													result = size;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -34012,7 +34069,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Определяем переменную для хранения количества отправленых байт
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34028,12 +34087,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Если ошибки нет
 															case 0: break;
 															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE: {
+															case EMSGSIZE:
 																// Устанавливаем идентификатор полученной ошибки
 																error = event::error_t::PACKET_TOO_BIG;
-																// Переводим сокет обратно в неблокирующий режим
-																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															} break;
+															break;
 															// Если мы получили другую непонятную ошибку
 															default:
 																// Устанавливаем идентификатор полученной ошибки
@@ -34044,7 +34101,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -34075,13 +34132,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																if(::io::close(client, this->_log))
 																	// Выполняем удаление узла
 																	::io::destroy(client, &this->_eth, this->_log);
+																// Выводим результат работы функции
+																return result;
 															}
 														}
 													}
-													// Если данные отправлены успешно
-													if(result)
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -34094,7 +34151,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
 												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34124,7 +34183,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -34164,11 +34223,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(!(result = !client->transfer.queue.empty())){
+												if(!client->transfer.queue.empty()){
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34228,7 +34289,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -34274,6 +34335,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
+													// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+													result = size;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -34288,7 +34351,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Выполняем отправку данных в UDP-сокет
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34304,12 +34369,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Если ошибки нет
 															case 0: break;
 															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE: {
+															case EMSGSIZE:
 																// Устанавливаем идентификатор полученной ошибки
 																error = event::error_t::PACKET_TOO_BIG;
-																// Переводим сокет обратно в неблокирующий режим
-																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															} break;
+															break;
 															// Если мы получили другую непонятную ошибку
 															default:
 																// Устанавливаем идентификатор полученной ошибки
@@ -34320,7 +34383,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -34351,13 +34414,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																if(::io::close(client, this->_log))
 																	// Выполняем удаление узла
 																	::io::destroy(client, &this->_eth, this->_log);
+																// Выводим результат работы функции
+																return result;
 															}
 														}
 													}
-													// Если данные отправлены успешно
-													if(result)
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -34370,7 +34433,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34400,7 +34465,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -34472,7 +34537,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(!(result = !client->transfer.queue.empty())){
+												if(client->transfer.queue.empty()){
 													/**
 													 * Если операционной системой является FreeBSD
 													 */
@@ -34503,7 +34568,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34563,7 +34630,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -34609,6 +34676,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
+													// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+													result = size;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -34650,7 +34719,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34666,12 +34737,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Если ошибки нет
 															case 0: break;
 															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE: {
+															case EMSGSIZE:
 																// Устанавливаем идентификатор полученной ошибки
 																error = event::error_t::PACKET_TOO_BIG;
-																// Переводим сокет обратно в неблокирующий режим
-																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															} break;
+															break;
 															// Если мы получили другую непонятную ошибку
 															default:
 																// Устанавливаем идентификатор полученной ошибки
@@ -34682,7 +34751,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -34713,13 +34782,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																if(::io::close(client, this->_log))
 																	// Выполняем удаление узла
 																	::io::destroy(client, &this->_eth, this->_log);
+																// Выводим результат работы функции
+																return result;
 															}
 														}
 													}
-													// Если данные отправлены успешно
-													if(result)
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -34759,7 +34828,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34789,7 +34860,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -34829,7 +34900,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Если сокет является неблокирующим
 											if(client->state.options & event::options::NO_IO_BLOCK){
 												// Если очередь передачи данных пустая
-												if(!(result = !client->transfer.queue.empty())){
+												if(!client->transfer.queue.empty()){
 													/**
 													 * Если операционной системой является FreeBSD
 													 */
@@ -34860,7 +34931,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34920,7 +34993,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -34966,6 +35039,8 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
+													// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
+													result = size;
 												}
 											// Если сокет является полублокирующим
 											} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -35007,7 +35082,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
-													if((result = (bytes > 0))){
+													if(bytes > 0){
+														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+														result = static_cast <size_t> (bytes);
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(client->callbacks.write != nullptr)
 															// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35023,12 +35100,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Если ошибки нет
 															case 0: break;
 															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE: {
+															case EMSGSIZE:
 																// Устанавливаем идентификатор полученной ошибки
 																error = event::error_t::PACKET_TOO_BIG;
-																// Переводим сокет обратно в неблокирующий режим
-																this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-															} break;
+															break;
 															// Если мы получили другую непонятную ошибку
 															default:
 																// Устанавливаем идентификатор полученной ошибки
@@ -35039,7 +35114,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															// Вызываем функцию обратного вызова для вывода записанных данных
 															client->callbacks.write(client->id, 0);
 														// Если данные не записаны в сокет
-														if(!(result = (error == event::error_t::NONE))){
+														if(error != event::error_t::NONE){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -35070,13 +35145,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 																if(::io::close(client, this->_log))
 																	// Выполняем удаление узла
 																	::io::destroy(client, &this->_eth, this->_log);
+																// Выводим результат работы функции
+																return result;
 															}
 														}
 													}
-													// Если данные отправлены успешно
-													if(result)
-														// Переводим сокет обратно в неблокирующий режим
-														result = this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+													// Переводим сокет обратно в неблокирующий режим
+													this->_eth.socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 												}
 											// Если сокет является блокирующим
 											} else {
@@ -35116,7 +35191,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												#endif
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35146,7 +35223,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														client->callbacks.write(client->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -35234,7 +35311,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35275,7 +35354,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -35322,7 +35401,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в RAW-сокет
 												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35338,12 +35419,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если ошибки нет
 														case 0: break;
 														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE: {
+														case EMSGSIZE:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::PACKET_TOO_BIG;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														} break;
+														break;
 														// Если сокет является недействительным
 														case EBADF:
 														// Если нет такого ресурса
@@ -35354,19 +35433,16 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															error = event::error_t::INVALID_SOCKET;
 														break;
 														// Если мы получили другую непонятную ошибку
-														default: {
+														default:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::EVENT_FAIL;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														}
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(server->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -35397,13 +35473,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															if(::io::close(server, this->_log))
 																// Выполняем удаление узла
 																::io::destroy(server, &this->_eth, this->_log);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
 												}
-												// Если данные отправлены успешно
-												if(result)
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -35416,7 +35492,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в RAW-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35455,7 +35533,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -35505,7 +35583,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35546,7 +35626,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа
@@ -35593,7 +35673,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 												// Выполняем отправку данных в UDP-сокет
 												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
-												if((result = (bytes > 0))){
+												if(bytes > 0){
+													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+													result = static_cast <size_t> (bytes);
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(server->callbacks.write != nullptr)
 														// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35609,12 +35691,10 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Если ошибки нет
 														case 0: break;
 														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE: {
+														case EMSGSIZE:
 															// Устанавливаем идентификатор полученной ошибки
 															error = event::error_t::PACKET_TOO_BIG;
-															// Переводим сокет обратно в неблокирующий режим
-															this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-														} break;
+														break;
 														// Если сокет является недействительным
 														case EBADF:
 														// Если нет такого ресурса
@@ -35634,7 +35714,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 														// Вызываем функцию обратного вызова для вывода записанных данных
 														server->callbacks.write(server->id, 0);
 													// Если данные не записаны в сокет
-													if(!(result = (error == event::error_t::NONE))){
+													if(error != event::error_t::NONE){
 														// Если установлена функция обратного вызова
 														if(server->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
@@ -35665,13 +35745,13 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 															if(::io::close(server, this->_log))
 																// Выполняем удаление узла
 																::io::destroy(server, &this->_eth, this->_log);
+															// Выводим результат работы функции
+															return result;
 														}
 													}
 												}
-												// Если данные отправлены успешно
-												if(result)
-													// Переводим сокет обратно в неблокирующий режим
-													result = this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+												// Переводим сокет обратно в неблокирующий режим
+												this->_eth.socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 											}
 										// Если сокет является блокирующим
 										} else {
@@ -35684,7 +35764,9 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
-											if((result = (bytes > 0))){
+											if(bytes > 0){
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = static_cast <size_t> (bytes);
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(server->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35723,7 +35805,7 @@ bool awh::engine::IO::send(const event::id_t id, const char * data, const size_t
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													server->callbacks.write(server->id, 0);
 												// Если данные не записаны в сокет
-												if(!(result = (error == event::error_t::NONE))){
+												if(error != event::error_t::NONE){
 													// Если установлена функция обратного вызова
 													if(server->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об ошибке отказа

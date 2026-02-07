@@ -280,9 +280,9 @@ namespace awh {
 			 * @param id   идентификатор события
 			 * @param data буфер данных для отправки
 			 * @param size размер данных для отправки
-			 * @return     результат выполнения отправки
+			 * @return     количество байт данных, отправленных событием
 			 */
-			virtual bool send(const event::id_t id, const char * data, const size_t size) noexcept = 0;
+			virtual size_t send(const event::id_t id, const char * data, const size_t size) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод установки глубины очереди принятия входящих соединений события
