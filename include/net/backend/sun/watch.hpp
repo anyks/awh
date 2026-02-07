@@ -45,7 +45,7 @@ namespace awh {
 	 * @brief Класс для работы с часами
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Watch {
+	typedef class __AWH_SHARED_EXPORT__ Watch {
 		private:
 			/**
 			 * Таймаут блокировки времени по умолчанию (100ms)

@@ -128,7 +128,7 @@ namespace awh {
 	 * @brief Класс работы с операционной системой
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT OS {
+	typedef class __AWH_SHARED_EXPORT__ OS {
 		private:
 			// Объект логера
 			const log_t * _log;

@@ -54,7 +54,7 @@ namespace awh {
 	 * @brief Класс для работы с сетевым уровнем Ethernet
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Ethernet {
+	typedef class __AWH_SHARED_EXPORT__ Ethernet {
 		public:
 			// Объект работы с сетевыми адресами
 			eth::addr_t addr;

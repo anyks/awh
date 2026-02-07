@@ -42,7 +42,7 @@ namespace awh {
 	 * @brief Тип сетевого асинхронного движка
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Engine {
+	typedef class __AWH_SHARED_EXPORT__ Engine {
 		protected:
 			// Объект работы с сетью
 			mutable eth_t _eth;

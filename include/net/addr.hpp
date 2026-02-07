@@ -45,7 +45,7 @@ namespace awh {
 	 * @brief Класс для работы с сетевыми адресами
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT NetworkAddress {
+	typedef class __AWH_SHARED_EXPORT__ NetworkAddress {
 		public:
 			/**
 			 * @brief Режим дислокации IP-адреса
@@ -616,14 +616,14 @@ namespace awh {
 	 * @param is   поток для чтения
 	 * @param addr адрес для присвоения
 	 */
-	AWH_SHARED_EXPORT istream & operator >> (istream & is, net_addr_t & addr) noexcept;
+	__AWH_SHARED_EXPORT__ istream & operator >> (istream & is, net_addr_t & addr) noexcept;
 	/**
 	 * @brief Оператор [<<] вывода в поток IP-адреса
 	 *
 	 * @param os   поток куда нужно вывести данные
 	 * @param addr адрес для присвоения
 	 */
-	AWH_SHARED_EXPORT ostream & operator << (ostream & os, const net_addr_t & addr) noexcept;
+	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const net_addr_t & addr) noexcept;
 };
 
 #endif // __AWH_NET_ADDR__

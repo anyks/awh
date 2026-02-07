@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief Класс для работы с сетевым интерфейсом
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT Interface {
+		typedef class __AWH_SHARED_EXPORT__ Interface {
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;

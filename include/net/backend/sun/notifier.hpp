@@ -76,7 +76,7 @@ namespace awh {
 	 * @brief Класс уведомителя событий
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Notifier {
+	typedef class __AWH_SHARED_EXPORT__ Notifier {
 		private:
 			/**
 			 * Для операционной системы MS Windows, OpenBSD или Sun Solaris

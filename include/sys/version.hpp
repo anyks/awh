@@ -44,7 +44,7 @@ namespace awh {
 	 * @brief Класс работы с версиями
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Version {
+	typedef class __AWH_SHARED_EXPORT__ Version {
 		private:
 			// Данные версии
 			uint32_t _version;
@@ -212,14 +212,14 @@ namespace awh {
 	 * @param is      поток для чтения
 	 * @param version версия для присвоения
 	 */
-	AWH_SHARED_EXPORT istream & operator >> (istream & is, version_t & version) noexcept;
+	__AWH_SHARED_EXPORT__ istream & operator >> (istream & is, version_t & version) noexcept;
 	/**
 	 * @brief Оператор [<<] вывода в поток версии
 	 *
 	 * @param os      поток куда нужно вывести данные
 	 * @param version версия извлечения
 	 */
-	AWH_SHARED_EXPORT ostream & operator << (ostream & os, const version_t & version) noexcept;
+	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const version_t & version) noexcept;
 };
 
 #endif // __AWH_VERSION__

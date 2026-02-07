@@ -41,7 +41,7 @@ namespace awh {
 		 * @brief Класс для работы с сетевыми адресами
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT NetAddress {
+		typedef class __AWH_SHARED_EXPORT__ NetAddress {
 			private:
 				// Объект работы с сетевым интерфейсом
 				iface_t _iface;

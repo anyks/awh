@@ -42,7 +42,7 @@ namespace awh {
 	 * @brief Класс модуля работы с файловой системой
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT FileSystem {
+	typedef class __AWH_SHARED_EXPORT__ FileSystem {
 		public:
 			/**
 			 * @brief Типы смещений в файле

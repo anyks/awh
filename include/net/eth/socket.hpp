@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief Класс для работы с сокетами
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT Socket {
+		typedef class __AWH_SHARED_EXPORT__ Socket {
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;

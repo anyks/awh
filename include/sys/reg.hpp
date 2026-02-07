@@ -49,7 +49,7 @@ namespace awh {
 	 * @brief Класс объекта регулярных выражения
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT RegExp {
+	typedef class __AWH_SHARED_EXPORT__ RegExp {
 		private:
 			/**
 			 * @brief структура рабочих мютексов
@@ -82,7 +82,7 @@ namespace awh {
 			 * @brief Класс регулярного выражения
 			 *
 			 */
-			class AWH_SHARED_EXPORT Expression {
+			class __AWH_SHARED_EXPORT__ Expression {
 				private:
 					// Флаг инициализации
 					bool _mode;

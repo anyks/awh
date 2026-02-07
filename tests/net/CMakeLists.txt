@@ -74,6 +74,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_ETH_TEST "Build unit ETH test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с модулем ввода-вывода
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_IO_TEST "Build unit IO test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с очередями
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST "Build unit QUEUE test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для работы с адресами
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_ADDR_TEST})
@@ -157,6 +159,22 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с модулем ввода-вывода
             message(STATUS "Build tests IO module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_IO_TEST})
+
+        # Если нужно собрать тесты для работы с сетевыми очередями
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с сетевыми очередями
+            message(STATUS "Build tests Network QUEUE module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с сетевыми очередями
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                queue/queue.cpp
+                queue/static.cpp
+                queue/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с сетевыми очередями
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с сетевыми очередями
+            message(STATUS "Build tests Network QUEUE module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS

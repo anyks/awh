@@ -15192,7 +15192,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Выделяем память под полный путь
 																	fullpath.resize(PATH_MAX);
 																	// Получаем полный путь к текущей директории
-																	if(::realpath(".", fullpath.data()) != nullptr){
+																	if(::realpath(".", &fullpath[0]) != nullptr){
 																		// Корректируем размер строки
 																		fullpath.resize(::strlen(fullpath.c_str()));
 																		// Добавляем слеш в конец пути

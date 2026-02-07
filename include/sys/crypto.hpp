@@ -43,7 +43,7 @@ namespace awh {
 	 * @brief Класс криптографии
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Crypto {
+	typedef class __AWH_SHARED_EXPORT__ Crypto {
 		public:
 			/**
 			 * @brief Режимы событий

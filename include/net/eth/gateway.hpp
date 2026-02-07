@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief Класс для работы с шлюзами
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT Gateway {
+		typedef class __AWH_SHARED_EXPORT__ Gateway {
 			public:
 				/**
 				 * @brief Структура маршрута

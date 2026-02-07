@@ -60,7 +60,7 @@ namespace awh {
 	 * @brief Класс бинарной очереди
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Queue {
+	typedef class __AWH_SHARED_EXPORT__ Queue {
 		private:
 			/**
 			 * @brief Структура диапазонов записей

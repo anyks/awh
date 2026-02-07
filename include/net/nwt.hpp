@@ -45,7 +45,7 @@ namespace awh {
 	 * @brief Структура списка параметров URL
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT NWT {
+	typedef class __AWH_SHARED_EXPORT__ NWT {
 		public:
 			/**
 			 * @brief Типы URL-адреса
@@ -64,7 +64,7 @@ namespace awh {
 			 * @brief Класс URL-адреса
 			 *
 			 */
-			typedef class AWH_SHARED_EXPORT URL {
+			typedef class __AWH_SHARED_EXPORT__ URL {
 				public:
 					types_t type;  // Тип URL-адреса
 					uint32_t port; // Порт URL-адреса

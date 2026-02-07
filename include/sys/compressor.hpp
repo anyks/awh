@@ -42,7 +42,7 @@ namespace awh {
 	 * @brief Класс компрессии/декомпрессии данных
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Compressor {
+	typedef class __AWH_SHARED_EXPORT__ Compressor {
 		public:
 			/**
 			 * @brief Режимы событий

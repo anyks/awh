@@ -104,6 +104,12 @@ if (CMAKE_MAX_MEMORY_BUFFER)
     message(STATUS "Build with max memory buffer usage size: ${CMAKE_MAX_MEMORY_BUFFER}\n")
 endif (CMAKE_MAX_MEMORY_BUFFER)
 
+# Если активирован флаг установки максимального размера буфера для очереди сетевых событий
+if (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
+    add_compile_definitions(AWH_NETWORK_QUEUE_BUFFER_SIZE=${CMAKE_NETWORK_QUEUE_BUFFER_SIZE})
+    message(STATUS "Build with max network queue buffer size: ${CMAKE_NETWORK_QUEUE_BUFFER_SIZE}\n")
+endif (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
+
 # Если активирован флаг установки размера буфера чанка модуля компрессии/декомпрессии
 if (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
     add_compile_definitions(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE=${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE})
@@ -439,6 +445,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
+    "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 

@@ -51,7 +51,7 @@ namespace awh {
 	 * @brief Класс бинарного смартбуфера
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Buffer {
+	typedef class __AWH_SHARED_EXPORT__ Buffer {
 		private:
 			/**
 			 * @brief Структура диапазонов записей
@@ -581,14 +581,14 @@ namespace awh {
 	 * @param is     поток для чтения
 	 * @param buffer буфер для присвоения
 	 */
-	AWH_SHARED_EXPORT istream & operator >> (istream & is, buffer_t & buffer) noexcept;
+	__AWH_SHARED_EXPORT__ istream & operator >> (istream & is, buffer_t & buffer) noexcept;
 	/**
 	 * @brief Оператор [<<] вывода в поток буфера
 	 *
 	 * @param os     поток куда нужно вывести данные
 	 * @param buffer буфер извлечения
 	 */
-	AWH_SHARED_EXPORT ostream & operator << (ostream & os, const buffer_t & buffer) noexcept;
+	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const buffer_t & buffer) noexcept;
 };
 
 #endif // __AWH_BUFFER__

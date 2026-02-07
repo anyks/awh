@@ -42,7 +42,7 @@ namespace awh {
 		 * @brief Класс для работы с пробросом портов
 		 *
 		 */
-		typedef class AWH_SHARED_EXPORT PortMapping {
+		typedef class __AWH_SHARED_EXPORT__ PortMapping {
 			public:
 				/**
 				 * @brief Типы протоколов сокетов

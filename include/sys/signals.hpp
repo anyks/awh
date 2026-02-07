@@ -53,7 +53,7 @@ namespace awh {
 	 * @brief Класс работы с сигналами
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Signals {
+	typedef class __AWH_SHARED_EXPORT__ Signals {
 		private:
 			/**
 			 * Для операционной системы не являющейся MS Windows

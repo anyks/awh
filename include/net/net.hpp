@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <array>
-#include <atomic>
 #include <string>
 #include <cstdint>
 #include <unordered_set>

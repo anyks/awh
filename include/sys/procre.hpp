@@ -39,7 +39,7 @@ namespace awh {
 	 * @brief Класс работы с резольвером процессов
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT ProcessResolver {
+	typedef class __AWH_SHARED_EXPORT__ ProcessResolver {
 		private:
 			// Объект работы с логами
 			const log_t * _log;

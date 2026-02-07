@@ -53,7 +53,7 @@ namespace awh {
 	 * @brief Класс фреймворка
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT Framework {
+	typedef class __AWH_SHARED_EXPORT__ Framework {
 		public:
 			/**
 			 * @brief Типы кодировок адресов файлов и каталогов

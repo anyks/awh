@@ -2138,9 +2138,9 @@ uint8_t awh::NetworkAddress::mask2Prefix(const string & mask, const type_t type)
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_addr_t netaddr(this->_fmk, this->_log);
+			net_addr_t net(this->_fmk, this->_log);
 			// Выполняем парсинг маски
-			if(netaddr.parse(mask) && (type == netaddr.type())){
+			if(net.parse(mask) && (type == net.type())){
 				// Бинарный контейнер
 				std::bitset <8> bits;
 				/**
@@ -2150,7 +2150,7 @@ uint8_t awh::NetworkAddress::mask2Prefix(const string & mask, const type_t type)
 					// Если IP-адрес определён как IPv4
 					case static_cast <uint8_t> (type_t::IPV4): {
 						// Получаем значение маски в виде адреса
-						const uint32_t num = netaddr.v4();
+						const uint32_t num = net.v4();
 						// Выполняем перебор всего значения буфера
 						for(uint8_t i = 0; i < 4; i++){
 							// Переводим хекстет в бинарный вид
@@ -2162,7 +2162,7 @@ uint8_t awh::NetworkAddress::mask2Prefix(const string & mask, const type_t type)
 					// Если IP-адрес определён как IPv6
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Получаем значение маски в виде адреса
-						const std::array <uint8_t, 16> num = netaddr.v6();
+						const std::array <uint8_t, 16> num = net.v6();
 						// Выполняем перебор всего значения буфера
 						for(uint8_t i = 0; i < 16; i++){
 							// Переводим хекстет в бинарный вид
@@ -2226,7 +2226,7 @@ string awh::NetworkAddress::prefix2Mask(const uint8_t prefix, const type_t type)
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_addr_t netaddr(this->_fmk, this->_log);
+			net_addr_t net(this->_fmk, this->_log);
 			/**
 			 * Определяем тип IP-адреса
 			 */
@@ -2236,11 +2236,11 @@ string awh::NetworkAddress::prefix2Mask(const uint8_t prefix, const type_t type)
 					// Если префикс укладывается в диапазон адреса
 					if(prefix <= 32){
 						// Выполняем парсинг маски
-						if(netaddr.parse("255.255.255.255")){
+						if(net.parse("255.255.255.255")){
 							// Выполняем установку префикса
-							netaddr.impose(prefix, addr_t::NETWORK);
+							net.impose(prefix, addr_t::NETWORK);
 							// Выводим полученный адрес
-							result = netaddr;
+							result = net;
 						}
 					}
 				} break;
@@ -2249,11 +2249,11 @@ string awh::NetworkAddress::prefix2Mask(const uint8_t prefix, const type_t type)
 					// Если префикс укладывается в диапазон адреса
 					if(prefix <= 128){
 						// Выполняем парсинг маски
-						if(netaddr.parse("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")){
+						if(net.parse("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")){
 							// Выполняем установку префикса
-							netaddr.impose(prefix, addr_t::NETWORK);
+							net.impose(prefix, addr_t::NETWORK);
 							// Выводим полученный адрес
-							result = netaddr;
+							result = net;
 						}
 					}
 				} break;
@@ -2352,8 +2352,8 @@ bool awh::NetworkAddress::range(const NetworkAddress & begin, const NetworkAddre
 		try {
 			// Создаём объекты сетевых модулей
 			net_addr_t net1(this->_fmk, this->_log),
-			      net2(this->_fmk, this->_log),
-			      net3(this->_fmk, this->_log);
+			           net2(this->_fmk, this->_log),
+			           net3(this->_fmk, this->_log);
 			/**
 			 * Определяем тип IP-адреса
 			 */
@@ -2479,8 +2479,8 @@ bool awh::NetworkAddress::range(const string & begin, const string & end, const 
 		try {
 			// Создаём объекты сетевых модулей
 			net_addr_t net1(this->_fmk, this->_log),
-			      net2(this->_fmk, this->_log),
-			      net3(this->_fmk, this->_log);
+			           net2(this->_fmk, this->_log),
+			           net3(this->_fmk, this->_log);
 			// Устанавливаем новое значение адреса для начала и конца диапазона адресов
 			net2 = begin; net3 = end;
 			/**
@@ -2562,11 +2562,11 @@ bool awh::NetworkAddress::mapping(const string & network, const type_t type) con
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_addr_t netaddr(this->_fmk, this->_log);
+			net_addr_t net(this->_fmk, this->_log);
 			// Если парсинг адреса сети выполнен
-			if((result = netaddr.parse(network))){
+			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
-				if((result = (type == netaddr.type()))){
+				if((result = (type == net.type()))){
 					/**
 					 * Определяем тип IP-адреса
 					 */
@@ -2576,7 +2576,7 @@ bool awh::NetworkAddress::mapping(const string & network, const type_t type) con
 							// Буфер данных текущего адреса
 							std::array <uint8_t, 4> nwk, addr;
 							// Получаем значение адреса сети
-							const uint32_t ip1 = netaddr.v4();
+							const uint32_t ip1 = net.v4();
 							// Получаем значение текущего адреса
 							const uint32_t ip2 = this->v4();
 							// Выполняем копирование данных текущего адреса в буфер
@@ -2598,7 +2598,7 @@ bool awh::NetworkAddress::mapping(const string & network, const type_t type) con
 							// Буфер данных текущего адреса
 							std::array <uint16_t, 8> nwk, addr;
 							// Получаем значение адреса сети
-							const std::array <uint8_t, 16> & ip1 = netaddr.v6();
+							const std::array <uint8_t, 16> & ip1 = net.v6();
 							// Получаем значение текущего адреса
 							const std::array <uint8_t, 16> & ip2 = this->v6();
 							// Выполняем копирование данных текущего адреса в буфер
@@ -2711,11 +2711,11 @@ bool awh::NetworkAddress::mapping(const string & network, const uint8_t prefix, 
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_addr_t netaddr(this->_fmk, this->_log);
+			net_addr_t net(this->_fmk, this->_log);
 			// Если парсинг адреса сети выполнен
-			if((result = netaddr.parse(network))){
+			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
-				if((result = (type == netaddr.type()))){
+				if((result = (type == net.type()))){
 					/**
 					 * Определяем тип IP-адреса
 					 */
@@ -2723,34 +2723,34 @@ bool awh::NetworkAddress::mapping(const string & network, const uint8_t prefix, 
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
 							// Копируем текущий IP-адрес
-							netaddr = this->v4();
+							net = this->v4();
 							// Накладываем префикс сети
-							netaddr.impose(prefix, addr);
+							net.impose(prefix, addr);
 							// Получаем данные IPv4 текущего адреса
-							const uint32_t ip = netaddr.v4();
+							const uint32_t ip = net.v4();
 							// Устанавливаем данные сети
-							netaddr = network;
+							net = network;
 							// Накладываем префикс сети
-							netaddr.impose(prefix, addr);
+							net.impose(prefix, addr);
 							// Выполняем получение данных IPv4 сетевого адреса
-							const uint32_t nwk = netaddr.v4();
+							const uint32_t nwk = net.v4();
 							// Выводим результат проверки
 							return (ip == nwk);
 						}
 						// Если IP-адрес определён как IPv6
 						case static_cast <uint8_t> (type_t::IPV6): {
 							// Копируем текущий IP-адрес
-							netaddr = this->v6();
+							net = this->v6();
 							// Накладываем префикс сети
-							netaddr.impose(prefix, addr);
+							net.impose(prefix, addr);
 							// Получаем данные IPv6 текущего адреса
-							const auto & ip = netaddr.v6();
+							const auto & ip = net.v6();
 							// Устанавливаем данные сети
-							netaddr = network;
+							net = network;
 							// Накладываем префикс сети
-							netaddr.impose(prefix, addr);
+							net.impose(prefix, addr);
 							// Выполняем получение данных IPv6 сетевого адреса
-							const auto & nwk = netaddr.v6();
+							const auto & nwk = net.v6();
 							// Выводим результат проверки
 							return (::memcmp(&ip[0], &nwk[0], sizeof(ip)) == 0);
 						}
@@ -2798,7 +2798,7 @@ awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 		 */
 		try {
 			// Создаём объкт для работы с адресами
-			net_addr_t netaddr(this->_fmk, this->_log);
+			net_addr_t net(this->_fmk, this->_log);
 			// Выполняем инициализацию списка локальных адресов
 			const_cast <net_addr_t *> (this)->initLocalNet();
 			// Выполняем группировку нужного нам вида адресов
@@ -2812,11 +2812,11 @@ awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 					// Если IP-адрес определён как IPv4
 					case static_cast <uint8_t> (type_t::IPV4): {
 						// Устанавливаем IP-адрес
-						netaddr = this->v4();
+						net = this->v4();
 						// Если получен диапазон IP-адресов
 						if(i->second.end->type() == type_t::IPV4){
 							// Если адрес входит в диапазон адресов
-							if((netaddr >= (* i->second.begin.get())) && (netaddr <= * (i->second.end.get()))){
+							if((net >= (* i->second.begin.get())) && (net <= * (i->second.end.get()))){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
@@ -2827,9 +2827,9 @@ awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 						// Если диапазон адресов для этой проверки не установлен
 						} else {
 							// Устанавливаем префикс сети
-							netaddr.impose(i->second.prefix, net_addr_t::addr_t::NETWORK);
+							net.impose(i->second.prefix, addr_t::NETWORK);
 							// Если проверяемые сети совпадают
-							if(netaddr.v4() == i->second.begin->v4()){
+							if(net.v4() == i->second.begin->v4()){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
@@ -2842,11 +2842,11 @@ awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 					// Если IP-адрес определён как IPv6
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Устанавливаем IP-адрес
-						netaddr = this->v6();
+						net = this->v6();
 						// Если получен диапазон IP-адресов
 						if(i->second.end->type() == type_t::IPV6){
 							// Если адрес входит в диапазон адресов
-							if((netaddr >= (* i->second.begin.get())) && (netaddr <= (* i->second.end.get()))){
+							if((net >= (* i->second.begin.get())) && (net <= (* i->second.end.get()))){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
@@ -2857,9 +2857,9 @@ awh::NetworkAddress::own_t awh::NetworkAddress::own() const noexcept {
 						// Если диапазон адресов для этой проверки не установлен
 						} else {
 							// Устанавливаем префикс сети
-							netaddr.impose(i->second.prefix, net_addr_t::addr_t::NETWORK);
+							net.impose(i->second.prefix, addr_t::NETWORK);
 							// Если проверяемые сети совпадают
-							if(::memcmp(&netaddr.v6()[0], &i->second.begin->v6()[0], 16) == 0){
+							if(::memcmp(&net.v6()[0], &i->second.begin->v6()[0], 16) == 0){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
@@ -5335,7 +5335,7 @@ awh::NetworkAddress & awh::NetworkAddress::operator = (const std::array <uint8_t
  * @return     текущий объект
  */
 awh::NetworkAddress & awh::NetworkAddress::operator = (const std::array <uint8_t, 16> & addr) noexcept {
-	// Устанавливаем IPv4
+	// Устанавливаем IPv6
 	this->v6(addr);
 	// Выводим текущий объект
 	return (* this);

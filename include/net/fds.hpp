@@ -39,7 +39,7 @@ namespace awh {
 	 * @brief Класс партнёрских сокетов
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT FDS {
+	typedef class __AWH_SHARED_EXPORT__ FDS {
 		private:
 			// Объект работы с логами
 			const log_t * _log;
