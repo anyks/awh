@@ -679,7 +679,8 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Callbacks() noexcept : error(nullptr), status(nullptr) {}
+		explicit Callbacks() noexcept :
+		 error(nullptr), status(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -718,12 +719,14 @@ namespace io {
 		event::callback::read_t read;
 		// Обратный вызов при получении общего события
 		event::callback::event_t event;
+		// Обратный вызов при доступности очереди события
+		event::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit MediatorCallbacks() noexcept :
-		 read(nullptr), event(nullptr) {}
+		 read(nullptr), event(nullptr), available(nullptr) {}
 	} mediator_callbacks_t;
 
 	/**
@@ -746,6 +749,20 @@ namespace io {
 	} server_callbacks_t;
 
 	/**
+	 * @brief Структура обратных вызовов туннеля
+	 *
+	 */
+	typedef struct TunnelCallbacks : public callbacks_t {
+		// Обратный вызов при доступности очереди события
+		event::callback::available_t available;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit TunnelCallbacks() noexcept : available(nullptr) {}
+	} tunnel_callbacks_t;
+
+	/**
 	 * @brief Структура обратных вызовов клиента
 	 *
 	 */
@@ -758,13 +775,15 @@ namespace io {
 		event::callback::event_t event;
 		// Обратный вызов при подключении события
 		event::callback::connect_t connect;
+		// Обратный вызов при доступности очереди события
+		event::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit ClientCallbacks() noexcept :
-		 read(nullptr), write(nullptr),
-		 event(nullptr), connect(nullptr) {}
+		 read(nullptr), write(nullptr), event(nullptr),
+		 connect(nullptr), available(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -778,12 +797,15 @@ namespace io {
 		event::callback::write_t write;
 		// Обратный вызов при получении общего события
 		event::callback::event_t event;
+		// Обратный вызов при доступности очереди события
+		event::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit PeerCallbacks() noexcept :
-		 read(nullptr), write(nullptr), event(nullptr) {}
+		 read(nullptr), write(nullptr),
+		 event(nullptr), available(nullptr) {}
 	} peer_callbacks_t;
 
 	/**
@@ -969,14 +991,14 @@ namespace io {
 		uint16_t actions;
 		// Название сетевого интерфейса
 		string iface;
+		// Очередь отправки данных
+		queue_t queue;
 		// Объект работы с сетевыми адресами
 		net_addr_t addr;
-		// Очередь отправки данных
-		awh::queue_t queue;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
 		// Обратные вызовы события
-		callbacks_t callbacks;
+		tunnel_callbacks_t callbacks;
 		// Источник сетевых адресов
 		unique_ptr <net::addr_t> source;
 		// Адрес точки назначения
@@ -992,7 +1014,7 @@ namespace io {
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE), iface{""},
-		 addr(fmk, log), queue(fmk, log),
+		 queue(fmk, log), addr(fmk, log),
 		 source(nullptr), target(nullptr) {}
 	} tun_t;
 
@@ -43271,6 +43293,99 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::connect_t 
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A connect callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Методы установки функции обратного вызова на доступность очереди события
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, const event::callback::available_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::user_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::tun_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A available callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A available callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

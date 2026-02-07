@@ -573,6 +573,13 @@ namespace awh {
 			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::connect_t & cb) noexcept = 0;
+			/**
+			 * @brief Методы установки функции обратного вызова на доступность очереди события
+			 *
+			 * @param id идентификатор события
+			 * @param cb функция обратного вызова
+			 */
+			virtual void on(const event::id_t id, const event::callback::available_t & cb) noexcept = 0;
 		public:
 			/**
 			 * @brief Конструктор
