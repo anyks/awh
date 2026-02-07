@@ -758,16 +758,13 @@ namespace io {
 		event::callback::event_t event;
 		// Обратный вызов при подключении события
 		event::callback::connect_t connect;
-		// Обратный вызов при возрождении клиента
-		event::callback::rebirth_t rebirth;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit ClientCallbacks() noexcept :
 		 read(nullptr), write(nullptr),
-		 event(nullptr), connect(nullptr),
-		 rebirth(nullptr) {}
+		 event(nullptr), connect(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -9397,10 +9394,10 @@ namespace io {
 									client->state.options = event::options::NONE;
 									// Получаем объект работы с асинхронными событиями
 									engine::io_t * self = const_cast <engine::io_t *> (io);
-									// Если функция обратного вызова для вывода возрождения установлена
-									if(client->callbacks.rebirth != nullptr)
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова для возрождения клиента
-										client->callbacks.rebirth(client->id);
+										client->callbacks.status(client->id, event::status_t::REBIRTHED);
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
 										// Выполняем повторное подключение клиента
@@ -43274,69 +43271,6 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::connect_t 
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A connect callback cannot be set for this event type", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
- * @brief Методы установки функции обратного вызова на возрождение события
- *
- * @param id идентификатор события
- * @param cb функция обратного вызова
- */
-void awh::engine::IO::on(const event::id_t id, const event::callback::rebirth_t & cb) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на событие возрождения клиента
-					awh_cast <::io::client_t *> (i->second.get())->callbacks.rebirth = ::move(cb);
-				break;
-				// Для других типов узлов
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("A rebirth callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("A rebirth callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

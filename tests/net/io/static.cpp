@@ -10566,18 +10566,6 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
 			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
-			// Устанавливаем функцию обратного вызова на возрождение события
-			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
-				// Выводим сообщение об возрождении события
-				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
-				// Выполняем подписку на SCTP события
-				this->_sctp->eventsSubscribe(eid, {
-					awh::net::sctp::event_type_t::ASSOC_CHANGE,
-					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-					awh::net::sctp::event_type_t::REMOTE_ERROR
-				});
-			});
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -10649,6 +10637,18 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим сообщение о прослушивании события
 						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 					break;
+					// Если статус возрождения события
+					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
+						// Выводим сообщение об возрождении события
+						this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+						// Выполняем подписку на SCTP события
+						this->_sctp->eventsSubscribe(eid, {
+							awh::net::sctp::event_type_t::ASSOC_CHANGE,
+							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+							awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+							awh::net::sctp::event_type_t::REMOTE_ERROR
+						});
+					} break;
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -11387,18 +11387,6 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
 			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
-			// Устанавливаем функцию обратного вызова на возрождение события
-			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
-				// Выводим сообщение об возрождении события
-				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
-				// Выполняем подписку на SCTP события
-				this->_sctp->eventsSubscribe(eid, {
-					awh::net::sctp::event_type_t::ASSOC_CHANGE,
-					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-					awh::net::sctp::event_type_t::REMOTE_ERROR
-				});
-			});
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -11470,6 +11458,18 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим сообщение о прослушивании события
 						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 					break;
+					// Если статус возрождения события
+					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
+						// Выводим сообщение об возрождении события
+						this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+						// Выполняем подписку на SCTP события
+						this->_sctp->eventsSubscribe(eid, {
+							awh::net::sctp::event_type_t::ASSOC_CHANGE,
+							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+							awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+							awh::net::sctp::event_type_t::REMOTE_ERROR
+						});
+					} break;
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -12261,37 +12261,6 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
 			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
-			// Устанавливаем функцию обратного вызова на возрождение события
-			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
-				// Выводим сообщение об возрождении события
-				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
-				// Устанавливаем ключ аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef"));
-				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateKey(eid, awh::event::mode_t::ENABLED, 1));
-				// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateSupportAlgorithms(eid, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
-				// Устанавливаем чанки аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateChunks(eid, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
-				// Выполняем подписку на SCTP события
-				this->_sctp->eventsSubscribe(eid, {
-					awh::net::sctp::event_type_t::ASSOC_CHANGE,
-					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-					awh::net::sctp::event_type_t::REMOTE_ERROR,
-					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
-				});
-				// Извлекаем чанки аутентификации SCTP-сокета
-				std::vector <awh::net::sctp::auth_chunk_t> chunks;
-				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::LOCAL, chunks));
-				// Перебираем все извлечённые чанки
-				for(auto & chunk : chunks)
-					// Выводим информацию о чанках аутентификации SCTP-сокета
-					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
-				// Устанавливаем таймаут heartbeat SCTP-сокета
-				ASSERT_TRUE(this->_sctp->timeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
-			});
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -12363,6 +12332,37 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим сообщение о прослушивании события
 						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 					break;
+					// Если статус возрождения события
+					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
+						// Выводим сообщение об возрождении события
+						this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+						// Устанавливаем ключ аутентификации SCTP-сокета
+						ASSERT_TRUE(this->_sctp->authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef"));
+						// Устанавливаем режим использования ключа аутентификации SCTP-сокета
+						ASSERT_TRUE(this->_sctp->authenticateKey(eid, awh::event::mode_t::ENABLED, 1));
+						// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
+						ASSERT_TRUE(this->_sctp->authenticateSupportAlgorithms(eid, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+						// Устанавливаем чанки аутентификации SCTP-сокета
+						ASSERT_TRUE(this->_sctp->authenticateChunks(eid, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+						// Выполняем подписку на SCTP события
+						this->_sctp->eventsSubscribe(eid, {
+							awh::net::sctp::event_type_t::ASSOC_CHANGE,
+							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+							awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+							awh::net::sctp::event_type_t::REMOTE_ERROR,
+							awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
+						});
+						// Извлекаем чанки аутентификации SCTP-сокета
+						std::vector <awh::net::sctp::auth_chunk_t> chunks;
+						// Выполняем извлечение чанков аутентификации SCTP-сокета
+						ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::LOCAL, chunks));
+						// Перебираем все извлечённые чанки
+						for(auto & chunk : chunks)
+							// Выводим информацию о чанках аутентификации SCTP-сокета
+							std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
+						// Устанавливаем таймаут heartbeat SCTP-сокета
+						ASSERT_TRUE(this->_sctp->timeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+					} break;
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -13340,18 +13340,6 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
 			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
-			// Устанавливаем функцию обратного вызова на возрождение события
-			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
-				// Выводим сообщение об возрождении события
-				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
-				// Выполняем подписку на SCTP события
-				this->_sctp->eventsSubscribe(eid, {
-					awh::net::sctp::event_type_t::ASSOC_CHANGE,
-					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-					awh::net::sctp::event_type_t::REMOTE_ERROR
-				});
-			});
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -13423,6 +13411,18 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим сообщение о прослушивании события
 						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 					break;
+					// Если статус возрождения события
+					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
+						// Выводим сообщение об возрождении события
+						this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+						// Выполняем подписку на SCTP события
+						this->_sctp->eventsSubscribe(eid, {
+							awh::net::sctp::event_type_t::ASSOC_CHANGE,
+							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+							awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+							awh::net::sctp::event_type_t::REMOTE_ERROR
+						});
+					} break;
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -14374,18 +14374,6 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
 			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
-			// Устанавливаем функцию обратного вызова на возрождение события
-			this->_io->on(events[0], [this](const awh::event::id_t eid) noexcept -> void {
-				// Выводим сообщение об возрождении события
-				this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
-				// Выполняем подписку на SCTP события
-				this->_sctp->eventsSubscribe(eid, {
-					awh::net::sctp::event_type_t::ASSOC_CHANGE,
-					awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-					awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-					awh::net::sctp::event_type_t::REMOTE_ERROR
-				});
-			});
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -14457,6 +14445,18 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим сообщение о прослушивании события
 						this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
 					break;
+					// Если статус возрождения события
+					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
+						// Выводим сообщение об возрождении события
+						this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
+						// Выполняем подписку на SCTP события
+						this->_sctp->eventsSubscribe(eid, {
+							awh::net::sctp::event_type_t::ASSOC_CHANGE,
+							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+							awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+							awh::net::sctp::event_type_t::REMOTE_ERROR
+						});
+					} break;
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие

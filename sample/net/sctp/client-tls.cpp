@@ -193,20 +193,8 @@ int32_t main(int32_t argc, char * argv[]){
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
 			if(io.target(eid, "127.0.0.1")){
-				// Устанавливаем функцию обратного вызова на возрождение события
-				io.on(eid, [&io, &sctp, &log](const event::id_t eid) noexcept -> void {
-					// Выводим сообщение об возрождении события
-					log.print("Событие возрождено: ID=%u", log_t::flag_t::INFO, eid);
-					// Выполняем подписку на SCTP события
-					sctp.eventsSubscribe(eid, {
-						net::sctp::event_type_t::ASSOC_CHANGE,
-						net::sctp::event_type_t::SHUTDOWN_EVENT,
-						net::sctp::event_type_t::SEND_FAILED_EVENT,
-						net::sctp::event_type_t::REMOTE_ERROR
-					});
-				});
 				// Устанавливаем функцию обратного вызова на событие таймера
-				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
+				io.on(eid, [&io, &sctp, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -276,6 +264,18 @@ int32_t main(int32_t argc, char * argv[]){
 							// Выводим сообщение о прослушивании события
 							log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
 						break;
+						// Если статус возрождения события
+						case static_cast <uint8_t> (event::status_t::REBIRTHED): {
+							// Выводим сообщение об возрождении события
+							log.print("Событие возрождено: ID=%u", log_t::flag_t::INFO, eid);
+							// Выполняем подписку на SCTP события
+							sctp.eventsSubscribe(eid, {
+								net::sctp::event_type_t::ASSOC_CHANGE,
+								net::sctp::event_type_t::SHUTDOWN_EVENT,
+								net::sctp::event_type_t::SEND_FAILED_EVENT,
+								net::sctp::event_type_t::REMOTE_ERROR
+							});
+						} break;
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
