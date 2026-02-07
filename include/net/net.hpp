@@ -289,6 +289,8 @@ namespace awh {
 			 */
 			explicit Interface() noexcept : name{""}, mtu(0), flags{} {}
 		} iface_t;
+
+
 		/**
 		 * @brief Структура очереди ожидания подключения
 		 *
@@ -765,6 +767,8 @@ namespace awh {
 			 */
 			virtual ~Server() = default;
 		} server_t;
+
+		
 		/**
 		 * Для операционной системы Linux или FreeBSD
 		 */
@@ -999,8 +1003,8 @@ namespace awh {
 					 *
 					 */
 					explicit MessageInfo() noexcept :
-					ppid(ppid_t::DTLS),
-					num(0), ttl(0), ctx(0) {}
+					 ppid(ppid_t::DTLS),
+					 num(0), ttl(0), ctx(0) {}
 				} __attribute__((packed)) minfo_t;
 				/**
 				 * @brief Структура параметров рукопожатия SCTP
@@ -1020,8 +1024,8 @@ namespace awh {
 					 *
 					 */
 					explicit InitMessage() noexcept :
-					timeout(0), attempts(4),
-					ostreams(5), istreams(5) {}
+					 timeout(0), attempts(4),
+					 ostreams(5), istreams(5) {}
 				} __attribute__((packed)) initmsg_t;
 				/**
 				 * @brief Структура статуса SCTP подключения
@@ -1042,10 +1046,10 @@ namespace awh {
 					 */
 					explicit Status() noexcept :
 					id(0),
-					ratewind(0), penddata(0),
-					ostreams(0), istreams(0),
-					unackdata(0), fragpoint(0),
-					state(state_status_t::NONE) {}
+					 ratewind(0), penddata(0),
+					 ostreams(0), istreams(0),
+					 unackdata(0), fragpoint(0),
+					 state(state_status_t::NONE) {}
 				} __attribute__((packed)) status_t;
 				/**
 				 * @brief Структура ошибки события SCTP
@@ -1059,7 +1063,7 @@ namespace awh {
 					 *
 					 */
 					explicit Error() noexcept :
-					code(0), message{""} {}
+					 code(0), message{""} {}
 				} error_t;
 				/**
 				 * @brief Структура события SCTP
@@ -1075,7 +1079,7 @@ namespace awh {
 					 *
 					 */
 					explicit Event() noexcept :
-					id(0), type(event_type_t::NONE) {}
+					 id(0), type(event_type_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -1115,8 +1119,8 @@ namespace awh {
 					 *
 					 */
 					explicit EventAssocChange() noexcept :
-					ostreams(0), istreams(0),
-					state(assoc_state_t::NONE) {}
+					 ostreams(0), istreams(0),
+					 state(assoc_state_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -1139,7 +1143,7 @@ namespace awh {
 					 *
 					 */
 					explicit EventAssocReset() noexcept :
-					localTSN(0), remoteTSN(0) {}
+					 localTSN(0), remoteTSN(0) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -1177,7 +1181,7 @@ namespace awh {
 					 *
 					 */
 					explicit EventAddrChange() noexcept :
-					state(paddr_state_t::NONE), addr(nullptr) {}
+					 state(paddr_state_t::NONE), addr(nullptr) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -1197,8 +1201,8 @@ namespace awh {
 					 *
 					 */
 					explicit PartialDeliveryEvent() noexcept :
-					stream(0), sequence(0),
-					indication(pdapi_indics_t::NONE) {}
+					 stream(0), sequence(0),
+					 indication(pdapi_indics_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -1217,7 +1221,7 @@ namespace awh {
 					 *
 					 */
 					explicit EventAuth() noexcept :
-					key(0), indication(auth_indics_t::NONE) {}
+					 key(0), indication(auth_indics_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -1277,7 +1281,7 @@ namespace awh {
 					 *
 					 */
 					explicit EventStreamChange() noexcept :
-					ostreams(0), istreams(0) {}
+					 ostreams(0), istreams(0) {}
 					/**
 					 * @brief Деструктор
 					 *
