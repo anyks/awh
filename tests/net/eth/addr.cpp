@@ -13,10 +13,14 @@
  */
 
 /**
+ * Подключаем системные заголовочные файлы
+ */
+#include <arpa/inet.h>
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "eth.hpp"
-#include <arpa/inet.h>
 
 /**
  * @brief Тест заполнения источника сетевых адресов
@@ -28,7 +32,7 @@ TEST_F(EthFixture, AddressFillSourceTest){
 	// Выполняем извлечение сетевых параметров
 	this->_eth->addr.fillSource(source);
 	// Проверяем, что название сетевого интерфейса получено (или хотя бы не упало, может быть пустым если сети нет)
-	// ASSERT_FALSE(source.iface.empty()); - это может зависеть от среды, но обычно lo0 или eth0 есть
+	ASSERT_FALSE(source.iface.empty()); // Необходимо, чтобы хотя бы один сетевой интерфейс имел выход в интернет
 }
 
 /**
@@ -41,7 +45,7 @@ TEST_F(EthFixture, AddressFillSourceNodeTest){
 	// Выполняем извлечение сетевых параметров
 	this->_eth->addr.fillSource(awh::event::node_t::NONE, source);
 	// Проверяем результат
-	// ASSERT_FALSE(source.iface.empty());
+	ASSERT_FALSE(source.iface.empty());
 }
 
 /**
@@ -55,7 +59,7 @@ TEST_F(EthFixture, AddressFillSourceNetTest){
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Устанавливаем адрес (например, 0.0.0.0 или localhost 127.0.0.1)
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = htonl(INADDR_LOOPBACK);
-	
+
 	// Выполняем извлечение сетевых параметров
 	this->_eth->addr.fillSource(addr, source);
 	// Проверяем, что интерфейс найден (для loopback он должен быть)
@@ -79,6 +83,7 @@ TEST_F(EthFixture, AddressIsInSubnetTest){
 
 	// Неверная подсеть 192.168.2.0
 	uint32_t net2 = 0xC0A80200;
+	// Если адрес соответствует подсети
 	ASSERT_FALSE(this->_eth->addr.isInSubnet(ip, net2, prefix));
 }
 
@@ -90,10 +95,10 @@ TEST_F(EthFixture, AddressIpv6PrefixEqualTest){
 	// Создаём два IPv6-адреса
 	uint8_t a[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
 	uint8_t b[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2};
-	
+
 	// /64 совпадают
 	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(a, b, 64));
-	
+
 	// /128 не совпадают
 	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(a, b, 128));
 }

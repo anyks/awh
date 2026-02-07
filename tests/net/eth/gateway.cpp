@@ -13,56 +13,74 @@
  */
 
 /**
+ * Подключаем системные заголовочные файлы
+ */
+#include <arpa/inet.h>
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "eth.hpp"
-#include <arpa/inet.h>
 
 /**
  * @brief Тест получения маршрута
  *
  */
 TEST_F(EthFixture, GatewayGetTest){
-	awh::eth::gateway_t::route_t route;
-	// Попытка получить маршрут по умолчанию (пустой destination может интерпретироваться как default)
-	// Или устанавливаем конкретный destination
-	route.destination = std::make_unique<awh::net::addr_net_ipv4_t>();
-	static_cast<awh::net::addr_net_ipv4_t*>(route.destination.get())->address = 0x08080808; // 8.8.8.8
-
-	// Вызываем метод. Может вернуть false если маршрута нет или нет прав/сети
-	// Главное - метод не должен падать
-	bool res = this->_eth->gateway.get(route);
-	if (res) {
-		ASSERT_FALSE(route.ifname.empty());
-	}
-}
-
-/**
- * @brief Тест добавления и удаления маршрута
- *
- */
-TEST_F(EthFixture, GatewayAddRemoveTest){
-	// Этот тест скорее всего требует привилегий root.
-	// Мы пишем код, который пытается добавить фиктивный маршрут.
-	
-	awh::eth::gateway_t::route_t route;
-	route.ifname = "lo0"; // или lo
-	route.prefix = 32;
-	
-	// Destination 127.0.0.2
-	route.destination = std::make_unique<awh::net::addr_net_ipv4_t>();
-	static_cast<awh::net::addr_net_ipv4_t*>(route.destination.get())->address = htonl(0x7F000002);
-	
-	// Gateway 127.0.0.1
-	route.gateway = std::make_unique<awh::net::addr_net_ipv4_t>();
-	static_cast<awh::net::addr_net_ipv4_t*>(route.gateway.get())->address = htonl(0x7F000001);
-
-	// Пробуем добавить
-	if (this->_eth->gateway.add(route)) {
-		// Если добавилось - пробуем удалить
-		ASSERT_TRUE(this->_eth->gateway.remove(route));
-	} else {
-		// Если не добавилось (нет прав), то удаления тоже не должно быть или оно вернёт false
-		this->_eth->gateway.remove(route);
-	}
+	// Структура маршрута
+	awh::eth::gateway_t::route_t route{};
+	// Инициализируем объект адреса шлюза в маршруте
+	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Инициализируем объект адреса назначения в маршруте
+	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Если получаем маршрут для указанного адреса
+	ASSERT_TRUE(this->_eth->gateway.get(route));
+	// Выводим информацию о найденном маршруте
+	std::cout << "Gateway found:" << std::endl;
+	// Выводим информацию о маршруте
+	std::cout << " Interface: " << route.ifname << std::endl;
+	// Устанавливаем полученный IP-адрес
+	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
+	// Получаем IP-адрес текущего шлюза по умолчанию
+	const std::string gateway = static_cast <std::string> (* this->_addr.get());
+	// Выводим адрес шлюза по умолчанию
+	std::cout << "Default Gateway: " << gateway << std::endl;
+	// Устанавливаем полученный IP-адрес
+	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.destination.get())->address, awh::net_addr_t::endian_t::LITTLE);
+	// Выводим адрес назначения
+	std::cout << "Destination: " << static_cast <std::string> (* this->_addr.get()) << "/" << static_cast <uint32_t> (route.prefix) << std::endl;
+	// Удаляем маршрут по указанному адресу
+	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	/**
+	 * sudo route add default 192.168.7.1
+	 * sudo route delete default 0.0.0.0
+	 */
+	// Выполняем парсинг адреса нового шлюза
+	(* this->_addr.get()) = "192.168.7.131";
+	// Устанавливаем адрес шлюза в маршрут
+	awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_addr->v4(awh::net_addr_t::endian_t::LITTLE);
+	// Устанавливаем имя сетевого интерфейса
+	// route.ifname = "en0";
+	// Сбрасываем адрес назначения
+	// awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
+	// Добавляем маршрут с новым шлюзом
+	ASSERT_TRUE(this->_eth->gateway.add(route));
+	// Сбрасываем имя сетевого интерфейса
+	// route.ifname = "";
+	// Если получаем маршрут для указанного адреса
+	ASSERT_TRUE(this->_eth->gateway.get(route));
+	// Выводим информацию о маршруте
+	std::cout << " Interface: " << route.ifname << std::endl;
+	// Устанавливаем полученный IP-адрес
+	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
+	// Выводим адрес шлюза по умолчанию
+	std::cout << "Default Gateway: " << static_cast <std::string> (* this->_addr.get()) << std::endl;
+	// Удаляем маршрут по указанному адресу
+	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	// Выполняем парсинг адреса нового шлюза
+	(* this->_addr.get()) = gateway;
+	// Устанавливаем адрес шлюза в маршрут
+	awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_addr->v4(awh::net_addr_t::endian_t::LITTLE);
+	// Добавляем маршрут с новым шлюзом
+	ASSERT_TRUE(this->_eth->gateway.add(route));
 }

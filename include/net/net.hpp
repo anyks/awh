@@ -398,17 +398,14 @@ namespace awh {
 			// Время последнего обновления пропускной способности в наносекундах
 			uint64_t time;
 			// Лимит пропускной способности в битах в секунду
-			uint64_t limit;
-			// Размер пакета в байтах
-			uint16_t batch;
+			uint32_t limit;
 			// Таймаут пропускной способности
 			timeout_t timeout;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			 explicit Ratewidth() noexcept :
-			  time(0), limit(0), batch(0) {}
+			 explicit Ratewidth() noexcept : time(0), limit(0) {}
 		} wrate_t;
 		/**
 		 * @brief Структура пропускной способности

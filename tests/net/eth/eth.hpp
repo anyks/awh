@@ -20,6 +20,7 @@
  */
 #include "../../main.hpp"
 #include "../../../include/sys/log.hpp"
+#include "../../../include/net/addr.hpp"
 #include "../../../include/net/eth/eth.hpp"
 
 /**
@@ -34,6 +35,8 @@ class EthFixture : public testing::Test {
 		std::unique_ptr <awh::log_t> _log;
 		// Объект работы с Ethernet
 		std::unique_ptr <awh::eth_t> _eth;
+		// Объект сетевого адреса
+		std::unique_ptr <awh::net_addr_t> _addr;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

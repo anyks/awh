@@ -13,18 +13,24 @@
  */
 
 /**
+ * Подключаем системные заголовочные файлы
+ */
+#include <arpa/inet.h>
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "eth.hpp"
-#include <arpa/inet.h>
 
 /**
  * @brief Тест получения доступных интерфейсов
  *
  */
 TEST_F(EthFixture, IfaceAvailableTest){
+	// Получаем список доступных сетевых интерфейсов
 	auto interfaces = this->_eth->iface.available();
-	ASSERT_FALSE(interfaces.empty()); // В системе обычно есть хотя бы loopback
+	// В системе обычно есть хотя бы loopback
+	ASSERT_FALSE(interfaces.empty());
 }
 
 /**
@@ -32,10 +38,15 @@ TEST_F(EthFixture, IfaceAvailableTest){
  *
  */
 TEST_F(EthFixture, IfaceIsAvailableTest){
+	// Получаем список доступных сетевых интерфейсов
 	auto interfaces = this->_eth->iface.available();
+	// В системе обычно есть хотя бы loopback
 	ASSERT_FALSE(interfaces.empty());
-	std::string ifname = *interfaces.begin();
+	// Получаем название первого сетевого интерфейса
+	std::string ifname = * interfaces.begin();
+	// Проверяем что сетевой интерфейс доступен в системе
 	ASSERT_TRUE(this->_eth->iface.isAvailable(ifname));
+	// Проверяем что такого фейкового сетевого интерфейса в системе нет
 	ASSERT_FALSE(this->_eth->iface.isAvailable("non_existent_iface_123"));
 }
 
@@ -44,9 +55,12 @@ TEST_F(EthFixture, IfaceIsAvailableTest){
  *
  */
 TEST_F(EthFixture, IfaceTypeTest){
+	// Получаем список доступных сетевых интерфейсов
 	auto interfaces = this->_eth->iface.available();
-	if (!interfaces.empty()) {
-		std::string ifname = *interfaces.begin();
+	// Если список сетевых интерфейсов получен
+	if(!interfaces.empty()){
+		// Получаем первый сетевой интерфейс
+		std::string ifname = * interfaces.begin();
 		// Просто вызываем методы, результат зависит от системы
 		this->_eth->iface.isTunnel(ifname);
 		this->_eth->iface.isVirtual(ifname);
@@ -58,10 +72,11 @@ TEST_F(EthFixture, IfaceTypeTest){
  *
  */
 TEST_F(EthFixture, IfaceTypeByAddrTest){
-	// Loopback address
+	// Создаём объект IPv4 адреса
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Устанавливаем адрес петлевого сетевого интерфейса
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = htonl(INADDR_LOOPBACK);
-	
+	// Просто вызываем методы, результат зависит от системы
 	this->_eth->iface.isTunnel(addr);
 	this->_eth->iface.isVirtual(addr);
 }
@@ -71,6 +86,7 @@ TEST_F(EthFixture, IfaceTypeByAddrTest){
  *
  */
 TEST_F(EthFixture, IfaceNameTest){
+	// Создаём объект IPv4 адреса
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Устанавливаем адрес мультикаст-группы (как в static.cpp) или loopback
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
@@ -83,10 +99,12 @@ TEST_F(EthFixture, IfaceNameTest){
  *
  */
 TEST_F(EthFixture, IfaceCreateDestroyTest){
-	std::string name = "tun0";
+	// Название созданного тоннеля
+	std::string name = "";
 	// Попытка создания TAP/TUN интерфейса (требует прав)
 	auto sock = this->_eth->iface.create(awh::event::eth_t::TUN, name);
-	if (sock != -1) {
+	// Если сокет создан успешно
+	if(sock != awh::net::invalid_socket_t){
 		// Если создался, закрываем и уничтожаем
 		::close(sock);
 		// Уничтожение может требовать persistent режима, здесь просто проверяем вызов
@@ -99,12 +117,16 @@ TEST_F(EthFixture, IfaceCreateDestroyTest){
  *
  */
 TEST_F(EthFixture, IfaceMtuTest){
+	// Получаем список доступных сетевых интерфейсов
 	auto interfaces = this->_eth->iface.available();
-	if (!interfaces.empty()) {
-		std::string ifname = *interfaces.begin();
-		uint16_t mtu = this->_eth->iface.mtu(ifname);
+	// Если список сетевых интерфейсов получен
+	if(!interfaces.empty()){
+		// Получаем первый сетевой интерфейс
+		std::string ifname = * interfaces.begin();
+		// Получаем значение MTU для сетевого интерфейса
+		const uint16_t mtu = this->_eth->iface.mtu(ifname);
+		// Проверяем, что мы извлекли все удачно
 		ASSERT_GT(mtu, 0);
-		
 		// Попытка установить тот же MTU (безопасно)
 		this->_eth->iface.mtu(ifname, mtu);
 	}
@@ -115,17 +137,18 @@ TEST_F(EthFixture, IfaceMtuTest){
  *
  */
 TEST_F(EthFixture, IfaceFlagsTest){
+	// Получаем список доступных сетевых интерфейсов
 	auto interfaces = this->_eth->iface.available();
-	if (!interfaces.empty()) {
-		std::string ifname = *interfaces.begin();
+	// Если список сетевых интерфейсов получен
+	if(!interfaces.empty()){
+		// Получаем первый сетевой интерфейс
+		std::string ifname = * interfaces.begin();
+		// Получаем список флагов сетевого интерфейса
 		auto flags = this->_eth->iface.flags(ifname);
 		// Проверяем наличие флагов (например UP)
-		bool up = flags.count(awh::event::eth_flag_t::UP);
-		
-		// Попытка изменить флаг (UP -> UP)
-		if (up) {
+		if(flags.find(awh::event::eth_flag_t::UP) != flags.end())
+			// Устанавливаем флаг обратно
 			this->_eth->iface.flag(ifname, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED);
-		}
 	}
 }
 
@@ -134,20 +157,25 @@ TEST_F(EthFixture, IfaceFlagsTest){
  *
  */
 TEST_F(EthFixture, IfaceAddressTest){
+	// Получаем список доступных сетевых интерфейсов
 	auto interfaces = this->_eth->iface.available();
-	if (!interfaces.empty()) {
-		std::string ifname = *interfaces.begin();
-		// Получение адреса IPv4
+	// Если список сетевых интерфейсов получен
+	if(!interfaces.empty()){
+		// Получаем первый сетевой интерфейс
+		std::string ifname = * interfaces.begin();
+		// Получаем адрес IPv4
 		auto ip = this->_eth->iface.getAddress(ifname, awh::event::family_t::IPV4);
-		if (ip) {
+		// Если IP-адрес получен успешно
+		if(ip != nullptr)
 			// Если адрес есть, пробуем сеттер (нужны права, но проверяем АПИ)
-			// this->_eth->iface.setAddress(ifname, ip, 24); 
-		}
-
-		std::unique_ptr <awh::net::addr_t> ip_ptr;
-		std::unique_ptr <awh::net::addr_t> peer_ptr;
+			this->_eth->iface.setAddress(ifname, ip, 24); 
+		// Префикс адреса назначения сетевого интерфейса
 		uint8_t prefix = 0;
-		// Получение P2P параметров
+		// IP-адрес маршрутизатора сетевого интерфейса
+		std::unique_ptr <awh::net::addr_t> ip_ptr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// IP-адрес назначения сетевого интерфейса
+		std::unique_ptr <awh::net::addr_t> peer_ptr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Извлекаем P2P параметры
 		this->_eth->iface.getAddress(ifname, ip_ptr, peer_ptr, prefix);
 	}
 }

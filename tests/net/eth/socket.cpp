@@ -13,18 +13,25 @@
  */
 
 /**
+ * Подключаем системные заголовочные файлы
+ */
+#include <arpa/inet.h>
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "eth.hpp"
-#include <arpa/inet.h>
 
 /**
  * @brief Тест создания сокета
  *
  */
 TEST_F(EthFixture, SocketCreateTest){
+	// Создаём UDP сокет IPv4
 	auto sock = this->_eth->socket.create(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокет создан успешно
 	ASSERT_NE(sock, awh::net::invalid_socket_t);
+	// Закрываем сокет
 	::close(sock);
 }
 
@@ -33,10 +40,15 @@ TEST_F(EthFixture, SocketCreateTest){
  *
  */
 TEST_F(EthFixture, SocketPairTest){
+	// Создаём пару сокетов Unix Domain Stream
 	auto pair = this->_eth->socket.pair(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+	// Проверяем что первый сокет создан успешно
 	ASSERT_NE(pair[0], awh::net::invalid_socket_t);
+	// Проверяем что второй сокет создан успешно
 	ASSERT_NE(pair[1], awh::net::invalid_socket_t);
+	// Закрываем первый сокет
 	::close(pair[0]);
+	// Закрываем второй сокет
 	::close(pair[1]);
 }
 
@@ -45,25 +57,34 @@ TEST_F(EthFixture, SocketPairTest){
  *
  */
 TEST_F(EthFixture, SocketOptionsTest){
+	// Создаём UDP сокет IPv4
 	auto sock = this->_eth->socket.create(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокет создан успешно
 	ASSERT_NE(sock, awh::net::invalid_socket_t);
 
-	// Error
+	// Проверяем что нет ошибки на сокете
 	ASSERT_EQ(0, this->_eth->socket.error(sock));
 
-	// Timeout
+	// Проверяем что таймаут для чтения установлен успешно
 	ASSERT_TRUE(this->_eth->socket.timeout(sock, awh::net::socket_event_t::READ, 100));
+	// Проверяем что таймаут для записи установлен успешно
 	ASSERT_TRUE(this->_eth->socket.timeout(sock, awh::net::socket_event_t::WRITE, 100));
 
-	// Buffer Size
-	int32_t rcv = this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::READ);
+	// Получаем размер буфера для чтения
+	const int32_t rcv = this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::READ);
+	// Проверяем что размер буфера для чтения больше 0
 	ASSERT_GT(rcv, 0);
+	// Устанавливаем размер буфера для чтения в 2 раза больше
 	this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::READ, rcv * 2);
 	
-	int32_t snd = this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::WRITE);
+	// Получаем размер буфера для записи
+	const int32_t snd = this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::WRITE);
+	// Проверяем что размер буфера для записи больше 0
 	ASSERT_GT(snd, 0);
+	// Устанавливаем размер буфера для записи в 2 раза больше
 	this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::WRITE, snd * 2);
 
+	// Закрываем сокет
 	::close(sock);
 }
 
@@ -72,16 +93,20 @@ TEST_F(EthFixture, SocketOptionsTest){
  *
  */
 TEST_F(EthFixture, SocketSetOptionTest){
+	// Создаём TCP сокет IPv4
 	auto sock = this->_eth->socket.create(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем что сокет создан успешно
 	ASSERT_NE(sock, awh::net::invalid_socket_t);
 
+	// Устанавливаем опции сокета
 	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_ADDR));
 	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_PORT));
 	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_IO_BLOCK));
 	
-	// KeepAlive
-	ASSERT_FALSE(this->_eth->socket.keepalive(sock, 5, 5, 5)); // Может вернуть false на некоторых системах или если не поддерживается полностью
-	
+	// Устанавливаем keepalive (может вернуть false на некоторых системах или если не поддерживается полностью)
+	ASSERT_TRUE(this->_eth->socket.keepalive(sock, 5, 5, 5)); // Может вернуть false на некоторых системах или если не поддерживается полностью
+
+	// Закрываем сокет
 	::close(sock);
 }
 
@@ -90,34 +115,43 @@ TEST_F(EthFixture, SocketSetOptionTest){
  *
  */
 TEST_F(EthFixture, SocketMulticastTest){
+	// Создаём UDP сокет IPv4
 	auto sock = this->_eth->socket.create(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокет создан успешно
 	ASSERT_NE(sock, awh::net::invalid_socket_t);
 
-	// Hops
+	// Устанавливаем максимальное количество хопов для unicast пакетов в 1 (локальная сеть)
 	this->_eth->socket.hops(sock, awh::event::family_t::IPV4, awh::event::delivery_mode_t::UNICAST, awh::event::hops_t::NETWORK);
 	
-	// Multicast Iface (по Loopback)
+	// Создаём адрес источника для мультикаста
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+	// Заполняем адрес источника по имени сетевого интерфейса (может не сработать если нет подходящего интерфейса)
 	this->_eth->addr.fillSource(source);
-	if (!source.iface.empty()) {
+	// Если интерфейс найден, устанавливаем его для мультикаста
+	if(!source.iface.empty())
+		// Устанавливаем интерфейс для мультикаста (может не сработать если интерфейс не поддерживает мультикаст)
 		this->_eth->socket.multicastIface(sock, awh::event::family_t::IPV4, source.iface);
-	}
 
-	// Membership
+	// Создаём адрес мультикаст группы
 	std::unique_ptr <awh::net::addr_net_t> mcast_addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
-	// 239.0.0.1
+	// Устанавливаем адрес мультикаст группы в 239.0.0.1
 	static_cast <awh::net::addr_net_ipv4_t *> (mcast_addr.get())->address = htonl(0xEF000001);
 	
-	// Join/Leave (нужен реальный интерфейс с поддержкой мультикаста, но API тест пройдёт)
-	// Для теста передаём nullptr source, чтобы система выбрала дефолтный (если сработает)
-	// Или используем source, полученный ранее.
+	/**
+	 * Join/Leave (нужен реальный интерфейс с поддержкой мультикаста, но API тест пройдёт)
+	 * Для теста передаём nullptr source, чтобы система выбрала дефолтный (если сработает)
+	 * Или используем source, полученный ранее.
+	 */ 
 	
-	// Можем создать source адрес
+	// Создаём адрес any для отключения от мультикаста
 	std::unique_ptr <awh::net::addr_net_t> any_addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Устанавливаем адрес INADDR_ANY в объект адреса IPv4
 	static_cast <awh::net::addr_net_ipv4_t *> (any_addr.get())->address = htonl(INADDR_ANY);
-
+	// Подписываемся на мультикаст группу (может не сработать если нет подходящего интерфейса или если интерфейс не поддерживает мультикаст)
 	this->_eth->socket.membership(sock, awh::net::socket_mode_t::ENABLED, mcast_addr.get(), any_addr.get());
+	// Отписываемся от мультикаст группы (может не сработать если нет подходящего интерфейса или если интерфейс не поддерживает мультикаст)
 	this->_eth->socket.membership(sock, awh::net::socket_mode_t::DISABLED, mcast_addr.get(), any_addr.get());
 
+	// Закрываем сокет
 	::close(sock);
 }
