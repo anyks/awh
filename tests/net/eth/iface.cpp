@@ -16,6 +16,8 @@
  * Подключаем системные заголовочные файлы
  */
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <netinet/ip.h>
 
 /**
  * Подключаем заголовочный файлы проекта
