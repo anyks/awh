@@ -30809,12 +30809,12 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 /**
  * @brief Метод отправки данных события
  *
- * @param id   идентификатор события
- * @param data буфер данных для отправки
- * @param size размер данных для отправки
- * @return     количество байт данных, отправленных событием
+ * @param id     идентификатор события
+ * @param buffer буфер данных для отправки
+ * @param size   размер данных для отправки
+ * @return       количество байт данных, отправленных событием
  */
-size_t awh::engine::IO::send(const event::id_t id, const char * data, const size_t size) noexcept {
+size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	/**
@@ -30822,7 +30822,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 	 */
 	try {
 		// Если данные для отправки переданы
-		if((data != nullptr) && (size > 0)){
+		if((buffer != nullptr) && (size > 0)){
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
@@ -30879,7 +30879,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 									return result;
 								}
 								// Выполняем запись данных в файл
-								::memcpy(buffer + (fs->offset - static_cast <size_t> (offset)), data, size);
+								::memcpy(buffer + (fs->offset - static_cast <size_t> (offset)), buffer, size);
 								// Если сокет является неблокирующим
 								if((fs->state.options & event::options::NO_IO_BLOCK) ||
 								   (fs->state.options & event::options::SM_IO_BLOCK))
@@ -30913,7 +30913,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(user->mtx);
 						// Добавляем данные в очередь событий пользователя
-						user->events.push(data, size);
+						user->events.push(buffer, size);
 						// Создаём событие триггера
 						struct kevent trigger{};
 						// Выполняем установку события триггера
@@ -30961,7 +30961,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Если очередь передачи данных пустая
 													if(ipc->transfer.queue.empty()){
 														// Выполняем отправку данных в TCP/IP сокет
-														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
+														const ssize_t bytes = ::write(ipc->transfer.fd, buffer, size);
 														// Если данные отправлены успешно
 														if(bytes > 0){
 															// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -30981,7 +30981,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(ipc->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	ipc->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
+																	ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes));
 																}
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
@@ -31012,7 +31012,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																			// Выполняем блокировку уникальным мютексом
 																			const locker_t <> lock(ipc->transfer.mtx);
 																			// Сохраняем оставшиеся данные для последующей отправки
-																			ipc->transfer.queue.push(data, size);
+																			ipc->transfer.queue.push(buffer, size);
 																		}{
 																			// Выполняем блокировку потоков
 																			const locker_t <> lock(::local::mtx);
@@ -31073,7 +31073,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(ipc->transfer.mtx);
 															// Копим данные для дальнейшей отправки
-															ipc->transfer.queue.push(data, size);
+															ipc->transfer.queue.push(buffer, size);
 														}
 														// Если функция обратного вызова для вывода записанных данных установлена
 														if(ipc->callbacks.write != nullptr)
@@ -31087,7 +31087,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Переводим сокет в блокирующий режим
 													if(this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 														// Выполняем отправку данных в TCP/IP сокет
-														const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
+														const ssize_t bytes = ::write(ipc->transfer.fd, buffer, size);
 														// Если данные отправлены успешно
 														if(bytes > 0){
 															// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31137,7 +31137,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												// Если сокет является блокирующим
 												} else {
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::write(ipc->transfer.fd, data, size);
+													const ssize_t bytes = ::write(ipc->transfer.fd, buffer, size);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31221,7 +31221,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Если очередь передачи данных пустая
 											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31241,7 +31241,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(ipc->transfer.mtx);
 															// Сохраняем оставшиеся данные для последующей отправки
-															ipc->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
+															ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes));
 														}
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
@@ -31272,7 +31272,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(ipc->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	ipc->transfer.queue.push(data, size);
+																	ipc->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -31333,7 +31333,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(ipc->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													ipc->transfer.queue.push(data, size);
+													ipc->transfer.queue.push(buffer, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
@@ -31347,7 +31347,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31397,7 +31397,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+											const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31452,7 +31452,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Если очередь передачи данных пустая
 											if(ipc->transfer.queue.empty()){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31482,7 +31482,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																// Выполняем блокировку уникальным мютексом
 																const locker_t <> lock(ipc->transfer.mtx);
 																// Сохраняем оставшиеся данные для последующей отправки
-																ipc->transfer.queue.push(data, size);
+																ipc->transfer.queue.push(buffer, size);
 															}{
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
@@ -31542,7 +31542,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(ipc->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													ipc->transfer.queue.push(data, size);
+													ipc->transfer.queue.push(buffer, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(ipc->callbacks.write != nullptr)
@@ -31556,7 +31556,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31632,7 +31632,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в TCP/IP сокет
-											const ssize_t bytes = ::send(ipc->transfer.fd, data, size, MSG_NOSIGNAL);
+											const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31735,7 +31735,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															peer->transfer.fd,
-															data, size, nullptr, 0,
+															buffer, size, nullptr, 0,
 															peer->transfer.sctp.info.sinfo_ppid,
 															peer->transfer.sctp.info.sinfo_flags,
 															peer->transfer.sctp.info.sinfo_stream,
@@ -31743,13 +31743,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															peer->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -31770,7 +31770,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(peer->transfer.mtx);
 															// Сохраняем оставшиеся данные для последующей отправки
-															peer->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
+															peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes));
 														}{
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
@@ -31816,7 +31816,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(peer->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	peer->transfer.queue.push(data, size);
+																	peer->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -31891,7 +31891,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(peer->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													peer->transfer.queue.push(data, size);
+													peer->transfer.queue.push(buffer, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
@@ -31921,7 +31921,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															peer->transfer.fd,
-															data, size, nullptr, 0,
+															buffer, size, nullptr, 0,
 															peer->transfer.sctp.info.sinfo_ppid,
 															peer->transfer.sctp.info.sinfo_flags,
 															peer->transfer.sctp.info.sinfo_stream,
@@ -31929,13 +31929,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															peer->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -32002,7 +32002,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем отправку данных в TCP/IP сокет
 													bytes = ::sctp_sendmsg(
 														peer->transfer.fd,
-														data, size, nullptr, 0,
+														buffer, size, nullptr, 0,
 														peer->transfer.sctp.info.sinfo_ppid,
 														peer->transfer.sctp.info.sinfo_flags,
 														peer->transfer.sctp.info.sinfo_stream,
@@ -32010,13 +32010,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														peer->transfer.sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
@@ -32080,7 +32080,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															peer->transfer.fd,
-															data, size, nullptr, 0,
+															buffer, size, nullptr, 0,
 															peer->transfer.sctp.info.sinfo_ppid,
 															peer->transfer.sctp.info.sinfo_flags,
 															peer->transfer.sctp.info.sinfo_stream,
@@ -32088,7 +32088,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															peer->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32118,7 +32118,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(peer->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	peer->transfer.queue.push(data, size);
+																	peer->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -32192,7 +32192,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем блокировку уникальным мютексом
 														const locker_t <> lock(peer->transfer.mtx);
 														// Копим данные для дальнейшей отправки
-														peer->transfer.queue.push(data, size);
+														peer->transfer.queue.push(buffer, size);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(peer->callbacks.write != nullptr)
@@ -32218,7 +32218,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															peer->transfer.fd,
-															data, size, nullptr, 0,
+															buffer, size, nullptr, 0,
 															peer->transfer.sctp.info.sinfo_ppid,
 															peer->transfer.sctp.info.sinfo_flags,
 															peer->transfer.sctp.info.sinfo_stream,
@@ -32226,7 +32226,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															peer->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32314,7 +32314,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем отправку данных в TCP/IP сокет
 													bytes = ::sctp_sendmsg(
 														peer->transfer.fd,
-														data, size, nullptr, 0,
+														buffer, size, nullptr, 0,
 														peer->transfer.sctp.info.sinfo_ppid,
 														peer->transfer.sctp.info.sinfo_flags,
 														peer->transfer.sctp.info.sinfo_stream,
@@ -32322,7 +32322,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														peer->transfer.sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(peer->transfer.fd, data, size, MSG_NOSIGNAL);
+												else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32443,7 +32443,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												}
 											}
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32527,7 +32527,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+												const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32612,7 +32612,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32705,7 +32705,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Если очередь передачи данных пустая
 											if(origin->transfer.queue.empty()){
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+												const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32735,7 +32735,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																// Выполняем блокировку уникальным мютексом
 																const locker_t <> lock(origin->transfer.mtx);
 																// Сохраняем оставшиеся данные для последующей отправки
-																origin->transfer.queue.push(data, size);
+																origin->transfer.queue.push(buffer, size);
 															}{
 																// Выполняем блокировку потоков
 																const locker_t <> lock(::local::mtx);
@@ -32818,7 +32818,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(origin->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													origin->transfer.queue.push(data, size);
+													origin->transfer.queue.push(buffer, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(origin->callbacks.write != nullptr)
@@ -32832,7 +32832,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 											// Переводим сокет в блокирующий режим
 											if(this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+												const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32917,7 +32917,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 										// Если сокет является блокирующим
 										} else {
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+											const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -33069,7 +33069,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 									// Устанавливаем размер буфера для записи данных
 									iov[1].iov_len = size;
 									// Устанавливаем буфер для записи данных
-									iov[1].iov_base = const_cast <char *> (data);
+									iov[1].iov_base = const_cast <void *> (buffer);
 									// Выполняем отправку данных в туннель
 									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 									// Если данные не отправлены
@@ -33093,7 +33093,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(tunnel->mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													tunnel->queue.push(data, size);
+													tunnel->queue.push(buffer, size);
 												}{
 													// Выполняем блокировку потоков
 													const locker_t <> lock(::local::mtx);
@@ -33158,7 +33158,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(tunnel->mtx);
 									// Копим данные для дальнейшей отправки
-									tunnel->queue.push(data, size);
+									tunnel->queue.push(buffer, size);
 									// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
 									result = size;
 								}
@@ -33169,7 +33169,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 									// Устанавливаем размер буфера для записи данных
 									iov[1].iov_len = size;
 									// Устанавливаем буфер для записи данных
-									iov[1].iov_base = const_cast <char *> (data);
+									iov[1].iov_base = const_cast <void *> (buffer);
 									// Выполняем отправку данных в туннель
 									const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 									// Если данные не отправлены
@@ -33247,7 +33247,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 								// Устанавливаем размер буфера для записи данных
 								iov[1].iov_len = size;
 								// Устанавливаем буфер для записи данных
-								iov[1].iov_base = const_cast <char *> (data);
+								iov[1].iov_base = const_cast <void *> (buffer);
 								// Выполняем отправку данных в туннель
 								const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
 								// Если данные не отправлены
@@ -33321,7 +33321,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 					// Если узел является посредником
 					case static_cast <uint8_t> (event::node_t::MEDIATOR):
 						// Выполняем отправку данных на связанный узел
-						return this->send(awh_cast <::io::mediator_t *> (i->second.get())->dest, data, size);
+						return this->send(awh_cast <::io::mediator_t *> (i->second.get())->dest, buffer, size);
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
@@ -33371,7 +33371,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												}
 											}
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -33458,7 +33458,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -33542,7 +33542,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -33625,7 +33625,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															client->transfer.fd,
-															data, size, nullptr, 0,
+															buffer, size, nullptr, 0,
 															client->transfer.sctp.info.sinfo_ppid,
 															client->transfer.sctp.info.sinfo_flags,
 															client->transfer.sctp.info.sinfo_stream,
@@ -33633,13 +33633,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -33660,7 +33660,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем блокировку уникальным мютексом
 															const locker_t <> lock(client->transfer.mtx);
 															// Сохраняем оставшиеся данные для последующей отправки
-															client->transfer.queue.push(data + bytes, size - static_cast <size_t> (bytes));
+															client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes));
 														}{
 															// Выполняем блокировку потоков
 															const locker_t <> lock(::local::mtx);
@@ -33706,7 +33706,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(client->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	client->transfer.queue.push(data, size);
+																	client->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -33781,7 +33781,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(client->transfer.mtx);
 													// Копим данные для дальнейшей отправки
-													client->transfer.queue.push(data, size);
+													client->transfer.queue.push(buffer, size);
 												}
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
@@ -33811,7 +33811,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															client->transfer.fd,
-															data, size, nullptr, 0,
+															buffer, size, nullptr, 0,
 															client->transfer.sctp.info.sinfo_ppid,
 															client->transfer.sctp.info.sinfo_flags,
 															client->transfer.sctp.info.sinfo_stream,
@@ -33819,13 +33819,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -33892,7 +33892,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Выполняем отправку данных в TCP/IP сокет
 													bytes = ::sctp_sendmsg(
 														client->transfer.fd,
-														data, size, nullptr, 0,
+														buffer, size, nullptr, 0,
 														client->transfer.sctp.info.sinfo_ppid,
 														client->transfer.sctp.info.sinfo_flags,
 														client->transfer.sctp.info.sinfo_stream,
@@ -33900,13 +33900,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														client->transfer.sctp.info.sinfo_context
 													);
 												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											/**
 											 * Если это другая операционная система
 											 */
 											#else
 												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
@@ -33962,7 +33962,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												// Если очередь передачи данных пустая
 												if(client->transfer.queue.empty()){
 													// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -33992,7 +33992,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(client->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	client->transfer.queue.push(data, size);
+																	client->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -34066,7 +34066,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем блокировку уникальным мютексом
 														const locker_t <> lock(client->transfer.mtx);
 														// Копим данные для дальнейшей отправки
-														client->transfer.queue.push(data, size);
+														client->transfer.queue.push(buffer, size);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
@@ -34086,7 +34086,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Устанавливаем таймаут на отправку данных
 														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Определяем переменную для хранения количества отправленых байт
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -34168,7 +34168,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Если флаг однократного использования сокета не установлен, выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+												const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -34244,7 +34244,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												// Если очередь передачи данных пустая
 												if(!client->transfer.queue.empty()){
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -34274,7 +34274,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(client->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	client->transfer.queue.push(data, size);
+																	client->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -34348,7 +34348,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем блокировку уникальным мютексом
 														const locker_t <> lock(client->transfer.mtx);
 														// Копим данные для дальнейшей отправки
-														client->transfer.queue.push(data, size);
+														client->transfer.queue.push(buffer, size);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
@@ -34368,7 +34368,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Устанавливаем таймаут на отправку данных
 														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													// Если данные отправлены успешно
 													if(bytes > 0){
 														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -34450,7 +34450,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+												const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -34568,7 +34568,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем отправку данных в TCP/IP сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
-																data, size,
+																buffer, size,
 																&::trust_cast <struct sockaddr> (client->endpoint.server),
 																client->endpoint.size,
 																client->transfer.sctp.info.sinfo_ppid,
@@ -34578,13 +34578,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в TCP/IP сокет
-														else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+														else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в TCP/IP сокет
-														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+														const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
 													if(bytes > 0){
@@ -34615,7 +34615,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(client->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	client->transfer.queue.push(data, size);
+																	client->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -34689,7 +34689,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем блокировку уникальным мютексом
 														const locker_t <> lock(client->transfer.mtx);
 														// Копим данные для дальнейшей отправки
-														client->transfer.queue.push(data, size);
+														client->transfer.queue.push(buffer, size);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
@@ -34719,7 +34719,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем отправку данных в TCP/IP сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
-																data, size,
+																buffer, size,
 																&::trust_cast <struct sockaddr> (client->endpoint.server),
 																client->endpoint.size,
 																client->transfer.sctp.info.sinfo_ppid,
@@ -34729,13 +34729,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в TCP/IP сокет
-														else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+														else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в TCP/IP сокет
-														const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+														const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 													#endif
 													// Если данные отправлены успешно
 													if(bytes > 0){
@@ -34828,7 +34828,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в TCP/IP сокет
 														bytes = ::sctp_sendmsg(
 															client->transfer.fd,
-															data, size,
+															buffer, size,
 															&::trust_cast <struct sockaddr> (client->endpoint.server),
 															client->endpoint.size,
 															client->transfer.sctp.info.sinfo_ppid,
@@ -34838,13 +34838,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(client->transfer.fd, data, size, MSG_NOSIGNAL);
+													const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -34931,7 +34931,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем отправку данных в SCTP-сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
-																data, size,
+																buffer, size,
 																&::trust_cast <struct sockaddr> (client->endpoint.server),
 																client->endpoint.size,
 																client->transfer.sctp.info.sinfo_ppid,
@@ -34941,13 +34941,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в UDP-сокет
-														else bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в UDP-сокет
-														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
 													if(bytes > 0){
@@ -34978,7 +34978,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																	// Выполняем блокировку уникальным мютексом
 																	const locker_t <> lock(client->transfer.mtx);
 																	// Сохраняем оставшиеся данные для последующей отправки
-																	client->transfer.queue.push(data, size);
+																	client->transfer.queue.push(buffer, size);
 																}{
 																	// Выполняем блокировку потоков
 																	const locker_t <> lock(::local::mtx);
@@ -35052,7 +35052,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем блокировку уникальным мютексом
 														const locker_t <> lock(client->transfer.mtx);
 														// Копим данные для дальнейшей отправки
-														client->transfer.queue.push(data, size);
+														client->transfer.queue.push(buffer, size);
 													}
 													// Если функция обратного вызова для вывода записанных данных установлена
 													if(client->callbacks.write != nullptr)
@@ -35082,7 +35082,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															// Выполняем отправку данных в SCTP-сокет
 															bytes = ::sctp_sendmsg(
 																client->transfer.fd,
-																data, size,
+																buffer, size,
 																&::trust_cast <struct sockaddr> (client->endpoint.server),
 																client->endpoint.size,
 																client->transfer.sctp.info.sinfo_ppid,
@@ -35092,13 +35092,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 																client->transfer.sctp.info.sinfo_context
 															);
 														// Выполняем отправку данных в UDP-сокет
-														else bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													/**
 													 * Если это другая операционная система
 													 */
 													#else
 														// Выполняем отправку данных в UDP-сокет
-														const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+														const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 													#endif
 													// Если данные отправлены успешно
 													if(bytes > 0){
@@ -35191,7 +35191,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 														// Выполняем отправку данных в SCTP-сокет
 														bytes = ::sctp_sendmsg(
 															client->transfer.fd,
-															data, size,
+															buffer, size,
 															&::trust_cast <struct sockaddr> (client->endpoint.server),
 															client->endpoint.size,
 															client->transfer.sctp.info.sinfo_ppid,
@@ -35201,13 +35201,13 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 															client->transfer.sctp.info.sinfo_context
 														);
 													// Выполняем отправку данных в UDP-сокет
-													else bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												/**
 												 * Если это другая операционная система
 												 */
 												#else
 													// Выполняем отправку данных в UDP-сокет
-													const ssize_t bytes = ::sendto(client->transfer.fd, data, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+													const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 												#endif
 												// Если данные отправлены успешно
 												if(bytes > 0){
@@ -35328,7 +35328,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 										// Если сокет является неблокирующим
 										if(server->state.options & event::options::NO_IO_BLOCK){
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -35418,7 +35418,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -35509,7 +35509,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -35600,7 +35600,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 										// Если сокет является неблокирующим
 										if(server->state.options & event::options::NO_IO_BLOCK){
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -35690,7 +35690,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 													// Устанавливаем таймаут на отправку данных
 													this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+												const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 												// Если данные отправлены успешно
 												if(bytes > 0){
 													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -35781,7 +35781,7 @@ size_t awh::engine::IO::send(const event::id_t id, const char * data, const size
 												// Устанавливаем таймаут на отправку данных
 												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (i->second));
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(server->fd, data, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+											const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции

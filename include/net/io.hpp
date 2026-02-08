@@ -501,12 +501,12 @@ namespace awh {
 				/**
 				 * @brief Метод отправки данных события
 				 *
-				 * @param id   идентификатор события
-				 * @param data буфер данных для отправки
-				 * @param size размер данных для отправки
-				 * @return     количество байт данных, отправленных событием
+				 * @param id     идентификатор события
+				 * @param buffer буфер данных для отправки
+				 * @param size   размер данных для отправки
+				 * @return       количество байт данных, отправленных событием
 				 */
-				size_t send(const event::id_t id, const char * data, const size_t size) noexcept;
+				size_t send(const event::id_t id, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки глубины очереди принятия входящих соединений события
