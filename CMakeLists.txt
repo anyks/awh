@@ -227,7 +227,7 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 # Устанавливаем параметры игнорирования ошибок для MacOS X
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Устанавливаем параметры игнорирования ошибок для Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     SET(AWH_PARAMS "-lsocket -lnsl -lc -Wno-cpp -Wno-deprecated")
