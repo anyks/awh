@@ -481,6 +481,14 @@ namespace awh {
 			virtual size_t size(const event::id_t id) const noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения количества байт, доступных для записи в очередь события
+			 *
+			 * @param id идентификатор события
+			 * @return   количество байт, доступных для записи
+			 */
+			virtual size_t available(const event::id_t id) const noexcept = 0;
+		public:
+			/**
 			 * @brief Метод получения типа события
 			 *
 			 * @param id идентификатор события

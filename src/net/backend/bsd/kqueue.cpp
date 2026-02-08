@@ -41744,6 +41744,101 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод получения количества байт, доступных для записи в очередь события
+ *
+ * @param id идентификатор события
+ * @return   количество байт, доступных для записи
+ */
+size_t awh::engine::IO::available(const event::id_t id) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::user_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::ipc_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::peer_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::origin_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::tun_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::mediator_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// awh_cast <::io::client_t *> (i->second.get())->callbacks.available = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Unable to get available sending queue size for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Unable to get available sending queue size for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
  * @brief Метод получения типа события
  *
  * @param id идентификатор события
