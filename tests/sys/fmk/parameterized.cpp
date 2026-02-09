@@ -315,6 +315,10 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkCompareParameterizedFixture,
 	)
 );
 
+/**
+ * @brief Структура параметров тестирования метода получения временной метки
+ *
+ */
 struct FmkTimestampTestParameter {
 	// Тип временной метки
 	awh::fmk_t::chrono_t stamp = awh::fmk_t::chrono_t::NONE;
@@ -1590,8 +1594,10 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkBytesParameterizedFixture,
  *
  */
 struct FmkSizeBufferTestParameter {
-	// Ожидаемый результат
-	size_t result = 0;
+	// Ожидаемый результат для размера буфера
+	size_t result1 = 0;
+	// Ожидаемый результат для скорости передачи данных
+	size_t result2 = 0;
 	// Человекочитаемый формат
 	std::string str = "";
 };
@@ -1606,13 +1612,21 @@ class FmkSizeBufferParameterizedFixture : public FmkFixture, public ::testing::W
 };
 
 /**
- * 
  * @brief Метод тестирования метода преобразования человекочитаемого формата в байты
  *
  */
 TEST_P(FmkSizeBufferParameterizedFixture, FmkSizeBufferTest){
 	// Проверяем, что результат преобразования человекочитаемого формата в байты совпадает с ожидаемым
-	ASSERT_EQ(this->_parameter.result, this->_fmk->sizeBuffer(this->_parameter.str));
+	ASSERT_EQ(this->_parameter.result1, this->_fmk->bpsBuffer(this->_parameter.str));
+}
+
+/**
+ * @brief Метод тестирования метода преобразования человекочитаемого формата в байты
+ *
+ */
+TEST_P(FmkSizeBufferParameterizedFixture, FmkBytesPerSecondTest){
+	// Проверяем, что результат преобразования человекочитаемого формата в байты совпадает с ожидаемым
+	ASSERT_EQ(this->_parameter.result2, this->_fmk->bpsSize(this->_parameter.str));
 }
 
 /**
@@ -1621,9 +1635,10 @@ TEST_P(FmkSizeBufferParameterizedFixture, FmkSizeBufferTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeBufferParameterizedFixture,
 	::testing::Values(
-		FmkSizeBufferTestParameter({5, "1024 bps"}),
-		FmkSizeBufferTestParameter({1024, "200 kbps"}),
-		FmkSizeBufferTestParameter({768000, "150 Mbps"}),
-		FmkSizeBufferTestParameter({56320000, "11 Gbps"})
+		FmkSizeBufferTestParameter({5, 128, "1024 bps"}),
+		FmkSizeBufferTestParameter({1024, 25600, "200 kbps"}),
+		FmkSizeBufferTestParameter({768000, 19200000, "150 Mbps"}),
+		FmkSizeBufferTestParameter({56320000, 1408000000, "11 Gbps"}),
+		FmkSizeBufferTestParameter({2000000000, 49999998976, "400Gbps"})
 	)
 );

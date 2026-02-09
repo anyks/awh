@@ -6635,12 +6635,93 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 	return result;
 }
 /**
+ * @brief Метод получения количества байт в секунду из строки
+ *
+ * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
+ * @return    количество байт в секунду
+ */
+size_t awh::Framework::bpsSize(const string & str) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Выполняем проверку входящей строки
+	const auto & match = this->_regexp.exec(str, this->_buffers);
+	// Если данные найдены
+	if(!match.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Размерность скорости
+			float dimension = .0f;
+			// Получаем значение скорости
+			const float speed = this->atoi <float> (match[1]);
+			// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
+			const bool bytes = !::fmod(speed / 8.f, 2.f);
+			// Если это биты
+			if(this->compare("bps", match[2]))
+				// Выполняем установку множителя
+				dimension = 1.f;
+			// Если это размерность в киллобитах
+			else if(this->compare("kbps", match[2]))
+				// Выполняем установку множителя
+				dimension = (bytes ? 1000.f : 1024.f);
+			// Если это размерность в мегабитах
+			else if(this->compare("Mbps", match[2]))
+				// Выполняем установку множителя
+				dimension = (bytes ? 1000000.f : 1024000.f);
+			// Если это размерность в гигабитах
+			else if(this->compare("Gbps", match[2]))
+				// Выполняем установку множителя
+				dimension = (bytes ? 1000000000.f : 1024000000.f);
+			// Выполняем получение размера в байтах
+			result = static_cast <size_t> ((speed * dimension) / 8.f);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод получения размера буфера в байтах
  *
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    размер буфера в байтах
  */
-size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
+size_t awh::Framework::bpsBuffer(const string & str) const noexcept {
 	/**
 	 * Readme - http://www.securitylab.ru/analytics/243414.php
 	 *

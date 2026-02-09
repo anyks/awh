@@ -1358,6 +1358,10 @@ int32_t main(int32_t argc, char * argv[]){
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
+		
+		// 2Mbps
+		cout << " BANDWIDTH: " << io.bandwidth(eid, event::limiting_t::EGRESS, "100Mbps") << endl;
+		
 		// Устананавливаем опции события
 		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
 			// Выводим сообщение об успешной установке опций события

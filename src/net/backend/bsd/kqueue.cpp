@@ -33,6 +33,66 @@
 #endif
 
 /**
+ * Если размер MTU для UDP сообщений в IPv4 не определён
+ */
+#ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1472 - 72 = 1400 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * 1500 - 20 (IP) - 8 (UDP) = 1472 максимум без фрагментации
+	 * Запас 72 байта на возможную инкапсуляцию (туннели, провайдерские заголовки)
+	 * Больше → фрагментация → потеря пакетов
+	 */
+	#define AWH_MTU_UDP_IPV4_PAYLOAD_SIZE 0x578
+#endif
+
+/**
+ * Если размер MTU для UDP сообщений в IPv6 не определён
+ */
+#ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1452 - 72 = 1380 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * 1500 - 40 (IPv6) - 8 (UDP) = 1452 максимум без фрагментации
+	 * Запас 72 байта на инкапсуляцию (туннели часто используют двойную инкапсуляцию)
+	 * IPv6 не фрагментирует на маршрутизаторах → фрагментированные пакеты отбрасываются
+	 */
+	#define AWH_MTU_UDP_IPV6_PAYLOAD_SIZE 0x564
+#endif
+
+/**
+ * Если размер MTU для TCP сообщений в IPv4 не определён
+ */
+#ifndef AWH_MTU_TCP_IPV4_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для TCP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и TCP = 1440 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * Ядро разобьёт на сегменты по MSS (~1448-1460)
+	 * Размер кратен MSS → минимум «хвостовых» мелких сегментов
+	 * Достаточно большой для плавности, достаточно маленький для точности ограничения
+	 */
+	#define AWH_MTU_TCP_IPV4_PAYLOAD_SIZE 0x5a0
+#endif
+
+/**
+ * Если размер MTU для TCP сообщений в IPv6 не определён
+ */
+#ifndef AWH_MTU_TCP_IPV6_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для TCP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и TCP = 1420 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * Учёт 40-байтного заголовка IPv6
+	 * Кратно эффективному MSS для IPv6 (~1420-1440)
+	 * Аналогично IPv4 — баланс плавности и точности
+	 */
+	#define AWH_MTU_TCP_IPV6_PAYLOAD_SIZE 0x58c
+#endif
+
+/**
  * Стандартные модули
  */
 #include <ctime>
@@ -637,6 +697,8 @@ namespace io {
 	 *
 	 */
 	typedef struct Ratewidth {
+		// Количество токенов в пропускной способности записи
+		double tokens;
 		// Время последнего обновления пропускной способности в наносекундах
 		uint64_t time;
 		// Лимит пропускной способности в битах в секунду
@@ -647,7 +709,8 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Ratewidth() noexcept : time(0), limit(0) {}
+		explicit Ratewidth() noexcept :
+		 tokens(0.), time(0), limit(0) {}
 	} wrate_t;
 
 	/**
@@ -1375,6 +1438,25 @@ namespace local {
 };
 
 /**
+ * Инкапсулируем статические объекты в пространство имён временных переменных
+ */
+namespace local {
+	/**
+	 * @brief Функция получения текущего штампа времени в наносекундах
+	 *
+	 * @return текущее время в наносекундах
+	 */
+	static uint64_t timestamp() noexcept {
+		// Объект структуры для хранения времени
+		struct timespec ts{0};
+		// Получаем текущее время в формате CLOCK_MONOTONIC
+		::clock_gettime(CLOCK_MONOTONIC, &ts);
+		// Возвращаем текущее время в наносекундах
+		return ((static_cast <uint64_t> (ts.tv_sec) * 1000000000ULL) + static_cast <uint64_t> (ts.tv_nsec));
+	}
+};
+
+/**
  * Инкапсулируем статические функции в пространство имён файловой системы
  */
 namespace fs {
@@ -1661,6 +1743,16 @@ namespace io {
 	 * @return результат выполнения обработки
 	 */
 	static bool error(::io::node_t *, const int32_t, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции обновления токенов ограничения пропускной способности
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  режим ограничения пропускной способности события (egress или ingress)
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 */
+	static bool tokens(::io::node_t *, const event::limiting_t, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события изменения файла или каталога
 	 *
@@ -2137,7 +2229,7 @@ namespace io {
 		return false;
 	}
 	/**
-	 * @brief Прототип функции обработки события удаления узла
+	 * @brief Функция обработки события удаления узла
 	 *
 	 * @param node узел в котором произошло событие
 	 * @param eth  объект работы с сетевыми интерфейсами
@@ -3016,7 +3108,900 @@ namespace io {
 		return false;
 	}
 	/**
-	 * @brief Прототип функции обработки события изменения файла или каталога
+	 * @brief Функция обновления токенов ограничения пропускной способности
+	 *
+	 * @param node     узел в котором произошло событие
+	 * @param limiting режим ограничения пропускной способности события (egress или ingress)
+	 * @param fmk      объект работы с асинхронными событиями
+	 * @param log      объект работы с логами
+	 * @return         результат выполнения обработки
+	 */
+	static bool tokens(::io::node_t * node, const event::limiting_t limiting, const fmk_t * fmk, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем текущее значение объекта даты
+			const uint64_t date = ::local::timestamp();
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (peer->state.type)){
+						// Если сокет принадлежит к типу STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (peer->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(peer->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												peer->bandwidth.write.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - peer->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(peer->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													peer->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(peer->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												peer->bandwidth.read.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - peer->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												peer->bandwidth.read.tokens += static_cast <double> (peer->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (peer->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(peer->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													peer->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(peer->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												peer->bandwidth.write.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - peer->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(peer->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													peer->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(peer->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												peer->bandwidth.read.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - peer->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												peer->bandwidth.read.tokens += static_cast <double> (peer->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (peer->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(peer->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													peer->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												peer->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+							}
+						} break;
+						/**
+						 * Для операционной системы FreeBSD
+						 */
+						#if __FreeBSD__
+							// Если сокет принадлежит к типу SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (peer->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										/**
+										 * Определяем режим ограничения пропускной способности
+										 */
+										switch(static_cast <uint8_t> (limiting)){
+											// Если режим ограничения пропускной способности является исходящим
+											case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+												if(peer->bandwidth.write.time == 0){
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.write.time = date;
+													// Устанавливаем количество токенов для ограничения пропускной способности
+													peer->bandwidth.write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+													// Формируем положительный результат
+													return true;
+												}
+												// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+												const uint64_t elapsed = (date - peer->bandwidth.write.time);
+												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+												if(elapsed > 0){
+													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+													peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
+													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+													const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+													// Если количество токенов для ограничения пропускной способности превышает размер ведра
+													if(peer->bandwidth.write.tokens > burst)
+														// Устанавливаем количество токенов равным размеру ведра
+														peer->bandwidth.write.tokens = burst;
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.write.time = date;
+												}
+												// Формируем положительный результат
+												return true;
+											}
+											// Если режим ограничения пропускной способности является входящим
+											case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+												if(peer->bandwidth.read.time == 0){
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.read.time = date;
+													// Устанавливаем количество токенов для ограничения пропускной способности
+													peer->bandwidth.read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+													// Формируем положительный результат
+													return true;
+												}
+												// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+												const uint64_t elapsed = (date - peer->bandwidth.read.time);
+												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+												if(elapsed > 0){
+													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+													peer->bandwidth.read.tokens += static_cast <double> (peer->bandwidth.read.limit * (elapsed / 1e9));
+													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+													const double burst = ::max(static_cast <double> (peer->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+													// Если количество токенов для ограничения пропускной способности превышает размер ведра
+													if(peer->bandwidth.read.tokens > burst)
+														// Устанавливаем количество токенов равным размеру ведра
+														peer->bandwidth.read.tokens = burst;
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.read.time = date;
+												}
+												// Формируем положительный результат
+												return true;
+											}
+										}
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										/**
+										 * Определяем режим ограничения пропускной способности
+										 */
+										switch(static_cast <uint8_t> (limiting)){
+											// Если режим ограничения пропускной способности является исходящим
+											case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+												if(peer->bandwidth.write.time == 0){
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.write.time = date;
+													// Устанавливаем количество токенов для ограничения пропускной способности
+													peer->bandwidth.write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+													// Формируем положительный результат
+													return true;
+												}
+												// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+												const uint64_t elapsed = (date - peer->bandwidth.write.time);
+												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+												if(elapsed > 0){
+													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+													peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
+													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+													const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+													// Если количество токенов для ограничения пропускной способности превышает размер ведра
+													if(peer->bandwidth.write.tokens > burst)
+														// Устанавливаем количество токенов равным размеру ведра
+														peer->bandwidth.write.tokens = burst;
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.write.time = date;
+												}
+												// Формируем положительный результат
+												return true;
+											}
+											// Если режим ограничения пропускной способности является входящим
+											case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+												if(peer->bandwidth.read.time == 0){
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.read.time = date;
+													// Устанавливаем количество токенов для ограничения пропускной способности
+													peer->bandwidth.read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+													// Формируем положительный результат
+													return true;
+												}
+												// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+												const uint64_t elapsed = (date - peer->bandwidth.read.time);
+												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+												if(elapsed > 0){
+													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+													peer->bandwidth.read.tokens += static_cast <double> (peer->bandwidth.read.limit * (elapsed / 1e9));
+													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+													const double burst = ::max(static_cast <double> (peer->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+													// Если количество токенов для ограничения пропускной способности превышает размер ведра
+													if(peer->bandwidth.read.tokens > burst)
+														// Устанавливаем количество токенов равным размеру ведра
+														peer->bandwidth.read.tokens = burst;
+													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+													peer->bandwidth.read.time = date;
+												}
+												// Формируем положительный результат
+												return true;
+											}
+										}
+									} break;
+								}
+							} break;
+						#endif
+					}
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (origin->state.type)){
+						// Если сокет принадлежит к типу RAW
+						case static_cast <uint8_t> (event::type_t::RAW):
+						/**
+						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 */
+						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+							// Если сокет принадлежит к типу SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
+						#endif
+						// Если сокет принадлежит к типу DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (origin->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(origin->wrate.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												origin->wrate.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												origin->wrate.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - origin->wrate.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												origin->wrate.tokens += static_cast <double> (origin->wrate.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (origin->wrate.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(origin->wrate.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													origin->wrate.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												origin->wrate.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(origin->wrate.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												origin->wrate.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												origin->wrate.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - origin->wrate.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												origin->wrate.tokens += static_cast <double> (origin->wrate.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (origin->wrate.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(origin->wrate.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													origin->wrate.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												origin->wrate.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+							}
+						} break;
+					}
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (client->state.type)){
+						// Если сокет принадлежит к типу STREAM
+						case static_cast <uint8_t> (event::type_t::STREAM): {
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (client->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.write.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.read.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.read.tokens += static_cast <double> (client->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.write.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.read.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.read.tokens += static_cast <double> (client->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+							}
+						} break;
+						// Если сокет принадлежит к типу RAW
+						case static_cast <uint8_t> (event::type_t::RAW):
+						// Если сокет принадлежит к типу DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM):
+						// Если сокет принадлежит к типу SEQPACKET
+						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (client->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.read.tokens += static_cast <double> (client->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(client->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												client->bandwidth.read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - client->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												client->bandwidth.read.tokens += static_cast <double> (client->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (client->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												client->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+							}
+						} break;
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (node);
+					/**
+					 * Определяем тип сокета
+					 */
+					switch(static_cast <uint8_t> (server->state.type)){
+						// Если сокет принадлежит к типу RAW
+						case static_cast <uint8_t> (event::type_t::RAW):
+						/**
+						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 */
+						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+							// Если сокет принадлежит к типу SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET):
+						#endif
+						// Если сокет принадлежит к типу DATAGRAM
+						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (server->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(server->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												server->bandwidth.write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - server->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												server->bandwidth.write.tokens += static_cast <double> (server->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (server->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(server->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													server->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(server->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												server->bandwidth.read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - server->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												server->bandwidth.read.tokens += static_cast <double> (server->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (server->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(server->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													server->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем режим ограничения пропускной способности
+									 */
+									switch(static_cast <uint8_t> (limiting)){
+										// Если режим ограничения пропускной способности является исходящим
+										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(server->bandwidth.write.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.write.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												server->bandwidth.write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - server->bandwidth.write.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												server->bandwidth.write.tokens += static_cast <double> (server->bandwidth.write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (server->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(server->bandwidth.write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													server->bandwidth.write.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.write.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+										// Если режим ограничения пропускной способности является входящим
+										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+											if(server->bandwidth.read.time == 0){
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.read.time = date;
+												// Устанавливаем количество токенов для ограничения пропускной способности
+												server->bandwidth.read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												// Формируем положительный результат
+												return true;
+											}
+											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+											const uint64_t elapsed = (date - server->bandwidth.read.time);
+											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+											if(elapsed > 0){
+												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+												server->bandwidth.read.tokens += static_cast <double> (server->bandwidth.read.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
+												const double burst = ::max(static_cast <double> (server->bandwidth.read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(server->bandwidth.read.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													server->bandwidth.read.tokens = burst;
+												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+												server->bandwidth.read.time = date;
+											}
+											// Формируем положительный результат
+											return true;
+										}
+									}
+								} break;
+							}
+						} break;
+					}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Создаём охранника узла события
+			::local::guard_t guard(node);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+	/**
+	 * @brief Функция обработки события изменения файла или каталога
 	 *
 	 * @param node узел в котором произошло событие
 	 * @param io   объект работы с асинхронными событиями
@@ -26334,13 +27319,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
 									// Если узел является межпроцессным взаимодействием
-									case static_cast <uint8_t> (event::node_t::IPC):
-									// Если узел является одноранговым узлом
-									case static_cast <uint8_t> (event::node_t::PEER):
-									// Если узел является клиентом
-									case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Если узел является сервером
-									case static_cast <uint8_t> (event::node_t::SERVER): {
+									case static_cast <uint8_t> (event::node_t::IPC): {
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
@@ -26391,63 +27370,164 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 												break;
 											}
+										}
+										// Выполняем "пинок" для применения изменений
+										isSetup = this->kick();
+									} break;
+									// Если узел является одноранговым узлом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Удаляем событие на чтение
+										EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Если событие находится в состоянии паузы
+										if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
 											/**
-											 * Определяем чем является текущий узел
+											 * Определяем тип сокета
 											 */
-											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если узел является одноранговым узлом
-												case static_cast <uint8_t> (event::node_t::PEER): {
-													// Получаем текущее значение объекта однорангового узла
-													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-													// Если необходимо активировать таймаут на чтение для однорангового узла
-													if(peer->timeouts.read.delay > 0){
+											switch(static_cast <uint8_t> (i->second->state.type)){
+												// Если сокет принадлежит к типу STREAM
+												case static_cast <uint8_t> (event::type_t::STREAM):
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												break;
+												// Если сокет принадлежит к типу DATAGRAM
+												case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												// Если сокет принадлежит к типу SEQPACKET
+												case static_cast <uint8_t> (event::type_t::SEQPACKET):
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												break;
+											}
+										// Если событие находится в активном состоянии
+										} else {
+											/**
+											 * Определяем тип сокета
+											 */
+											switch(static_cast <uint8_t> (i->second->state.type)){
+												// Если сокет принадлежит к типу STREAM
+												case static_cast <uint8_t> (event::type_t::STREAM):
+													// Устанавливаем событие на чтение
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+												break;
+												// Если сокет принадлежит к типу DATAGRAM
+												case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												// Если сокет принадлежит к типу SEQPACKET
+												case static_cast <uint8_t> (event::type_t::SEQPACKET):
+													// Устанавливаем событие на чтение
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+												break;
+											}
+											// Получаем текущее значение объекта однорангового узла
+											::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+											// Если необходимо активировать таймаут на чтение для однорангового узла
+											if(peer->timeouts.read.delay > 0){
+												// Устанавливаем статус таймаута на чтение как ожидающий
+												peer->timeouts.read.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на получение данных
+												EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
+											}
+										}
+										// Выполняем "пинок" для применения изменений
+										isSetup = this->kick();
+									
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Удаляем событие на чтение
+										EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+										if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
+											/**
+											 * Определяем тип сокета
+											 */
+											switch(static_cast <uint8_t> (i->second->state.type)){
+												// Если сокет принадлежит к типу STREAM
+												case static_cast <uint8_t> (event::type_t::STREAM):
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												break;
+												// Если сокет принадлежит к типу DATAGRAM
+												case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												// Если сокет принадлежит к типу SEQPACKET
+												case static_cast <uint8_t> (event::type_t::SEQPACKET):
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												break;
+											}
+										// Если событие находится в активном состоянии
+										} else {
+											/**
+											 * Определяем тип сокета
+											 */
+											switch(static_cast <uint8_t> (i->second->state.type)){
+												// Если сокет принадлежит к типу STREAM
+												case static_cast <uint8_t> (event::type_t::STREAM):
+													// Устанавливаем событие на чтение
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+												break;
+												// Если сокет принадлежит к типу DATAGRAM
+												case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												// Если сокет принадлежит к типу SEQPACKET
+												case static_cast <uint8_t> (event::type_t::SEQPACKET):
+													// Устанавливаем событие на чтение
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+												break;
+											}
+											// Если узел является клиентом
+											if(i->second->state.node == event::node_t::CLIENT){
+												// Получаем текущее значение объекта клиента
+												::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+												// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
+												if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+													// Если необходимо активировать таймаут на подключение к серверу
+													if(client->timeouts.connect.delay > 0){
+														// Устанавливаем статус таймаута на подключение как ожидающий
+														client->timeouts.connect.status = event::status_t::PENDING;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на подключение к серверу
+														EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
+													}
+												// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
+												} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
+													// Если необходимо активировать таймаут на переподключение к серверу
+													if(client->timeouts.reconnect.delay > 0){
+														// Устанавливаем статус таймаута на переподключение как ожидающий
+														client->timeouts.reconnect.status = event::status_t::PENDING;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на переподключение к серверу
+														EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
+													}
+												// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
+												} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
+													// Если необходимо активировать таймаут на чтение для клиента
+													if(client->timeouts.read.delay > 0){
 														// Устанавливаем статус таймаута на чтение как ожидающий
-														peer->timeouts.read.status = event::status_t::PENDING;
+														client->timeouts.read.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
+														EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
 													}
-												} break;
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT): {
-													// Получаем текущее значение объекта клиента
-													::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-													// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
-													if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
-														// Если необходимо активировать таймаут на подключение к серверу
-														if(client->timeouts.connect.delay > 0){
-															// Устанавливаем статус таймаута на подключение как ожидающий
-															client->timeouts.connect.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на подключение к серверу
-															EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-														}
-													// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
-													} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
-														// Если необходимо активировать таймаут на переподключение к серверу
-														if(client->timeouts.reconnect.delay > 0){
-															// Устанавливаем статус таймаута на переподключение как ожидающий
-															client->timeouts.reconnect.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на переподключение к серверу
-															EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-														}
-													// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-													} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
-														// Если необходимо активировать таймаут на чтение для клиента
-														if(client->timeouts.read.delay > 0){
-															// Устанавливаем статус таймаута на чтение как ожидающий
-															client->timeouts.read.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-														}
-													}
-												} break;
+												}
 											}
 										}
 										// Выполняем "пинок" для применения изменений
@@ -26478,13 +27558,26 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 								 */
 								switch(static_cast <uint8_t> (i->second->state.node)){
 									// Если узел является межпроцессным взаимодействием
-									case static_cast <uint8_t> (event::node_t::IPC):
+									case static_cast <uint8_t> (event::node_t::IPC): {
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Удаляем событие на чтение
+										EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Если событие находится в состоянии паузы
+										if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+										// Если событие находится в активном состоянии, устанавливаем событие на чтение
+										else EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+										// Выполняем "пинок" для применения изменений
+										isSetup = this->kick();
+									} break;
 									// Если узел является одноранговым узлом
-									case static_cast <uint8_t> (event::node_t::PEER):
-									// Если узел является клиентом
-									case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Если узел является сервером
-									case static_cast <uint8_t> (event::node_t::SERVER): {
+									case static_cast <uint8_t> (event::node_t::PEER): {
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
@@ -26501,131 +27594,149 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										else {
 											// Устанавливаем событие на чтение
 											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-											/**
-											 * Определяем чем является текущий узел
-											 */
-											switch(static_cast <uint8_t> (i->second->state.node)){
-												// Если узел является одноранговым узлом
-												case static_cast <uint8_t> (event::node_t::PEER): {
-													// Получаем текущее значение объекта однорангового узла
-													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+											// Получаем текущее значение объекта однорангового узла
+											::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+											// Если таймаут на чтение уже был активирован
+											if(peer->timeouts.read.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												peer->timeouts.read.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на получение данных
+												EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+											// Если таймаут на запись уже был активирован
+											if(peer->timeouts.write.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												peer->timeouts.write.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+											// Если таймаут ограничителя скорости на чтение уже был активирован
+											if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												peer->bandwidth.read.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на получение данных для ограничителя скорости
+												EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+											// Если таймаут ограничителя скорости на запись уже был активирован
+											if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												peer->bandwidth.write.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на запись данных для ограничителя скорости
+												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+											// Если необходимо активировать таймаут на чтение для однорангового узла
+											if(peer->timeouts.read.delay > 0)
+												// Устанавливаем таймаут на получение данных
+												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+											// Если необходимо активировать таймаут на запись для однорангового узла
+											if(peer->timeouts.write.delay > 0)
+												// Устанавливаем таймаут на запись данных
+												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+										}
+										// Выполняем "пинок" для применения изменений
+										isSetup = this->kick();
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Удаляем событие на чтение
+										EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+										if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+											// Устанавливаем событие на чтение но отключаем его
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+										// Если событие находится в активном состоянии
+										else {
+											// Устанавливаем событие на чтение
+											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											// Если узел является клиентом
+											if(i->second->state.node == event::node_t::CLIENT){
+												// Получаем текущее значение объекта клиента
+												::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+												// Если таймаут на подключение уже был активирован
+												if(client->timeouts.connect.status == event::status_t::PENDING){
+													// Снимаем флаг ожидания работы таймаута
+													client->timeouts.connect.status = event::status_t::NONE;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Удаляем таймаут на подключение к серверу
+													EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													// Устанавливаем таймаут на запись данных
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
+												// Если таймаут на переподключение уже был активирован
+												} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
+													// Снимаем флаг ожидания работы таймаута
+													client->timeouts.reconnect.status = event::status_t::NONE;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Удаляем таймаут на переподключение к серверу
+													EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													// Устанавливаем таймаут на запись данных
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.reconnect.delay);
+												// Если таймауты ни на подключение, не на переподключения активированы небыли
+												} else {
 													// Если таймаут на чтение уже был активирован
-													if(peer->timeouts.read.status == event::status_t::PENDING){
+													if(client->timeouts.read.status == event::status_t::PENDING){
 														// Снимаем флаг ожидания работы таймаута
-														peer->timeouts.read.status = event::status_t::NONE;
+														client->timeouts.read.status = event::status_t::NONE;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Удаляем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+														EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
 													// Если таймаут на запись уже был активирован
-													if(peer->timeouts.write.status == event::status_t::PENDING){
+													if(client->timeouts.write.status == event::status_t::PENDING){
 														// Снимаем флаг ожидания работы таймаута
-														peer->timeouts.write.status = event::status_t::NONE;
+														client->timeouts.write.status = event::status_t::NONE;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Удаляем таймаут на запись данных
-														EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+														EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
 													// Если таймаут ограничителя скорости на чтение уже был активирован
-													if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
+													if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
 														// Снимаем флаг ожидания работы таймаута
-														peer->bandwidth.read.timeout.status = event::status_t::NONE;
+														client->bandwidth.read.timeout.status = event::status_t::NONE;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Удаляем таймаут на получение данных для ограничителя скорости
-														EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+														EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
 													// Если таймаут ограничителя скорости на запись уже был активирован
-													if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
+													if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
 														// Снимаем флаг ожидания работы таймаута
-														peer->bandwidth.write.timeout.status = event::status_t::NONE;
+														client->bandwidth.write.timeout.status = event::status_t::NONE;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
 														// Удаляем таймаут на запись данных для ограничителя скорости
-														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 													}
-													// Если необходимо активировать таймаут на чтение для однорангового узла
-													if(peer->timeouts.read.delay > 0)
+													// Если необходимо активировать таймаут на чтение для клиента
+													if(client->timeouts.read.delay > 0)
 														// Устанавливаем таймаут на получение данных
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
-													// Если необходимо активировать таймаут на запись для однорангового узла
-													if(peer->timeouts.write.delay > 0)
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+													// Если необходимо активировать таймаут на запись для клиента
+													if(client->timeouts.write.delay > 0)
 														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
-												} break;
-												// Если узел является клиентом
-												case static_cast <uint8_t> (event::node_t::CLIENT): {
-													// Получаем текущее значение объекта клиента
-													::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-													// Если таймаут на подключение уже был активирован
-													if(client->timeouts.connect.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														client->timeouts.connect.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на подключение к серверу
-														EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
-													// Если таймаут на переподключение уже был активирован
-													} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-														// Снимаем флаг ожидания работы таймаута
-														client->timeouts.reconnect.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на переподключение к серверу
-														EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.reconnect.delay);
-													// Если таймауты ни на подключение, не на переподключения активированы небыли
-													} else {
-														// Если таймаут на чтение уже был активирован
-														if(client->timeouts.read.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->timeouts.read.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если таймаут на запись уже был активирован
-														if(client->timeouts.write.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->timeouts.write.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если таймаут ограничителя скорости на чтение уже был активирован
-														if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->bandwidth.read.timeout.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на получение данных для ограничителя скорости
-															EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если таймаут ограничителя скорости на запись уже был активирован
-														if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->bandwidth.write.timeout.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на запись данных для ограничителя скорости
-															EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если необходимо активировать таймаут на чтение для клиента
-														if(client->timeouts.read.delay > 0)
-															// Устанавливаем таймаут на получение данных
-															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
-														// Если необходимо активировать таймаут на запись для клиента
-														if(client->timeouts.write.delay > 0)
-															// Устанавливаем таймаут на запись данных
-															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
-													}
-												} break;
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+												}
 											}
 										}
 										// Выполняем "пинок" для применения изменений
@@ -27094,15 +28205,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 										 */
 										switch(static_cast <uint8_t> (i->second->state.node)){
 											// Если узел является межпроцессным взаимодействием
-											case static_cast <uint8_t> (event::node_t::IPC):
-											// Если узел является одноранговым узлом
-											case static_cast <uint8_t> (event::node_t::PEER):
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT):
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
-												// Выполняем блокировку потоков
-												const locker_t <> lock(::local::mtx);
+											case static_cast <uint8_t> (event::node_t::IPC): {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Удаляем событие на чтение
@@ -27151,63 +28254,165 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 														break;
 													}
+												}
+												// Выполняем "пинок" для применения изменений
+												return this->kick();
+											}
+											// Если узел является одноранговым узлом
+											case static_cast <uint8_t> (event::node_t::PEER): {
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Если событие находится в состоянии паузы
+												if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
 													/**
-													 * Определяем чем является текущий узел
+													 * Определяем тип сокета
 													 */
-													switch(static_cast <uint8_t> (i->second->state.node)){
-														// Если узел является одноранговым узлом
-														case static_cast <uint8_t> (event::node_t::PEER): {
-															// Получаем текущее значение объекта однорангового узла
-															::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-															// Если необходимо активировать таймаут на чтение для однорангового узла
-															if(peer->timeouts.read.delay > 0){
+													switch(static_cast <uint8_t> (i->second->state.type)){
+														// Если сокет принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+															// Устанавливаем событие на чтение но отключаем его
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+														break;
+														// Если сокет принадлежит к типу DATAGRAM
+														case static_cast <uint8_t> (event::type_t::DATAGRAM):
+														// Если сокет принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Устанавливаем событие на чтение но отключаем его
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+														break;
+													}
+												// Если событие находится в активном состоянии
+												} else {
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (i->second->state.type)){
+														// Если сокет принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+															// Устанавливаем событие на чтение
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+														break;
+														// Если сокет принадлежит к типу DATAGRAM
+														case static_cast <uint8_t> (event::type_t::DATAGRAM):
+														// Если сокет принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Устанавливаем событие на чтение
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+														break;
+													}
+													// Получаем текущее значение объекта однорангового узла
+													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+													// Если необходимо активировать таймаут на чтение для однорангового узла
+													if(peer->timeouts.read.delay > 0){
+														// Устанавливаем статус таймаута на чтение как ожидающий
+														peer->timeouts.read.status = event::status_t::PENDING;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на получение данных
+														EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
+													}
+												}
+												// Выполняем "пинок" для применения изменений
+												return this->kick();
+											}
+											// Если узел является клиентом
+											case static_cast <uint8_t> (event::node_t::CLIENT):
+											// Если узел является сервером
+											case static_cast <uint8_t> (event::node_t::SERVER): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (i->second->state.type)){
+														// Если сокет принадлежит к типу PIPE
+														case static_cast <uint8_t> (event::type_t::NONE):
+														// Если сокет принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+															// Устанавливаем событие на чтение но отключаем его
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+														break;
+														// Если сокет принадлежит к типу DATAGRAM
+														case static_cast <uint8_t> (event::type_t::DATAGRAM):
+														// Если сокет принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Устанавливаем событие на чтение но отключаем его
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+														break;
+													}
+												// Если событие находится в активном состоянии
+												} else {
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (i->second->state.type)){
+														// Если сокет принадлежит к типу PIPE
+														case static_cast <uint8_t> (event::type_t::NONE):
+														// Если сокет принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+															// Устанавливаем событие на чтение
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+														break;
+														// Если сокет принадлежит к типу DATAGRAM
+														case static_cast <uint8_t> (event::type_t::DATAGRAM):
+														// Если сокет принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Устанавливаем событие на чтение
+															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+														break;
+													}
+													// Если узел является клиентом
+													if(i->second->state.node == event::node_t::CLIENT){
+														// Получаем текущее значение объекта клиента
+														::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+														// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
+														if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+															// Если необходимо активировать таймаут на подключение к серверу
+															if(client->timeouts.connect.delay > 0){
+																// Устанавливаем статус таймаута на подключение как ожидающий
+																client->timeouts.connect.status = event::status_t::PENDING;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на подключение к серверу
+																EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
+															}
+														// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
+														} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
+															// Если необходимо активировать таймаут на переподключение к серверу
+															if(client->timeouts.reconnect.delay > 0){
+																// Устанавливаем статус таймаута на переподключение как ожидающий
+																client->timeouts.reconnect.status = event::status_t::PENDING;
+																// Добавляем новое событие в список изменений
+																::local::change.push_back((struct kevent){});
+																// Устанавливаем таймаут на переподключение к серверу
+																EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
+															}
+														// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
+														} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
+															// Если необходимо активировать таймаут на чтение для клиента
+															if(client->timeouts.read.delay > 0){
 																// Устанавливаем статус таймаута на чтение как ожидающий
-																peer->timeouts.read.status = event::status_t::PENDING;
+																client->timeouts.read.status = event::status_t::PENDING;
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Устанавливаем таймаут на получение данных
-																EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
+																EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
 															}
-														} break;
-														// Если узел является клиентом
-														case static_cast <uint8_t> (event::node_t::CLIENT): {
-															// Получаем текущее значение объекта клиента
-															::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-															// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
-															if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
-																// Если необходимо активировать таймаут на подключение к серверу
-																if(client->timeouts.connect.delay > 0){
-																	// Устанавливаем статус таймаута на подключение как ожидающий
-																	client->timeouts.connect.status = event::status_t::PENDING;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на подключение к серверу
-																	EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-																}
-															// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
-															} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
-																// Если необходимо активировать таймаут на переподключение к серверу
-																if(client->timeouts.reconnect.delay > 0){
-																	// Устанавливаем статус таймаута на переподключение как ожидающий
-																	client->timeouts.reconnect.status = event::status_t::PENDING;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на переподключение к серверу
-																	EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-																}
-															// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-															} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
-																// Если необходимо активировать таймаут на чтение для клиента
-																if(client->timeouts.read.delay > 0){
-																	// Устанавливаем статус таймаута на чтение как ожидающий
-																	client->timeouts.read.status = event::status_t::PENDING;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-																}
-															}
-														} break;
+														}
 													}
 												}
 												// Выполняем "пинок" для применения изменений
@@ -27238,13 +28443,26 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 										 */
 										switch(static_cast <uint8_t> (i->second->state.node)){
 											// Если узел является межпроцессным взаимодействием
-											case static_cast <uint8_t> (event::node_t::IPC):
+											case static_cast <uint8_t> (event::node_t::IPC): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Если событие находится в состоянии паузы
+												if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии, устанавливаем событие на чтение
+												else EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+												// Выполняем "пинок" для применения изменений
+												return this->kick();
+											}
 											// Если узел является одноранговым узлом
-											case static_cast <uint8_t> (event::node_t::PEER):
-											// Если узел является клиентом
-											case static_cast <uint8_t> (event::node_t::CLIENT):
-											// Если узел является сервером
-											case static_cast <uint8_t> (event::node_t::SERVER): {
+											case static_cast <uint8_t> (event::node_t::PEER): {
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
@@ -27261,131 +28479,149 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												else {
 													// Устанавливаем событие на чтение
 													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-													/**
-													 * Определяем чем является текущий узел
-													 */
-													switch(static_cast <uint8_t> (i->second->state.node)){
-														// Если узел является одноранговым узлом
-														case static_cast <uint8_t> (event::node_t::PEER): {
-															// Получаем текущее значение объекта однорангового узла
-															::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+													// Получаем текущее значение объекта однорангового узла
+													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+													// Если таймаут на чтение уже был активирован
+													if(peer->timeouts.read.status == event::status_t::PENDING){
+														// Снимаем флаг ожидания работы таймаута
+														peer->timeouts.read.status = event::status_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Удаляем таймаут на получение данных
+														EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													}
+													// Если таймаут на запись уже был активирован
+													if(peer->timeouts.write.status == event::status_t::PENDING){
+														// Снимаем флаг ожидания работы таймаута
+														peer->timeouts.write.status = event::status_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Удаляем таймаут на запись данных
+														EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													}
+													// Если таймаут ограничителя скорости на чтение уже был активирован
+													if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
+														// Снимаем флаг ожидания работы таймаута
+														peer->bandwidth.read.timeout.status = event::status_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Удаляем таймаут на получение данных для ограничителя скорости
+														EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													}
+													// Если таймаут ограничителя скорости на запись уже был активирован
+													if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
+														// Снимаем флаг ожидания работы таймаута
+														peer->bandwidth.write.timeout.status = event::status_t::NONE;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Удаляем таймаут на запись данных для ограничителя скорости
+														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													}
+													// Если необходимо активировать таймаут на чтение для однорангового узла
+													if(peer->timeouts.read.delay > 0)
+														// Устанавливаем таймаут на получение данных
+														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+													// Если необходимо активировать таймаут на запись для однорангового узла
+													if(peer->timeouts.write.delay > 0)
+														// Устанавливаем таймаут на запись данных
+														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+												}
+												// Выполняем "пинок" для применения изменений
+												return this->kick();
+											}
+											// Если узел является клиентом
+											case static_cast <uint8_t> (event::node_t::CLIENT):
+											// Если узел является сервером
+											case static_cast <uint8_t> (event::node_t::SERVER): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Если событие находится в состоянии паузы
+												if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии
+												else {
+													// Устанавливаем событие на чтение
+													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													// Если узел является клиентом
+													if(i->second->state.node == event::node_t::CLIENT){
+														// Получаем текущее значение объекта клиента
+														::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+														// Если таймаут на подключение уже был активирован
+														if(client->timeouts.connect.status == event::status_t::PENDING){
+															// Снимаем флаг ожидания работы таймаута
+															client->timeouts.connect.status = event::status_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Удаляем таймаут на подключение к серверу
+															EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+															// Устанавливаем таймаут на запись данных
+															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
+														// Если таймаут на переподключение уже был активирован
+														} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
+															// Снимаем флаг ожидания работы таймаута
+															client->timeouts.reconnect.status = event::status_t::NONE;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Удаляем таймаут на переподключение к серверу
+															EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+															// Устанавливаем таймаут на запись данных
+															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.reconnect.delay);
+														// Если таймауты ни на подключение, не на переподключения активированы небыли
+														} else {
 															// Если таймаут на чтение уже был активирован
-															if(peer->timeouts.read.status == event::status_t::PENDING){
+															if(client->timeouts.read.status == event::status_t::PENDING){
 																// Снимаем флаг ожидания работы таймаута
-																peer->timeouts.read.status = event::status_t::NONE;
+																client->timeouts.read.status = event::status_t::NONE;
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Удаляем таймаут на получение данных
-																EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 															// Если таймаут на запись уже был активирован
-															if(peer->timeouts.write.status == event::status_t::PENDING){
+															if(client->timeouts.write.status == event::status_t::PENDING){
 																// Снимаем флаг ожидания работы таймаута
-																peer->timeouts.write.status = event::status_t::NONE;
+																client->timeouts.write.status = event::status_t::NONE;
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Удаляем таймаут на запись данных
-																EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 															// Если таймаут ограничителя скорости на чтение уже был активирован
-															if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
+															if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
 																// Снимаем флаг ожидания работы таймаута
-																peer->bandwidth.read.timeout.status = event::status_t::NONE;
+																client->bandwidth.read.timeout.status = event::status_t::NONE;
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Удаляем таймаут на получение данных для ограничителя скорости
-																EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
 															// Если таймаут ограничителя скорости на запись уже был активирован
-															if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
+															if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
 																// Снимаем флаг ожидания работы таймаута
-																peer->bandwidth.write.timeout.status = event::status_t::NONE;
+																client->bandwidth.write.timeout.status = event::status_t::NONE;
 																// Добавляем новое событие в список изменений
 																::local::change.push_back((struct kevent){});
 																// Удаляем таймаут на запись данных для ограничителя скорости
-																EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+																EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 															}
-															// Если необходимо активировать таймаут на чтение для однорангового узла
-															if(peer->timeouts.read.delay > 0)
+															// Если необходимо активировать таймаут на чтение для клиента
+															if(client->timeouts.read.delay > 0)
 																// Устанавливаем таймаут на получение данных
-																this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
-															// Если необходимо активировать таймаут на запись для однорангового узла
-															if(peer->timeouts.write.delay > 0)
+																this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+															// Если необходимо активировать таймаут на запись для клиента
+															if(client->timeouts.write.delay > 0)
 																// Устанавливаем таймаут на запись данных
-																this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
-														} break;
-														// Если узел является клиентом
-														case static_cast <uint8_t> (event::node_t::CLIENT): {
-															// Получаем текущее значение объекта клиента
-															::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-															// Если таймаут на подключение уже был активирован
-															if(client->timeouts.connect.status == event::status_t::PENDING){
-																// Снимаем флаг ожидания работы таймаута
-																client->timeouts.connect.status = event::status_t::NONE;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Удаляем таймаут на подключение к серверу
-																EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-																// Устанавливаем таймаут на запись данных
-																this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
-															// Если таймаут на переподключение уже был активирован
-															} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-																// Снимаем флаг ожидания работы таймаута
-																client->timeouts.reconnect.status = event::status_t::NONE;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Удаляем таймаут на переподключение к серверу
-																EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-																// Устанавливаем таймаут на запись данных
-																this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.reconnect.delay);
-															// Если таймауты ни на подключение, не на переподключения активированы небыли
-															} else {
-																// Если таймаут на чтение уже был активирован
-																if(client->timeouts.read.status == event::status_t::PENDING){
-																	// Снимаем флаг ожидания работы таймаута
-																	client->timeouts.read.status = event::status_t::NONE;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Удаляем таймаут на получение данных
-																	EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-																}
-																// Если таймаут на запись уже был активирован
-																if(client->timeouts.write.status == event::status_t::PENDING){
-																	// Снимаем флаг ожидания работы таймаута
-																	client->timeouts.write.status = event::status_t::NONE;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Удаляем таймаут на запись данных
-																	EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-																}
-																// Если таймаут ограничителя скорости на чтение уже был активирован
-																if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-																	// Снимаем флаг ожидания работы таймаута
-																	client->bandwidth.read.timeout.status = event::status_t::NONE;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Удаляем таймаут на получение данных для ограничителя скорости
-																	EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-																}
-																// Если таймаут ограничителя скорости на запись уже был активирован
-																if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-																	// Снимаем флаг ожидания работы таймаута
-																	client->bandwidth.write.timeout.status = event::status_t::NONE;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Удаляем таймаут на запись данных для ограничителя скорости
-																	EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-																}
-																// Если необходимо активировать таймаут на чтение для клиента
-																if(client->timeouts.read.delay > 0)
-																	// Устанавливаем таймаут на получение данных
-																	this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
-																// Если необходимо активировать таймаут на запись для клиента
-																if(client->timeouts.write.delay > 0)
-																	// Устанавливаем таймаут на запись данных
-																	this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
-															}
-														} break;
+																this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+														}
 													}
 												}
 												// Выполняем "пинок" для применения изменений
@@ -34010,6 +35246,27 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 										if(client->state.options & event::options::NO_IO_BLOCK){
 											// Если очередь передачи данных пустая
 											if(client->transfer.queue.empty()){
+
+												// Время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												uint32_t ms = 0;
+												/**
+												 * Определяем семейство сокета
+												 */
+												switch(static_cast <uint8_t> (client->state.family)){
+													// Если семейство сокета является IPv4
+													case static_cast <uint8_t> (event::family_t::IPV4):
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														ms = static_cast <uint32_t> ((1000. / static_cast <double> (client->bandwidth.write.limit)) * AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+													break;
+													// Если семейство сокета является IPv6
+													case static_cast <uint8_t> (event::family_t::IPV6):
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														ms = static_cast <uint32_t> ((1000. / static_cast <double> (client->bandwidth.write.limit)) * AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+													break;
+												}
+												// Выводим время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												cout << "ms: " << ms << endl;
+												
 												/**
 												 * Если операционной системой является FreeBSD
 												 */
@@ -37663,6 +38920,545 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 	// Возвращаем результат работы функции
 	return result;
 }
+/**
+* @brief Метод установки пропускной способности события
+*
+* @param id        идентификатор события
+* @param limiting  режим ограничения пропускной способности события (egress или ingress)
+* @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+* @return          результат выполнения установки
+*/
+bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t limiting, const string & bandwidth) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если сокет является неблокирующим
+					if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (peer->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем режим ограничения пропускной способности
+								 */
+								switch(static_cast <uint8_t> (limiting)){
+									// Если режим ограничения пропускной способности является исходящим
+									case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											peer->bandwidth.write.limit = 0;
+										// Устанавливаем пропускную способность для ограничения исходящего трафика
+										else peer->bandwidth.write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+										if(peer->bandwidth.write.limit == 0){
+											// Если таймаут ограничителя скорости на запись уже был активирован
+											if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												peer->bandwidth.write.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на запись данных для ограничителя скорости
+												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+									} break;
+									// Если режим ограничения пропускной способности является входящим
+									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											peer->bandwidth.read.limit = 0;
+										// Устанавливаем пропускную способность для ограничения входящего трафика
+										else peer->bandwidth.read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
+										if(peer->bandwidth.read.limit == 0){
+											// Если таймаут ограничителя скорости на чтение уже был активирован
+											if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												peer->bandwidth.read.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на получение данных для ограничителя скорости
+												EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+										// Если тип события является потоком
+										if(peer->state.type == event::type_t::STREAM){
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+											if(peer->bandwidth.write.limit == 0){
+												// Если событие находится в состоянии паузы
+												if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+											// Если пропускная способность для ограничения исходящего трафика устновлена
+											} else {
+												// Если событие находится в состоянии паузы
+												if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+									} break;
+								}
+								// Устанавливаем результат выполнения операции
+								return true;
+							}
+							// Для других семейств событий
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					// Если сокет является блокирующим
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set network bandwidth limits is only allowed for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set network bandwidth limits is only allowed for non-blocking events", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Если сокет является неблокирующим
+					if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (origin->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем режим ограничения пропускной способности
+								 */
+								switch(static_cast <uint8_t> (limiting)){
+									// Если режим ограничения пропускной способности является исходящим
+									case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											origin->wrate.limit = 0;
+										// Устанавливаем пропускную способность для ограничения исходящего трафика
+										else origin->wrate.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+										if(origin->wrate.limit == 0){
+											// Если таймаут ограничителя скорости на запись уже был активирован
+											if(origin->wrate.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												origin->wrate.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на запись данных для ограничителя скорости
+												EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+										// Устанавливаем результат выполнения операции
+										return true;
+									}
+									// Если режим ограничения пропускной способности является входящим
+									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Cannot set incoming network bandwidth limit for this node type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Cannot set incoming network bandwidth limit for this node type", log_t::flag_t::WARNING);
+										#endif
+									} break;
+								}
+							} break;
+							// Для других семейств событий
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					// Если сокет является блокирующим
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set network bandwidth limits is only allowed for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set network bandwidth limits is only allowed for non-blocking events", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Выполняем установку пропускной способности для узла-посредника, используя его конечную точку назначения
+					return this->bandwidth(awh_cast <::io::mediator_t *> (i->second.get())->dest, limiting, bandwidth);
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Если сокет является неблокирующим
+					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем режим ограничения пропускной способности
+								 */
+								switch(static_cast <uint8_t> (limiting)){
+									// Если режим ограничения пропускной способности является исходящим
+									case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											client->bandwidth.write.limit = 0;
+										// Устанавливаем пропускную способность для ограничения исходящего трафика
+										else client->bandwidth.write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+										if(client->bandwidth.write.limit == 0){
+											// Если таймаут ограничителя скорости на запись уже был активирован
+											if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												client->bandwidth.write.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на запись данных для ограничителя скорости
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+									} break;
+									// Если режим ограничения пропускной способности является входящим
+									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											client->bandwidth.read.limit = 0;
+										// Устанавливаем пропускную способность для ограничения входящего трафика
+										else client->bandwidth.read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
+										if(client->bandwidth.read.limit == 0){
+											// Если таймаут ограничителя скорости на чтение уже был активирован
+											if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												client->bandwidth.read.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на получение данных для ограничителя скорости
+												EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+										// Если тип события является потоком
+										if(client->state.type == event::type_t::STREAM){
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+											if(client->bandwidth.write.limit == 0){
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (client->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+											// Если пропускная способность для ограничения исходящего трафика устновлена
+											} else {
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (client->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+									} break;
+								}
+								// Устанавливаем результат выполнения операции
+								return true;
+							}
+							// Для других семейств событий
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					// Если сокет является блокирующим
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set network bandwidth limits is only allowed for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set network bandwidth limits is only allowed for non-blocking events", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Если сокет является неблокирующим
+					if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (server->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем режим ограничения пропускной способности
+								 */
+								switch(static_cast <uint8_t> (limiting)){
+									// Если режим ограничения пропускной способности является исходящим
+									case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											server->bandwidth.write.limit = 0;
+										// Устанавливаем пропускную способность для ограничения исходящего трафика
+										else server->bandwidth.write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+										if(server->bandwidth.write.limit == 0){
+											// Если таймаут ограничителя скорости на запись уже был активирован
+											if(server->bandwidth.write.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												server->bandwidth.write.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на запись данных для ограничителя скорости
+												EV_SET(&::local::change.back(), server->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+									} break;
+									// Если режим ограничения пропускной способности является входящим
+									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+										// Если пропускная способность для установки является автоматической
+										if(this->_fmk->compare(bandwidth, "auto"))
+											// Устанавливаем пропускную способность для автоматического определения пропускной способности
+											server->bandwidth.read.limit = 0;
+										// Устанавливаем пропускную способность для ограничения входящего трафика
+										else server->bandwidth.read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
+										if(server->bandwidth.read.limit == 0){
+											// Если таймаут ограничителя скорости на чтение уже был активирован
+											if(server->bandwidth.read.timeout.status == event::status_t::PENDING){
+												// Снимаем флаг ожидания работы таймаута
+												server->bandwidth.read.timeout.status = event::status_t::NONE;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Удаляем таймаут на получение данных для ограничителя скорости
+												EV_SET(&::local::change.back(), server->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+										// Если тип события является потоком
+										if(server->state.type == event::type_t::STREAM){
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
+											if(server->bandwidth.write.limit == 0){
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+											// Если пропускная способность для ограничения исходящего трафика устновлена
+											} else {
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+									} break;
+								}
+								// Устанавливаем результат выполнения операции
+								return true;
+							}
+							// Для других семейств событий
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Set network bandwidth limits is only allowed for the IPv4 and IPv6 network protocol family", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					// Если сокет является блокирующим
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Set network bandwidth limits is only allowed for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Set network bandwidth limits is only allowed for non-blocking events", log_t::flag_t::WARNING);
+						#endif
+					}
+				} break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Bandwidth cannot be set for this event node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Bandwidth cannot be set for this event node", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}					
 /**
  * @brief Метод получения режима трансляции пакетов для события
  *

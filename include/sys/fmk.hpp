@@ -870,12 +870,19 @@ namespace awh {
 			string bytes(const double value, const bool onlyNum = false) const noexcept;
 		public:
 			/**
+			 * @brief Метод получения количества байт в секунду из строки
+			 *
+			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
+			 * @return    количество байт в секунду
+			 */
+			size_t bpsSize(const string & str) const noexcept;
+			/**
 			 * @brief Метод получения размера буфера в байтах
 			 *
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    размер буфера в байтах
 			 */
-			size_t sizeBuffer(const string & str) const noexcept;
+			size_t bpsBuffer(const string & str) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта логирования

@@ -110,13 +110,37 @@ if (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
     message(STATUS "Build with max network queue buffer size: ${CMAKE_NETWORK_QUEUE_BUFFER_SIZE}\n")
 endif (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
 
+# Если активирован флаг установки размера MTU для UDP сообщений в IPv4
+if (CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE)
+    add_compile_definitions(AWH_MTU_UDP_IPV4_PAYLOAD_SIZE=${CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE})
+    message(STATUS "Build with MTU UDP IPv4 payload size: ${CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE}\n")
+endif (CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE)
+
+# Если активирован флаг установки размера MTU для UDP сообщений в IPv6
+if (CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE)
+    add_compile_definitions(AWH_MTU_UDP_IPV6_PAYLOAD_SIZE=${CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE})
+    message(STATUS "Build with MTU UDP IPv6 payload size: ${CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE}\n")
+endif (CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE)
+
+# Если активирован флаг установки размера MTU для TCP сообщений в IPv4
+if (CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE)
+    add_compile_definitions(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE=${CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE})
+    message(STATUS "Build with MTU TCP IPv4 payload size: ${CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE}\n")
+endif (CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE)
+
+# Если активирован флаг установки размера MTU для TCP сообщений в IPv6
+if (CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE)
+    add_compile_definitions(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE=${CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE})
+    message(STATUS "Build with MTU TCP IPv6 payload size: ${CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE}\n")
+endif (CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE)
+
 # Если активирован флаг установки размера буфера чанка модуля компрессии/декомпрессии
 if (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
     add_compile_definitions(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE=${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE})
     message(STATUS "Build with compressor module chunk buffer size: ${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE}\n")
 endif (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
 
-# Выводим информацию каталога где выполняется сброка
+# Выводим информацию каталога где выполняется сборка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
 # Получаем архитектуру

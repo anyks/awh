@@ -312,6 +312,16 @@ namespace awh {
 			virtual bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод установки пропускной способности события
+			 *
+			 * @param id        идентификатор события
+			 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
+			 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+			 * @return          результат выполнения установки
+			 */
+			virtual bool bandwidth(const event::id_t id, const event::limiting_t limiting, const string & bandwidth) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод получения режима трансляции пакетов для события
 			 *
 			 * @param id идентификатор события
