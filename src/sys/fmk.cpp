@@ -6460,45 +6460,75 @@ string awh::Framework::icon(const bool end) const noexcept {
  * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
  * @return    размер в байтах
  */
-double awh::Framework::bytes(const string & str) const noexcept {
+double awh::Framework::bytes(const string_view str) const noexcept {
 	// Размер количество байт
 	double result = 0.;
-	// Выполняем проверку входящей строки
-	const auto & match = this->_regexp.exec(str, this->_bytes);
-	// Если данные найдены
-	if(!match.empty()){
+	// Если строка передана и начинается с цифры
+	if(!std::empty(str) && std::isdigit(str[0])){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Размерность скорости
-			double dimension = 1.;
-			// Получаем значение размерности
-			result = this->atoi <double> (match[1]);
-			// Если это размерность в килобайтах
-			if(this->compare("Kb", match[2]))
-				// Выполняем установку множителя
-				dimension = 1024.;
-			// Если это размерность в мегабайтах
-			else if(this->compare("Mb", match[2]))
-				// Выполняем установку множителя
-				dimension = 1048576.;
-			// Если это размерность в гигабайтах
-			else if(this->compare("Gb", match[2]))
-				// Выполняем установку множителя
-				dimension = 1073741824.;
-			// Если это размерность в терабайтах
-			else if(this->compare("Tb", match[2]))
-				// Выполняем установку множителя
-				dimension = 1099511627776.;
-			// Если это байты
-			else if(this->compare("b", match[2]) || this->compare("bytes", match[2]))
-				// Выполняем установку множителя
-				dimension = 1.;
-			// Если размерность установлена тогда расчитываем количество байт
-			if(result > -1.)
-				// Устанавливаем размер полученных данных
-				result *= dimension;
+			// Начало и конец позиции значения в строке
+			uint8_t start = 0, stop = 0;
+			/**
+			 * Выполняем парсинг строки
+			 */
+			for(uint8_t i = 0; i < static_cast <uint8_t> (str.size()); i++){
+				// Если текущий символ является пробельным
+				if(std::isspace(str[i])){
+					// Если позиция конца значения не установлена
+					if(stop == 0)
+						// Устанавливаем позицию конца значения
+						stop = i;
+					// Устанавливаем позицию начала значения
+					else start = (i + 1);
+				// Если текущий символ не является цифрой
+				} else if(!std::isdigit(str[i])) {
+					// Если установлена позиция конца значения
+					if(stop > 0)
+						// Получаем значение рзамерности данных
+						result = this->atoi <double> (str.substr(0, stop).data());
+					// Если позиция конца значения не установлена, извлекаем значение рзамерности данных до текущей позиции
+					else result = this->atoi <double> (str.substr(0, i).data());
+					// Обозначение рзамерности данных
+					string_view handle = "";
+					// Если позиция начала значения установлена
+					if(start > 0)
+						// Извлекаем обозначение рзамерности данных от позиции начала значения до конца строки
+						handle = str.substr(start);
+					// Если позиция начала значения не установлена, извлекаем обозначение рзамерности данных от текущей позиции до конца строки
+					else handle = str.substr(i);
+					// Размерность объема данных
+					double dimension = 1.;
+					// Если это размерность в килобайтах
+					if(this->compare("Kb", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1024.;
+					// Если это размерность в мегабайтах
+					else if(this->compare("Mb", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1048576.;
+					// Если это размерность в гигабайтах
+					else if(this->compare("Gb", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1073741824.;
+					// Если это размерность в терабайтах
+					else if(this->compare("Tb", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1099511627776.;
+					// Если это байты
+					else if(this->compare("b", handle.data()) || this->compare("bytes", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1.;
+					// Если размерность установлена тогда расчитываем количество байт
+					if(result > -1.)
+						// Устанавливаем размер полученных данных
+						result *= dimension;
+					// Выходим из цикла
+					break;
+				}
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -6640,41 +6670,71 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    количество байт в секунду
  */
-size_t awh::Framework::bpsSize(const string & str) const noexcept {
+size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 	// Результат работы функции
 	size_t result = 0;
-	// Выполняем проверку входящей строки
-	const auto & match = this->_regexp.exec(str, this->_buffers);
-	// Если данные найдены
-	if(!match.empty()){
+	// Если строка передана и начинается с цифры
+	if(!std::empty(str) && std::isdigit(str[0])){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Размерность скорости
-			float dimension = .0f;
-			// Получаем значение скорости
-			const float speed = this->atoi <float> (match[1]);
-			// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
-			const bool bytes = !::fmod(speed / 8.f, 2.f);
-			// Если это биты
-			if(this->compare("bps", match[2]))
-				// Выполняем установку множителя
-				dimension = 1.f;
-			// Если это размерность в киллобитах
-			else if(this->compare("kbps", match[2]))
-				// Выполняем установку множителя
-				dimension = (bytes ? 1000.f : 1024.f);
-			// Если это размерность в мегабитах
-			else if(this->compare("Mbps", match[2]))
-				// Выполняем установку множителя
-				dimension = (bytes ? 1000000.f : 1024000.f);
-			// Если это размерность в гигабитах
-			else if(this->compare("Gbps", match[2]))
-				// Выполняем установку множителя
-				dimension = (bytes ? 1000000000.f : 1024000000.f);
-			// Выполняем получение размера в байтах
-			result = static_cast <size_t> ((speed * dimension) / 8.f);
+			// Начало и конец позиции значения в строке
+			uint8_t start = 0, stop = 0;
+			/**
+			 * Выполняем парсинг строки
+			 */
+			for(uint8_t i = 0; i < static_cast <uint8_t> (str.size()); i++){
+				// Если текущий символ является пробельным
+				if(std::isspace(str[i])){
+					// Если позиция конца значения не установлена
+					if(stop == 0)
+						// Устанавливаем позицию конца значения
+						stop = i;
+					// Устанавливаем позицию начала значения
+					else start = (i + 1);
+				// Если текущий символ не является цифрой
+				} else if(!std::isdigit(str[i])) {
+					// Значение скорости
+					float speed = .0f;
+					// Если установлена позиция конца значения
+					if(stop > 0)
+						// Получаем значение скорости
+						speed = this->atoi <float> (str.substr(0, stop).data());
+					// Если позиция конца значения не установлена, извлекаем значение скорости до текущей позиции
+					else speed = this->atoi <float> (str.substr(0, i).data());
+					// Обозначение размерности скорости
+					string_view handle = "";
+					// Если позиция начала значения установлена
+					if(start > 0)
+						// Извлекаем обозначение размерности скорости от позиции начала значения до конца строки
+						handle = str.substr(start);
+					// Если позиция начала значения не установлена, извлекаем обозначение размерности скорости от текущей позиции до конца строки
+					else handle = str.substr(i);
+					// Размерность скорости
+					float dimension = .0f;
+					// Если это биты
+					if(this->compare("bps", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1.f;
+					// Если это размерность в киллобитах
+					else if(this->compare("kbps", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1000.f;
+					// Если это размерность в мегабитах
+					else if(this->compare("Mbps", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1000000.f;
+					// Если это размерность в гигабитах
+					else if(this->compare("Gbps", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1000000000.f;
+					// Выполняем получение размера в байтах
+					result = static_cast <size_t> ((speed * dimension) / 8.f);
+					// Выходим из цикла
+					break;
+				}
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -6721,7 +6781,7 @@ size_t awh::Framework::bpsSize(const string & str) const noexcept {
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    размер буфера в байтах
  */
-size_t awh::Framework::bpsBuffer(const string & str) const noexcept {
+size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 	/**
 	 * Readme - http://www.securitylab.ru/analytics/243414.php
 	 *
@@ -6744,38 +6804,70 @@ size_t awh::Framework::bpsBuffer(const string & str) const noexcept {
 	 */
 	// Результат работы функции
 	size_t result = 0;
-	// Выполняем проверку входящей строки
-	const auto & match = this->_regexp.exec(str, this->_buffers);
-	// Если данные найдены
-	if(!match.empty()){
+	// Если строка передана и начинается с цифры
+	if(!std::empty(str) && std::isdigit(str[0])){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Размерность скорости
-			float dimension = .0f;
-			// Получаем значение скорости
-			const float speed = this->atoi <float> (match[1]);
-			// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
-			const bool bytes = !::fmod(speed / 8.f, 2.f);
-			// Если это биты
-			if(this->compare("bps", match[2]))
-				// Выполняем установку множителя
-				dimension = 1.f;
-			// Если это размерность в киллобитах
-			else if(this->compare("kbps", match[2]))
-				// Выполняем установку множителя
-				dimension = (bytes ? 1000.f : 1024.f);
-			// Если это размерность в мегабитах
-			else if(this->compare("Mbps", match[2]))
-				// Выполняем установку множителя
-				dimension = (bytes ? 1000000.f : 1024000.f);
-			// Если это размерность в гигабитах
-			else if(this->compare("Gbps", match[2]))
-				// Выполняем установку множителя
-				dimension = (bytes ? 1000000000.f : 1024000000.f);
-			// Выполняем получение размера в байтах
-			result = static_cast <size_t> ((speed / 8.f) * (dimension * .04f));
+			// Начало и конец позиции значения в строке
+			uint8_t start = 0, stop = 0;
+			/**
+			 * Выполняем парсинг строки
+			 */
+			for(uint8_t i = 0; i < static_cast <uint8_t> (str.size()); i++){
+				// Если текущий символ является пробельным
+				if(std::isspace(str[i])){
+					// Если позиция конца значения не установлена
+					if(stop == 0)
+						// Устанавливаем позицию конца значения
+						stop = i;
+					// Устанавливаем позицию начала значения
+					else start = (i + 1);
+				// Если текущий символ не является цифрой
+				} else if(!std::isdigit(str[i])) {
+					// Значение скорости
+					float speed = .0f;
+					// Если установлена позиция конца значения
+					if(stop > 0)
+						// Получаем значение скорости
+						speed = this->atoi <float> (str.substr(0, stop).data());
+					// Если позиция конца значения не установлена, извлекаем значение скорости до текущей позиции
+					else speed = this->atoi <float> (str.substr(0, i).data());
+					// Обозначение размерности скорости
+					string_view handle = "";
+					// Если позиция начала значения установлена
+					if(start > 0)
+						// Извлекаем обозначение размерности скорости от позиции начала значения до конца строки
+						handle = str.substr(start);
+					// Если позиция начала значения не установлена, извлекаем обозначение размерности скорости от текущей позиции до конца строки
+					else handle = str.substr(i);
+					// Размерность скорости
+					float dimension = .0f;
+					// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
+					const bool bytes = !::fmod(speed / 8.f, 2.f);
+					// Если это биты
+					if(this->compare("bps", handle.data()))
+						// Выполняем установку множителя
+						dimension = 1.f;
+					// Если это размерность в киллобитах
+					else if(this->compare("kbps", handle.data()))
+						// Выполняем установку множителя
+						dimension = (bytes ? 1000.f : 1024.f);
+					// Если это размерность в мегабитах
+					else if(this->compare("Mbps", handle.data()))
+						// Выполняем установку множителя
+						dimension = (bytes ? 1000000.f : 1024000.f);
+					// Если это размерность в гигабитах
+					else if(this->compare("Gbps", handle.data()))
+						// Выполняем установку множителя
+						dimension = (bytes ? 1000000000.f : 1024000000.f);
+					// Выполняем получение размера в байтах
+					result = static_cast <size_t> ((speed / 8.f) * (dimension * .04f));
+					// Выходим из цикла
+					break;
+				}
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -6826,31 +6918,21 @@ void awh::Framework::setLogger(const Log * log) noexcept {
 	this->_log = log;
 	// Выполняем установку логирования в nwt модуль
 	this->_nwt.setLogger(log);
-	// Выполняем установку логирования в regexp модуль
-	this->_regexp.setLogger(log);
 }
 /**
  * @brief Конструктор
  *
  */
-awh::Framework::Framework() noexcept : _nwt(nullptr), _regexp(nullptr), _log(nullptr) {
+awh::Framework::Framework() noexcept : _nwt(nullptr), _log(nullptr) {
 	// Устанавливаем локализацию системы
 	this->setLocale();
-	// Устанавливаем регулярное выражение для парсинга буферов данных
-	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
-	// Устанавливаем регулярное выражение для парсинга байт
-	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(bytes|b|Kb|Mb|Gb|Tb)$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 }
 /**
  * @brief Конструктор
  *
  * @param locale локализация приложения
  */
-awh::Framework::Framework(const string & locale) noexcept : _nwt(nullptr), _regexp(nullptr), _log(nullptr) {
+awh::Framework::Framework(const string & locale) noexcept : _nwt(nullptr), _log(nullptr) {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
-	// Устанавливаем регулярное выражение для парсинга буферов данных
-	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
-	// Устанавливаем регулярное выражение для парсинга байт
-	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(bytes|b|Kb|Mb|Gb|Tb)$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 }

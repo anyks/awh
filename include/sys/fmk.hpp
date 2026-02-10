@@ -115,16 +115,8 @@ namespace awh {
 			// Объект парсинга nwt адреса
 			nwt_t _nwt;
 		private:
-			// Объект регулярного выражения
-			regexp_t _regexp;
-		private:
 			// Устанавливаем локаль по умолчанию
 			std::locale _locale;
-		private:
-			// Регулярное выражение для парсинга байт
-			regexp_t::exp_t _bytes;
-			// Регулярное выражение для парсинга буферов данных
-			regexp_t::exp_t _buffers;
 		private:
 			// Объект работы с логами
 			const Log * _log;
@@ -859,7 +851,7 @@ namespace awh {
 			 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
 			 * @return    размер в байтах
 			 */
-			double bytes(const string & str) const noexcept;
+			double bytes(const string_view str) const noexcept;
 			/**
 			 * @brief Метод конвертации байт в строку
 			 *
@@ -875,14 +867,14 @@ namespace awh {
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    количество байт в секунду
 			 */
-			size_t bpsSize(const string & str) const noexcept;
+			size_t bpsSize(const string_view str) const noexcept;
 			/**
 			 * @brief Метод получения размера буфера в байтах
 			 *
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    размер буфера в байтах
 			 */
-			size_t bpsBuffer(const string & str) const noexcept;
+			size_t bpsBuffer(const string_view str) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта логирования
