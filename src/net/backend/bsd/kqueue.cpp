@@ -1462,6 +1462,52 @@ namespace local {
 		// Возвращаем текущее время в наносекундах
 		return ((static_cast <uint64_t> (ts.tv_sec) * 1000000000ULL) + static_cast <uint64_t> (ts.tv_nsec));
 	}
+	/**
+	 * @brief Прототип функции получения минимального значения из трёх аргументов
+	 *
+	 * @tparam A тип данных первого аргумента
+	 * @tparam B тип данных второго аргумента
+	 * @tparam C тип данных третьего аргумента
+	 */
+	template <typename A, typename B, typename C>
+	/**
+	 * @brief Функция получения минимального значения из трёх аргументов
+	 *
+	 * @param a первый аргумент
+	 * @param b второй аргумент
+	 * @param c третий аргумент
+	 * @return  минимальное значение из трёх аргументов
+	 */
+	static A min(const A a, const B b, const C c) noexcept {
+		// Возвращаем минимальное значение из трёх аргументов
+		return (
+			((a < static_cast <A> (b)) ? ((a < static_cast <A> (c)) ? a : static_cast <A> (c)) :
+			((static_cast <A> (b) < static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
+		);
+	}
+	/**
+	 * @brief Прототип функции получения максимального значения из трёх аргументов
+	 *
+	 * @tparam A тип данных первого аргумента
+	 * @tparam B тип данных второго аргумента
+	 * @tparam C тип данных третьего аргумента
+	 */
+	template <typename A, typename B, typename C>
+	/**
+	 * @brief Функция получения максимального значения из трёх аргументов
+	 *
+	 * @param a первый аргумент
+	 * @param b второй аргумент
+	 * @param c третий аргумент
+	 * @return  максимальное значение из трёх аргументов
+	 */
+	static A max(const A a, const B b, const C c) noexcept {
+		// Возвращаем максимальное значение из трёх аргументов
+		return (
+			((a > static_cast <A> (b)) ? ((a > static_cast <A> (c)) ? a : static_cast <A> (c)) :
+			((static_cast <A> (b) > static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
+		);
+	}
 };
 
 /**
@@ -2053,10 +2099,23 @@ namespace io {
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
 								if(client->bandwidth.write.tokens > 0.){
-									// Выбираем минимальное значение между размером данных для отправки и количеством токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
-									const size_t tokens = ::min(size, static_cast <size_t> (client->bandwidth.write.tokens));
-									// Выполняем отправку данных в сокет
-									const size_t bytes = send(buffer, tokens);
+									// Количество байт данных для отправки в сокет
+									size_t bytes = 0;
+									/**
+									* Определяем семейство события
+									*/
+									switch(static_cast <uint8_t> (client->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+										break;
+									}
 									// Если данные отправлены успешно
 									if((result = (bytes > 0))){
 										{
@@ -33487,10 +33546,23 @@ namespace io {
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
 								if(client->bandwidth.write.tokens > 0.){
-									// Выбираем минимальное значение между размером данных для отправки и количеством токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
-									const size_t tokens = ::min(size, static_cast <size_t> (client->bandwidth.write.tokens));
-									// Выполняем отправку данных в сокет
-									const size_t bytes = send(buffer, tokens);
+									// Количество байт данных для отправки в сокет
+									size_t bytes = 0;
+									/**
+									* Определяем семейство события
+									*/
+									switch(static_cast <uint8_t> (client->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+										break;
+									}
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
@@ -33832,10 +33904,23 @@ namespace io {
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
 								if(client->bandwidth.write.tokens > 0.){
-									// Выбираем минимальное значение между размером данных для отправки и количеством токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
-									const size_t tokens = ::min(size, static_cast <size_t> (client->bandwidth.write.tokens));
-									// Выполняем отправку данных в сокет
-									const size_t bytes = send(buffer, tokens);
+									// Количество байт данных для отправки в сокет
+									size_t bytes = 0;
+									/**
+									* Определяем семейство события
+									*/
+									switch(static_cast <uint8_t> (client->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+										break;
+									}
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции

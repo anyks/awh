@@ -1358,16 +1358,16 @@ int32_t main(int32_t argc, char * argv[]){
 	io.port(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
-
-		// 2Mbps
-		cout << " BANDWIDTH: " << io.bandwidth(eid, event::limiting_t::EGRESS, "100Mbps") << " === " << fmk.bpsSize("2Mbps") << " == " << fmk.bpsBuffer("2Mbps") << " || " << fmk.bytes("20 Mb") << " == " << fmk.bytes(20971500) << " == " << fmk.bytes(20971520) << endl;
-
 		// Устананавливаем опции события
 		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
+
+		// Устанавливаем ограничитель пропускной способности события в 2 Мбит/с на исходящий трафик
+		io.bandwidth(eid, event::limiting_t::EGRESS, "2Mbps");
+
 		// Устанавливаем IP-адрес события
 		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
