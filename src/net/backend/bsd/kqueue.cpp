@@ -2050,14 +2050,14 @@ namespace io {
 											// Если функция обратного вызова для вывода события установлена
 											else {
 												/**
-												* Если включён режим отладки
-												*/
+												 * Если включён режим отладки
+												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
 													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
-												* Если режим отладки не включён
-												*/
+												 * Если режим отладки не включён
+												 */
 												#else
 													// Выводим сообщение об ошибке
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -2102,8 +2102,8 @@ namespace io {
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
-									* Определяем семейство события
-									*/
+									 * Определяем семейство события
+									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4):
@@ -33117,6 +33117,2312 @@ namespace io {
 	 */
 	using namespace awh;
 	/**
+	 * @brief Функция отправки данных события для однорангового узла
+	 *
+	 * @param peer   объект события однорангового узла, которому необходимо отправить данные
+	 * @param buffer буфер данных для отправки
+	 * @param size   размер данных для отправки
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param log    объект работы с логами
+	 * @return       количество байт данных, отправленных событием
+	 */
+	static size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
+		// Результат работы функции
+		size_t result = 0;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем тип сокета
+			 */
+			switch(static_cast <uint8_t> (peer->state.type)){
+				// Если сокет принадлежит к типу STREAM
+				case static_cast <uint8_t> (event::type_t::STREAM): {
+					// Если сокет является неблокирующим
+					if(peer->state.options & event::options::NO_IO_BLOCK){
+						// Если очередь передачи данных пустая
+						if(peer->transfer.queue.empty()){
+							/**
+							 * @brief Функция для отправки данных в сокет
+							 *
+							 * @param buffer буфер данных для отправки
+							 * @param size   размер данных для отправки
+							 * @return       количество отправленных байт
+							 */
+							auto send = [&](const void * buffer, const size_t size) -> size_t {
+								// Результат работы функции
+								size_t result = 0;
+								/**
+								 * Выполняем перехват ошибок
+								 */
+								try {
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(peer->state.protocol == event::protocol_t::SCTP)
+											// Выполняем отправку данных в TCP/IP сокет
+											bytes = ::sctp_sendmsg(
+												peer->transfer.fd,
+												buffer, size, nullptr, 0,
+												peer->transfer.sctp.info.sinfo_ppid,
+												peer->transfer.sctp.info.sinfo_flags,
+												peer->transfer.sctp.info.sinfo_stream,
+												peer->transfer.sctp.info.sinfo_timetolive,
+												peer->transfer.sctp.info.sinfo_context
+											);
+										// Выполняем отправку данных в TCP/IP сокет
+										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем отправку данных в TCP/IP сокет
+										const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									#endif
+									// Если данные отправлены успешно
+									if(bytes > 0)
+										// Выводим количество байт данных, отправленных событием
+										result = static_cast <size_t> (bytes);
+									// Если данные не отправлены
+									else {
+										// Идентификатор полученной ошибки
+										event::error_t error = event::error_t::NONE;
+										// Если сокет давно закрыт
+										if(bytes == 0)
+											// Устанавливаем идентификатор полученной ошибки
+											error = event::error_t::INVALID_SOCKET;
+										// Если произошла другая ошибка
+										else {
+											/**
+											 * Определяем возникшую ошибку
+											 */
+											switch(errno){
+												// Если ошибки нет
+												case 0: break;
+												// Если нам нужно попытаться отправить позже
+												case EAGAIN: {
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(peer->transfer.mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													if(!peer->transfer.queue.push(buffer, size)){
+														// Если установлена функция обратного вызова
+														if(peer->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об переполнении очереди
+															peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+														// Если функция обратного вызова для вывода доступных данных установлена
+														if(peer->callbacks.available != nullptr)
+															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+															peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+													} else result = size;
+													// Если в очереди событий появились данные для отправки
+													if(!peer->transfer.queue.empty()){
+														// Выполняем блокировку потоков
+														const locker_t <> lock(::local::mtx);
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Активируем событие на ожидание готовности сокета на запись
+														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+														// Если установлен таймаут на запись данных
+														if(peer->timeouts.write.delay > 0){
+															// Активируем статус таймаута на запись данных
+															peer->timeouts.write.status = event::status_t::PENDING;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на запись данных
+															EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+														}
+													}
+												} break;
+												// Если мы получили другую непонятную ошибку
+												default:
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::INVALID_SOCKET;
+											}
+										}
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, 0);
+										// Если данные не записаны в сокет
+										if(error != event::error_t::NONE){
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												peer->callbacks.status(peer->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												peer->callbacks.error(peer->id, error, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Если сокет повреждён
+											if(error == event::error_t::INVALID_SOCKET){
+												// Выполняем обработку закрытия подключения
+												if(::io::close(peer, log))
+													// Выполняем удаление узла
+													::io::destroy(peer, eth, log);
+											}
+										}
+									}
+								/**
+								 * Если возникает ошибка
+								 */
+								} catch(const exception & error) {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.what());
+									#endif
+								}
+								// Выводим результат работы функции
+								return result;
+							};
+							// Если установлено ограничение пропускной способности на запись данных в сокет
+							if(peer->bandwidth.write.limit > 0){
+								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								::io::tokens(peer, event::limiting_t::EGRESS, log);
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								if(peer->bandwidth.write.tokens > 0.){
+									// Количество байт данных для отправки в сокет
+									size_t bytes = 0;
+									/**
+									 * Определяем семейство события
+									 */
+									switch(static_cast <uint8_t> (peer->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+										break;
+									}
+									// Если данные отправлены успешно
+									if((bytes > 0) && (errno != EAGAIN)){
+										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
+										result = size;
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr){
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, bytes);
+											// Если дескриптор сокета стал недействительным
+											if(peer->transfer.fd == net::invalid_socket_t)
+												// Выводим результат работы функции
+												return bytes;
+										}
+										// Если данные отправлены не полностью
+										if(bytes != size){
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(peer->transfer.mtx);
+											// Сохраняем оставшиеся данные для последующей отправки
+											if(!peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об переполнении очереди
+													peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+												// Если функция обратного вызова для вывода доступных данных установлена
+												if(peer->callbacks.available != nullptr)
+													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = bytes;
+											}
+										}
+										// Уменьшаем количество используемых токенов
+										peer->bandwidth.write.tokens -= static_cast <double> (bytes);
+										// Если очередь передачи данных не пуста
+										if(!peer->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Если токенов для отправки данных больше нет
+											if(peer->bandwidth.write.tokens <= 0.){
+												// Если таймаут на запись данных не активирован
+												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+													// Размер данных для извлечения из очереди
+													size_t size = 0;
+													// Указатель на данные в очереди
+													const void * buffer = nullptr;
+													// Извлекаем данные из очереди для записи в сокет
+													if(peer->transfer.queue.front(&buffer, size)){
+														// Активируем статус таймаута на запись данных
+														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+														// Если вычисленное время равно нулю миллисекунд
+														if(peer->bandwidth.write.timeout.delay == 0)
+															// Устанавливаем минимальное значение времени в 1 миллисекунду
+															peer->bandwidth.write.timeout.delay = 1;
+														// Устанавливаем таймаут на запись данных
+														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+													}
+												}
+											// Если токены для отправки данных ещё есть
+											} else {
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Активируем событие на ожидание готовности сокета на запись
+												EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+											}
+											// Если установлен таймаут на запись данных
+											if(peer->timeouts.write.delay > 0){
+												// Активируем статус таймаута на запись данных
+												peer->timeouts.write.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+											}
+										}
+									// Если данные не отправлены полностью и произошла ошибка EAGAIN
+									} else result = bytes;
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								} else {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(peer->transfer.mtx);
+									// Если данные не добавлены в очередь событий
+									if(!peer->transfer.queue.push(buffer, size)){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, 0);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об переполнении очереди
+											peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+										// Если функция обратного вызова для вывода доступных данных установлена
+										if(peer->callbacks.available != nullptr)
+											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+											peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+									} else result = size;
+									// Если в очереди событий появились данные для отправки
+									if(!peer->transfer.queue.empty()){
+										// Если таймаут на запись данных не активирован
+										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+											// Размер данных для извлечения из очереди
+											size_t size = 0;
+											// Указатель на данные в очереди
+											const void * buffer = nullptr;
+											// Извлекаем данные из очереди для записи в сокет
+											if(peer->transfer.queue.front(&buffer, size)){
+												// Активируем статус таймаута на запись данных
+												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+												// Если вычисленное время равно нулю миллисекунд
+												if(peer->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													peer->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+											}
+										}
+										// Если установлен таймаут на запись данных и он не активирован
+										if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
+											// Активируем статус таймаута на запись данных
+											peer->timeouts.write.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+										}
+									}
+								}
+							// Если ограничитель пропускной способности на запись данных не установлен
+							} else {
+								// Выполняем отправку данных в сокет
+								const size_t bytes = send(buffer, size);
+								// Если данные отправлены успешно
+								if((bytes > 0) && (errno != EAGAIN)){
+									// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
+									result = size;
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(peer->callbacks.write != nullptr){
+										// Вызываем функцию обратного вызова для вывода записанных данных
+										peer->callbacks.write(peer->id, bytes);
+										// Если дескриптор сокета стал недействительным
+										if(peer->transfer.fd == net::invalid_socket_t)
+											// Выводим результат работы функции
+											return bytes;
+									}
+									// Если данные отправлены не полностью
+									if(bytes != size){
+										// Выполняем блокировку уникальным мютексом
+										const locker_t <> lock(peer->transfer.mtx);
+										// Сохраняем оставшиеся данные для последующей отправки
+										if(!peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об переполнении очереди
+												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+											// Если функция обратного вызова для вывода доступных данных установлена
+											if(peer->callbacks.available != nullptr)
+												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+											result = bytes;
+										}
+										// Если в очереди событий появились данные для отправки
+										if(!peer->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Активируем событие на ожидание готовности сокета на запись
+											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+											// Если установлен таймаут на запись данных
+											if(peer->timeouts.write.delay > 0){
+												// Активируем статус таймаута на запись данных
+												peer->timeouts.write.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+											}
+										}
+									}
+								// Если данные не отправлены полностью и произошла ошибка EAGAIN
+								} else result = bytes;
+							}
+						// Если очередь передачи данных не пуста
+						} else {
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(peer->callbacks.write != nullptr){
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								peer->callbacks.write(peer->id, 0);
+								// Если дескриптор сокета стал недействительным
+								if(peer->transfer.fd == net::invalid_socket_t)
+									// Выводим результат работы функции
+									return result;
+							}
+							// Выполняем блокировку уникальным мютексом
+							const locker_t <> lock(peer->transfer.mtx);
+							// Если данные не добавлены в очередь событий
+							if(!peer->transfer.queue.push(buffer, size)){
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(peer->callbacks.write != nullptr)
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									peer->callbacks.write(peer->id, 0);
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об переполнении очереди
+									peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+								// Если функция обратного вызова для вывода доступных данных установлена
+								if(peer->callbacks.available != nullptr)
+									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+									peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+							// Выводим результат работы функции
+							} else return size;
+						}
+					// Если сокет является полублокирующим
+					} else if(peer->state.options & event::options::SM_IO_BLOCK) {
+						// Переводим сокет в блокирующий режим
+						if(eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+							// Если необходимо активировать таймаут на запись данных в сокет
+							if(peer->timeouts.write.delay > 0)
+								// Устанавливаем таймаут на запись данных в сокет
+								eth->socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
+							/**
+							 * @brief Функция для отправки данных в сокет
+							 *
+							 * @param buffer буфер данных для отправки
+							 * @param size   размер данных для отправки
+							 * @return       количество отправленных байт
+							 */
+							auto send = [&](const void * buffer, const size_t size) -> size_t {
+								// Результат работы функции
+								size_t result = 0;
+								/**
+								 * Выполняем перехват ошибок
+								 */
+								try {
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(peer->state.protocol == event::protocol_t::SCTP)
+											// Выполняем отправку данных в сокет
+											bytes = ::sctp_sendmsg(
+												peer->transfer.fd,
+												buffer, size, nullptr, 0,
+												peer->transfer.sctp.info.sinfo_ppid,
+												peer->transfer.sctp.info.sinfo_flags,
+												peer->transfer.sctp.info.sinfo_stream,
+												peer->transfer.sctp.info.sinfo_timetolive,
+												peer->transfer.sctp.info.sinfo_context
+											);
+										// Выполняем отправку данных в сокет
+										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									/**
+									 * Если это другая операционная система
+									 */
+									#else
+										// Выполняем отправку данных в сокет
+										const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									#endif
+									// Если данные отправлены успешно
+									if(bytes > 0)
+										// Выводим количество байт данных, отправленных событием
+										result = static_cast <size_t> (bytes);
+									// Если данные не отправлены
+									else {
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, 0);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											peer->callbacks.status(peer->id, event::status_t::FAILURE);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											#endif
+										}
+										// Если сокет повреждён
+										if(errno != EAGAIN){
+											// Выполняем обработку закрытия подключения
+											if(::io::close(peer, log))
+												// Выполняем удаление узла
+												::io::destroy(peer, eth, log);
+											// Выводим результат работы функции
+											return result;
+										}
+									}
+									// Переводим сокет обратно в неблокирующий режим
+									eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								/**
+								 * Если возникает ошибка
+								 */
+								} catch(const exception & error) {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.what());
+									#endif
+								}
+								// Выводим результат работы функции
+								return result;
+							};
+							// Если установлено ограничение пропускной способности на запись данных в сокет
+							if(peer->bandwidth.write.limit > 0){
+								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								::io::tokens(peer, event::limiting_t::EGRESS, log);
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								if(peer->bandwidth.write.tokens > 0.){
+									// Количество байт данных для отправки в сокет
+									size_t bytes = 0;
+									/**
+									 * Определяем семейство события
+									 */
+									switch(static_cast <uint8_t> (peer->state.family)){
+										// Для семейства IPv4
+										case static_cast <uint8_t> (event::family_t::IPV4):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+										break;
+										// Для семейства IPv6
+										case static_cast <uint8_t> (event::family_t::IPV6):
+											// Выполняем отправку данных в сокет
+											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+										break;
+									}
+									// Если данные отправлены успешно
+									if(bytes > 0){
+										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
+										result = size;
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr){
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, bytes);
+											// Если дескриптор сокета стал недействительным
+											if(peer->transfer.fd == net::invalid_socket_t)
+												// Выводим результат работы функции
+												return bytes;
+										}
+										// Если данные отправлены не полностью
+										if(bytes != size){
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(peer->transfer.mtx);
+											// Сохраняем оставшиеся данные для последующей отправки
+											if(!peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об переполнении очереди
+													peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+												// Если функция обратного вызова для вывода доступных данных установлена
+												if(peer->callbacks.available != nullptr)
+													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+												result = bytes;
+											}
+										}
+										// Уменьшаем количество используемых токенов
+										peer->bandwidth.write.tokens -= static_cast <double> (bytes);
+										// Если очередь передачи данных не пуста
+										if(!peer->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Если токенов для отправки данных больше нет
+											if(peer->bandwidth.write.tokens <= 0.){
+												// Если таймаут на запись данных не активирован
+												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+													// Размер данных для извлечения из очереди
+													size_t size = 0;
+													// Указатель на данные в очереди
+													const void * buffer = nullptr;
+													// Извлекаем данные из очереди для записи в сокет
+													if(peer->transfer.queue.front(&buffer, size)){
+														// Активируем статус таймаута на запись данных
+														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+														// Если вычисленное время равно нулю миллисекунд
+														if(peer->bandwidth.write.timeout.delay == 0)
+															// Устанавливаем минимальное значение времени в 1 миллисекунду
+															peer->bandwidth.write.timeout.delay = 1;
+														// Устанавливаем таймаут на запись данных
+														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+													}
+												}
+											// Если токены для отправки данных ещё есть
+											} else {
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Активируем событие на ожидание готовности сокета на запись
+												EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+											}
+											// Если установлен таймаут на запись данных
+											if(peer->timeouts.write.delay > 0){
+												// Активируем статус таймаута на запись данных
+												peer->timeouts.write.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+											}
+										}
+									}
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								} else {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(peer->transfer.mtx);
+									// Если данные не добавлены в очередь событий
+									if(!peer->transfer.queue.push(buffer, size)){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, 0);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об переполнении очереди
+											peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+										// Если функция обратного вызова для вывода доступных данных установлена
+										if(peer->callbacks.available != nullptr)
+											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+											peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+									} else result = size;
+									// Если в очереди событий появились данные для отправки
+									if(!peer->transfer.queue.empty()){
+										// Если таймаут на запись данных не активирован
+										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+											// Размер данных для извлечения из очереди
+											size_t size = 0;
+											// Указатель на данные в очереди
+											const void * buffer = nullptr;
+											// Извлекаем данные из очереди для записи в сокет
+											if(peer->transfer.queue.front(&buffer, size)){
+												// Активируем статус таймаута на запись данных
+												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+												// Если вычисленное время равно нулю миллисекунд
+												if(peer->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													peer->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+											}
+										}
+										// Если установлен таймаут на запись данных и он не активирован
+										if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
+											// Активируем статус таймаута на запись данных
+											peer->timeouts.write.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+										}
+									}
+									// Переводим сокет обратно в неблокирующий режим
+									eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								}
+							// Если ограничитель пропускной способности на запись данных не установлен
+							} else {
+								// Выполняем отправку данных в сокет
+								result = send(buffer, size);
+								// Если данные отправлены успешно
+								if(result > 0){
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(peer->callbacks.write != nullptr)
+										// Вызываем функцию обратного вызова для вывода записанных данных
+										peer->callbacks.write(peer->id, result);
+								}
+							}
+						}
+					// Если сокет является блокирующим
+					} else {
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							// Если протокол интернета установлен как SCTP
+							if(peer->state.protocol == event::protocol_t::SCTP)
+								// Выполняем отправку данных в TCP/IP сокет
+								bytes = ::sctp_sendmsg(
+									peer->transfer.fd,
+									buffer, size, nullptr, 0,
+									peer->transfer.sctp.info.sinfo_ppid,
+									peer->transfer.sctp.info.sinfo_flags,
+									peer->transfer.sctp.info.sinfo_stream,
+									peer->transfer.sctp.info.sinfo_timetolive,
+									peer->transfer.sctp.info.sinfo_context
+								);
+							// Выполняем отправку данных в TCP/IP сокет
+							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						/**
+						 * Если это другая операционная система
+						 */
+						#else
+							// Выполняем отправку данных в TCP/IP сокет
+							const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						#endif
+						// Если данные отправлены успешно
+						if(bytes > 0){
+							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+							result = static_cast <size_t> (bytes);
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(peer->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+						// Если данные не отправлены
+						} else {
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(peer->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								peer->callbacks.write(peer->id, 0);
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								peer->callbacks.status(peer->id, event::status_t::FAILURE);
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+							// Если сокет повреждён
+							if(errno != EAGAIN){
+								// Выполняем обработку закрытия подключения
+								if(::io::close(peer, log))
+									// Выполняем удаление узла
+									::io::destroy(peer, eth, log);
+							}
+						}
+					}
+				} break;
+				/**
+				 * Для операционной системы FreeBSD
+				 */
+				#if __FreeBSD__
+					// Если сокет принадлежит к типу SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						// Если сокет является неблокирующим
+						if(peer->state.options & event::options::NO_IO_BLOCK){
+							// Если очередь передачи данных пустая
+							if(peer->transfer.queue.empty()){
+								/**
+								 * @brief Функция для отправки данных в сокет
+								 *
+								 * @param buffer буфер данных для отправки
+								 * @param size   размер данных для отправки
+								 * @return       количество отправленных байт
+								 */
+								auto send = [&](const void * buffer, const size_t size) -> size_t {
+									// Результат работы функции
+									size_t result = 0;
+									/**
+									 * Выполняем перехват ошибок
+									 */
+									try {
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(peer->state.protocol == event::protocol_t::SCTP)
+											// Выполняем отправку данных в TCP/IP сокет
+											bytes = ::sctp_sendmsg(
+												peer->transfer.fd,
+												buffer, size, nullptr, 0,
+												peer->transfer.sctp.info.sinfo_ppid,
+												peer->transfer.sctp.info.sinfo_flags,
+												peer->transfer.sctp.info.sinfo_stream,
+												peer->transfer.sctp.info.sinfo_timetolive,
+												peer->transfer.sctp.info.sinfo_context
+											);
+										// Выполняем отправку данных в TCP/IP сокет
+										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										// Если данные отправлены успешно
+										if(bytes > 0)
+											// Выводим количество байт данных, отправленных событием
+											result = static_cast <size_t> (bytes);
+										// Если данные не отправлены
+										else {
+											// Идентификатор полученной ошибки
+											event::error_t error = event::error_t::NONE;
+											/**
+											 * Определяем возникшую ошибку
+											 */
+											switch(errno){
+												// Если ошибки нет
+												case 0: break;
+												// Если мы получили ошибку отправки слишком большого пакета
+												case EMSGSIZE:
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::PACKET_TOO_BIG;
+												break;
+												// Если нам нужно попытаться отправить позже
+												case EAGAIN: {
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(peer->transfer.mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													if(!peer->transfer.queue.push(buffer, size)){
+														// Если установлена функция обратного вызова
+														if(peer->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об переполнении очереди
+															peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+														// Если функция обратного вызова для вывода доступных данных установлена
+														if(peer->callbacks.available != nullptr)
+															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+															peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+													} else result = size;
+													// Если в очереди событий появились данные для отправки
+													if(!peer->transfer.queue.empty()){
+														// Выполняем блокировку потоков
+														const locker_t <> lock(::local::mtx);
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Активируем событие на ожидание готовности сокета на запись
+														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+														// Если установлен таймаут на запись данных
+														if(peer->timeouts.write.delay > 0){
+															// Активируем статус таймаута на запись данных
+															peer->timeouts.write.status = event::status_t::PENDING;
+															// Добавляем новое событие в список изменений
+															::local::change.push_back((struct kevent){});
+															// Устанавливаем таймаут на запись данных
+															EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+														}
+													}
+												} break;
+												// Если мы получили другую непонятную ошибку
+												default:
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::INVALID_SOCKET;
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr)
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, 0);
+											// Если данные не записаны в сокет
+											if(error != event::error_t::NONE){
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													peer->callbacks.status(peer->id, event::status_t::FAILURE);
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													peer->callbacks.error(peer->id, error, ::strerror(errno));
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													#endif
+												}
+												// Если сокет повреждён
+												if(error == event::error_t::INVALID_SOCKET){
+													// Выполняем обработку закрытия подключения
+													if(::io::close(peer, log))
+														// Выполняем удаление узла
+														::io::destroy(peer, eth, log);
+												}
+											}
+										}
+									/**
+									 * Если возникает ошибка
+									 */
+									} catch(const exception & error) {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.what());
+										#endif
+									}
+									// Выводим результат работы функции
+									return result;
+								};
+								// Если установлено ограничение пропускной способности на запись данных в сокет
+								if(peer->bandwidth.write.limit > 0){
+									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									::io::tokens(peer, event::limiting_t::EGRESS, log);
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
+										// Выполняем отправку данных в сокет
+										result = send(buffer, size);
+										// Если данные отправлены успешно
+										if((result > 0) && (errno != EAGAIN)){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr){
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, result);
+												// Если дескриптор сокета стал недействительным
+												if(peer->transfer.fd == net::invalid_socket_t)
+													// Выводим результат работы функции
+													return result;
+											}
+											// Уменьшаем количество используемых токенов
+											peer->bandwidth.write.tokens -= static_cast <double> (result);
+										}
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									} else {
+										// Выполняем блокировку уникальным мютексом
+										const locker_t <> lock(peer->transfer.mtx);
+										// Если данные не добавлены в очередь событий
+										if(!peer->transfer.queue.push(buffer, size)){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr)
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, 0);
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об переполнении очереди
+												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+											// Если функция обратного вызова для вывода доступных данных установлена
+											if(peer->callbacks.available != nullptr)
+												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+										} else result = size;
+										// Если в очереди событий появились данные для отправки
+										if(!peer->transfer.queue.empty()){
+											// Если таймаут на запись данных не активирован
+											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												// Извлекаем данные из очереди для записи в сокет
+												if(peer->transfer.queue.front(&buffer, size)){
+													// Активируем статус таймаута на запись данных
+													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+													// Если вычисленное время равно нулю миллисекунд
+													if(peer->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														peer->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+												}
+											}
+											// Если установлен таймаут на запись данных и он не активирован
+											if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
+												// Активируем статус таймаута на запись данных
+												peer->timeouts.write.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+											}
+										}
+									}
+								// Если ограничитель пропускной способности на запись данных не установлен
+								} else {
+									// Выполняем отправку данных в сокет
+									result = send(buffer, size);
+									// Если данные отправлены успешно
+									if((result > 0) && (errno != EAGAIN)){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, result);
+									}
+								}
+							// Если очередь передачи данных не пуста
+							} else {
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(peer->callbacks.write != nullptr){
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									peer->callbacks.write(peer->id, 0);
+									// Если дескриптор сокета стал недействительным
+									if(peer->transfer.fd == net::invalid_socket_t)
+										// Выводим результат работы функции
+										return result;
+								}
+								// Выполняем блокировку уникальным мютексом
+								const locker_t <> lock(peer->transfer.mtx);
+								// Если данные не добавлены в очередь событий
+								if(!peer->transfer.queue.push(buffer, size)){
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об переполнении очереди
+										peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+									// Если функция обратного вызова для вывода доступных данных установлена
+									if(peer->callbacks.available != nullptr)
+										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+										peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+								// Выводим результат работы функции
+								} else return size;
+							}
+						// Если сокет является полублокирующим
+						} else if(peer->state.options & event::options::SM_IO_BLOCK) {
+							// Переводим сокет в блокирующий режим
+							if(eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+								// Если необходимо активировать таймаут на запись данных в сокет
+								if(peer->timeouts.write.delay > 0)
+									// Устанавливаем таймаут на запись данных в сокет
+									eth->socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
+								/**
+								 * @brief Функция для отправки данных в сокет
+								 *
+								 * @param buffer буфер данных для отправки
+								 * @param size   размер данных для отправки
+								 * @return       количество отправленных байт
+								 */
+								auto send = [&](const void * buffer, const size_t size) -> size_t {
+									// Результат работы функции
+									size_t result = 0;
+									/**
+									 * Выполняем перехват ошибок
+									 */
+									try {
+										// Количество прочитанных байт
+										ssize_t bytes = 0;
+										// Если протокол интернета установлен как SCTP
+										if(peer->state.protocol == event::protocol_t::SCTP)
+											// Выполняем отправку данных в TCP/IP сокет
+											bytes = ::sctp_sendmsg(
+												peer->transfer.fd,
+												buffer, size, nullptr, 0,
+												peer->transfer.sctp.info.sinfo_ppid,
+												peer->transfer.sctp.info.sinfo_flags,
+												peer->transfer.sctp.info.sinfo_stream,
+												peer->transfer.sctp.info.sinfo_timetolive,
+												peer->transfer.sctp.info.sinfo_context
+											);
+										// Выполняем отправку данных в TCP/IP сокет
+										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										// Если данные отправлены успешно
+										if(bytes > 0)
+											// Выводим количество байт данных, отправленных событием
+											result = static_cast <size_t> (bytes);
+										// Если данные не отправлены
+										else {
+											// Идентификатор полученной ошибки
+											event::error_t error = event::error_t::NONE;
+											/**
+											 * Определяем возникшую ошибку
+											 */
+											switch(errno){
+												// Если ошибки нет
+												case 0: break;
+												// Если мы получили ошибку отправки слишком большого пакета
+												case EMSGSIZE:
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::PACKET_TOO_BIG;
+												break;
+												// Если нам нужно попытаться отправить позже
+												case EAGAIN:
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::EVENT_FAIL;
+												break;
+												// Если мы получили другую непонятную ошибку
+												default:
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::INVALID_SOCKET;
+											}
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr)
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, 0);
+											// Если данные не записаны в сокет
+											if(error != event::error_t::NONE){
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													peer->callbacks.status(peer->id, event::status_t::FAILURE);
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													peer->callbacks.error(peer->id, error, ::strerror(errno));
+												// Если функция обратного вызова для вывода события установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													#endif
+												}
+												// Если сокет повреждён
+												if(error == event::error_t::INVALID_SOCKET){
+													// Выполняем обработку закрытия подключения
+													if(::io::close(peer, log))
+														// Выполняем удаление узла
+														::io::destroy(peer, eth, log);
+													// Выводим результат работы функции
+													return result;
+												}
+											}
+										}
+										// Переводим сокет обратно в неблокирующий режим
+										eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									/**
+									 * Если возникает ошибка
+									 */
+									} catch(const exception & error) {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::CRITICAL, error.what());
+										#endif
+									}
+									// Выводим результат работы функции
+									return result;
+								};
+								// Если установлено ограничение пропускной способности на запись данных в сокет
+								if(peer->bandwidth.write.limit > 0){
+									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									::io::tokens(peer, event::limiting_t::EGRESS, log);
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
+										// Выполняем отправку данных в сокет
+										result = send(buffer, size);
+										// Если данные отправлены успешно
+										if(result > 0){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr){
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, result);
+												// Если дескриптор сокета стал недействительным
+												if(peer->transfer.fd == net::invalid_socket_t)
+													// Выводим результат работы функции
+													return result;
+											}
+											// Уменьшаем количество используемых токенов
+											peer->bandwidth.write.tokens -= static_cast <double> (result);
+										}
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									} else {
+										// Выполняем блокировку уникальным мютексом
+										const locker_t <> lock(peer->transfer.mtx);
+										// Если данные не добавлены в очередь событий
+										if(!peer->transfer.queue.push(buffer, size)){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr)
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, 0);
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об переполнении очереди
+												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+											// Если функция обратного вызова для вывода доступных данных установлена
+											if(peer->callbacks.available != nullptr)
+												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+										} else result = size;
+										// Если в очереди событий появились данные для отправки
+										if(!peer->transfer.queue.empty()){
+											// Если таймаут на запись данных не активирован
+											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												// Извлекаем данные из очереди для записи в сокет
+												if(peer->transfer.queue.front(&buffer, size)){
+													// Активируем статус таймаута на запись данных
+													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+													// Если вычисленное время равно нулю миллисекунд
+													if(peer->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														peer->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+												}
+											}
+											// Если установлен таймаут на запись данных и он не активирован
+											if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
+												// Активируем статус таймаута на запись данных
+												peer->timeouts.write.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
+											}
+										}
+										// Переводим сокет обратно в неблокирующий режим
+										eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									}
+								// Если ограничитель пропускной способности на запись данных не установлен
+								} else {
+									// Выполняем отправку данных в сокет
+									result = send(buffer, size);
+									// Если данные отправлены успешно
+									if(result > 0){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(peer->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											peer->callbacks.write(peer->id, result);
+									}
+								}
+							}
+						// Если сокет является блокирующим
+						} else {
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							// Если протокол интернета установлен как SCTP
+							if(peer->state.protocol == event::protocol_t::SCTP)
+								// Выполняем отправку данных в TCP/IP сокет
+								bytes = ::sctp_sendmsg(
+									peer->transfer.fd,
+									buffer, size, nullptr, 0,
+									peer->transfer.sctp.info.sinfo_ppid,
+									peer->transfer.sctp.info.sinfo_flags,
+									peer->transfer.sctp.info.sinfo_stream,
+									peer->transfer.sctp.info.sinfo_timetolive,
+									peer->transfer.sctp.info.sinfo_context
+								);
+							// Выполняем отправку данных в TCP/IP сокет
+							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							// Если данные отправлены успешно
+							if(bytes > 0){
+								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+								result = static_cast <size_t> (bytes);
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(peer->callbacks.write != nullptr)
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+							// Если данные не отправлены
+							} else {
+								// Идентификатор полученной ошибки
+								event::error_t error = event::error_t::NONE;
+								/**
+								 * Определяем возникшую ошибку
+								 */
+								switch(errno){
+									// Если ошибки нет
+									case 0: break;
+									// Если мы получили ошибку отправки слишком большого пакета
+									case EMSGSIZE:
+										// Устанавливаем идентификатор полученной ошибки
+										error = event::error_t::PACKET_TOO_BIG;
+									break;
+									// Если нам нужно попытаться отправить позже
+									case EAGAIN:
+										// Устанавливаем идентификатор полученной ошибки
+										error = event::error_t::EVENT_FAIL;
+									break;
+									// Если мы получили другую непонятную ошибку
+									default:
+										// Устанавливаем идентификатор полученной ошибки
+										error = event::error_t::INVALID_SOCKET;
+								}
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(peer->callbacks.write != nullptr)
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									peer->callbacks.write(peer->id, 0);
+								// Если данные не записаны в сокет
+								if(error != event::error_t::NONE){
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										peer->callbacks.status(peer->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, error, ::strerror(errno));
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										#endif
+									}
+									// Если сокет повреждён
+									if(error == event::error_t::INVALID_SOCKET){
+										// Выполняем обработку закрытия подключения
+										if(::io::close(peer, log))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
+									}
+								}
+							}
+						}
+					} break;
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат работы функции
+		return result;
+	}
+	/**
+	 * @brief Функция отправки данных события для однорангового узла-источника
+	 *
+	 * @param origin объект события однорангового узла-источника, которому необходимо отправить данные
+	 * @param buffer буфер данных для отправки
+	 * @param size   размер данных для отправки
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param log    объект работы с логами
+	 * @return       количество байт данных, отправленных событием
+	 */
+	static size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
+		// Результат работы функции
+		size_t result = 0;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем тип сокета
+			 */
+			switch(static_cast <uint8_t> (origin->state.type)){
+				// Если сокет принадлежит к типу RAW
+				case static_cast <uint8_t> (event::type_t::RAW): {
+					// Если сокет является неблокирующим
+					if(origin->state.options & event::options::NO_IO_BLOCK){
+						// Выполняем отправку данных в RAW-сокет
+						const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+						// Если данные отправлены успешно
+						if(bytes > 0){
+							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+							result = static_cast <size_t> (bytes);
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+						// Если данные не отправлены
+						} else {
+							// Идентификатор полученной ошибки
+							event::error_t error = event::error_t::NONE;
+							/**
+							 * Определяем возникшую ошибку
+							 */
+							switch(errno){
+								// Если ошибки нет
+								case 0: break;
+								// Если мы получили ошибку отправки слишком большого пакета
+								case EMSGSIZE:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::PACKET_TOO_BIG;
+								break;
+								// Если нам нужно попытаться отправить позже
+								case EAGAIN: break;
+								// Если сокет является недействительным
+								case EBADF:
+								// Если нет такого ресурса
+								case ENOENT:
+								// Если получатель недоступен
+								case EINVAL:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::INVALID_SOCKET;
+								break;
+								// Если мы получили другую непонятную ошибку
+								default:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::EVENT_FAIL;
+							}
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, 0);
+							// Если данные не записаны в сокет
+							if(error != event::error_t::NONE){
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									origin->callbacks.error(origin->id, error, ::strerror(errno));
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
+								// Если сокет повреждён
+								if(error == event::error_t::INVALID_SOCKET){
+									// Выполняем обработку закрытия подключения
+									if(::io::close(origin, log))
+										// Выполняем удаление узла
+										::io::destroy(origin, eth, log);
+								}
+							}
+						}
+					// Если сокет является полублокирующим
+					} else if(origin->state.options & event::options::SM_IO_BLOCK) {
+						// Переводим сокет в блокирующий режим
+						if(eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+							// Если необходимо активировать таймаут на запись данных в сокет
+							if(origin->timeouts.write.delay > 0)
+								// Устанавливаем таймаут на запись данных в сокет
+								eth->socket.timeout(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (origin->timeouts.write.delay));
+							// Выполняем отправку данных в RAW-сокет
+							const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+							// Если данные отправлены успешно
+							if(bytes > 0){
+								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+								result = static_cast <size_t> (bytes);
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(origin->callbacks.write != nullptr)
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+							// Если данные не отправлены
+							} else {
+								// Идентификатор полученной ошибки
+								event::error_t error = event::error_t::NONE;
+								/**
+								 * Определяем возникшую ошибку
+								 */
+								switch(errno){
+									// Если ошибки нет
+									case 0: break;
+									// Если мы получили ошибку отправки слишком большого пакета
+									case EMSGSIZE:
+										// Устанавливаем идентификатор полученной ошибки
+										error = event::error_t::PACKET_TOO_BIG;
+									break;
+									// Если сокет является недействительным
+									case EBADF:
+									// Если нет такого ресурса
+									case ENOENT:
+									// Если получатель недоступен
+									case EINVAL:
+										// Устанавливаем идентификатор полученной ошибки
+										error = event::error_t::INVALID_SOCKET;
+									break;
+									// Если мы получили другую непонятную ошибку
+									default:
+										// Устанавливаем идентификатор полученной ошибки
+										error = event::error_t::EVENT_FAIL;
+								}
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(origin->callbacks.write != nullptr)
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									origin->callbacks.write(origin->id, 0);
+								// Если данные не записаны в сокет
+								if(error != event::error_t::NONE){
+									// Если установлена функция обратного вызова
+									if(origin->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										origin->callbacks.status(origin->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(origin->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										origin->callbacks.error(origin->id, error, ::strerror(errno));
+									// Если функция обратного вызова для вывода события установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										#endif
+									}
+									// Если сокет повреждён
+									if(error == event::error_t::INVALID_SOCKET){
+										// Выполняем обработку закрытия подключения
+										if(::io::close(origin, log))
+											// Выполняем удаление узла
+											::io::destroy(origin, eth, log);
+										// Выводим результат работы функции
+										return result;
+									}
+								}
+							}
+							// Переводим сокет обратно в неблокирующий режим
+							eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+						}
+					// Если сокет является блокирующим
+					} else {
+						// Выполняем отправку данных в RAW-сокет
+						const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+						// Если данные отправлены успешно
+						if(bytes > 0){
+							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+							result = static_cast <size_t> (bytes);
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+						// Если данные не отправлены
+						} else {
+							// Идентификатор полученной ошибки
+							event::error_t error = event::error_t::NONE;
+							/**
+							 * Определяем возникшую ошибку
+							 */
+							switch(errno){
+								// Если ошибки нет
+								case 0: break;
+								// Если мы получили ошибку отправки слишком большого пакета
+								case EMSGSIZE:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::PACKET_TOO_BIG;
+								break;
+								// Если сокет является недействительным
+								case EBADF:
+								// Если нет такого ресурса
+								case ENOENT:
+								// Если получатель недоступен
+								case EINVAL:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::INVALID_SOCKET;
+								break;
+								// Если мы получили другую непонятную ошибку
+								default:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::EVENT_FAIL;
+							}
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, 0);
+							// Если данные не записаны в сокет
+							if(error != event::error_t::NONE){
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									origin->callbacks.error(origin->id, error, ::strerror(errno));
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
+								// Если сокет повреждён
+								if(error == event::error_t::INVALID_SOCKET){
+									// Выполняем обработку закрытия подключения
+									if(::io::close(origin, log))
+										// Выполняем удаление узла
+										::io::destroy(origin, eth, log);
+								}
+							}
+						}
+					}
+				} break;
+				/**
+				 * Для операционной системы MacOS X, NetBSD, OpenBSD
+				 */
+				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+					// Если сокет принадлежит к типу SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET):
+				#endif
+				// Если сокет принадлежит к типу DATAGRAM
+				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+					// Если сокет является неблокирующим
+					if(origin->state.options & event::options::NO_IO_BLOCK){
+						// Если очередь передачи данных пустая
+						if(origin->transfer.queue.empty()){
+							/**
+							 * @brief Функция для отправки данных в сокет
+							 *
+							 * @param buffer буфер данных для отправки
+							 * @param size   размер данных для отправки
+							 * @return       количество отправленных байт
+							 */
+							auto send = [&](const void * buffer, const size_t size) -> size_t {
+								// Результат работы функции
+								size_t result = 0;
+								/**
+								 * Выполняем перехват ошибок
+								 */
+								try {
+									// Выполняем отправку данных в UDP-сокет
+									const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+									// Если данные отправлены успешно
+									if(bytes > 0)
+										// Выводим количество байт данных, отправленных событием
+										result = static_cast <size_t> (bytes);
+									// Если данные не отправлены
+									else {
+										// Идентификатор полученной ошибки
+										event::error_t error = event::error_t::NONE;
+										/**
+										 * Определяем возникшую ошибку
+										 */
+										switch(errno){
+											// Если ошибки нет
+											case 0: break;
+											// Если мы получили ошибку отправки слишком большого пакета
+											case EMSGSIZE:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::PACKET_TOO_BIG;
+											break;
+											// Если нам нужно попытаться отправить позже
+											case EAGAIN: {
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(origin->transfer.mtx);
+												// Сохраняем оставшиеся данные для последующей отправки
+												if(!origin->transfer.queue.push(buffer, size)){
+													// Если установлена функция обратного вызова
+													if(origin->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об переполнении очереди
+														origin->callbacks.status(origin->id, event::status_t::QUEUE_OVERFLOW);
+													// Если функция обратного вызова для вывода доступных данных установлена
+													if(origin->callbacks.available != nullptr)
+														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+														origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
+												// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+												} else result = size;
+												// Если в очереди событий появились данные для отправки
+												if(!origin->transfer.queue.empty()){
+													// Выполняем блокировку потоков
+													const locker_t <> lock(::local::mtx);
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Активируем событие на ожидание готовности сокета на запись
+													EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
+													// Если установлен таймаут на запись данных
+													if(origin->timeouts.write.delay > 0){
+														// Активируем статус таймаута на запись данных
+														origin->timeouts.write.status = event::status_t::PENDING;
+														// Добавляем новое событие в список изменений
+														::local::change.push_back((struct kevent){});
+														// Устанавливаем таймаут на запись данных
+														EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
+													}
+												}
+											} break;
+											// Если сокет является недействительным
+											case EBADF:
+											// Если нет такого ресурса
+											case ENOENT:
+											// Если получатель недоступен
+											case EINVAL:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::INVALID_SOCKET;
+											break;
+											// Если мы получили другую непонятную ошибку
+											default:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::EVENT_FAIL;
+										}
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(origin->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											origin->callbacks.write(origin->id, 0);
+										// Если данные не записаны в сокет
+										if(error != event::error_t::NONE){
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												origin->callbacks.status(origin->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												origin->callbacks.error(origin->id, error, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+													* Если режим отладки не включён
+													*/
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Если сокет повреждён
+											if(error == event::error_t::INVALID_SOCKET){
+												// Выполняем обработку закрытия подключения
+												if(::io::close(origin, log))
+													// Выполняем удаление узла
+													::io::destroy(origin, eth, log);
+											}
+										}
+									}
+								/**
+								 * Если возникает ошибка
+								 */
+								} catch(const exception & error) {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.what());
+									#endif
+								}
+								// Выводим результат работы функции
+								return result;
+							};
+							// Если установлено ограничение пропускной способности на запись данных в сокет
+							if(origin->wrate.limit > 0){
+								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								::io::tokens(origin, event::limiting_t::EGRESS, log);
+								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								if(static_cast <size_t> (origin->wrate.tokens) >= size){
+									// Выполняем отправку данных в сокет
+									result = send(buffer, size);
+									// Если данные отправлены успешно
+									if((result > 0) && (errno != EAGAIN)){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(origin->callbacks.write != nullptr){
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											origin->callbacks.write(origin->id, result);
+											// Если дескриптор сокета стал недействительным
+											if(origin->transfer.fd == net::invalid_socket_t)
+												// Выводим результат работы функции
+												return result;
+										}
+										// Уменьшаем количество используемых токенов
+										origin->wrate.tokens -= static_cast <double> (result);
+									}
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								} else {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(origin->transfer.mtx);
+									// Если данные не добавлены в очередь событий
+									if(!origin->transfer.queue.push(buffer, size)){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(origin->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											origin->callbacks.write(origin->id, 0);
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об переполнении очереди
+											origin->callbacks.status(origin->id, event::status_t::QUEUE_OVERFLOW);
+										// Если функция обратного вызова для вывода доступных данных установлена
+										if(origin->callbacks.available != nullptr)
+											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+											origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
+									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+									} else result = size;
+									// Если в очереди событий появились данные для отправки
+									if(!origin->transfer.queue.empty()){
+										// Если таймаут на запись данных не активирован
+										if(origin->wrate.timeout.status == event::status_t::NONE){
+											// Размер данных для извлечения из очереди
+											size_t size = 0;
+											// Указатель на данные в очереди
+											const void * buffer = nullptr;
+											// Извлекаем данные из очереди для записи в сокет
+											if(origin->transfer.queue.front(&buffer, size)){
+												// Активируем статус таймаута на запись данных
+												origin->wrate.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+												// Если вычисленное время равно нулю миллисекунд
+												if(origin->wrate.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													origin->wrate.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
+											}
+										}
+										// Если установлен таймаут на запись данных и он не активирован
+										if((origin->timeouts.write.delay > 0) && (origin->timeouts.write.status == event::status_t::NONE)){
+											// Активируем статус таймаута на запись данных
+											origin->timeouts.write.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
+										}
+									}
+								}
+							// Если ограничитель пропускной способности на запись данных не установлен
+							} else {
+								// Выполняем отправку данных в сокет
+								result = send(buffer, size);
+								// Если данные отправлены успешно
+								if((result > 0) && (errno != EAGAIN)){
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(origin->callbacks.write != nullptr)
+										// Вызываем функцию обратного вызова для вывода записанных данных
+										origin->callbacks.write(origin->id, result);
+								}
+							}
+						// Если очередь передачи данных не пуста
+						} else {
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr){
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, 0);
+								// Если дескриптор сокета стал недействительным
+								if(origin->transfer.fd == net::invalid_socket_t)
+									// Выводим результат работы функции
+									return result;
+							}
+							// Выполняем блокировку уникальным мютексом
+							const locker_t <> lock(origin->transfer.mtx);
+							// Если данные не добавлены в очередь событий
+							if(!origin->transfer.queue.push(buffer, size)){
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об переполнении очереди
+									origin->callbacks.status(origin->id, event::status_t::QUEUE_OVERFLOW);
+								// Если функция обратного вызова для вывода доступных данных установлена
+								if(origin->callbacks.available != nullptr)
+									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+									origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
+							// Выводим результат работы функции
+							} else return size;
+						}
+					// Если сокет является полублокирующим
+					} else if(origin->state.options & event::options::SM_IO_BLOCK) {
+						// Переводим сокет в блокирующий режим
+						if(eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+							// Если необходимо активировать таймаут на запись данных в сокет
+							if(origin->timeouts.write.delay > 0)
+								// Устанавливаем таймаут на запись данных в сокет
+								eth->socket.timeout(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (origin->timeouts.write.delay));
+							/**
+							 * @brief Функция для отправки данных в сокет
+							 *
+							 * @param buffer буфер данных для отправки
+							 * @param size   размер данных для отправки
+							 * @return       количество отправленных байт
+							 */
+							auto send = [&](const void * buffer, const size_t size) -> size_t {
+								// Результат работы функции
+								size_t result = 0;
+								/**
+								 * Выполняем перехват ошибок
+								 */
+								try {
+									// Выполняем отправку данных в UDP-сокет
+									const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+									// Если данные отправлены успешно
+									if(bytes > 0)
+										// Выводим количество байт данных, отправленных событием
+										result = static_cast <size_t> (bytes);
+									// Если данные не отправлены
+									else {
+										// Идентификатор полученной ошибки
+										event::error_t error = event::error_t::NONE;
+										/**
+										 * Определяем возникшую ошибку
+										 */
+										switch(errno){
+											// Если ошибки нет
+											case 0: break;
+											// Если мы получили ошибку отправки слишком большого пакета
+											case EMSGSIZE:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::PACKET_TOO_BIG;
+											break;
+											// Если сокет является недействительным
+											case EBADF:
+											// Если нет такого ресурса
+											case ENOENT:
+											// Если получатель недоступен
+											case EINVAL:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::INVALID_SOCKET;
+											break;
+											// Если мы получили другую непонятную ошибку
+											default:
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::EVENT_FAIL;
+										}
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(origin->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											origin->callbacks.write(origin->id, 0);
+										// Если данные не записаны в сокет
+										if(error != event::error_t::NONE){
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												origin->callbacks.status(origin->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												origin->callbacks.error(origin->id, error, ::strerror(errno));
+											// Если функция обратного вызова для вывода события установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												#endif
+											}
+											// Если сокет повреждён
+											if(error == event::error_t::INVALID_SOCKET){
+												// Выполняем обработку закрытия подключения
+												if(::io::close(origin, log))
+													// Выполняем удаление узла
+													::io::destroy(origin, eth, log);
+												// Выводим результат работы функции
+												return result;
+											}
+										}
+									}
+									// Переводим сокет обратно в неблокирующий режим
+									eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								/**
+								 * Если возникает ошибка
+								 */
+								} catch(const exception & error) {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, error.what());
+									#endif
+								}
+								// Выводим результат работы функции
+								return result;
+							};
+							// Если установлено ограничение пропускной способности на запись данных в сокет
+							if(origin->wrate.limit > 0){
+								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								::io::tokens(origin, event::limiting_t::EGRESS, log);
+								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								if(static_cast <size_t> (origin->wrate.tokens) >= size){
+									// Выполняем отправку данных в сокет
+									result = send(buffer, size);
+									// Если данные отправлены успешно
+									if(result > 0){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(origin->callbacks.write != nullptr){
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											origin->callbacks.write(origin->id, result);
+											// Если дескриптор сокета стал недействительным
+											if(origin->transfer.fd == net::invalid_socket_t)
+												// Выводим результат работы функции
+												return result;
+										}
+										// Уменьшаем количество используемых токенов
+										origin->wrate.tokens -= static_cast <double> (result);
+									}
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								} else {
+									// Выполняем блокировку уникальным мютексом
+									const locker_t <> lock(origin->transfer.mtx);
+									// Если данные не добавлены в очередь событий
+									if(!origin->transfer.queue.push(buffer, size)){
+										// Если функция обратного вызова для вывода записанных данных установлена
+										if(origin->callbacks.write != nullptr)
+											// Вызываем функцию обратного вызова для вывода записанных данных
+											origin->callbacks.write(origin->id, 0);
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об переполнении очереди
+											origin->callbacks.status(origin->id, event::status_t::QUEUE_OVERFLOW);
+										// Если функция обратного вызова для вывода доступных данных установлена
+										if(origin->callbacks.available != nullptr)
+											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+											origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
+									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+									} else result = size;
+									// Если в очереди событий появились данные для отправки
+									if(!origin->transfer.queue.empty()){
+										// Если таймаут на запись данных не активирован
+										if(origin->wrate.timeout.status == event::status_t::NONE){
+											// Размер данных для извлечения из очереди
+											size_t size = 0;
+											// Указатель на данные в очереди
+											const void * buffer = nullptr;
+											// Извлекаем данные из очереди для записи в сокет
+											if(origin->transfer.queue.front(&buffer, size)){
+												// Активируем статус таймаута на запись данных
+												origin->wrate.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+												// Если вычисленное время равно нулю миллисекунд
+												if(origin->wrate.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													origin->wrate.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
+											}
+										}
+										// Если установлен таймаут на запись данных и он не активирован
+										if((origin->timeouts.write.delay > 0) && (origin->timeouts.write.status == event::status_t::NONE)){
+											// Активируем статус таймаута на запись данных
+											origin->timeouts.write.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
+										}
+									}
+									// Переводим сокет обратно в неблокирующий режим
+									eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								}
+							// Если ограничитель пропускной способности на запись данных не установлен
+							} else {
+								// Выполняем отправку данных в сокет
+								result = send(buffer, size);
+								// Если данные отправлены успешно
+								if(result > 0){
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(origin->callbacks.write != nullptr)
+										// Вызываем функцию обратного вызова для вывода записанных данных
+										origin->callbacks.write(origin->id, result);
+								}
+							}
+						}
+					// Если сокет является блокирующим
+					} else {
+						// Выполняем отправку данных в UDP-сокет
+						const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+						// Если данные отправлены успешно
+						if(bytes > 0){
+							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+							result = static_cast <size_t> (bytes);
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+						// Если данные не отправлены
+						} else {
+							// Идентификатор полученной ошибки
+							event::error_t error = event::error_t::NONE;
+							/**
+							 * Определяем возникшую ошибку
+							 */
+							switch(errno){
+								// Если ошибки нет
+								case 0: break;
+								// Если мы получили ошибку отправки слишком большого пакета
+								case EMSGSIZE:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::PACKET_TOO_BIG;
+								break;
+								// Если сокет является недействительным
+								case EBADF:
+								// Если нет такого ресурса
+								case ENOENT:
+								// Если получатель недоступен
+								case EINVAL:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::INVALID_SOCKET;
+								break;
+								// Если мы получили другую непонятную ошибку
+								default:
+									// Устанавливаем идентификатор полученной ошибки
+									error = event::error_t::EVENT_FAIL;
+							}
+							// Если функция обратного вызова для вывода записанных данных установлена
+							if(origin->callbacks.write != nullptr)
+								// Вызываем функцию обратного вызова для вывода записанных данных
+								origin->callbacks.write(origin->id, 0);
+							// Если данные не записаны в сокет
+							if(error != event::error_t::NONE){
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									origin->callbacks.error(origin->id, error, ::strerror(errno));
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
+								// Если сокет повреждён
+								if(error == event::error_t::INVALID_SOCKET){
+									// Выполняем обработку закрытия подключения
+									if(::io::close(origin, log))
+										// Выполняем удаление узла
+										::io::destroy(origin, eth, log);
+								}
+							}
+						}
+					}
+				} break;
+				// Для остальных типов сокетов
+				default: {
+					// Если установлена функция обратного вызова
+					if(origin->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						origin->callbacks.status(origin->id, event::status_t::FAILURE);
+					// Устанавливаем текст ошибки
+					const string error = "Origin cannot send non-Datagram packet data";
+					// Если установлена функция обратного вызова
+					if(origin->callbacks.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки события
+						origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
+					// Если функция обратного вызова для вывода события установлена
+					else {
+						/**
+							* Если включён режим отладки
+							*/
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+						/**
+							* Если режим отладки не включён
+							*/
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат работы функции
+		return result;
+	}
+	/**
 	 * @brief Функция отправки данных события для клиента
 	 *
 	 * @param client объект события клиента, которому необходимо отправить данные
@@ -33549,8 +35855,8 @@ namespace io {
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
-									* Определяем семейство события
-									*/
+									 * Определяем семейство события
+									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4):
@@ -33564,7 +35870,7 @@ namespace io {
 										break;
 									}
 									// Если данные отправлены успешно
-									if(bytes > 0){
+									if((bytes > 0) && (errno != EAGAIN)){
 										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
 										result = size;
 										// Если функция обратного вызова для вывода записанных данных установлена
@@ -33641,7 +35947,8 @@ namespace io {
 												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
 											}
 										}
-									}
+									// Если данные не отправлены полностью и произошла ошибка EAGAIN
+									} else result = bytes;
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
@@ -33702,7 +36009,7 @@ namespace io {
 								// Выполняем отправку данных в сокет
 								const size_t bytes = send(buffer, size);
 								// Если данные отправлены успешно
-								if(bytes > 0){
+								if((bytes > 0) && (errno != EAGAIN)){
 									// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
 									result = size;
 									// Если функция обратного вызова для вывода записанных данных установлена
@@ -33750,7 +36057,8 @@ namespace io {
 											}
 										}
 									}
-								}
+								// Если данные не отправлены полностью и произошла ошибка EAGAIN
+								} else result = bytes;
 							}
 						// Если очередь передачи данных не пуста
 						} else {
@@ -33852,14 +36160,14 @@ namespace io {
 										// Если функция обратного вызова для вывода события установлена
 										else {
 											/**
-											* Если включён режим отладки
-											*/
+											 * Если включён режим отладки
+											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
 												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
-											* Если режим отладки не включён
-											*/
+											 * Если режим отладки не включён
+											 */
 											#else
 												// Выводим сообщение об ошибке
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
@@ -33907,8 +36215,8 @@ namespace io {
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
-									* Определяем семейство события
-									*/
+									 * Определяем семейство события
+									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4):
@@ -34192,12 +36500,22 @@ namespace io {
 												break;
 												// Если нам нужно попытаться отправить позже
 												case EAGAIN: {
-													{
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(client->transfer.mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.queue.push(buffer, size);
-													}{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													if(!client->transfer.queue.push(buffer, size)){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об переполнении очереди
+															client->callbacks.status(client->id, event::status_t::QUEUE_OVERFLOW);
+														// Если функция обратного вызова для вывода доступных данных установлена
+														if(client->callbacks.available != nullptr)
+															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+													} else result = size;
+													// Если в очереди событий появились данные для отправки
+													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
@@ -34289,7 +36607,7 @@ namespace io {
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
 										// Если данные отправлены успешно
-										if(result > 0){
+										if((result > 0) && (errno != EAGAIN)){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34362,7 +36680,7 @@ namespace io {
 									// Выполняем отправку данных в сокет
 									result = send(buffer, size);
 									// Если данные отправлены успешно
-									if(result > 0){
+									if((result > 0) && (errno != EAGAIN)){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34724,12 +37042,22 @@ namespace io {
 												break;
 												// Если нам нужно попытаться отправить позже
 												case EAGAIN: {
-													{
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(client->transfer.mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.queue.push(buffer, size);
-													}{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													if(!client->transfer.queue.push(buffer, size)){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об переполнении очереди
+															client->callbacks.status(client->id, event::status_t::QUEUE_OVERFLOW);
+														// Если функция обратного вызова для вывода доступных данных установлена
+														if(client->callbacks.available != nullptr)
+															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+													} else result = size;
+													// Если в очереди событий появились данные для отправки
+													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
@@ -34821,7 +37149,7 @@ namespace io {
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
 										// Если данные отправлены успешно
-										if(result > 0){
+										if((result > 0) && (errno != EAGAIN)){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -34894,7 +37222,7 @@ namespace io {
 									// Выполняем отправку данных в сокет
 									result = send(buffer, size);
 									// Если данные отправлены успешно
-									if(result > 0){
+									if((result > 0) && (errno != EAGAIN)){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35315,12 +37643,22 @@ namespace io {
 												break;
 												// Если нам нужно попытаться отправить позже
 												case EAGAIN: {
-													{
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(client->transfer.mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.queue.push(buffer, size);
-													}{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													if(!client->transfer.queue.push(buffer, size)){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об переполнении очереди
+															client->callbacks.status(client->id, event::status_t::QUEUE_OVERFLOW);
+														// Если функция обратного вызова для вывода доступных данных установлена
+														if(client->callbacks.available != nullptr)
+															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+													} else result = size;
+													// Если в очереди событий появились данные для отправки
+													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
@@ -35412,7 +37750,7 @@ namespace io {
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
 										// Если данные отправлены успешно
-										if(result > 0){
+										if((result > 0) && (errno != EAGAIN)){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -35483,15 +37821,13 @@ namespace io {
 								// Если ограничитель пропускной способности на запись данных не установлен
 								} else {
 									// Выполняем отправку данных в сокет
-									const size_t bytes = send(buffer, size);
+									result = send(buffer, size);
 									// Если данные отправлены успешно
-									if(bytes > 0){
-										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
-										result = bytes;
+									if((result > 0) && (errno != EAGAIN)){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, bytes);
+											client->callbacks.write(client->id, result);
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -35930,12 +38266,22 @@ namespace io {
 												break;
 												// Если нам нужно попытаться отправить позже
 												case EAGAIN: {
-													{
-														// Выполняем блокировку уникальным мютексом
-														const locker_t <> lock(client->transfer.mtx);
-														// Сохраняем оставшиеся данные для последующей отправки
-														client->transfer.queue.push(buffer, size);
-													}{
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Сохраняем оставшиеся данные для последующей отправки
+													if(!client->transfer.queue.push(buffer, size)){
+														// Если установлена функция обратного вызова
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова об переполнении очереди
+															client->callbacks.status(client->id, event::status_t::QUEUE_OVERFLOW);
+														// Если функция обратного вызова для вывода доступных данных установлена
+														if(client->callbacks.available != nullptr)
+															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
+													} else result = size;
+													// Если в очереди событий появились данные для отправки
+													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
 														const locker_t <> lock(::local::mtx);
 														// Добавляем новое событие в список изменений
@@ -36027,7 +38373,7 @@ namespace io {
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
 										// Если данные отправлены успешно
-										if(result > 0){
+										if((result > 0) && (errno != EAGAIN)){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -36098,15 +38444,13 @@ namespace io {
 								// Если ограничитель пропускной способности на запись данных не установлен
 								} else {
 									// Выполняем отправку данных в сокет
-									const size_t bytes = send(buffer, size);
+									result = send(buffer, size);
 									// Если данные отправлены успешно
-									if(bytes > 0){
-										// Устанавливаем общее количество байт данных, отправленных событием, в качестве результата работы функции
-										result = bytes;
+									if((result > 0) && (errno != EAGAIN)){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
-											client->callbacks.write(client->id, bytes);
+											client->callbacks.write(client->id, result);
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -37483,698 +39827,9 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если записи в сокет разрешено
 						if(peer->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-								/**
-								 * Определяем тип сокета
-								 */
-								switch(static_cast <uint8_t> (peer->state.type)){
-									// Если сокет принадлежит к типу STREAM
-									case static_cast <uint8_t> (event::type_t::STREAM): {
-										// Если сокет является неблокирующим
-										if(peer->state.options & event::options::NO_IO_BLOCK){
-											// Если очередь передачи данных пустая
-											if(peer->transfer.queue.empty()){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															peer->transfer.fd,
-															buffer, size, nullptr, 0,
-															peer->transfer.sctp.info.sinfo_ppid,
-															peer->transfer.sctp.info.sinfo_flags,
-															peer->transfer.sctp.info.sinfo_stream,
-															peer->transfer.sctp.info.sinfo_timetolive,
-															peer->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-												/**
-												 * Если это другая операционная система
-												 */
-												#else
-													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-												#endif
-												// Если данные отправлены успешно
-												if(bytes > 0){
-													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-													result = static_cast <size_t> (bytes);
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr){
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-														// Если дескриптор сокета стал недействительным
-														if(peer->transfer.fd == net::invalid_socket_t)
-															// Выводим результат работы функции
-															return result;
-													}
-													// Если данные отправлены не полностью
-													if(static_cast <size_t> (bytes) != size){
-														{
-															// Выполняем блокировку уникальным мютексом
-															const locker_t <> lock(peer->transfer.mtx);
-															// Сохраняем оставшиеся данные для последующей отправки
-															peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes));
-														}{
-															// Выполняем блокировку потоков
-															const locker_t <> lock(::local::mtx);
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Активируем событие на ожидание готовности сокета на запись
-															EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-															// Если установлен таймаут на запись данных
-															if(peer->timeouts.write.delay > 0){
-																// Активируем статус таймаута на запись данных
-																peer->timeouts.write.status = event::status_t::PENDING;
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Устанавливаем таймаут на запись данных
-																EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-															}
-														}
-													}
-												// Если данные не отправлены
-												} else {
-													// Идентификатор полученной ошибки
-													event::error_t error = event::error_t::NONE;
-													// Если сокет давно закрыт
-													if(bytes == 0)
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::INVALID_SOCKET;
-													// Если произошла другая ошибка
-													else {
-														/**
-														 * Определяем возникшую ошибку
-														 */
-														switch(errno){
-															// Если ошибки нет
-															case 0: break;
-															// Если нам нужно попытаться отправить позже
-															case EAGAIN: {
-																{
-																	// Выполняем блокировку уникальным мютексом
-																	const locker_t <> lock(peer->transfer.mtx);
-																	// Сохраняем оставшиеся данные для последующей отправки
-																	peer->transfer.queue.push(buffer, size);
-																}{
-																	// Выполняем блокировку потоков
-																	const locker_t <> lock(::local::mtx);
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Активируем событие на ожидание готовности сокета на запись
-																	EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-																	// Если установлен таймаут на запись данных
-																	if(peer->timeouts.write.delay > 0){
-																		// Активируем статус таймаута на запись данных
-																		peer->timeouts.write.status = event::status_t::PENDING;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на запись данных
-																		EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-																	}
-																}
-															} break;
-															// Если мы получили другую непонятную ошибку
-															default:
-																// Устанавливаем идентификатор полученной ошибки
-																error = event::error_t::INVALID_SOCKET;
-														}
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, 0);
-													// Если данные не записаны в сокет
-													if(error != event::error_t::NONE){
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															peer->callbacks.status(peer->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															peer->callbacks.error(peer->id, error, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Если сокет повреждён
-														if(error == event::error_t::INVALID_SOCKET){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(peer, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(peer, &this->_eth, this->_log);
-														}
-													}
-												}
-											// Если очередь передачи данных не пуста
-											} else {
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr){
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, 0);
-													// Если дескриптор сокета стал недействительным
-													if(peer->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
-														return result;
-												}
-												// Выполняем блокировку уникальным мютексом
-												const locker_t <> lock(peer->transfer.mtx);
-												// Если данные не добавлены в очередь событий
-												if(!peer->transfer.queue.push(buffer, size)){
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об переполнении очереди
-														peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
-													// Если функция обратного вызова для вывода доступных данных установлена
-													if(peer->callbacks.available != nullptr)
-														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-														peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-												}
-												// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-												result = size;
-											}
-										// Если сокет является полублокирующим
-										} else if(peer->state.options & event::options::SM_IO_BLOCK) {
-											// Переводим сокет в блокирующий режим
-											if(this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-												// Если необходимо активировать таймаут на запись данных в сокет
-												if(peer->timeouts.write.delay > 0)
-													// Устанавливаем таймаут на запись данных в сокет
-													this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															peer->transfer.fd,
-															buffer, size, nullptr, 0,
-															peer->transfer.sctp.info.sinfo_ppid,
-															peer->transfer.sctp.info.sinfo_flags,
-															peer->transfer.sctp.info.sinfo_stream,
-															peer->transfer.sctp.info.sinfo_timetolive,
-															peer->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-												/**
-												 * Если это другая операционная система
-												 */
-												#else
-													// Выполняем отправку данных в TCP/IP сокет
-													const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-												#endif
-												// Если данные отправлены успешно
-												if(bytes > 0){
-													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-													result = static_cast <size_t> (bytes);
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-												// Если данные не отправлены
-												} else {
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, 0);
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														peer->callbacks.status(peer->id, event::status_t::FAILURE);
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Если сокет повреждён
-													if(errno != EAGAIN){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(peer, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(peer, &this->_eth, this->_log);
-													// Если сокет временно недоступен для записи, то переводим сокет обратно в неблокирующий режим
-													} else this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-												}
-											}
-										// Если сокет является блокирующим
-										} else {
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Количество прочитанных байт
-												ssize_t bytes = 0;
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP)
-													// Выполняем отправку данных в TCP/IP сокет
-													bytes = ::sctp_sendmsg(
-														peer->transfer.fd,
-														buffer, size, nullptr, 0,
-														peer->transfer.sctp.info.sinfo_ppid,
-														peer->transfer.sctp.info.sinfo_flags,
-														peer->transfer.sctp.info.sinfo_stream,
-														peer->transfer.sctp.info.sinfo_timetolive,
-														peer->transfer.sctp.info.sinfo_context
-													);
-												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в TCP/IP сокет
-												const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-											#endif
-											// Если данные отправлены успешно
-											if(bytes > 0){
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = static_cast <size_t> (bytes);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-											// Если данные не отправлены
-											} else {
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(peer->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													peer->callbacks.write(peer->id, 0);
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													peer->callbacks.status(peer->id, event::status_t::FAILURE);
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Если сокет повреждён
-												if(errno != EAGAIN){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, this->_log))
-														// Выполняем удаление узла
-														::io::destroy(peer, &this->_eth, this->_log);
-												}
-											}
-										}
-									} break;
-									/**
-									 * Для операционной системы FreeBSD
-									 */
-									#if __FreeBSD__
-										// Если сокет принадлежит к типу SEQPACKET
-										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-											// Если сокет является неблокирующим
-											if(peer->state.options & event::options::NO_IO_BLOCK){
-												// Если очередь передачи данных пустая
-												if(peer->transfer.queue.empty()){
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															peer->transfer.fd,
-															buffer, size, nullptr, 0,
-															peer->transfer.sctp.info.sinfo_ppid,
-															peer->transfer.sctp.info.sinfo_flags,
-															peer->transfer.sctp.info.sinfo_stream,
-															peer->transfer.sctp.info.sinfo_timetolive,
-															peer->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-													// Если данные отправлены успешно
-													if(bytes > 0){
-														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-														result = static_cast <size_t> (bytes);
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(peer->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-													// Если данные не отправлены
-													} else {
-														// Идентификатор полученной ошибки
-														event::error_t error = event::error_t::NONE;
-														/**
-														 * Определяем возникшую ошибку
-														 */
-														switch(errno){
-															// Если ошибки нет
-															case 0: break;
-															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE:
-																// Устанавливаем идентификатор полученной ошибки
-																error = event::error_t::PACKET_TOO_BIG;
-															break;
-															// Если нам нужно попытаться отправить позже
-															case EAGAIN: {
-																{
-																	// Выполняем блокировку уникальным мютексом
-																	const locker_t <> lock(peer->transfer.mtx);
-																	// Сохраняем оставшиеся данные для последующей отправки
-																	peer->transfer.queue.push(buffer, size);
-																}{
-																	// Выполняем блокировку потоков
-																	const locker_t <> lock(::local::mtx);
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Активируем событие на ожидание готовности сокета на запись
-																	EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-																	// Если установлен таймаут на запись данных
-																	if(peer->timeouts.write.delay > 0){
-																		// Активируем статус таймаута на запись данных
-																		peer->timeouts.write.status = event::status_t::PENDING;
-																		// Добавляем новое событие в список изменений
-																		::local::change.push_back((struct kevent){});
-																		// Устанавливаем таймаут на запись данных
-																		EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-																	}
-																}
-															} break;
-															// Если мы получили другую непонятную ошибку
-															default:
-																// Устанавливаем идентификатор полученной ошибки
-																error = event::error_t::INVALID_SOCKET;
-														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(peer->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															peer->callbacks.write(peer->id, 0);
-														// Если данные не записаны в сокет
-														if(error != event::error_t::NONE){
-															// Если установлена функция обратного вызова
-															if(peer->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																peer->callbacks.status(peer->id, event::status_t::FAILURE);
-															// Если установлена функция обратного вызова
-															if(peer->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																peer->callbacks.error(peer->id, error, ::strerror(errno));
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-																#endif
-															}
-															// Если сокет повреждён
-															if(error == event::error_t::INVALID_SOCKET){
-																// Выполняем обработку закрытия подключения
-																if(::io::close(peer, this->_log))
-																	// Выполняем удаление узла
-																	::io::destroy(peer, &this->_eth, this->_log);
-															}
-														}
-													}
-												// Если очередь передачи данных не пуста
-												} else {
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr){
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, 0);
-														// Если дескриптор сокета стал недействительным
-														if(peer->transfer.fd == net::invalid_socket_t)
-															// Выводим результат работы функции
-															return result;
-													}
-													// Выполняем блокировку уникальным мютексом
-													const locker_t <> lock(peer->transfer.mtx);
-													// Если данные не добавлены в очередь событий
-													if(!peer->transfer.queue.push(buffer, size)){
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об переполнении очереди
-															peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
-														// Если функция обратного вызова для вывода доступных данных установлена
-														if(peer->callbacks.available != nullptr)
-															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-															peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-													}
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													result = size;
-												}
-											// Если сокет является полублокирующим
-											} else if(peer->state.options & event::options::SM_IO_BLOCK) {
-												// Переводим сокет в блокирующий режим
-												if(this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-													// Если необходимо активировать таймаут на запись данных в сокет
-													if(peer->timeouts.write.delay > 0)
-														// Устанавливаем таймаут на запись данных в сокет
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
-													// Количество прочитанных байт
-													ssize_t bytes = 0;
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP)
-														// Выполняем отправку данных в TCP/IP сокет
-														bytes = ::sctp_sendmsg(
-															peer->transfer.fd,
-															buffer, size, nullptr, 0,
-															peer->transfer.sctp.info.sinfo_ppid,
-															peer->transfer.sctp.info.sinfo_flags,
-															peer->transfer.sctp.info.sinfo_stream,
-															peer->transfer.sctp.info.sinfo_timetolive,
-															peer->transfer.sctp.info.sinfo_context
-														);
-													// Выполняем отправку данных в TCP/IP сокет
-													else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-													// Если данные отправлены успешно
-													if(bytes > 0){
-														// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-														result = static_cast <size_t> (bytes);
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(peer->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-													// Если данные не отправлены
-													} else {
-														// Идентификатор полученной ошибки
-														event::error_t error = event::error_t::NONE;
-														/**
-														 * Определяем возникшую ошибку
-														 */
-														switch(errno){
-															// Если ошибки нет
-															case 0: break;
-															// Если мы получили ошибку отправки слишком большого пакета
-															case EMSGSIZE:
-																// Устанавливаем идентификатор полученной ошибки
-																error = event::error_t::PACKET_TOO_BIG;
-															break;
-															// Если нам нужно попытаться отправить позже
-															case EAGAIN:
-																// Устанавливаем идентификатор полученной ошибки
-																error = event::error_t::EVENT_FAIL;
-															break;
-															// Если мы получили другую непонятную ошибку
-															default:
-																// Устанавливаем идентификатор полученной ошибки
-																error = event::error_t::INVALID_SOCKET;
-														}
-														// Если функция обратного вызова для вывода записанных данных установлена
-														if(peer->callbacks.write != nullptr)
-															// Вызываем функцию обратного вызова для вывода записанных данных
-															peer->callbacks.write(peer->id, 0);
-														// Если данные не записаны в сокет
-														if(error != event::error_t::NONE){
-															// Если установлена функция обратного вызова
-															if(peer->callbacks.status != nullptr)
-																// Вызываем функцию обратного вызова об ошибке отказа
-																peer->callbacks.status(peer->id, event::status_t::FAILURE);
-															// Если установлена функция обратного вызова
-															if(peer->callbacks.error != nullptr)
-																// Вызываем функцию обратного вызова ошибки события
-																peer->callbacks.error(peer->id, error, ::strerror(errno));
-															// Если функция обратного вызова для вывода события установлена
-															else {
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-																#endif
-															}
-															// Если сокет повреждён
-															if(error == event::error_t::INVALID_SOCKET){
-																// Выполняем обработку закрытия подключения
-																if(::io::close(peer, this->_log))
-																	// Выполняем удаление узла
-																	::io::destroy(peer, &this->_eth, this->_log);
-																// Выводим результат работы функции
-																return result;
-															}
-														}
-													}
-													// Переводим сокет обратно в неблокирующий режим
-													this->_eth.socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-												}
-											// Если сокет является блокирующим
-											} else {
-												// Количество прочитанных байт
-												ssize_t bytes = 0;
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP)
-													// Выполняем отправку данных в TCP/IP сокет
-													bytes = ::sctp_sendmsg(
-														peer->transfer.fd,
-														buffer, size, nullptr, 0,
-														peer->transfer.sctp.info.sinfo_ppid,
-														peer->transfer.sctp.info.sinfo_flags,
-														peer->transfer.sctp.info.sinfo_stream,
-														peer->transfer.sctp.info.sinfo_timetolive,
-														peer->transfer.sctp.info.sinfo_context
-													);
-												// Выполняем отправку данных в TCP/IP сокет
-												else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-												// Если данные отправлены успешно
-												if(bytes > 0){
-													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-													result = static_cast <size_t> (bytes);
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
-												// Если данные не отправлены
-												} else {
-													// Идентификатор полученной ошибки
-													event::error_t error = event::error_t::NONE;
-													/**
-													 * Определяем возникшую ошибку
-													 */
-													switch(errno){
-														// Если ошибки нет
-														case 0: break;
-														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::PACKET_TOO_BIG;
-														break;
-														// Если нам нужно попытаться отправить позже
-														case EAGAIN:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::EVENT_FAIL;
-														break;
-														// Если мы получили другую непонятную ошибку
-														default:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::INVALID_SOCKET;
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(peer->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														peer->callbacks.write(peer->id, 0);
-													// Если данные не записаны в сокет
-													if(error != event::error_t::NONE){
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															peer->callbacks.status(peer->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															peer->callbacks.error(peer->id, error, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Если сокет повреждён
-														if(error == event::error_t::INVALID_SOCKET){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(peer, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(peer, &this->_eth, this->_log);
-														}
-													}
-												}
-											}
-										} break;
-									#endif
-								}
-							}
+							if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+								// Выполняем отправку данных на узел клиента
+								return ::io::send(peer, buffer, size, &this->_eth, this->_log);
 						}
 					} break;
 					// Если узел является одноранговым узлом-источником
@@ -38184,615 +39839,9 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если записи в сокет разрешено
 						if(origin->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-								/**
-								 * Определяем тип сокета
-								 */
-								switch(static_cast <uint8_t> (origin->state.type)){
-									// Если сокет принадлежит к типу RAW
-									case static_cast <uint8_t> (event::type_t::RAW): {
-										// Если сокет является неблокирующим
-										if(origin->state.options & event::options::NO_IO_BLOCK){
-											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-											// Если данные отправлены успешно
-											if(bytes > 0){
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = static_cast <size_t> (bytes);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-											// Если данные не отправлены
-											} else {
-												// Идентификатор полученной ошибки
-												event::error_t error = event::error_t::NONE;
-												/**
-												 * Определяем возникшую ошибку
-												 */
-												switch(errno){
-													// Если ошибки нет
-													case 0: break;
-													// Если мы получили ошибку отправки слишком большого пакета
-													case EMSGSIZE:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::PACKET_TOO_BIG;
-													break;
-													// Если нам нужно попытаться отправить позже
-													case EAGAIN: break;
-													// Если сокет является недействительным
-													case EBADF:
-													// Если нет такого ресурса
-													case ENOENT:
-													// Если получатель недоступен
-													case EINVAL:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::INVALID_SOCKET;
-													break;
-													// Если мы получили другую непонятную ошибку
-													default:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::EVENT_FAIL;
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, 0);
-												// Если данные не записаны в сокет
-												if(error != event::error_t::NONE){
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, error, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Если сокет повреждён
-													if(error == event::error_t::INVALID_SOCKET){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(origin, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(origin, &this->_eth, this->_log);
-													}
-												}
-											}
-										// Если сокет является полублокирующим
-										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
-											// Переводим сокет в блокирующий режим
-											if(this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-												// Если необходимо активировать таймаут на запись данных в сокет
-												if(origin->timeouts.write.delay > 0)
-													// Устанавливаем таймаут на запись данных в сокет
-													this->_eth.socket.timeout(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (origin->timeouts.write.delay));
-												// Выполняем отправку данных в RAW-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-												// Если данные отправлены успешно
-												if(bytes > 0){
-													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-													result = static_cast <size_t> (bytes);
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-												// Если данные не отправлены
-												} else {
-													// Идентификатор полученной ошибки
-													event::error_t error = event::error_t::NONE;
-													/**
-													 * Определяем возникшую ошибку
-													 */
-													switch(errno){
-														// Если ошибки нет
-														case 0: break;
-														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::PACKET_TOO_BIG;
-														break;
-														// Если сокет является недействительным
-														case EBADF:
-														// Если нет такого ресурса
-														case ENOENT:
-														// Если получатель недоступен
-														case EINVAL:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::INVALID_SOCKET;
-														break;
-														// Если мы получили другую непонятную ошибку
-														default:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::EVENT_FAIL;
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, 0);
-													// Если данные не записаны в сокет
-													if(error != event::error_t::NONE){
-														// Если установлена функция обратного вызова
-														if(origin->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															origin->callbacks.status(origin->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(origin->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															origin->callbacks.error(origin->id, error, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Если сокет повреждён
-														if(error == event::error_t::INVALID_SOCKET){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(origin, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(origin, &this->_eth, this->_log);
-															// Выводим результат работы функции
-															return result;
-														}
-													}
-												}
-												// Переводим сокет обратно в неблокирующий режим
-												this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											}
-										// Если сокет является блокирующим
-										} else {
-											// Выполняем отправку данных в RAW-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-											// Если данные отправлены успешно
-											if(bytes > 0){
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = static_cast <size_t> (bytes);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-											// Если данные не отправлены
-											} else {
-												// Идентификатор полученной ошибки
-												event::error_t error = event::error_t::NONE;
-												/**
-												 * Определяем возникшую ошибку
-												 */
-												switch(errno){
-													// Если ошибки нет
-													case 0: break;
-													// Если мы получили ошибку отправки слишком большого пакета
-													case EMSGSIZE:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::PACKET_TOO_BIG;
-													break;
-													// Если сокет является недействительным
-													case EBADF:
-													// Если нет такого ресурса
-													case ENOENT:
-													// Если получатель недоступен
-													case EINVAL:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::INVALID_SOCKET;
-													break;
-													// Если мы получили другую непонятную ошибку
-													default:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::EVENT_FAIL;
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, 0);
-												// Если данные не записаны в сокет
-												if(error != event::error_t::NONE){
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, error, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Если сокет повреждён
-													if(error == event::error_t::INVALID_SOCKET){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(origin, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(origin, &this->_eth, this->_log);
-													}
-												}
-											}
-										}
-									} break;
-									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Если сокет принадлежит к типу SEQPACKET
-										case static_cast <uint8_t> (event::type_t::SEQPACKET):
-									#endif
-									// Если сокет принадлежит к типу DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Если сокет является неблокирующим
-										if(origin->state.options & event::options::NO_IO_BLOCK){
-											// Если очередь передачи данных пустая
-											if(origin->transfer.queue.empty()){
-												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-												// Если данные отправлены успешно
-												if(bytes > 0){
-													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-													result = static_cast <size_t> (bytes);
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-												// Если данные не отправлены
-												} else {
-													// Идентификатор полученной ошибки
-													event::error_t error = event::error_t::NONE;
-													/**
-													 * Определяем возникшую ошибку
-													 */
-													switch(errno){
-														// Если ошибки нет
-														case 0: break;
-														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::PACKET_TOO_BIG;
-														break;
-														// Если нам нужно попытаться отправить позже
-														case EAGAIN: {
-															{
-																// Выполняем блокировку уникальным мютексом
-																const locker_t <> lock(origin->transfer.mtx);
-																// Сохраняем оставшиеся данные для последующей отправки
-																origin->transfer.queue.push(buffer, size);
-															}{
-																// Выполняем блокировку потоков
-																const locker_t <> lock(::local::mtx);
-																// Добавляем новое событие в список изменений
-																::local::change.push_back((struct kevent){});
-																// Активируем событие на ожидание готовности сокета на запись
-																EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
-																// Если установлен таймаут на запись данных
-																if(origin->timeouts.write.delay > 0){
-																	// Активируем статус таймаута на запись данных
-																	origin->timeouts.write.status = event::status_t::PENDING;
-																	// Добавляем новое событие в список изменений
-																	::local::change.push_back((struct kevent){});
-																	// Устанавливаем таймаут на запись данных
-																	EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-																}
-															}
-														} break;
-														// Если сокет является недействительным
-														case EBADF:
-														// Если нет такого ресурса
-														case ENOENT:
-														// Если получатель недоступен
-														case EINVAL:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::INVALID_SOCKET;
-														break;
-														// Если мы получили другую непонятную ошибку
-														default:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::EVENT_FAIL;
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, 0);
-													// Если данные не записаны в сокет
-													if(error != event::error_t::NONE){
-														// Если установлена функция обратного вызова
-														if(origin->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															origin->callbacks.status(origin->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(origin->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															origin->callbacks.error(origin->id, error, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Если сокет повреждён
-														if(error == event::error_t::INVALID_SOCKET){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(origin, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(origin, &this->_eth, this->_log);
-														}
-													}
-												}
-											// Если очередь передачи данных не пуста
-											} else {
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr){
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, 0);
-													// Если дескриптор сокета стал недействительным
-													if(origin->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
-														return result;
-												}
-												// Выполняем блокировку уникальным мютексом
-												const locker_t <> lock(origin->transfer.mtx);
-												// Если данные не добавлены в очередь событий
-												if(!origin->transfer.queue.push(buffer, size)){
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об переполнении очереди
-														origin->callbacks.status(origin->id, event::status_t::QUEUE_OVERFLOW);
-													// Если функция обратного вызова для вывода доступных данных установлена
-													if(origin->callbacks.available != nullptr)
-														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-														origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
-												}
-												// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-												result = size;
-											}
-										// Если сокет является полублокирующим
-										} else if(origin->state.options & event::options::SM_IO_BLOCK) {
-											// Переводим сокет в блокирующий режим
-											if(this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-												// Если необходимо активировать таймаут на запись данных в сокет
-												if(origin->timeouts.write.delay > 0)
-													// Устанавливаем таймаут на запись данных в сокет
-													this->_eth.socket.timeout(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (origin->timeouts.write.delay));
-												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-												// Если данные отправлены успешно
-												if(bytes > 0){
-													// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-													result = static_cast <size_t> (bytes);
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-												// Если данные не отправлены
-												} else {
-													// Идентификатор полученной ошибки
-													event::error_t error = event::error_t::NONE;
-													/**
-													 * Определяем возникшую ошибку
-													 */
-													switch(errno){
-														// Если ошибки нет
-														case 0: break;
-														// Если мы получили ошибку отправки слишком большого пакета
-														case EMSGSIZE:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::PACKET_TOO_BIG;
-														break;
-														// Если сокет является недействительным
-														case EBADF:
-														// Если нет такого ресурса
-														case ENOENT:
-														// Если получатель недоступен
-														case EINVAL:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::INVALID_SOCKET;
-														break;
-														// Если мы получили другую непонятную ошибку
-														default:
-															// Устанавливаем идентификатор полученной ошибки
-															error = event::error_t::EVENT_FAIL;
-													}
-													// Если функция обратного вызова для вывода записанных данных установлена
-													if(origin->callbacks.write != nullptr)
-														// Вызываем функцию обратного вызова для вывода записанных данных
-														origin->callbacks.write(origin->id, 0);
-													// Если данные не записаны в сокет
-													if(error != event::error_t::NONE){
-														// Если установлена функция обратного вызова
-														if(origin->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															origin->callbacks.status(origin->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(origin->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															origin->callbacks.error(origin->id, error, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Если сокет повреждён
-														if(error == event::error_t::INVALID_SOCKET){
-															// Выполняем обработку закрытия подключения
-															if(::io::close(origin, this->_log))
-																// Выполняем удаление узла
-																::io::destroy(origin, &this->_eth, this->_log);
-															// Выводим результат работы функции
-															return result;
-														}
-													}
-												}
-												// Переводим сокет обратно в неблокирующий режим
-												this->_eth.socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
-											}
-										// Если сокет является блокирующим
-										} else {
-											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
-											// Если данные отправлены успешно
-											if(bytes > 0){
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = static_cast <size_t> (bytes);
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-											// Если данные не отправлены
-											} else {
-												// Идентификатор полученной ошибки
-												event::error_t error = event::error_t::NONE;
-												/**
-												 * Определяем возникшую ошибку
-												 */
-												switch(errno){
-													// Если ошибки нет
-													case 0: break;
-													// Если мы получили ошибку отправки слишком большого пакета
-													case EMSGSIZE:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::PACKET_TOO_BIG;
-													break;
-													// Если сокет является недействительным
-													case EBADF:
-													// Если нет такого ресурса
-													case ENOENT:
-													// Если получатель недоступен
-													case EINVAL:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::INVALID_SOCKET;
-													break;
-													// Если мы получили другую непонятную ошибку
-													default:
-														// Устанавливаем идентификатор полученной ошибки
-														error = event::error_t::EVENT_FAIL;
-												}
-												// Если функция обратного вызова для вывода записанных данных установлена
-												if(origin->callbacks.write != nullptr)
-													// Вызываем функцию обратного вызова для вывода записанных данных
-													origin->callbacks.write(origin->id, 0);
-												// Если данные не записаны в сокет
-												if(error != event::error_t::NONE){
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														origin->callbacks.status(origin->id, event::status_t::FAILURE);
-													// Если установлена функция обратного вызова
-													if(origin->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														origin->callbacks.error(origin->id, error, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Если сокет повреждён
-													if(error == event::error_t::INVALID_SOCKET){
-														// Выполняем обработку закрытия подключения
-														if(::io::close(origin, this->_log))
-															// Выполняем удаление узла
-															::io::destroy(origin, &this->_eth, this->_log);
-													}
-												}
-											}
-										}
-									} break;
-									// Для остальных типов сокетов
-									default: {
-										// Если установлена функция обратного вызова
-										if(origin->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											origin->callbacks.status(origin->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Origin cannot send non-Datagram packet data";
-										// Если установлена функция обратного вызова
-										if(origin->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, error);
-										// Если функция обратного вызова для вывода события установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-											#endif
-										}
-									}
-								}
-							}
+							if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+								// Выполняем отправку данных на узел клиента
+								return ::io::send(origin, buffer, size, &this->_eth, this->_log);
 						}
 					} break;
 					// Если узел является туннелем
@@ -39102,9 +40151,12 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если событие записи разрешено
-						if(client->transfer.actions & ::action::WRITE)
-							// Выполняем отправку данных на узел клиента
-							return ::io::send(client, buffer, size, &this->_eth, this->_log);
+						if(client->transfer.actions & ::action::WRITE){
+							// Если событие находится не в состоянии паузы
+							if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+								// Выполняем отправку данных на узел клиента
+								return ::io::send(client, buffer, size, &this->_eth, this->_log);
+						}
 					} break;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
