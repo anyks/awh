@@ -314,6 +314,13 @@ namespace awh {
 			/**
 			 * @brief Метод установки пропускной способности события
 			 *
+			 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
+			 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+			 */
+			virtual void bandwidth(const event::limiting_t limiting, const string & bandwidth) noexcept = 0;
+			/**
+			 * @brief Метод установки пропускной способности события для события
+			 *
 			 * @param id        идентификатор события
 			 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
 			 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")

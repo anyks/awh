@@ -709,7 +709,7 @@ namespace io {
 		double tokens;
 		// Время последнего обновления пропускной способности в наносекундах
 		uint64_t time;
-		// Лимит пропускной способности в битах в секунду
+		// Лимит пропускной способности в байтах в секунду
 		uint32_t limit;
 		// Таймаут пропускной способности
 		timeout_t timeout;
@@ -1403,6 +1403,22 @@ namespace {
 			::__awh_nodes__.erase(this->_node->id);
 		}
 	}
+};
+
+/**
+ * Инкапсулируем статические параметры ограничения скорости в пространство имён
+ */
+namespace bandwidth {
+	/**
+	 * @brief Количество разрешённых на получение байт за 1 секунду времени
+	 *
+	 */
+	static uint32_t read = 0;
+	/**
+	 * @brief Количество разрешённых на передачу байт за 1 секунду времени
+	 *
+	 */
+	static uint32_t write = 0;
 };
 
 /**
@@ -2774,7 +2790,7 @@ namespace io {
 										} else if(peer->bandwidth.read.timeout.status == event::status_t::NONE) {
 											// Активируем статус таймаута на получение данных
 											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(peer->bandwidth.read.timeout.delay == 0)
@@ -2787,6 +2803,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -2919,6 +2941,10 @@ namespace io {
 							if(peer->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
 								return result;
+							// Если установлено ограничение пропускной способности на чтение данных
+							if(::bandwidth::read > 0)
+								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем обработку закрытия подключения
@@ -3049,7 +3075,7 @@ namespace io {
 										if(peer->bandwidth.read.timeout.status == event::status_t::NONE){
 											// Активируем статус таймаута на получение данных
 											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(peer->bandwidth.read.timeout.delay == 0)
@@ -3062,6 +3088,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -3161,6 +3193,10 @@ namespace io {
 								if(peer->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
 									return result;
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -4046,6 +4082,10 @@ namespace io {
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
 									return result;
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -4118,6 +4158,10 @@ namespace io {
 							if(client->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
 								return result;
+							// Если установлено ограничение пропускной способности на чтение данных
+							if(::bandwidth::read > 0)
+								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем обработку закрытия подключения
@@ -4302,7 +4346,7 @@ namespace io {
 										} else if(client->bandwidth.read.timeout.status == event::status_t::NONE) {
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.read.timeout.delay == 0)
@@ -4315,6 +4359,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -4447,6 +4497,10 @@ namespace io {
 							if(client->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
 								return result;
+							// Если установлено ограничение пропускной способности на чтение данных
+							if(::bandwidth::read > 0)
+								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем обработку закрытия подключения
@@ -4546,7 +4600,7 @@ namespace io {
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.read.timeout.delay == 0)
@@ -4559,6 +4613,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -4627,6 +4687,10 @@ namespace io {
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
 									return result;
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -4728,7 +4792,7 @@ namespace io {
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.read.timeout.delay == 0)
@@ -4741,6 +4805,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -4814,6 +4884,10 @@ namespace io {
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
 									return result;
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -4961,7 +5035,7 @@ namespace io {
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.read.timeout.delay == 0)
@@ -4974,6 +5048,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -5091,6 +5171,10 @@ namespace io {
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
 									return result;
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -5245,7 +5329,7 @@ namespace io {
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.read.timeout.delay == 0)
@@ -5258,6 +5342,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -5386,6 +5476,10 @@ namespace io {
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
 									return result;
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем обработку закрытия подключения
@@ -5540,7 +5634,7 @@ namespace io {
 										if(server->wrate.timeout.status == event::status_t::NONE){
 											// Активируем статус таймаута на получение данных
 											server->wrate.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											server->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (server->wrate.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(server->wrate.timeout.delay == 0)
@@ -5553,6 +5647,12 @@ namespace io {
 										}
 										// Выходим из цикла
 										break;
+									// Если нет лимита для чтения данных из сокета
+									} else {
+										// Если установлено ограничение пропускной способности на чтение данных
+										if(::bandwidth::read > 0)
+											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -5651,11 +5751,15 @@ namespace io {
 									#endif
 								}
 							// Если мы получили данные из сокета
-							} else if(bytes > 0)
+							} else if(bytes > 0) {
 								// Выполняем обработку полученных данных
 								result = ::io::origin(server, buffer, bytes, io, eth, fmk, log);
+								// Если установлено ограничение пропускной способности на чтение данных
+								if(::bandwidth::read > 0)
+									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
-							else {
+							} else {
 								// Идентификатор полученной ошибки
 								event::error_t error = event::error_t::NONE;
 								/**
@@ -6548,7 +6652,7 @@ namespace io {
 														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(peer->bandwidth.write.timeout.delay == 0)
@@ -6608,7 +6712,7 @@ namespace io {
 											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(peer->bandwidth.write.timeout.delay == 0)
@@ -6705,6 +6809,10 @@ namespace io {
 										// Снимаем таймаут на отправку данных
 										EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -6935,7 +7043,7 @@ namespace io {
 															peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 															// Добавляем новое событие в список изменений
 															::local::change.push_back((struct kevent){});
-															// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+															// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 															peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 															// Если вычисленное время равно нулю миллисекунд
 															if(peer->bandwidth.write.timeout.delay == 0)
@@ -6995,7 +7103,7 @@ namespace io {
 												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(peer->bandwidth.write.timeout.delay == 0)
@@ -7092,6 +7200,10 @@ namespace io {
 											// Снимаем таймаут на отправку данных
 											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 										}
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							}
@@ -7374,7 +7486,7 @@ namespace io {
 														origin->wrate.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(origin->wrate.timeout.delay == 0)
@@ -7434,7 +7546,7 @@ namespace io {
 											origin->wrate.timeout.status = event::status_t::PENDING;
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(origin->wrate.timeout.delay == 0)
@@ -7531,6 +7643,10 @@ namespace io {
 										// Снимаем таймаут на отправку данных
 										EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -8010,7 +8126,7 @@ namespace io {
 														client->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(client->bandwidth.write.timeout.delay == 0)
@@ -8070,7 +8186,7 @@ namespace io {
 											client->bandwidth.write.timeout.status = event::status_t::PENDING;
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.write.timeout.delay == 0)
@@ -8167,6 +8283,10 @@ namespace io {
 										// Снимаем таймаут на отправку данных
 										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -8392,7 +8512,7 @@ namespace io {
 														client->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(client->bandwidth.write.timeout.delay == 0)
@@ -8452,7 +8572,7 @@ namespace io {
 											client->bandwidth.write.timeout.status = event::status_t::PENDING;
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.write.timeout.delay == 0)
@@ -8549,6 +8669,10 @@ namespace io {
 										// Снимаем таймаут на отправку данных
 										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -8831,7 +8955,7 @@ namespace io {
 														client->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(client->bandwidth.write.timeout.delay == 0)
@@ -8891,7 +9015,7 @@ namespace io {
 											client->bandwidth.write.timeout.status = event::status_t::PENDING;
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 											// Если вычисленное время равно нулю миллисекунд
 											if(client->bandwidth.write.timeout.delay == 0)
@@ -8988,6 +9112,10 @@ namespace io {
 										// Снимаем таймаут на отправку данных
 										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -9190,6 +9318,10 @@ namespace io {
 										// Снимаем таймаут на отправку данных
 										EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								// Если данные не отправлены
 								} else {
 									// Идентификатор полученной ошибки
@@ -10642,7 +10774,7 @@ namespace io {
 														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(peer->bandwidth.write.timeout.delay == 0)
@@ -10671,7 +10803,7 @@ namespace io {
 										}
 									// Если данные не отправлены полностью и произошла ошибка EAGAIN
 									} else result = bytes;
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(peer->transfer.mtx);
@@ -10705,7 +10837,7 @@ namespace io {
 												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(peer->bandwidth.write.timeout.delay == 0)
@@ -10779,6 +10911,10 @@ namespace io {
 											}
 										}
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								// Если данные не отправлены полностью и произошла ошибка EAGAIN
 								} else result = bytes;
 							}
@@ -11006,7 +11142,7 @@ namespace io {
 														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(peer->bandwidth.write.timeout.delay == 0)
@@ -11034,7 +11170,7 @@ namespace io {
 											}
 										}
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(peer->transfer.mtx);
@@ -11068,7 +11204,7 @@ namespace io {
 												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(peer->bandwidth.write.timeout.delay == 0)
@@ -11101,6 +11237,10 @@ namespace io {
 									if(peer->callbacks.write != nullptr)
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										peer->callbacks.write(peer->id, result);
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -11141,6 +11281,10 @@ namespace io {
 							if(peer->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Если функция обратного вызова для вывода записанных данных установлена
@@ -11352,7 +11496,7 @@ namespace io {
 								if(peer->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -11369,8 +11513,12 @@ namespace io {
 											}
 											// Уменьшаем количество используемых токенов
 											peer->bandwidth.write.tokens -= static_cast <double> (result);
+											// Если установлено ограничение пропускной способности на запись данных
+											if(::bandwidth::write > 0)
+												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
@@ -11404,7 +11552,7 @@ namespace io {
 													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(peer->bandwidth.write.timeout.delay == 0)
@@ -11435,6 +11583,10 @@ namespace io {
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -11602,7 +11754,7 @@ namespace io {
 								if(peer->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -11620,7 +11772,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											peer->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
@@ -11654,7 +11806,7 @@ namespace io {
 													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(peer->bandwidth.write.timeout.delay == 0)
@@ -11687,6 +11839,10 @@ namespace io {
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							}
@@ -11716,6 +11872,10 @@ namespace io {
 								if(peer->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -11844,6 +12004,10 @@ namespace io {
 							if(origin->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -11936,6 +12100,10 @@ namespace io {
 								if(origin->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -12025,6 +12193,10 @@ namespace io {
 							if(origin->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -12264,7 +12436,7 @@ namespace io {
 							if(origin->wrate.limit > 0){
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
-								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 								if(static_cast <size_t> (origin->wrate.tokens) >= size){
 									// Выполняем отправку данных в сокет
 									result = send(buffer, size);
@@ -12282,7 +12454,7 @@ namespace io {
 										// Уменьшаем количество используемых токенов
 										origin->wrate.tokens -= static_cast <double> (result);
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(origin->transfer.mtx);
@@ -12316,7 +12488,7 @@ namespace io {
 												origin->wrate.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(origin->wrate.timeout.delay == 0)
@@ -12347,6 +12519,10 @@ namespace io {
 									if(origin->callbacks.write != nullptr)
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										origin->callbacks.write(origin->id, result);
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						// Если очередь передачи данных не пуста
@@ -12504,7 +12680,7 @@ namespace io {
 							if(origin->wrate.limit > 0){
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
-								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 								if(static_cast <size_t> (origin->wrate.tokens) >= size){
 									// Выполняем отправку данных в сокет
 									result = send(buffer, size);
@@ -12522,7 +12698,7 @@ namespace io {
 										// Уменьшаем количество используемых токенов
 										origin->wrate.tokens -= static_cast <double> (result);
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(origin->transfer.mtx);
@@ -12556,7 +12732,7 @@ namespace io {
 												origin->wrate.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(origin->wrate.timeout.delay == 0)
@@ -12589,6 +12765,10 @@ namespace io {
 									if(origin->callbacks.write != nullptr)
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										origin->callbacks.write(origin->id, result);
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -12604,6 +12784,10 @@ namespace io {
 							if(origin->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -13101,6 +13285,10 @@ namespace io {
 							if(client->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								client->callbacks.write(client->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -13187,6 +13375,10 @@ namespace io {
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -13268,6 +13460,10 @@ namespace io {
 							if(client->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								client->callbacks.write(client->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -13580,7 +13776,7 @@ namespace io {
 														client->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(client->bandwidth.write.timeout.delay == 0)
@@ -13609,7 +13805,7 @@ namespace io {
 										}
 									// Если данные не отправлены полностью и произошла ошибка EAGAIN
 									} else result = bytes;
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
@@ -13643,7 +13839,7 @@ namespace io {
 												client->bandwidth.write.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(client->bandwidth.write.timeout.delay == 0)
@@ -13717,6 +13913,10 @@ namespace io {
 											}
 										}
 									}
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								// Если данные не отправлены полностью и произошла ошибка EAGAIN
 								} else result = bytes;
 							}
@@ -13944,7 +14144,7 @@ namespace io {
 														client->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 														// Если вычисленное время равно нулю миллисекунд
 														if(client->bandwidth.write.timeout.delay == 0)
@@ -13972,7 +14172,7 @@ namespace io {
 											}
 										}
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
@@ -14006,7 +14206,7 @@ namespace io {
 												client->bandwidth.write.timeout.status = event::status_t::PENDING;
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если вычисленное время равно нулю миллисекунд
 												if(client->bandwidth.write.timeout.delay == 0)
@@ -14039,6 +14239,10 @@ namespace io {
 									if(client->callbacks.write != nullptr)
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, result);
+									// Если установлено ограничение пропускной способности на запись данных
+									if(::bandwidth::write > 0)
+										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 								}
 							}
 						}
@@ -14079,6 +14283,10 @@ namespace io {
 							if(client->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								client->callbacks.write(client->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Если функция обратного вызова для вывода записанных данных установлена
@@ -14274,7 +14482,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -14292,7 +14500,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -14326,7 +14534,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -14357,6 +14565,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -14510,7 +14722,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -14528,7 +14740,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -14562,7 +14774,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -14595,6 +14807,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							}
@@ -14610,6 +14826,10 @@ namespace io {
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -14828,7 +15048,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -14846,7 +15066,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -14880,7 +15100,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -14911,6 +15131,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -15064,7 +15288,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -15082,7 +15306,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -15116,7 +15340,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -15149,6 +15373,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							}
@@ -15164,6 +15392,10 @@ namespace io {
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -15441,7 +15673,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -15459,7 +15691,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -15493,7 +15725,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -15524,6 +15756,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -15704,7 +15940,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -15722,7 +15958,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -15756,7 +15992,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -15789,6 +16025,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							}
@@ -15831,6 +16071,10 @@ namespace io {
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -16076,7 +16320,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -16094,7 +16338,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -16128,7 +16372,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -16159,6 +16403,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							// Если очередь передачи данных не пуста
@@ -16339,7 +16587,7 @@ namespace io {
 								if(client->bandwidth.write.limit > 0){
 									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
 										// Выполняем отправку данных в сокет
 										result = send(buffer, size);
@@ -16357,7 +16605,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -16391,7 +16639,7 @@ namespace io {
 													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности на запись данных в сокет
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 													// Если вычисленное время равно нулю миллисекунд
 													if(client->bandwidth.write.timeout.delay == 0)
@@ -16424,6 +16672,10 @@ namespace io {
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, result);
+										// Если установлено ограничение пропускной способности на запись данных
+										if(::bandwidth::write > 0)
+											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 									}
 								}
 							}
@@ -16466,6 +16718,10 @@ namespace io {
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -16622,6 +16878,10 @@ namespace io {
 							if(server->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								server->callbacks.write(server->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -16714,6 +16974,10 @@ namespace io {
 								if(server->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									server->callbacks.write(server->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -16803,6 +17067,10 @@ namespace io {
 							if(server->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								server->callbacks.write(server->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -16898,6 +17166,10 @@ namespace io {
 							if(server->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								server->callbacks.write(server->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -16990,6 +17262,10 @@ namespace io {
 								if(server->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									server->callbacks.write(server->id, static_cast <size_t> (bytes));
+								// Если установлено ограничение пропускной способности на запись данных
+								if(::bandwidth::write > 0)
+									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -17079,6 +17355,10 @@ namespace io {
 							if(server->callbacks.write != nullptr)
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								server->callbacks.write(server->id, static_cast <size_t> (bytes));
+							// Если установлено ограничение пропускной способности на запись данных
+							if(::bandwidth::write > 0)
+								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -44453,13 +44733,66 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 	return result;
 }
 /**
-* @brief Метод установки пропускной способности события
-*
-* @param id        идентификатор события
-* @param limiting  режим ограничения пропускной способности события (egress или ingress)
-* @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
-* @return          результат выполнения установки
-*/
+ * @brief Метод установки пропускной способности события
+ *
+ * @param limiting  режим ограничения пропускной способности события (egress или ingress)
+ * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ */
+void awh::engine::IO::bandwidth(const event::limiting_t limiting, const string & bandwidth) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем режим ограничения пропускной способности
+		 */
+		switch(static_cast <uint8_t> (limiting)){
+			// Если режим ограничения пропускной способности является исходящим
+			case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+				// Если пропускная способность для установки является автоматической
+				if(this->_fmk->compare(bandwidth, "auto"))
+					// Устанавливаем пропускную способность для автоматического определения пропускной способности
+					::bandwidth::write = 0;
+				// Устанавливаем пропускную способность для ограничения исходящего трафика
+				else ::bandwidth::write = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+			} break;
+			// Если режим ограничения пропускной способности является входящим
+			case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+				// Если пропускная способность для установки является автоматической
+				if(this->_fmk->compare(bandwidth, "auto"))
+					// Устанавливаем пропускную способность для автоматического определения пропускной способности
+					::bandwidth::read = 0;
+				// Устанавливаем пропускную способность для ограничения входящего трафика
+				else ::bandwidth::read = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки пропускной способности события для события
+ *
+ * @param id        идентификатор события
+ * @param limiting  режим ограничения пропускной способности события (egress или ingress)
+ * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ * @return          результат выполнения установки
+ */
 bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t limiting, const string & bandwidth) noexcept {
 	/**
 	 * Выполняем перехват ошибок
