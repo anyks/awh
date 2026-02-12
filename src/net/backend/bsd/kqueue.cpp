@@ -1925,6 +1925,646 @@ namespace io {
 	 */
 	using namespace awh;
 	/**
+	 * @brief Функция обработки события чтения для узла межпроцессного взаимодействия
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param io   объект работы с асинхронными событиями
+	 * @param eth  объект работы с сетевыми интерфейсами
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Буфер для временного хранения данных
+			char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
+			/**
+			 * Определяем тип сокета
+			 */
+			switch(static_cast <uint8_t> (peer->state.type)){
+				// Если событие принадлежит к типу STREAM
+				case static_cast <uint8_t> (event::type_t::STREAM): {
+					// Если событие является неблокирующим
+					if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+						// Размер байт для чтения из сокета
+						size_t size = 0;
+						// Количество прочитанных байт
+						ssize_t bytes = 0, offset = 0;
+						// Если установлено ограничение пропускной способности на чтение данных из сокета
+						if(peer->bandwidth.read.limit > 0){
+							// Выполняем расчёт токенов для получения данных из сокета
+							::io::tokens(peer, event::limiting_t::INGRESS, log);
+							// Если токены для получения данных присутствуют
+							if(peer->bandwidth.read.tokens > 0.){
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (peer->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Выполняем рассчёт размера байт для чтения из сокета
+										size = ::local::min(peer->bandwidth.read.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_MAX_EVENT_BUFFER_SIZE);
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Выполняем рассчёт размера байт для чтения из сокета
+										size = ::local::min(peer->bandwidth.read.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_MAX_EVENT_BUFFER_SIZE);
+									break;
+								}
+							}
+						// Устанавливаем размер байт для чтения из сокета по умолчанию
+						} else size = AWH_MAX_EVENT_BUFFER_SIZE;
+						// Если есть лимит для чтения данных из сокета
+						if(size > 0){
+							/**
+							 * Выполняем получение данных пока их не получим
+							 */
+							for(;;){
+								// Обнуляем смещение
+								offset = 0;
+								/**
+								 * Если операционной системой является FreeBSD
+								 */
+								#if __FreeBSD__
+									// Если протокол интернета установлен как SCTP
+									if(peer->state.protocol == event::protocol_t::SCTP)
+										// Выполняем чтение данных из SCTP-сокета
+										bytes = ::sctp_recvmsg(
+											peer->transfer.fd,
+											buffer, size,
+											nullptr, nullptr,
+											&peer->transfer.sctp.info,
+											&peer->transfer.sctp.flags
+										);
+									// Выполняем чтение данных из TCP/IP сокета
+									else bytes = ::recv(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								/**
+								 * Если это другая операционная система
+								 */
+								#else
+									// Выполняем чтение данных из TCP/IP сокета
+									bytes = ::recv(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								#endif
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Если нам нужно повторить попытку позже
+									if(errno == EAGAIN){
+										// Если установлено ограничение пропускной способности на чтение данных из сокета
+										if(peer->bandwidth.read.limit > 0){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Активируем событие на чтение данных
+											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
+										}
+										// Выходим из цикла
+										break;
+									// Если мы получили другую ошибку
+									} else {
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											peer->callbacks.status(peer->id, event::status_t::FAILURE);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											#endif
+										}
+										// Выполняем обработку закрытия подключения
+										if(::io::close(peer, log))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
+										// Формируем отрицательный результат
+										return false;
+									}
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									/**
+									 * Если операционной системой является FreeBSD
+									 */
+									#if __FreeBSD__
+										// Если протокол интернета установлен как SCTP
+										if(peer->state.protocol == event::protocol_t::SCTP){
+											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+											if(peer->transfer.sctp.callbacks.info != nullptr){
+												// Объект для хранения информационных метаданных SCTP сообщения
+												net::sctp::minfo_t minfo;
+												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+												::sctp::info(peer->transfer.sctp.info, minfo);
+												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+												peer->transfer.sctp.callbacks.info(peer->id, minfo);
+											}
+											// Если мы получили уведомления SCTP
+											if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+												// Обрабатываем события SCTP
+												offset = static_cast <ssize_t> (::sctp::events(peer, buffer, bytes, log));
+												// Если все полученные байты были уведомлениями SCTP
+												if(offset >= bytes)
+													// Продолжаем основной цикл получения данных
+													continue;
+											}
+										}
+									#endif
+									// Если функция обратного вызова для вывода события установлена
+									if(peer->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										peer->callbacks.event(peer->id, event::action_t::READ);
+									// Если идентификатор события для передачи данных не установлен
+									if(peer->transfer.dest == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(peer->callbacks.read != nullptr)
+											// Вызываем функцию обратного вызова для вывода полученных данных
+											peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
+									// Если дескриптор сокета стал недействительным
+									if(peer->transfer.fd == net::invalid_socket_t)
+										// Формируем отрицательный результат
+										return false;
+									// Если установлено ограничение пропускной способности на чтение данных из сокета
+									if(peer->bandwidth.read.limit > 0){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
+										// Уменьшаем количество используемых токенов
+										peer->bandwidth.read.tokens -= static_cast <double> (bytes);
+										// Если токены для получения данных ещё доступны
+										if(peer->bandwidth.read.tokens > 0.){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Активируем событие на чтение данных
+											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
+										// Если таймаут на получение данных не активирован
+										} else if(peer->bandwidth.read.timeout.status == event::status_t::NONE) {
+											// Активируем статус таймаута на получение данных
+											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
+											// Если вычисленное время равно нулю миллисекунд
+											if(peer->bandwidth.read.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												peer->bandwidth.read.timeout.delay = 1;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на получение данных
+											EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
+										}
+										// Выходим из цикла
+										break;
+									}
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									if(::io::close(peer, log))
+										// Выполняем удаление узла
+										::io::destroy(peer, eth, log);
+									// Формируем отрицательный результат
+									return false;
+								}
+							}
+						// Если нет лимита для чтения данных из сокета
+						} else {
+							// Выполняем блокировку потоков
+							const locker_t <> lock(::local::mtx);
+							// Устанавливаем минимальное значение времени в 1 миллисекунду
+							peer->bandwidth.read.timeout.delay = 1;
+							// Активируем статус таймаута на получение данных
+							peer->bandwidth.read.timeout.status = event::status_t::PENDING;
+							// Добавляем новое событие в список изменений
+							::local::change.push_back((struct kevent){});
+							// Устанавливаем таймаут на получение данных
+							EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
+						}
+					// Если событие является блокирующим
+					} else {
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							// Если протокол интернета установлен как SCTP
+							if(peer->state.protocol == event::protocol_t::SCTP)
+								// Выполняем чтение данных из SCTP-сокета
+								bytes = ::sctp_recvmsg(
+									peer->transfer.fd,
+									buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+									nullptr, nullptr,
+									&peer->transfer.sctp.info,
+									&peer->transfer.sctp.flags
+								);
+							// Выполняем чтение данных из TCP/IP сокета
+							else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+						/**
+						 * Если это другая операционная система
+						 */
+						#else
+							// Выполняем чтение данных из TCP/IP сокета
+							const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+						#endif
+						// Если мы получили ошибку
+						if(bytes < 0){
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								peer->callbacks.status(peer->id, event::status_t::FAILURE);
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+							// Если функция обратного вызова для вывода события установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+							// Если сокет повреждён
+							if(errno != EAGAIN){
+								// Выполняем обработку закрытия подключения
+								if(::io::close(peer, log))
+									// Выполняем удаление узла
+									::io::destroy(peer, eth, log);
+							}
+							// Формируем отрицательный результат
+							return false;
+						// Если мы получили данные из сокета
+						} else if(bytes > 0) {
+							// Количество обработанных байт
+							size_t offset = 0;
+							/**
+							 * Если операционной системой является FreeBSD
+							 */
+							#if __FreeBSD__
+								// Если протокол интернета установлен как SCTP
+								if(peer->state.protocol == event::protocol_t::SCTP){
+									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+									if(peer->transfer.sctp.callbacks.info != nullptr){
+										// Объект для хранения информационных метаданных SCTP сообщения
+										net::sctp::minfo_t minfo;
+										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+										::sctp::info(peer->transfer.sctp.info, minfo);
+										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+										peer->transfer.sctp.callbacks.info(peer->id, minfo);
+									}
+									// Если мы получили уведомления SCTP
+									if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+										// Обрабатываем события SCTP
+										offset = ::sctp::events(peer, buffer, bytes, log);
+										// Если все полученные байты были уведомлениями SCTP
+										if(offset >= static_cast <size_t> (bytes))
+											// Формируем положительный результат
+											return true;
+									}
+								}
+							#endif
+							// Если функция обратного вызова для вывода события установлена
+							if(peer->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								peer->callbacks.event(peer->id, event::action_t::READ);
+							// Если идентификатор события для передачи данных не установлен
+							if(peer->transfer.dest == 0){
+								// Если функция обратного вызова для вывода прочитанных данных установлена
+								if(peer->callbacks.read != nullptr)
+									// Вызываем функцию обратного вызова для вывода полученных данных
+									peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
+							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+							} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
+							// Если дескриптор сокета стал недействительным
+							if(peer->transfer.fd == net::invalid_socket_t)
+								// Формируем отрицательный результат
+								return false;
+						// Если произошёл дисконнект
+						} else {
+							// Выполняем обработку закрытия подключения
+							if(::io::close(peer, log))
+								// Выполняем удаление узла
+								::io::destroy(peer, eth, log);
+							// Формируем отрицательный результат
+							return false;
+						}
+					}
+				} break;
+				/**
+				 * Для операционной системы FreeBSD
+				 */
+				#if __FreeBSD__
+					// Если событие принадлежит к типу SEQPACKET
+					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+						// Если событие является неблокирующим
+						if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							/**
+							 * Выполняем получение данных пока их не получим
+							 */
+							for(;;){
+								// Если протокол интернета установлен как SCTP
+								if(peer->state.protocol == event::protocol_t::SCTP)
+									// Выполняем чтение данных из SCTP-сокета
+									bytes = ::sctp_recvmsg(
+										peer->transfer.fd,
+										buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+										nullptr, nullptr,
+										&peer->transfer.sctp.info,
+										&peer->transfer.sctp.flags
+									);
+								// Выполняем чтение данных из TCP/IP сокета
+								else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+								// Если мы получили ошибку
+								if(bytes < 0){
+									// Если нам нужно повторить попытку позже
+									if(errno == EAGAIN){
+										// Если установлено ограничение пропускной способности на чтение данных из сокета
+										if(peer->bandwidth.read.limit > 0){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Активируем событие на чтение данных
+											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
+										}
+										// Выходим из цикла
+										break;
+									// Если мы получили другую ошибку
+									} else {
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											peer->callbacks.status(peer->id, event::status_t::FAILURE);
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										// Если функция обратного вызова для вывода события установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											#endif
+										}
+										// Выполняем обработку закрытия подключения
+										if(::io::close(peer, log))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
+										// Формируем отрицательный результат
+										return false;
+									}
+								// Если мы получили данные из сокета
+								} else if(bytes > 0) {
+									// Если протокол интернета установлен как SCTP
+									if(peer->state.protocol == event::protocol_t::SCTP){
+										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+										if(peer->transfer.sctp.callbacks.info != nullptr){
+											// Объект для хранения информационных метаданных SCTP сообщения
+											net::sctp::minfo_t minfo;
+											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+											::sctp::info(peer->transfer.sctp.info, minfo);
+											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+											peer->transfer.sctp.callbacks.info(peer->id, minfo);
+										}
+										// Если мы получили уведомления SCTP
+										if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+											// Обрабатываем события SCTP
+											::sctp::events(peer, buffer, bytes, log);
+											// Пропускаем дальнейшую обработку
+											continue;
+										}
+									}
+									// Если функция обратного вызова для вывода события установлена
+									if(peer->callbacks.event != nullptr)
+										// Вызываем функцию обратного вызова флаг события
+										peer->callbacks.event(peer->id, event::action_t::READ);
+									// Если идентификатор события для передачи данных не установлен
+									if(peer->transfer.dest == 0){
+										// Если функция обратного вызова для вывода прочитанных данных установлена
+										if(peer->callbacks.read != nullptr)
+											// Вызываем функцию обратного вызова для вывода полученных данных
+											peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+									} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+									// Если дескриптор сокета стал недействительным
+									if(peer->transfer.fd == net::invalid_socket_t)
+										// Формируем отрицательный результат
+										return false;
+									// Если установлено ограничение пропускной способности на чтение данных из сокета
+									if(peer->bandwidth.read.limit > 0){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
+										// Если таймаут на получение данных не активирован
+										if(peer->bandwidth.read.timeout.status == event::status_t::NONE){
+											// Активируем статус таймаута на получение данных
+											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
+											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности на получение данных
+											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
+											// Если вычисленное время равно нулю миллисекунд
+											if(peer->bandwidth.read.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												peer->bandwidth.read.timeout.delay = 1;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Устанавливаем таймаут на получение данных
+											EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
+										}
+										// Выходим из цикла
+										break;
+									}
+								// Если произошёл дисконнект
+								} else {
+									// Выполняем обработку закрытия подключения
+									if(::io::close(peer, log))
+										// Выполняем удаление узла
+										::io::destroy(peer, eth, log);
+									// Формируем отрицательный результат
+									return false;
+								}
+							}
+						// Если событие является блокирующим
+						} else {
+							// Количество прочитанных байт
+							ssize_t bytes = 0;
+							// Если протокол интернета установлен как SCTP
+							if(peer->state.protocol == event::protocol_t::SCTP)
+								// Выполняем чтение данных из SCTP-сокета
+								bytes = ::sctp_recvmsg(
+									peer->transfer.fd,
+									buffer, AWH_MAX_EVENT_BUFFER_SIZE,
+									nullptr, nullptr,
+									&peer->transfer.sctp.info,
+									&peer->transfer.sctp.flags
+								);
+							// Выполняем чтение данных из TCP/IP сокета
+							else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
+							// Если мы получили ошибку
+							if(bytes < 0){
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									peer->callbacks.status(peer->id, event::status_t::FAILURE);
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								// Если функция обратного вызова для вывода события установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+								}
+								// Если сокет повреждён
+								if(errno != EAGAIN){
+									// Выполняем обработку закрытия подключения
+									if(::io::close(peer, log))
+										// Выполняем удаление узла
+										::io::destroy(peer, eth, log);
+								}
+								// Формируем отрицательный результат
+								return false;
+							// Если мы получили данные из сокета
+							} else if(bytes > 0) {
+								// Если протокол интернета установлен как SCTP
+								if(peer->state.protocol == event::protocol_t::SCTP){
+									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+									if(peer->transfer.sctp.callbacks.info != nullptr){
+										// Объект для хранения информационных метаданных SCTP сообщения
+										net::sctp::minfo_t minfo;
+										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+										::sctp::info(peer->transfer.sctp.info, minfo);
+										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+										peer->transfer.sctp.callbacks.info(peer->id, minfo);
+									}
+									// Если мы получили уведомления SCTP
+									if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+										// Обрабатываем события SCTP
+										::sctp::events(peer, buffer, bytes, log);
+										// Формируем положительный результат
+										return true;
+									}
+								}
+								// Если функция обратного вызова для вывода события установлена
+								if(peer->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова флаг события
+									peer->callbacks.event(peer->id, event::action_t::READ);
+								// Если идентификатор события для передачи данных не установлен
+								if(peer->transfer.dest == 0){
+									// Если функция обратного вызова для вывода прочитанных данных установлена
+									if(peer->callbacks.read != nullptr)
+										// Вызываем функцию обратного вызова для вывода полученных данных
+										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
+								} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
+								// Если дескриптор сокета стал недействительным
+								if(peer->transfer.fd == net::invalid_socket_t)
+									// Формируем отрицательный результат
+									return false;
+							// Если произошёл дисконнект
+							} else {
+								// Выполняем обработку закрытия подключения
+								if(::io::close(peer, log))
+									// Выполняем удаление узла
+									::io::destroy(peer, eth, log);
+								// Формируем отрицательный результат
+								return false;
+							}
+						}
+					} break;
+				#endif
+			}
+			// Если установлен таймаут на чтение данных
+			if(peer->timeouts.read.delay > 0){
+				// Если событие является неблокирующим
+				if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+					// Выполняем блокировку потоков
+					const locker_t <> lock(::local::mtx);
+					// Активируем статус таймаута на чтение данных
+					peer->timeouts.read.status = event::status_t::PENDING;
+					// Добавляем новое событие в список изменений
+					::local::change.push_back((struct kevent){});
+					// Устанавливаем таймаут на получение данных
+					EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён асинхронного движка
+ */
+namespace io {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+	/**
 	 * @brief Функция обработки события записи для узла межпроцессного взаимодействия
 	 *
 	 * @param ipc  узел в котором произошло событие
@@ -2549,9 +3189,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens > 0.){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
@@ -2931,9 +3571,9 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(peer->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+									// Если токены для отправки данных присутствуют
 									if(peer->bandwidth.write.tokens >= static_cast <double> (size)){
 										// Выполняем отправку данных в сокет
 										const size_t bytes = send(buffer, size);
@@ -3341,9 +3981,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(origin->wrate.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(origin->wrate.tokens >= static_cast <double> (size)){
 									// Выполняем отправку данных в сокет
 									const size_t bytes = send(buffer, size);
@@ -3942,9 +4582,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens > 0.){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
@@ -4319,9 +4959,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= static_cast <double> (size)){
 									// Выполняем отправку данных в сокет
 									const size_t bytes = send(buffer, size);
@@ -4738,9 +5378,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= static_cast <double> (size)){
 									// Выполняем отправку данных в сокет
 									const size_t bytes = send(buffer, size);
@@ -6445,9 +7085,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens > 0.){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
@@ -6546,7 +7186,7 @@ namespace io {
 										}
 									// Если данные не отправлены полностью и произошла ошибка EAGAIN
 									} else result = bytes;
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(peer->transfer.mtx);
@@ -6805,9 +7445,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens > 0.){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
@@ -6905,7 +7545,7 @@ namespace io {
 											}
 										}
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(peer->transfer.mtx);
@@ -7213,7 +7853,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(peer->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
@@ -7233,7 +7873,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											peer->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
@@ -7459,7 +8099,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(peer->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
@@ -7479,7 +8119,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											peer->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
@@ -8101,7 +8741,7 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(origin->wrate.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
 								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 								if(static_cast <size_t> (origin->wrate.tokens) >= size){
@@ -8121,7 +8761,7 @@ namespace io {
 										// Уменьшаем количество используемых токенов
 										origin->wrate.tokens -= static_cast <double> (result);
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(origin->transfer.mtx);
@@ -8337,7 +8977,7 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(origin->wrate.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
 								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 								if(static_cast <size_t> (origin->wrate.tokens) >= size){
@@ -8357,7 +8997,7 @@ namespace io {
 										// Уменьшаем количество используемых токенов
 										origin->wrate.tokens -= static_cast <double> (result);
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(origin->transfer.mtx);
@@ -9323,9 +9963,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens > 0.){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
@@ -9424,7 +10064,7 @@ namespace io {
 										}
 									// Если данные не отправлены полностью и произошла ошибка EAGAIN
 									} else result = bytes;
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
@@ -9683,9 +10323,9 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет присутствуют
+								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens > 0.){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
@@ -9783,7 +10423,7 @@ namespace io {
 											}
 										}
 									}
-								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 								} else {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
@@ -10075,7 +10715,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -10095,7 +10735,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -10307,7 +10947,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -10327,7 +10967,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -10617,7 +11257,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -10637,7 +11277,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -10849,7 +11489,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -10869,7 +11509,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -11218,7 +11858,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -11238,7 +11878,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -11477,7 +12117,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -11497,7 +12137,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -11841,7 +12481,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -11861,7 +12501,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -12100,7 +12740,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
+									// Выполняем расчёт токенов для получения данных из сокета
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -12120,7 +12760,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidth.write.tokens -= static_cast <double> (result);
 										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных в сокет отсутствуют
+									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности на запись данных отсутствуют
 									} else {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
@@ -16648,488 +17288,9 @@ namespace io {
 					// Если событие чтения разрешено
 					if(peer->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
-						if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-							// Буфер для временного хранения данных
-							char buffer[AWH_MAX_EVENT_BUFFER_SIZE];
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (peer->state.type)){
-								// Если событие принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM): {
-									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-										// Количество прочитанных байт
-										ssize_t bytes = 0, offset = 0;
-										/**
-										 * Выполняем получение данных пока их не получим
-										 */
-										for(;;){
-											// Обнуляем смещение
-											offset = 0;
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP)
-													// Выполняем чтение данных из SCTP-сокета
-													bytes = ::sctp_recvmsg(
-														peer->transfer.fd,
-														buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-														nullptr, nullptr,
-														&peer->transfer.sctp.info,
-														&peer->transfer.sctp.flags
-													);
-												// Выполняем чтение данных из TCP/IP сокета
-												else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем чтение данных из TCP/IP сокета
-												bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											#endif
-											// Если мы получили ошибку
-											if(bytes < 0){
-												// Если нам нужно повторить попытку позже
-												if(errno == EAGAIN)
-													// Выходим из цикла
-													break;
-												// Если мы получили другую ошибку
-												else {
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.status != nullptr)
-														// Вызываем функцию обратного вызова об ошибке отказа
-														peer->callbacks.status(peer->id, event::status_t::FAILURE);
-													// Если установлена функция обратного вызова
-													if(peer->callbacks.error != nullptr)
-														// Вызываем функцию обратного вызова ошибки события
-														peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
-													// Если функция обратного вызова для вывода события установлена
-													else {
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, ::strerror(errno));
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-														#endif
-													}
-													// Выполняем обработку закрытия подключения
-													if(::io::close(node, log))
-														// Выполняем удаление узла
-														::io::destroy(node, eth, log);
-													// Формируем отрицательный результат
-													return false;
-												}
-											// Если мы получили данные из сокета
-											} else if(bytes > 0) {
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP){
-														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-														if(peer->transfer.sctp.callbacks.info != nullptr){
-															// Объект для хранения информационных метаданных SCTP сообщения
-															net::sctp::minfo_t minfo;
-															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-															::sctp::info(peer->transfer.sctp.info, minfo);
-															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															peer->transfer.sctp.callbacks.info(peer->id, minfo);
-														}
-														// Если мы получили уведомления SCTP
-														if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
-															// Обрабатываем события SCTP
-															offset = static_cast <ssize_t> (::sctp::events(peer, buffer, bytes, log));
-															// Если все полученные байты были уведомлениями SCTP
-															if(offset >= bytes)
-																// Продолжаем основной цикл получения данных
-																continue;
-														}
-													}
-												#endif
-												// Если функция обратного вызова для вывода события установлена
-												if(peer->callbacks.event != nullptr)
-													// Вызываем функцию обратного вызова флаг события
-													peer->callbacks.event(peer->id, event::action_t::READ);
-												// Если идентификатор события для передачи данных не установлен
-												if(peer->transfer.dest == 0){
-													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(peer->callbacks.read != nullptr)
-														// Вызываем функцию обратного вызова для вывода полученных данных
-														peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
-												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
-												// Если дескриптор сокета стал недействительным
-												if(peer->transfer.fd == net::invalid_socket_t)
-													// Формируем отрицательный результат
-													return false;
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(::io::close(node, log))
-													// Выполняем удаление узла
-													::io::destroy(node, eth, log);
-												// Формируем отрицательный результат
-												return false;
-											}
-										}
-									// Если событие является блокирующим
-									} else {
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(peer->state.protocol == event::protocol_t::SCTP)
-												// Выполняем чтение данных из SCTP-сокета
-												bytes = ::sctp_recvmsg(
-													peer->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-													nullptr, nullptr,
-													&peer->transfer.sctp.info,
-													&peer->transfer.sctp.flags
-												);
-											// Выполняем чтение данных из TCP/IP сокета
-											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем чтение данных из TCP/IP сокета
-											const ssize_t bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-										#endif
-										// Если мы получили ошибку
-										if(bytes < 0){
-											// Если установлена функция обратного вызова
-											if(peer->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												peer->callbacks.status(peer->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(peer->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
-											// Если функция обратного вызова для вывода события установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-												#endif
-											}
-											// Если сокет повреждён
-											if(errno != EAGAIN){
-												// Выполняем обработку закрытия подключения
-												if(::io::close(node, log))
-													// Выполняем удаление узла
-													::io::destroy(node, eth, log);
-											}
-											// Формируем отрицательный результат
-											return false;
-										// Если мы получили данные из сокета
-										} else if(bytes > 0) {
-											// Количество обработанных байт
-											size_t offset = 0;
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP){
-													// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-													if(peer->transfer.sctp.callbacks.info != nullptr){
-														// Объект для хранения информационных метаданных SCTP сообщения
-														net::sctp::minfo_t minfo;
-														// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-														::sctp::info(peer->transfer.sctp.info, minfo);
-														// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-														peer->transfer.sctp.callbacks.info(peer->id, minfo);
-													}
-													// Если мы получили уведомления SCTP
-													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
-														// Обрабатываем события SCTP
-														offset = ::sctp::events(peer, buffer, bytes, log);
-														// Если все полученные байты были уведомлениями SCTP
-														if(offset >= static_cast <size_t> (bytes))
-															// Формируем положительный результат
-															return true;
-													}
-												}
-											#endif
-											// Если функция обратного вызова для вывода события установлена
-											if(peer->callbacks.event != nullptr)
-												// Вызываем функцию обратного вызова флаг события
-												peer->callbacks.event(peer->id, event::action_t::READ);
-											// Если идентификатор события для передачи данных не установлен
-											if(peer->transfer.dest == 0){
-												// Если функция обратного вызова для вывода прочитанных данных установлена
-												if(peer->callbacks.read != nullptr)
-													// Вызываем функцию обратного вызова для вывода полученных данных
-													peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer + offset), static_cast <size_t> (bytes - offset));
-											// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-											} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer + offset, static_cast <size_t> (bytes - offset));
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
-												// Формируем отрицательный результат
-												return false;
-										// Если произошёл дисконнект
-										} else {
-											// Выполняем обработку закрытия подключения
-											if(::io::close(node, log))
-												// Выполняем удаление узла
-												::io::destroy(node, eth, log);
-											// Формируем отрицательный результат
-											return false;
-										}
-									}
-								} break;
-								/**
-								 * Для операционной системы FreeBSD
-								 */
-								#if __FreeBSD__
-									// Если событие принадлежит к типу SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Если событие является неблокирующим
-										if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											/**
-											 * Выполняем получение данных пока их не получим
-											 */
-											for(;;){
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP)
-													// Выполняем чтение данных из SCTP-сокета
-													bytes = ::sctp_recvmsg(
-														peer->transfer.fd,
-														buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-														nullptr, nullptr,
-														&peer->transfer.sctp.info,
-														&peer->transfer.sctp.flags
-													);
-												// Выполняем чтение данных из TCP/IP сокета
-												else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-												// Если мы получили ошибку
-												if(bytes < 0){
-													// Если нам нужно повторить попытку позже
-													if(errno == EAGAIN)
-														// Выходим из цикла
-														break;
-													// Если мы получили другую ошибку
-													else {
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об ошибке отказа
-															peer->callbacks.status(peer->id, event::status_t::FAILURE);
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.error != nullptr)
-															// Вызываем функцию обратного вызова ошибки события
-															peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
-														// Если функция обратного вызова для вывода события установлена
-														else {
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, ::strerror(errno));
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-															#endif
-														}
-														// Выполняем обработку закрытия подключения
-														if(::io::close(node, log))
-															// Выполняем удаление узла
-															::io::destroy(node, eth, log);
-														// Формируем отрицательный результат
-														return false;
-													}
-												// Если мы получили данные из сокета
-												} else if(bytes > 0) {
-													// Если протокол интернета установлен как SCTP
-													if(peer->state.protocol == event::protocol_t::SCTP){
-														// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-														if(peer->transfer.sctp.callbacks.info != nullptr){
-															// Объект для хранения информационных метаданных SCTP сообщения
-															net::sctp::minfo_t minfo;
-															// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-															::sctp::info(peer->transfer.sctp.info, minfo);
-															// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-															peer->transfer.sctp.callbacks.info(peer->id, minfo);
-														}
-														// Если мы получили уведомления SCTP
-														if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
-															// Обрабатываем события SCTP
-															::sctp::events(peer, buffer, bytes, log);
-															// Пропускаем дальнейшую обработку
-															continue;
-														}
-													}
-													// Если функция обратного вызова для вывода события установлена
-													if(peer->callbacks.event != nullptr)
-														// Вызываем функцию обратного вызова флаг события
-														peer->callbacks.event(peer->id, event::action_t::READ);
-													// Если идентификатор события для передачи данных не установлен
-													if(peer->transfer.dest == 0){
-														// Если функция обратного вызова для вывода прочитанных данных установлена
-														if(peer->callbacks.read != nullptr)
-															// Вызываем функцию обратного вызова для вывода полученных данных
-															peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-													// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-													} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
-													// Если дескриптор сокета стал недействительным
-													if(peer->transfer.fd == net::invalid_socket_t)
-														// Формируем отрицательный результат
-														return false;
-												// Если произошёл дисконнект
-												} else {
-													// Выполняем обработку закрытия подключения
-													if(::io::close(node, log))
-														// Выполняем удаление узла
-														::io::destroy(node, eth, log);
-													// Формируем отрицательный результат
-													return false;
-												}
-											}
-										// Если событие является блокирующим
-										} else {
-											// Количество прочитанных байт
-											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(peer->state.protocol == event::protocol_t::SCTP)
-												// Выполняем чтение данных из SCTP-сокета
-												bytes = ::sctp_recvmsg(
-													peer->transfer.fd,
-													buffer, AWH_MAX_EVENT_BUFFER_SIZE,
-													nullptr, nullptr,
-													&peer->transfer.sctp.info,
-													&peer->transfer.sctp.flags
-												);
-											// Выполняем чтение данных из TCP/IP сокета
-											else bytes = ::recv(peer->transfer.fd, buffer, AWH_MAX_EVENT_BUFFER_SIZE, MSG_NOSIGNAL);
-											// Если мы получили ошибку
-											if(bytes < 0){
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													peer->callbacks.status(peer->id, event::status_t::FAILURE);
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
-												// Если функция обратного вызова для вывода события установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Если сокет повреждён
-												if(errno != EAGAIN){
-													// Выполняем обработку закрытия подключения
-													if(::io::close(node, log))
-														// Выполняем удаление узла
-														::io::destroy(node, eth, log);
-												}
-												// Формируем отрицательный результат
-												return false;
-											// Если мы получили данные из сокета
-											} else if(bytes > 0) {
-												// Если протокол интернета установлен как SCTP
-												if(peer->state.protocol == event::protocol_t::SCTP){
-													// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-													if(peer->transfer.sctp.callbacks.info != nullptr){
-														// Объект для хранения информационных метаданных SCTP сообщения
-														net::sctp::minfo_t minfo;
-														// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-														::sctp::info(peer->transfer.sctp.info, minfo);
-														// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-														peer->transfer.sctp.callbacks.info(peer->id, minfo);
-													}
-													// Если мы получили уведомления SCTP
-													if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
-														// Обрабатываем события SCTP
-														::sctp::events(peer, buffer, bytes, log);
-														// Формируем положительный результат
-														return true;
-													}
-												}
-												// Если функция обратного вызова для вывода события установлена
-												if(peer->callbacks.event != nullptr)
-													// Вызываем функцию обратного вызова флаг события
-													peer->callbacks.event(peer->id, event::action_t::READ);
-												// Если идентификатор события для передачи данных не установлен
-												if(peer->transfer.dest == 0){
-													// Если функция обратного вызова для вывода прочитанных данных установлена
-													if(peer->callbacks.read != nullptr)
-														// Вызываем функцию обратного вызова для вывода полученных данных
-														peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
-												// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-												} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, buffer, static_cast <size_t> (bytes));
-												// Если дескриптор сокета стал недействительным
-												if(peer->transfer.fd == net::invalid_socket_t)
-													// Формируем отрицательный результат
-													return false;
-											// Если произошёл дисконнект
-											} else {
-												// Выполняем обработку закрытия подключения
-												if(::io::close(node, log))
-													// Выполняем удаление узла
-													::io::destroy(node, eth, log);
-												// Формируем отрицательный результат
-												return false;
-											}
-										}
-									} break;
-								#endif
-							}
-							// Если установлен таймаут на чтение данных
-							if(peer->timeouts.read.delay > 0){
-								// Если событие является неблокирующим
-								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-									// Выполняем блокировку потоков
-									const locker_t <> lock(::local::mtx);
-									// Активируем статус таймаута на чтение данных
-									peer->timeouts.read.status = event::status_t::PENDING;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-								}
-							}
-						}
+						if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							// Выполняем чтение данных из однорангового узла
+							return ::io::read(peer, io, eth, log);
 					}
 					// Формируем положительный результат
 					return true;
@@ -19723,7 +19884,7 @@ namespace io {
 							} else if(static_cast <uint32_t> (ev.ident) == peer->bandwidth.read.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
 								peer->bandwidth.read.timeout.status = event::status_t::NONE;
-								// Обрабатываем событие доступности сокета на чтение
+								// Обрабатываем событие готовности сокета на чтение
 								return ::io::read(node, io, eth, fmk, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == peer->bandwidth.write.timeout.id) {
@@ -19787,7 +19948,7 @@ namespace io {
 							if(static_cast <uint32_t> (ev.ident) == client->bandwidth.read.timeout.id){
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
 								client->bandwidth.read.timeout.status = event::status_t::NONE;
-								// Обрабатываем событие доступности сокета на чтение
+								// Обрабатываем событие готовности сокета на чтение
 								return ::io::read(node, io, eth, fmk, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == client->bandwidth.write.timeout.id) {
@@ -19857,7 +20018,38 @@ namespace io {
 						if(::io::close(node, log))
 							// Выполняем удаление узла
 							return !::io::destroy(node, eth, log);
-					}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Если мы детектировали наличие ошибки
+						if(ev.flags & EV_ERROR){
+							// Выполняем обработку ошибки
+							::io::error(node, ev.data, log);
+							// Выполняем обработку закрытия подключения
+							if(::io::close(node, log))
+								// Выполняем удаление узла
+								return !::io::destroy(node, eth, log);
+						// Если мы детектировали событие отзыва однорангового узла
+						} else {
+							// Получаем текущее значение объекта сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (node);
+							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на чтение данных
+							if(static_cast <uint32_t> (ev.ident) == server->wrate.timeout.id){
+								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
+								server->wrate.timeout.status = event::status_t::NONE;
+								// Обрабатываем событие готовности сокета на чтение
+								return ::io::read(node, io, eth, fmk, log);
+							// Если идентификатор события не определён, значит это как-то фантомный таймер ошибки
+							} else {
+								// Выполняем обработку ошибки
+								::io::error(node, ev.data, log);
+								// Выполняем обработку закрытия подключения
+								if(::io::close(node, log))
+									// Выполняем удаление узла
+									return !::io::destroy(node, eth, log);
+							}
+						}
+					} break;
 				}
 			} break;
 			// Если мы получили событие пользовательского события
@@ -19889,8 +20081,58 @@ namespace io {
 					::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
 					return false;
-				// Обрабатываем событие доступности сокета на чтение
-				} else return ::io::read(node, io, eth, fmk, log);
+				// Если в сокете нет ошибок
+				} else {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (node->state.node)){
+						// Если узел является одноранговым узлом
+						case static_cast <uint8_t> (event::node_t::PEER): {
+							// Получаем текущее значение объекта однорангового узла
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+							// Если установлено ограничение пропускной способности на чтение данных из сокета
+							if(peer->bandwidth.read.limit > 0){
+								// Выполняем блокировку потоков
+								const locker_t <> lock(::local::mtx);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Деактивируем событие на чтение данных
+								EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
+							}
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем текущее значение объекта клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (node);
+							// Если установлено ограничение пропускной способности на чтение данных из сокета
+							if(client->bandwidth.read.limit > 0){
+								// Выполняем блокировку потоков
+								const locker_t <> lock(::local::mtx);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Деактивируем событие на чтение данных
+								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, client);
+							}
+						} break;
+						// Если узел является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER): {
+							// Получаем текущее значение объекта сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (node);
+							// Если установлено ограничение пропускной способности на чтение данных из сокета
+							if(server->wrate.limit > 0){
+								// Выполняем блокировку потоков
+								const locker_t <> lock(::local::mtx);
+								// Добавляем новое событие в список изменений
+								::local::change.push_back((struct kevent){});
+								// Деактивируем событие на чтение данных
+								EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
+							}
+						} break;
+					}
+					// Обрабатываем событие доступности сокета на чтение
+					return ::io::read(node, io, eth, fmk, log);
+				}
 			} break;
 			// Если мы детектировали событие готовности сокета на запись данных
 			case EVFILT_WRITE: {
