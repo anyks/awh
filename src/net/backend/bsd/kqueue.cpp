@@ -37237,6 +37237,8 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 									} break;
 									// Если узел является одноранговым узлом
 									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Получаем текущее значение объекта однорангового узла
+										::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
@@ -37246,45 +37248,57 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Если событие находится в состоянии паузы
-										if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
-											/**
-											 * Определяем тип сокета
-											 */
-											switch(static_cast <uint8_t> (i->second->state.type)){
-												// Если событие принадлежит к типу STREAM
-												case static_cast <uint8_t> (event::type_t::STREAM):
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-												break;
-												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM):
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-												break;
+										if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+											// Если установлено ограничение пропускной способности на чтение данных из сокета
+											if(peer->bandwidth.read.limit > 0)
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+											// Если ограничение пропускной способности на чтение данных из сокета не установлено
+											else {
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (peer->state.type)){
+													// Если событие принадлежит к типу STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM):
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													break;
+													// Если событие принадлежит к типу DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM):
+													// Если событие принадлежит к типу SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET):
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													break;
+												}
 											}
 										// Если событие находится в активном состоянии
 										} else {
-											/**
-											 * Определяем тип сокета
-											 */
-											switch(static_cast <uint8_t> (i->second->state.type)){
-												// Если событие принадлежит к типу STREAM
-												case static_cast <uint8_t> (event::type_t::STREAM):
-													// Устанавливаем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-												break;
-												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM):
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-													// Устанавливаем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-												break;
+											// Если установлено ограничение пропускной способности на чтение данных из сокета
+											if(peer->bandwidth.read.limit > 0)
+												// Устанавливаем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											// Если ограничение пропускной способности на чтение данных из сокета не установлено
+											else {
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (peer->state.type)){
+													// Если событие принадлежит к типу STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM):
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+													break;
+													// Если событие принадлежит к типу DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM):
+													// Если событие принадлежит к типу SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET):
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													break;
+												}
 											}
-											// Получаем текущее значение объекта однорангового узла
-											::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 											// Если необходимо активировать таймаут на чтение для однорангового узла
 											if(peer->timeouts.read.delay > 0){
 												// Устанавливаем статус таймаута на чтение как ожидающий
@@ -37300,6 +37314,8 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 									} break;
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем текущее значение объекта клиента
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
@@ -37309,47 +37325,59 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Если событие находится в состоянии паузы или находится в состоянии не запущенном
-										if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
-										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
-											/**
-											 * Определяем тип сокета
-											 */
-											switch(static_cast <uint8_t> (i->second->state.type)){
-												// Если событие принадлежит к типу STREAM
-												case static_cast <uint8_t> (event::type_t::STREAM):
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-												break;
-												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM):
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-												break;
+										if((client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+										   (client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+										   (client->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
+											// Если установлено ограничение пропускной способности на чтение данных из сокета
+											if(client->bandwidth.read.limit > 0)
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+											// Если ограничение пропускной способности на чтение данных из сокета не установлено
+											else {
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (client->state.type)){
+													// Если событие принадлежит к типу STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM):
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													break;
+													// Если событие принадлежит к типу DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM):
+													// Если событие принадлежит к типу SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET):
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													break;
+												}
 											}
 										// Если событие находится в активном состоянии
 										} else {
-											/**
-											 * Определяем тип сокета
-											 */
-											switch(static_cast <uint8_t> (i->second->state.type)){
-												// Если событие принадлежит к типу STREAM
-												case static_cast <uint8_t> (event::type_t::STREAM):
-													// Устанавливаем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-												break;
-												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM):
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-													// Устанавливаем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-												break;
+											// Если установлено ограничение пропускной способности на чтение данных из сокета
+											if(client->bandwidth.read.limit > 0)
+												// Устанавливаем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											// Если ограничение пропускной способности на чтение данных из сокета не установлено
+											else {
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (client->state.type)){
+													// Если событие принадлежит к типу STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM):
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+													break;
+													// Если событие принадлежит к типу DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM):
+													// Если событие принадлежит к типу SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET):
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													break;
+												}
 											}
-											// Получаем текущее значение объекта клиента
-											::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 											// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
 											if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 												// Если необходимо активировать таймаут на подключение к серверу
@@ -37390,6 +37418,8 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 									} break;
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем текущее значение объекта сервера
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Добавляем новое событие в список изменений
@@ -37399,44 +37429,58 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Добавляем новое событие в список изменений
 										::local::change.push_back((struct kevent){});
 										// Если событие находится в состоянии паузы или находится в состоянии не запущенном
-										if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
-										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-										   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
-											/**
-											 * Определяем тип сокета
-											 */
-											switch(static_cast <uint8_t> (i->second->state.type)){
-												// Если событие принадлежит к типу STREAM
-												case static_cast <uint8_t> (event::type_t::STREAM):
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-												break;
-												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM):
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-													// Устанавливаем событие на чтение но отключаем его
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-												break;
+										if((server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+										   (server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+										   (server->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
+											// Если установлено ограничение пропускной способности на чтение данных из сокета
+											if(server->wrate.limit > 0)
+												// Устанавливаем событие на чтение но отключаем его
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+											// Если ограничение пропускной способности на чтение данных из сокета не установлено
+											else {
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (server->state.type)){
+													// Если событие принадлежит к типу STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM):
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													break;
+													// Если событие принадлежит к типу DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM):
+													// Если событие принадлежит к типу SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET):
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													break;
+												}
 											}
 										// Если событие находится в активном состоянии
 										} else {
-											/**
-											 * Определяем тип сокета
-											 */
-											switch(static_cast <uint8_t> (i->second->state.type)){
-												// Если событие принадлежит к типу STREAM
-												case static_cast <uint8_t> (event::type_t::STREAM):
-													// Устанавливаем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-												break;
-												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM):
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-													// Устанавливаем событие на чтение
-													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-												break;
+											// Если установлено ограничение пропускной способности на чтение данных из сокета
+											if(server->wrate.limit > 0)
+												// Устанавливаем событие на чтение
+												EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+											// Если ограничение пропускной способности на чтение данных из сокета не установлено
+											else {
+												/**
+												 * Определяем тип сокета
+												 */
+												switch(static_cast <uint8_t> (server->state.type)){
+													// Если событие принадлежит к типу STREAM
+													case static_cast <uint8_t> (event::type_t::STREAM):
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+													break;
+													// Если событие принадлежит к типу DATAGRAM
+													case static_cast <uint8_t> (event::type_t::DATAGRAM):
+													// Если событие принадлежит к типу SEQPACKET
+													case static_cast <uint8_t> (event::type_t::SEQPACKET):
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													break;
+												}
 											}
 										}
 										// Выполняем "пинок" для применения изменений
@@ -38213,6 +38257,8 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 											}
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER): {
+												// Получаем текущее значение объекта однорангового узла
+												::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Удаляем событие на чтение
@@ -38220,45 +38266,57 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если событие находится в состоянии паузы
-												if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
-													/**
-													 * Определяем тип сокета
-													 */
-													switch(static_cast <uint8_t> (i->second->state.type)){
-														// Если событие принадлежит к типу STREAM
-														case static_cast <uint8_t> (event::type_t::STREAM):
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														break;
-														// Если событие принадлежит к типу DATAGRAM
-														case static_cast <uint8_t> (event::type_t::DATAGRAM):
-														// Если событие принадлежит к типу SEQPACKET
-														case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														break;
+												if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+													// Если установлено ограничение пропускной способности на чтение данных из сокета
+													if(peer->bandwidth.read.limit > 0)
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													// Если ограничение пропускной способности на чтение данных из сокета не установлено
+													else {
+														/**
+														 * Определяем тип сокета
+														 */
+														switch(static_cast <uint8_t> (peer->state.type)){
+															// Если событие принадлежит к типу STREAM
+															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+															break;
+															// Если событие принадлежит к типу DATAGRAM
+															case static_cast <uint8_t> (event::type_t::DATAGRAM):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+															break;
+														}
 													}
 												// Если событие находится в активном состоянии
 												} else {
-													/**
-													 * Определяем тип сокета
-													 */
-													switch(static_cast <uint8_t> (i->second->state.type)){
-														// Если событие принадлежит к типу STREAM
-														case static_cast <uint8_t> (event::type_t::STREAM):
-															// Устанавливаем событие на чтение
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-														break;
-														// Если событие принадлежит к типу DATAGRAM
-														case static_cast <uint8_t> (event::type_t::DATAGRAM):
-														// Если событие принадлежит к типу SEQPACKET
-														case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															// Устанавливаем событие на чтение
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-														break;
+													// Если установлено ограничение пропускной способности на чтение данных из сокета
+													if(peer->bandwidth.read.limit > 0)
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													// Если ограничение пропускной способности на чтение данных из сокета не установлено
+													else {
+														/**
+														 * Определяем тип сокета
+														 */
+														switch(static_cast <uint8_t> (peer->state.type)){
+															// Если событие принадлежит к типу STREAM
+															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Устанавливаем событие на чтение
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+															break;
+															// Если событие принадлежит к типу DATAGRAM
+															case static_cast <uint8_t> (event::type_t::DATAGRAM):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
+																// Устанавливаем событие на чтение
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+															break;
+														}
 													}
-													// Получаем текущее значение объекта однорангового узла
-													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 													// Если необходимо активировать таймаут на чтение для однорангового узла
 													if(peer->timeouts.read.delay > 0){
 														// Устанавливаем статус таймаута на чтение как ожидающий
@@ -38274,6 +38332,8 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 											}
 											// Если узел является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
+												// Получаем текущее значение объекта клиента
+												::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
@@ -38283,47 +38343,59 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
-												if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
-												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
-													/**
-													 * Определяем тип сокета
-													 */
-													switch(static_cast <uint8_t> (i->second->state.type)){
-														// Если событие принадлежит к типу STREAM
-														case static_cast <uint8_t> (event::type_t::STREAM):
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														break;
-														// Если событие принадлежит к типу DATAGRAM
-														case static_cast <uint8_t> (event::type_t::DATAGRAM):
-														// Если событие принадлежит к типу SEQPACKET
-														case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														break;
+												if((client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (client->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
+													// Если установлено ограничение пропускной способности на чтение данных из сокета
+													if(client->bandwidth.read.limit > 0)
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													// Если ограничение пропускной способности на чтение данных из сокета не установлено
+													else {
+														/**
+														 * Определяем тип сокета
+														 */
+														switch(static_cast <uint8_t> (client->state.type)){
+															// Если событие принадлежит к типу STREAM
+															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+															break;
+															// Если событие принадлежит к типу DATAGRAM
+															case static_cast <uint8_t> (event::type_t::DATAGRAM):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+															break;
+														}
 													}
 												// Если событие находится в активном состоянии
 												} else {
-													/**
-													 * Определяем тип сокета
-													 */
-													switch(static_cast <uint8_t> (i->second->state.type)){
-														// Если событие принадлежит к типу STREAM
-														case static_cast <uint8_t> (event::type_t::STREAM):
-															// Устанавливаем событие на чтение
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-														break;
-														// Если событие принадлежит к типу DATAGRAM
-														case static_cast <uint8_t> (event::type_t::DATAGRAM):
-														// Если событие принадлежит к типу SEQPACKET
-														case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															// Устанавливаем событие на чтение
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-														break;
+													// Если установлено ограничение пропускной способности на чтение данных из сокета
+													if(client->bandwidth.read.limit > 0)
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													// Если ограничение пропускной способности на чтение данных из сокета не установлено
+													else {
+														/**
+														 * Определяем тип сокета
+														 */
+														switch(static_cast <uint8_t> (client->state.type)){
+															// Если событие принадлежит к типу STREAM
+															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Устанавливаем событие на чтение
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+															break;
+															// Если событие принадлежит к типу DATAGRAM
+															case static_cast <uint8_t> (event::type_t::DATAGRAM):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
+																// Устанавливаем событие на чтение
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+															break;
+														}
 													}
-													// Получаем текущее значение объекта клиента
-													::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 													// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
 													if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
 														// Если необходимо активировать таймаут на подключение к серверу
@@ -38364,6 +38436,8 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 											}
 											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
+												// Получаем текущее значение объекта сервера
+												::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 												// Выполняем блокировку потоков
 												const locker_t <> lock(::local::mtx);
 												// Добавляем новое событие в список изменений
@@ -38373,44 +38447,58 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
-												if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
-												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-												   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
-													/**
-													 * Определяем тип сокета
-													 */
-													switch(static_cast <uint8_t> (i->second->state.type)){
-														// Если событие принадлежит к типу STREAM
-														case static_cast <uint8_t> (event::type_t::STREAM):
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														break;
-														// Если событие принадлежит к типу DATAGRAM
-														case static_cast <uint8_t> (event::type_t::DATAGRAM):
-														// Если событие принадлежит к типу SEQPACKET
-														case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
-														break;
+												if((server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)){
+													// Если установлено ограничение пропускной способности на чтение данных из сокета
+													if(server->wrate.limit > 0)
+														// Устанавливаем событие на чтение но отключаем его
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+													// Если ограничение пропускной способности на чтение данных из сокета не установлено
+													else {
+														/**
+														 * Определяем тип сокета
+														 */
+														switch(static_cast <uint8_t> (server->state.type)){
+															// Если событие принадлежит к типу STREAM
+															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+															break;
+															// Если событие принадлежит к типу DATAGRAM
+															case static_cast <uint8_t> (event::type_t::DATAGRAM):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
+																// Устанавливаем событие на чтение но отключаем его
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+															break;
+														}
 													}
 												// Если событие находится в активном состоянии
 												} else {
-													/**
-													 * Определяем тип сокета
-													 */
-													switch(static_cast <uint8_t> (i->second->state.type)){
-														// Если событие принадлежит к типу STREAM
-														case static_cast <uint8_t> (event::type_t::STREAM):
-															// Устанавливаем событие на чтение
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-														break;
-														// Если событие принадлежит к типу DATAGRAM
-														case static_cast <uint8_t> (event::type_t::DATAGRAM):
-														// Если событие принадлежит к типу SEQPACKET
-														case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															// Устанавливаем событие на чтение
-															EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
-														break;
+													// Если установлено ограничение пропускной способности на чтение данных из сокета
+													if(server->wrate.limit > 0)
+														// Устанавливаем событие на чтение
+														EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+													// Если ограничение пропускной способности на чтение данных из сокета не установлено
+													else {
+														/**
+														 * Определяем тип сокета
+														 */
+														switch(static_cast <uint8_t> (server->state.type)){
+															// Если событие принадлежит к типу STREAM
+															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Устанавливаем событие на чтение
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+															break;
+															// Если событие принадлежит к типу DATAGRAM
+															case static_cast <uint8_t> (event::type_t::DATAGRAM):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
+																// Устанавливаем событие на чтение
+																EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
+															break;
+														}
 													}
 												}
 												// Выполняем "пинок" для применения изменений
@@ -44060,15 +44148,15 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
-											if(peer->bandwidth.write.limit == 0){
+											// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
+											if(peer->bandwidth.read.limit == 0){
 												// Если событие находится в состоянии паузы
 												if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
 													// Устанавливаем событие на чтение но отключаем его
 													EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 												// Если событие находится в активном состоянии и запускаем в работу
 												else EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-											// Если пропускная способность для ограничения исходящего трафика устновлена
+											// Если пропускная способность для ограничения входящего трафика установлена
 											} else {
 												// Если событие находится в состоянии паузы
 												if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)
@@ -44281,8 +44369,8 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
-											// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
-											if(client->bandwidth.write.limit == 0){
+											// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
+											if(client->bandwidth.read.limit == 0){
 												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
 												if((client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
 												   (client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
@@ -44291,7 +44379,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
 												// Если событие находится в активном состоянии и запускаем в работу
 												else EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
-											// Если пропускная способность для ограничения исходящего трафика устновлена
+											// Если пропускная способность для ограничения исходящего трафика установлена
 											} else {
 												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
 												if((client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
@@ -44394,6 +44482,36 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 												::local::change.push_back((struct kevent){});
 												// Удаляем таймаут на получение данных для ограничителя скорости
 												EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											}
+										}
+										// Если тип события является потоком
+										if(server->state.type == event::type_t::STREAM){
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Удаляем событие на чтение
+											EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
+											if(server->wrate.limit == 0){
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_CLEAR | EV_RECEIPT, 0, 0, nullptr);
+											// Если пропускная способность для ограничения исходящего трафика установлена
+											} else {
+												// Если событие находится в состоянии паузы или находится в состоянии не запущенном
+												if((server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
+												   (server->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS))
+													// Устанавливаем событие на чтение но отключаем его
+													EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_DISABLE | EV_RECEIPT, 0, 0, nullptr);
+												// Если событие находится в активном состоянии и запускаем в работу
+												else EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 											}
 										}
 									} break;
@@ -47807,6 +47925,44 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						client->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						// Если событие подключение ксерверу разрешено
+						if(client->transfer.actions & ::action::CONNECT){
+							// Если событие является неблокирующим
+							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+								// Если таймаут на подключение уже был активирован
+								if(client->timeouts.connect.status == event::status_t::PENDING){
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
+									// Добавляем новое событие в список изменений
+									::local::change.push_back((struct kevent){});
+									// Активируем событие на ожидание готовности сокета на запись
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+									// Добавляем новое событие в список изменений
+									::local::change.push_back((struct kevent){});
+									// Устанавливаем таймаут на подключение к серверу
+									EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
+								}
+							}
+						}
+						// Если событие переподключение ксерверу разрешено
+						if(client->transfer.actions & ::action::RECONNECT){
+							// Если событие является неблокирующим
+							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+								// Если таймаут на переподключение уже был активирован
+								if(client->timeouts.reconnect.status == event::status_t::PENDING){
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
+									// Добавляем новое событие в список изменений
+									::local::change.push_back((struct kevent){});
+									// Активируем событие на ожидание готовности сокета на запись
+									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+									// Добавляем новое событие в список изменений
+									::local::change.push_back((struct kevent){});
+									// Устанавливаем таймаут на переподключение к серверу
+									EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
+								}
+							}
+						}
 						// Если событие чтения из сокета разрешено
 						if(client->transfer.actions & ::action::READ){
 							// Выполняем блокировку потоков
@@ -47817,20 +47973,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 							// Если событие является неблокирующим
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут на подключение уже был активирован
-								if(client->timeouts.connect.status == event::status_t::PENDING){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на подключение к серверу
-									EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-								// Если таймаут на переподключение уже был активирован
-								} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на переподключение к серверу
-									EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
 								// Если необходимо активировать таймаут на чтение для клиента
-								} else if(client->timeouts.read.delay > 0) {
+								if(client->timeouts.read.delay > 0){
 									// Добавляем новое событие в список изменений
 									::local::change.push_back((struct kevent){});
 									// Устанавливаем таймаут на получение данных
