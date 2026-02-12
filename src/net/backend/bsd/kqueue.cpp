@@ -742,6 +742,8 @@ namespace io {
 	 *
 	 */
 	typedef struct Callbacks {
+		// Обратный вызов при неудачной отправке данных
+		event::callback::spool_t spool;
 		// Обратный вызов при ошибке события
 		event::callback::error_t error;
 		// Обратный вызов при изменении статуса события
@@ -751,7 +753,7 @@ namespace io {
 		 *
 		 */
 		explicit Callbacks() noexcept :
-		 error(nullptr), status(nullptr) {}
+		 spool(nullptr), error(nullptr), status(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -851,8 +853,8 @@ namespace io {
 		 *
 		 */
 		explicit ClientCallbacks() noexcept :
-		 read(nullptr), write(nullptr), event(nullptr),
-		 connect(nullptr), available(nullptr) {}
+		 read(nullptr), write(nullptr),
+		 event(nullptr), connect(nullptr), available(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -5924,6 +5926,22 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												/**
+												 * Перебираем все данные в очереди
+												 */
+												while(!ipc->transfer.queue.empty()){
+													// Извлекаем данные из очереди для записи в сокет
+													if(ipc->transfer.queue.front(&buffer, size)){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(ipc->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															ipc->callbacks.spool(ipc->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+													}
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(ipc->transfer.mtx);
+													// Удаляем запись из очереди
+													ipc->transfer.queue.pop(size);
+												}
 												// Выполняем обработку закрытия подключения
 												if(::io::close(ipc, log))
 													// Выполняем удаление узла
@@ -6075,6 +6093,22 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										/**
+										 * Перебираем все данные в очереди
+										 */
+										while(!ipc->transfer.queue.empty()){
+											// Извлекаем данные из очереди для записи в сокет
+											if(ipc->transfer.queue.front(&buffer, size)){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(ipc->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													ipc->callbacks.spool(ipc->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+											}
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(ipc->transfer.mtx);
+											// Удаляем запись из очереди
+											ipc->transfer.queue.pop(size);
+										}
 										// Выполняем обработку закрытия подключения
 										if(::io::close(ipc, log))
 											// Выполняем удаление узла
@@ -6208,6 +6242,22 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										/**
+										 * Перебираем все данные в очереди
+										 */
+										while(!ipc->transfer.queue.empty()){
+											// Извлекаем данные из очереди для записи в сокет
+											if(ipc->transfer.queue.front(&buffer, size)){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(ipc->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													ipc->callbacks.spool(ipc->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+											}
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(ipc->transfer.mtx);
+											// Удаляем запись из очереди
+											ipc->transfer.queue.pop();
+										}
 										// Выполняем обработку закрытия подключения
 										if(::io::close(ipc, log))
 											// Выполняем удаление узла
@@ -6381,6 +6431,26 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												/**
+												 * Перебираем все данные в очереди
+												 */
+												while(!peer->transfer.queue.empty()){
+													// Извлекаем данные из очереди для записи в сокет
+													if(peer->transfer.queue.front(&buffer, size)){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(peer->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															peer->callbacks.spool(peer->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+													}
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(peer->transfer.mtx);
+													// Удаляем запись из очереди
+													peer->transfer.queue.pop(size);
+												}
 												// Выполняем обработку закрытия подключения
 												if(::io::close(peer, log))
 													// Выполняем удаление узла
@@ -6763,6 +6833,26 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Размер данных для извлечения из очереди
+													size_t size = 0;
+													// Указатель на данные в очереди
+													const void * buffer = nullptr;
+													/**
+													 * Перебираем все данные в очереди
+													 */
+													while(!peer->transfer.queue.empty()){
+														// Извлекаем данные из очереди для записи в сокет
+														if(peer->transfer.queue.front(&buffer, size)){
+															// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+															if(peer->callbacks.spool != nullptr)
+																// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+																peer->callbacks.spool(peer->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+														}
+														// Выполняем блокировку уникальным мютексом
+														const locker_t <> lock(peer->transfer.mtx);
+														// Удаляем запись из очереди
+														peer->transfer.queue.pop();
+													}
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, log))
 														// Выполняем удаление узла
@@ -7182,6 +7272,26 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												/**
+												 * Перебираем все данные в очереди
+												 */
+												while(!origin->transfer.queue.empty()){
+													// Извлекаем данные из очереди для записи в сокет
+													if(origin->transfer.queue.front(&buffer, size)){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(origin->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															origin->callbacks.spool(origin->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+													}
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(origin->transfer.mtx);
+													// Удаляем запись из очереди
+													origin->transfer.queue.pop();
+												}
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, log))
 													// Выполняем удаление узла
@@ -7783,6 +7893,26 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												/**
+												 * Перебираем все данные в очереди
+												 */
+												while(!client->transfer.queue.empty()){
+													// Извлекаем данные из очереди для записи в сокет
+													if(client->transfer.queue.front(&buffer, size)){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(client->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															client->callbacks.spool(client->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+													}
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Удаляем запись из очереди
+													client->transfer.queue.pop(size);
+												}
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, log))
 													// Выполняем удаление узла
@@ -8160,6 +8290,26 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												/**
+												 * Перебираем все данные в очереди
+												 */
+												while(!client->transfer.queue.empty()){
+													// Извлекаем данные из очереди для записи в сокет
+													if(client->transfer.queue.front(&buffer, size)){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(client->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															client->callbacks.spool(client->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+													}
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Удаляем запись из очереди
+													client->transfer.queue.pop();
+												}
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, log))
 													// Выполняем удаление узла
@@ -8579,6 +8729,26 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Размер данных для извлечения из очереди
+												size_t size = 0;
+												// Указатель на данные в очереди
+												const void * buffer = nullptr;
+												/**
+												 * Перебираем все данные в очереди
+												 */
+												while(!client->transfer.queue.empty()){
+													// Извлекаем данные из очереди для записи в сокет
+													if(client->transfer.queue.front(&buffer, size)){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(client->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															client->callbacks.spool(client->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+													}
+													// Выполняем блокировку уникальным мютексом
+													const locker_t <> lock(client->transfer.mtx);
+													// Удаляем запись из очереди
+													client->transfer.queue.pop();
+												}
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, log))
 													// Выполняем удаление узла
@@ -8930,6 +9100,26 @@ namespace io {
 												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
+										// Размер данных для извлечения из очереди
+										size_t size = 0;
+										// Указатель на данные в очереди
+										const void * buffer = nullptr;
+										/**
+										 * Перебираем все данные в очереди
+										 */
+										while(!origin->transfer.queue.empty()){
+											// Извлекаем данные из очереди для записи в сокет
+											if(origin->transfer.queue.front(&buffer, size)){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(origin->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													origin->callbacks.spool(origin->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+											}
+											// Выполняем блокировку уникальным мютексом
+											const locker_t <> lock(origin->transfer.mtx);
+											// Удаляем запись из очереди
+											origin->transfer.queue.pop();
+										}
 										// Выполняем обработку закрытия подключения
 										if(::io::close(origin, log))
 											// Выполняем удаление узла
@@ -9083,6 +9273,26 @@ namespace io {
 										}
 										// Если сокет повреждён
 										if(error == event::error_t::INVALID_SOCKET){
+											// Размер данных для извлечения из очереди
+											size_t size = 0;
+											// Указатель на данные в очереди
+											const void * buffer = nullptr;
+											/**
+											 * Перебираем все данные в очереди
+											 */
+											while(!origin->transfer.queue.empty()){
+												// Извлекаем данные из очереди для записи в сокет
+												if(origin->transfer.queue.front(&buffer, size)){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(origin->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														origin->callbacks.spool(origin->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
+												}
+												// Выполняем блокировку уникальным мютексом
+												const locker_t <> lock(origin->transfer.mtx);
+												// Удаляем запись из очереди
+												origin->transfer.queue.pop();
+											}
 											// Выполняем обработку закрытия подключения
 											if(::io::close(origin, log))
 												// Выполняем удаление узла
@@ -9172,6 +9382,10 @@ namespace io {
 				if(fs->callbacks.status != nullptr)
 					// Вызываем функцию обратного вызова об ошибке отказа
 					fs->callbacks.status(fs->id, event::status_t::FAILURE);
+				// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+				if(fs->callbacks.spool != nullptr)
+					// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+					fs->callbacks.spool(fs->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 				// Если установлена функция обратного вызова
 				if(fs->callbacks.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки события
@@ -9396,6 +9610,10 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(ipc->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 												// Выполняем обработку закрытия подключения
 												if(::io::close(ipc, log))
 													// Выполняем удаление узла
@@ -9475,6 +9693,10 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(ipc->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(ipc, log))
 											// Выполняем удаление узла
@@ -9523,6 +9745,10 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(ipc->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(ipc, log))
 										// Выполняем удаление узла
@@ -9689,6 +9915,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(ipc->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(ipc, log))
 											// Выполняем удаление узла
@@ -9768,6 +9998,10 @@ namespace io {
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
+								// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+								if(ipc->callbacks.spool != nullptr)
+									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+									ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 								// Выполняем обработку закрытия подключения
 								if(::io::close(ipc, log))
 									// Выполняем удаление узла
@@ -9816,6 +10050,10 @@ namespace io {
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
+							// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+							if(ipc->callbacks.spool != nullptr)
+								// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+								ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 							// Выполняем обработку закрытия подключения
 							if(::io::close(ipc, log))
 								// Выполняем удаление узла
@@ -9919,6 +10157,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(ipc->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(ipc, log))
 											// Выполняем удаление узла
@@ -10018,6 +10260,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(ipc->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(ipc, log))
 											// Выполняем удаление узла
@@ -10094,6 +10340,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(ipc->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(ipc, log))
 										// Выполняем удаление узла
@@ -10286,6 +10536,10 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(peer->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 												// Выполняем обработку закрытия подключения
 												if(::io::close(peer, log))
 													// Выполняем удаление узла
@@ -10643,6 +10897,10 @@ namespace io {
 										}
 										// Если сокет повреждён
 										if(errno != EAGAIN){
+											// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+											if(peer->callbacks.spool != nullptr)
+												// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+												peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем обработку закрытия подключения
 											if(::io::close(peer, log))
 												// Выполняем удаление узла
@@ -10915,6 +11173,10 @@ namespace io {
 							}
 							// Если сокет повреждён
 							if(errno != EAGAIN){
+								// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+								if(peer->callbacks.spool != nullptr)
+									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+									peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 								// Выполняем обработку закрытия подключения
 								if(::io::close(peer, log))
 									// Выполняем удаление узла
@@ -11054,6 +11316,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(peer->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, log))
 														// Выполняем удаление узла
@@ -11296,6 +11562,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(peer->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(peer, log))
 														// Выполняем удаление узла
@@ -11503,6 +11773,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(peer->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(peer, log))
 											// Выполняем удаление узла
@@ -11633,6 +11907,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(origin->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(origin, log))
 										// Выполняем удаление узла
@@ -11719,6 +11997,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(origin->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(origin, log))
 											// Выполняем удаление узла
@@ -11804,6 +12086,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(origin->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(origin, log))
 										// Выполняем удаление узла
@@ -11942,6 +12228,10 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(origin->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, log))
 													// Выполняем удаление узла
@@ -12174,6 +12464,10 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(origin->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 												// Выполняем обработку закрытия подключения
 												if(::io::close(origin, log))
 													// Выполняем удаление узла
@@ -12371,6 +12665,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(origin->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(origin, log))
 										// Выполняем удаление узла
@@ -12860,6 +13158,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(client->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(client, log))
 										// Выполняем удаление узла
@@ -12938,6 +13240,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(client->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(client, log))
 											// Выполняем удаление узла
@@ -13015,6 +13321,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(client->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(client, log))
 										// Выполняем удаление узла
@@ -13164,6 +13474,10 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
+												// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+												if(client->callbacks.spool != nullptr)
+													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+													client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 												// Выполняем обработку закрытия подключения
 												if(::io::close(client, log))
 													// Выполняем удаление узла
@@ -13521,6 +13835,10 @@ namespace io {
 										}
 										// Если сокет повреждён
 										if(errno != EAGAIN){
+											// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+											if(client->callbacks.spool != nullptr)
+												// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+												client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем обработку закрытия подключения
 											if(::io::close(client, log))
 												// Выполняем удаление узла
@@ -13793,6 +14111,10 @@ namespace io {
 							}
 							// Если сокет повреждён
 							if(errno != EAGAIN){
+								// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+								if(client->callbacks.spool != nullptr)
+									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+									client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 								// Выполняем обработку закрытия подключения
 								if(::io::close(client, log))
 									// Выполняем удаление узла
@@ -13916,6 +14238,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -14144,6 +14470,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -14337,6 +14667,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(client->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(client, log))
 											// Выполняем удаление узла
@@ -14458,6 +14792,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -14686,6 +15024,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -14879,6 +15221,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(client->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(client, log))
 											// Выполняем удаление узла
@@ -15059,6 +15405,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -15314,6 +15664,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -15534,6 +15888,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(client->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(client, log))
 											// Выполняем удаление узла
@@ -15682,6 +16040,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -15937,6 +16299,10 @@ namespace io {
 												}
 												// Если сокет повреждён
 												if(error == event::error_t::INVALID_SOCKET){
+													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+													if(client->callbacks.spool != nullptr)
+														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем обработку закрытия подключения
 													if(::io::close(client, log))
 														// Выполняем удаление узла
@@ -16157,6 +16523,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(client->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(client, log))
 											// Выполняем удаление узла
@@ -16315,6 +16685,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(server->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(server, log))
 										// Выполняем удаление узла
@@ -16401,6 +16775,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(server->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(server, log))
 											// Выполняем удаление узла
@@ -16486,6 +16864,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(server->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(server, log))
 										// Выполняем удаление узла
@@ -16579,6 +16961,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(server->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(server, log))
 										// Выполняем удаление узла
@@ -16665,6 +17051,10 @@ namespace io {
 									}
 									// Если сокет повреждён
 									if(error == event::error_t::INVALID_SOCKET){
+										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+										if(server->callbacks.spool != nullptr)
+											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+											server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем обработку закрытия подключения
 										if(::io::close(server, log))
 											// Выполняем удаление узла
@@ -16750,6 +17140,10 @@ namespace io {
 								}
 								// Если сокет повреждён
 								if(error == event::error_t::INVALID_SOCKET){
+									// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+									if(server->callbacks.spool != nullptr)
+										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Выполняем обработку закрытия подключения
 									if(::io::close(server, log))
 										// Выполняем удаление узла
@@ -50933,6 +51327,94 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & 
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A data write callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Методы установки функции обратного вызова на возврат неотправленных данных события
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, const event::callback::spool_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.spool = ::move(cb);
+				break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.spool = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.spool = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.spool = ::move(cb);
+				break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.spool = ::move(cb);
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.spool = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A event callback cannot be set for this spool type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A event callback cannot be set for this spool type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

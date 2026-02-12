@@ -774,6 +774,13 @@ namespace awh {
 				 */
 				void on(const event::id_t id, const event::callback::write_t & cb) noexcept;
 				/**
+				 * @brief Методы установки функции обратного вызова на возврат неотправленных данных события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, const event::callback::spool_t & cb) noexcept;
+				/**
 				 * @brief Методы установки функции обратного вызова на получение общего события
 				 *
 				 * @param id идентификатор события

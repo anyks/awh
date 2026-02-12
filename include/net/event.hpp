@@ -137,6 +137,15 @@ namespace awh {
 			POINTTOPOINT = 0x0B  // Флаг point-to-point
 		};
 		/**
+		 * @brief Режимы ошибок отправки данных
+		 *
+		 */
+		enum class send_error_t : uint8_t {
+			NONE     = 0x00, // Режим не определён
+			IO_EVENT = 0x01, // Возвращение данных из события
+			IO_QUEUE = 0x02  // Возвращение данных из очереди события
+		};
+		/**
 		 * @brief Типы трансляции пакетов
 		 *
 		 */
@@ -408,6 +417,11 @@ namespace awh {
 			 *
 			 */
 			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
+			/**
+			 * @brief Функция обратного вызова срабатывающая при отправке данных
+			 *
+			 */
+			using spool_t = std::function <void (const event::id_t, const send_error_t, const uint8_t *, const size_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при изменении каталога
 			 *
