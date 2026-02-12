@@ -11516,7 +11516,7 @@ namespace io {
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
 												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
 										}
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
