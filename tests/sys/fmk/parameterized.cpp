@@ -1636,9 +1636,9 @@ TEST_P(FmkSizeBufferParameterizedFixture, FmkBytesPerSecondTest){
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeBufferParameterizedFixture,
 	::testing::Values(
 		FmkSizeBufferTestParameter({5, 128, "1024 bps"}),
-		FmkSizeBufferTestParameter({1024, 25600, "200 kbps"}),
-		FmkSizeBufferTestParameter({768000, 19200000, "150 Mbps"}),
-		FmkSizeBufferTestParameter({56320000, 1408000000, "11 Gbps"}),
+		FmkSizeBufferTestParameter({1024, 25000, "200 kbps"}),
+		FmkSizeBufferTestParameter({768000, 18750000, "150 Mbps"}),
+		FmkSizeBufferTestParameter({56320000, 1375000064, "11 Gbps"}),
 		FmkSizeBufferTestParameter({2000000000, 49999998976, "400Gbps"})
 	)
 );
