@@ -418,7 +418,7 @@ namespace awh {
 			 */
 			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
 			/**
-			 * @brief Функция обратного вызова срабатывающая при отправке данных
+			 * @brief Функция обратного вызова возвращающая неотправленные данные события
 			 *
 			 */
 			using spool_t = std::function <void (const event::id_t, const send_error_t, const uint8_t *, const size_t)>;

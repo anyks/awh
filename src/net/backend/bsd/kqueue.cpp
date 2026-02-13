@@ -2630,7 +2630,7 @@ namespace io {
 							// Выполняем расчёт токенов для получения данных из сокета
 							::io::tokens(peer, event::limiting_t::INGRESS, log);
 							// Если токены для получения данных присутствуют
-							if(peer->bandwidth.read.tokens > 0.){
+							if(peer->bandwidth.read.tokens >= 1.){
 								/**
 								 * Определяем семейство события
 								 */
@@ -2774,14 +2774,29 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->bandwidth.read.limit > 0){
+										// Достаточное количество токенов для отправки данных
+										double tokens = 0.;
+										/**
+										 * Определяем семейство события
+										 */
+										switch(static_cast <uint8_t> (peer->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4):
+												// Определяем достаточное количество токенов для отправки данных в сокет
+												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_MAX_EVENT_BUFFER_SIZE));
+											break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6):
+												// Определяем достаточное количество токенов для отправки данных в сокет
+												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_MAX_EVENT_BUFFER_SIZE));
+											break;
+										}
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Уменьшаем количество используемых токенов
 										peer->bandwidth.read.tokens -= static_cast <double> (bytes);
 										// Если токены для получения данных ещё доступны
-										if(peer->bandwidth.read.tokens > 0.){
-											// Выполняем блокировку потоков
-											const locker_t <> lock(::local::mtx);
+										if(peer->bandwidth.read.tokens > tokens){
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на чтение данных
@@ -2792,7 +2807,7 @@ namespace io {
 											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(peer->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												peer->bandwidth.read.timeout.delay = 1;
@@ -3069,15 +3084,15 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->bandwidth.read.limit > 0){
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
 										// Если таймаут на получение данных не активирован
 										if(peer->bandwidth.read.timeout.status == event::status_t::NONE){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Активируем статус таймаута на получение данных
 											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(peer->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												peer->bandwidth.read.timeout.delay = 1;
@@ -4186,7 +4201,7 @@ namespace io {
 							// Выполняем расчёт токенов для получения данных из сокета
 							::io::tokens(client, event::limiting_t::INGRESS, log);
 							// Если токены для получения данных присутствуют
-							if(client->bandwidth.read.tokens > 0.){
+							if(client->bandwidth.read.tokens >= 1.){
 								/**
 								 * Определяем семейство события
 								 */
@@ -4330,14 +4345,29 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
+										// Достаточное количество токенов для отправки данных
+										double tokens = 0.;
+										/**
+										 * Определяем семейство события
+										 */
+										switch(static_cast <uint8_t> (client->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4):
+												// Определяем достаточное количество токенов для отправки данных в сокет
+												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_MAX_EVENT_BUFFER_SIZE));
+											break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6):
+												// Определяем достаточное количество токенов для отправки данных в сокет
+												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_MAX_EVENT_BUFFER_SIZE));
+											break;
+										}
 										// Выполняем блокировку потоков
 										const locker_t <> lock(::local::mtx);
 										// Уменьшаем количество используемых токенов
 										client->bandwidth.read.tokens -= static_cast <double> (bytes);
 										// Если токены для получения данных ещё доступны
-										if(client->bandwidth.read.tokens > 0.){
-											// Выполняем блокировку потоков
-											const locker_t <> lock(::local::mtx);
+										if(client->bandwidth.read.tokens >= tokens){
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на чтение данных
@@ -4348,7 +4378,7 @@ namespace io {
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(client->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												client->bandwidth.read.timeout.delay = 1;
@@ -4594,15 +4624,15 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
 										// Если таймаут на получение данных не активирован
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(client->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												client->bandwidth.read.timeout.delay = 1;
@@ -4786,15 +4816,15 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
 										// Если таймаут на получение данных не активирован
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(client->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												client->bandwidth.read.timeout.delay = 1;
@@ -5029,15 +5059,15 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
 										// Если таймаут на получение данных не активирован
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(client->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												client->bandwidth.read.timeout.delay = 1;
@@ -5323,15 +5353,15 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
 										// Если таймаут на получение данных не активирован
 										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Активируем статус таймаута на получение данных
 											client->bandwidth.read.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(client->bandwidth.read.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												client->bandwidth.read.timeout.delay = 1;
@@ -5628,15 +5658,15 @@ namespace io {
 									result = ::io::origin(server, buffer, bytes, io, eth, fmk, log);
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(server->wrate.limit > 0){
-										// Выполняем блокировку потоков
-										const locker_t <> lock(::local::mtx);
 										// Если таймаут на получение данных не активирован
 										if(server->wrate.timeout.status == event::status_t::NONE){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Активируем статус таймаута на получение данных
 											server->wrate.timeout.status = event::status_t::PENDING;
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
 											server->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (server->wrate.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
+											// Если задержка времени слишком мала для установки таймаута
 											if(server->wrate.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
 												server->wrate.timeout.delay = 1;
@@ -6585,10 +6615,27 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (peer->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
+									break;
+								}
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
-								if(peer->bandwidth.write.tokens > 0.){
+								if(peer->bandwidth.write.tokens >= tokens){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
@@ -6639,28 +6686,21 @@ namespace io {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Если токенов для отправки данных больше нет
-											if(peer->bandwidth.write.tokens <= 0.){
+											if(peer->bandwidth.write.tokens < tokens){
 												// Если таймаут на запись данных не активирован
 												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Размер данных для извлечения из очереди
-													size_t size = 0;
-													// Указатель на данные в очереди
-													const void * buffer = nullptr;
-													// Извлекаем данные из очереди для записи в сокет
-													if(peer->transfer.queue.front(&buffer, size)){
-														// Активируем статус таймаута на запись данных
-														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(peer->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															peer->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-													}
+													// Активируем статус таймаута на запись данных
+													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(peer->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														peer->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 												}
 											// Если токены для отправки данных ещё есть
 											} else {
@@ -6700,27 +6740,22 @@ namespace io {
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!peer->transfer.queue.empty()) {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если таймаут на запись данных не активирован
 									if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Размер данных для извлечения из очереди
-										size_t size = 0;
-										// Указатель на данные в очереди
-										const void * buffer = nullptr;
-										// Извлекаем данные из очереди для записи в сокет
-										if(peer->transfer.queue.front(&buffer, size)){
-											// Активируем статус таймаута на запись данных
-											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
-											if(peer->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												peer->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-										}
+										// Активируем статус таймаута на запись данных
+										peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+										// Если задержка времени слишком мала для установки таймаута
+										if(peer->bandwidth.write.timeout.delay == 0)
+											// Устанавливаем минимальное значение времени в 1 миллисекунду
+											peer->bandwidth.write.timeout.delay = 1;
+										// Устанавливаем таймаут на запись данных
+										EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 									}
 									// Если установлен таймаут на запись данных и он не активирован
 									if(peer->timeouts.write.delay > 0){
@@ -7027,38 +7062,31 @@ namespace io {
 											peer->bandwidth.write.tokens -= static_cast <double> (bytes);
 											// Если очередь передачи данных не пуста
 											if(!peer->transfer.queue.empty()){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(peer->transfer.queue.front(&buffer, size)){
-													// Выполняем блокировку потоков
-													const locker_t <> lock(::local::mtx);
-													// Если токенов для отправки данных больше нет
-													if(peer->bandwidth.write.tokens < static_cast <double> (size)){
-														// Если таймаут на запись данных не активирован
-														if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-															// Активируем статус таймаута на запись данных
-															peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-															peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-															// Если вычисленное время равно нулю миллисекунд
-															if(peer->bandwidth.write.timeout.delay == 0)
-																// Устанавливаем минимальное значение времени в 1 миллисекунду
-																peer->bandwidth.write.timeout.delay = 1;
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-														}
-													// Если токены для отправки данных ещё есть
-													} else {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
+												// Если токенов для отправки данных больше нет
+												if(peer->bandwidth.write.tokens < static_cast <double> (size)){
+													// Если таймаут на запись данных не активирован
+													if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+														// Активируем статус таймаута на запись данных
+														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
 														// Добавляем новое событие в список изменений
 														::local::change.push_back((struct kevent){});
-														// Активируем событие на ожидание готовности сокета на запись
-														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
+														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+														// Если задержка времени слишком мала для установки таймаута
+														if(peer->bandwidth.write.timeout.delay == 0)
+															// Устанавливаем минимальное значение времени в 1 миллисекунду
+															peer->bandwidth.write.timeout.delay = 1;
+														// Устанавливаем таймаут на запись данных
+														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 													}
+												// Если токены для отправки данных ещё есть
+												} else {
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Активируем событие на ожидание готовности сокета на запись
+													EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
 												}
 												// Если установлен таймаут на запись данных
 												if(peer->timeouts.write.delay > 0){
@@ -7091,27 +7119,22 @@ namespace io {
 										}
 									// Если в очереди событий появились данные для отправки
 									} else if(!peer->transfer.queue.empty()) {
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(peer->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(peer->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													peer->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-											}
+											// Активируем статус таймаута на запись данных
+											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(peer->bandwidth.write.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												peer->bandwidth.write.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if(peer->timeouts.write.delay > 0){
@@ -7470,38 +7493,31 @@ namespace io {
 										origin->wrate.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!origin->transfer.queue.empty()){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(origin->transfer.queue.front(&buffer, size)){
-												// Выполняем блокировку потоков
-												const locker_t <> lock(::local::mtx);
-												// Если токенов для отправки данных больше нет
-												if(origin->wrate.tokens < static_cast <double> (size)){
-													// Если таймаут на запись данных не активирован
-													if(origin->wrate.timeout.status == event::status_t::NONE){
-														// Активируем статус таймаута на запись данных
-														origin->wrate.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(origin->wrate.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															origin->wrate.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
-													}
-												// Если токены для отправки данных ещё есть
-												} else {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Если токенов для отправки данных больше нет
+											if(origin->wrate.tokens < static_cast <double> (size)){
+												// Если таймаут на запись данных не активирован
+												if(origin->wrate.timeout.status == event::status_t::NONE){
+													// Активируем статус таймаута на запись данных
+													origin->wrate.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Активируем событие на ожидание готовности сокета на запись
-													EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (origin->wrate.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(origin->wrate.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														origin->wrate.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
 												}
+											// Если токены для отправки данных ещё есть
+											} else {
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Активируем событие на ожидание готовности сокета на запись
+												EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
 											}
 											// Если установлен таймаут на запись данных
 											if(origin->timeouts.write.delay > 0){
@@ -7534,27 +7550,22 @@ namespace io {
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!origin->transfer.queue.empty()) {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если таймаут на запись данных не активирован
 									if(origin->wrate.timeout.status == event::status_t::NONE){
-										// Размер данных для извлечения из очереди
-										size_t size = 0;
-										// Указатель на данные в очереди
-										const void * buffer = nullptr;
-										// Извлекаем данные из очереди для записи в сокет
-										if(origin->transfer.queue.front(&buffer, size)){
-											// Активируем статус таймаута на запись данных
-											origin->wrate.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
-											if(origin->wrate.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												origin->wrate.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
-										}
+										// Активируем статус таймаута на запись данных
+										origin->wrate.timeout.status = event::status_t::PENDING;
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+										// Если задержка времени слишком мала для установки таймаута
+										if(origin->wrate.timeout.delay == 0)
+											// Устанавливаем минимальное значение времени в 1 миллисекунду
+											origin->wrate.timeout.delay = 1;
+										// Устанавливаем таймаут на запись данных
+										EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
 									}
 									// Если установлен таймаут на запись данных и он не активирован
 									if(origin->timeouts.write.delay > 0){
@@ -8059,10 +8070,27 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (client->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
+									break;
+								}
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
-								if(client->bandwidth.write.tokens > 0.){
+								if(client->bandwidth.write.tokens >= tokens){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
@@ -8113,28 +8141,21 @@ namespace io {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Если токенов для отправки данных больше нет
-											if(client->bandwidth.write.tokens <= 0.){
+											if(client->bandwidth.write.tokens < tokens){
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Размер данных для извлечения из очереди
-													size_t size = 0;
-													// Указатель на данные в очереди
-													const void * buffer = nullptr;
-													// Извлекаем данные из очереди для записи в сокет
-													if(client->transfer.queue.front(&buffer, size)){
-														// Активируем статус таймаута на запись данных
-														client->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(client->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															client->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-													}
+													// Активируем статус таймаута на запись данных
+													client->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(client->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														client->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 												}
 											// Если токены для отправки данных ещё есть
 											} else {
@@ -8174,27 +8195,22 @@ namespace io {
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если таймаут на запись данных не активирован
 									if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Размер данных для извлечения из очереди
-										size_t size = 0;
-										// Указатель на данные в очереди
-										const void * buffer = nullptr;
-										// Извлекаем данные из очереди для записи в сокет
-										if(client->transfer.queue.front(&buffer, size)){
-											// Активируем статус таймаута на запись данных
-											client->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
-											if(client->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-										}
+										// Активируем статус таймаута на запись данных
+										client->bandwidth.write.timeout.status = event::status_t::PENDING;
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+										// Если задержка времени слишком мала для установки таймаута
+										if(client->bandwidth.write.timeout.delay == 0)
+											// Устанавливаем минимальное значение времени в 1 миллисекунду
+											client->bandwidth.write.timeout.delay = 1;
+										// Устанавливаем таймаут на запись данных
+										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 									}
 									// Если установлен таймаут на запись данных и он не активирован
 									if(client->timeouts.write.delay > 0){
@@ -8496,38 +8512,31 @@ namespace io {
 										client->bandwidth.write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!client->transfer.queue.empty()){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(client->transfer.queue.front(&buffer, size)){
-												// Выполняем блокировку потоков
-												const locker_t <> lock(::local::mtx);
-												// Если токенов для отправки данных больше нет
-												if(client->bandwidth.write.tokens < static_cast <double> (size)){
-													// Если таймаут на запись данных не активирован
-													if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-														// Активируем статус таймаута на запись данных
-														client->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(client->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															client->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-													}
-												// Если токены для отправки данных ещё есть
-												} else {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Если токенов для отправки данных больше нет
+											if(client->bandwidth.write.tokens < static_cast <double> (size)){
+												// Если таймаут на запись данных не активирован
+												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
+													// Активируем статус таймаута на запись данных
+													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Активируем событие на ожидание готовности сокета на запись
-													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(client->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														client->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 												}
+											// Если токены для отправки данных ещё есть
+											} else {
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Активируем событие на ожидание готовности сокета на запись
+												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
 											// Если установлен таймаут на запись данных
 											if(client->timeouts.write.delay > 0){
@@ -8560,27 +8569,22 @@ namespace io {
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если таймаут на запись данных не активирован
 									if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Размер данных для извлечения из очереди
-										size_t size = 0;
-										// Указатель на данные в очереди
-										const void * buffer = nullptr;
-										// Извлекаем данные из очереди для записи в сокет
-										if(client->transfer.queue.front(&buffer, size)){
-											// Активируем статус таймаута на запись данных
-											client->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
-											if(client->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-										}
+										// Активируем статус таймаута на запись данных
+										client->bandwidth.write.timeout.status = event::status_t::PENDING;
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+										// Если задержка времени слишком мала для установки таймаута
+										if(client->bandwidth.write.timeout.delay == 0)
+											// Устанавливаем минимальное значение времени в 1 миллисекунду
+											client->bandwidth.write.timeout.delay = 1;
+										// Устанавливаем таймаут на запись данных
+										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 									}
 									// Если установлен таймаут на запись данных и он не активирован
 									if(client->timeouts.write.delay > 0){
@@ -8939,38 +8943,31 @@ namespace io {
 										client->bandwidth.write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!client->transfer.queue.empty()){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(client->transfer.queue.front(&buffer, size)){
-												// Выполняем блокировку потоков
-												const locker_t <> lock(::local::mtx);
-												// Если токенов для отправки данных больше нет
-												if(client->bandwidth.write.tokens < static_cast <double> (size)){
-													// Если таймаут на запись данных не активирован
-													if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-														// Активируем статус таймаута на запись данных
-														client->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(client->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															client->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-													}
-												// Если токены для отправки данных ещё есть
-												} else {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
+											// Если токенов для отправки данных больше нет
+											if(client->bandwidth.write.tokens < static_cast <double> (size)){
+												// Если таймаут на запись данных не активирован
+												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
+													// Активируем статус таймаута на запись данных
+													client->bandwidth.write.timeout.status = event::status_t::PENDING;
 													// Добавляем новое событие в список изменений
 													::local::change.push_back((struct kevent){});
-													// Активируем событие на ожидание готовности сокета на запись
-													EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(client->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														client->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 												}
+											// Если токены для отправки данных ещё есть
+											} else {
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Активируем событие на ожидание готовности сокета на запись
+												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
 											// Если установлен таймаут на запись данных
 											if(client->timeouts.write.delay > 0){
@@ -9003,27 +9000,22 @@ namespace io {
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если таймаут на запись данных не активирован
 									if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Размер данных для извлечения из очереди
-										size_t size = 0;
-										// Указатель на данные в очереди
-										const void * buffer = nullptr;
-										// Извлекаем данные из очереди для записи в сокет
-										if(client->transfer.queue.front(&buffer, size)){
-											// Активируем статус таймаута на запись данных
-											client->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-											// Если вычисленное время равно нулю миллисекунд
-											if(client->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-										}
+										// Активируем статус таймаута на запись данных
+										client->bandwidth.write.timeout.status = event::status_t::PENDING;
+										// Добавляем новое событие в список изменений
+										::local::change.push_back((struct kevent){});
+										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+										// Если задержка времени слишком мала для установки таймаута
+										if(client->bandwidth.write.timeout.delay == 0)
+											// Устанавливаем минимальное значение времени в 1 миллисекунду
+											client->bandwidth.write.timeout.delay = 1;
+										// Устанавливаем таймаут на запись данных
+										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 									}
 									// Если установлен таймаут на запись данных и он не активирован
 									if(client->timeouts.write.delay > 0){
@@ -9640,7 +9632,7 @@ namespace io {
 											// Выполняем блокировку уникальным мютексом
 											const locker_t <> lock(ipc->transfer.mtx);
 											// Сохраняем оставшиеся данные для последующей отправки
-											if(!ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes))){
+											if((result = ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes))) == 0){
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -9649,9 +9641,9 @@ namespace io {
 												if(ipc->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = static_cast <size_t> (bytes);
 											}
+											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+											result += static_cast <size_t> (bytes);
 											// Если в очереди событий появились данные для отправки
 											if(!ipc->transfer.queue.empty()){
 												// Выполняем блокировку потоков
@@ -9683,7 +9675,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(ipc->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!ipc->transfer.queue.push(buffer, size)){
+													if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(ipc->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -9692,8 +9684,7 @@ namespace io {
 														if(ipc->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!ipc->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -9767,7 +9758,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(ipc->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!ipc->transfer.queue.push(buffer, size)){
+									if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -9776,8 +9767,7 @@ namespace io {
 										if(ipc->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 								}
 							// Если событие является полублокирующим
 							} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -9945,7 +9935,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(ipc->transfer.mtx);
 									// Сохраняем оставшиеся данные для последующей отправки
-									if(!ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes))){
+									if((result = ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes))) == 0){
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -9954,9 +9944,9 @@ namespace io {
 										if(ipc->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-										// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-										result = static_cast <size_t> (bytes);
 									}
+									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+									result += static_cast <size_t> (bytes);
 									// Если в очереди событий появились данные для отправки
 									if(!ipc->transfer.queue.empty()){
 										// Выполняем блокировку потоков
@@ -9988,7 +9978,7 @@ namespace io {
 											// Выполняем блокировку уникальным мютексом
 											const locker_t <> lock(ipc->transfer.mtx);
 											// Сохраняем оставшиеся данные для последующей отправки
-											if(!ipc->transfer.queue.push(buffer, size)){
+											if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(ipc->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -9997,8 +9987,7 @@ namespace io {
 												if(ipc->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-											// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
-											} else result = size;
+											}
 											// Если в очереди событий появились данные для отправки
 											if(!ipc->transfer.queue.empty()){
 												// Выполняем блокировку потоков
@@ -10072,7 +10061,7 @@ namespace io {
 							// Выполняем блокировку уникальным мютексом
 							const locker_t <> lock(ipc->transfer.mtx);
 							// Если данные не добавлены в очередь событий
-							if(!ipc->transfer.queue.push(buffer, size)){
+							if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 								// Если установлена функция обратного вызова
 								if(ipc->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об переполнении очереди
@@ -10081,8 +10070,7 @@ namespace io {
 								if(ipc->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 									ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-							// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-							} else result = size;
+							}
 						}
 					// Если событие является полублокирующим
 					} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -10231,7 +10219,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(ipc->transfer.mtx);
 										// Сохраняем оставшиеся данные для последующей отправки
-										if(!ipc->transfer.queue.push(buffer, size)){
+										if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -10240,8 +10228,7 @@ namespace io {
 											if(ipc->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!ipc->transfer.queue.empty()){
 											// Выполняем блокировку потоков
@@ -10314,7 +10301,7 @@ namespace io {
 							// Выполняем блокировку уникальным мютексом
 							const locker_t <> lock(ipc->transfer.mtx);
 							// Если данные не добавлены в очередь событий
-							if(!ipc->transfer.queue.push(buffer, size)){
+							if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 								// Если установлена функция обратного вызова
 								if(ipc->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об переполнении очереди
@@ -10323,8 +10310,7 @@ namespace io {
 								if(ipc->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 									ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-							// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-							} else result = size;
+							}
 						}
 					// Если событие является полублокирующим
 					} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
@@ -10600,7 +10586,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(peer->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!peer->transfer.queue.push(buffer, size)){
+													if((result = peer->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -10609,8 +10595,7 @@ namespace io {
 														if(peer->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!peer->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -10702,10 +10687,27 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (peer->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
+									break;
+								}
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
-								if(peer->bandwidth.write.tokens > 0.){
+								if(peer->bandwidth.write.tokens >= tokens){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
@@ -10741,7 +10743,7 @@ namespace io {
 											// Выполняем блокировку уникальным мютексом
 											const locker_t <> lock(peer->transfer.mtx);
 											// Сохраняем оставшиеся данные для последующей отправки
-											if(!peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+											if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -10750,9 +10752,9 @@ namespace io {
 												if(peer->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = bytes;
 											}
+											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+											result += bytes;
 										}
 										// Уменьшаем количество используемых токенов
 										peer->bandwidth.write.tokens -= static_cast <double> (bytes);
@@ -10761,28 +10763,21 @@ namespace io {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Если токенов для отправки данных больше нет
-											if(peer->bandwidth.write.tokens <= 0.){
+											if(peer->bandwidth.write.tokens < tokens){
 												// Если таймаут на запись данных не активирован
 												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Размер данных для извлечения из очереди
-													size_t size = 0;
-													// Указатель на данные в очереди
-													const void * buffer = nullptr;
-													// Извлекаем данные из очереди для записи в сокет
-													if(peer->transfer.queue.front(&buffer, size)){
-														// Активируем статус таймаута на запись данных
-														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(peer->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															peer->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-													}
+													// Активируем статус таймаута на запись данных
+													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(peer->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														peer->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 												}
 											// Если токены для отправки данных ещё есть
 											} else {
@@ -10808,7 +10803,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(peer->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!peer->transfer.queue.push(buffer, size)){
+									if((result = peer->transfer.queue.push(buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -10821,31 +10816,25 @@ namespace io {
 										if(peer->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 									// Если в очереди событий появились данные для отправки
 									if(!peer->transfer.queue.empty()){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(peer->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(peer->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													peer->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-											}
+											// Активируем статус таймаута на запись данных
+											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(peer->bandwidth.write.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												peer->bandwidth.write.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
@@ -10880,7 +10869,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
 										// Сохраняем оставшиеся данные для последующей отправки
-										if(!peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+										if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -10889,9 +10878,9 @@ namespace io {
 											if(peer->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-											result = bytes;
 										}
+										// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+										result += bytes;
 										// Если в очереди событий появились данные для отправки
 										if(!peer->transfer.queue.empty()){
 											// Выполняем блокировку потоков
@@ -10932,7 +10921,7 @@ namespace io {
 							// Выполняем блокировку уникальным мютексом
 							const locker_t <> lock(peer->transfer.mtx);
 							// Если данные не добавлены в очередь событий
-							if(!peer->transfer.queue.push(buffer, size)){
+							if((result = peer->transfer.queue.push(buffer, size)) == 0){
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(peer->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
@@ -10945,8 +10934,9 @@ namespace io {
 								if(peer->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 									peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+							}
 							// Выводим результат работы функции
-							} else return size;
+							return result;
 						}
 					// Если событие является полублокирующим
 					} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -11070,10 +11060,27 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (peer->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
+									break;
+								}
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
-								if(peer->bandwidth.write.tokens > 0.){
+								if(peer->bandwidth.write.tokens >= tokens){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
@@ -11109,7 +11116,7 @@ namespace io {
 											// Выполняем блокировку уникальным мютексом
 											const locker_t <> lock(peer->transfer.mtx);
 											// Сохраняем оставшиеся данные для последующей отправки
-											if(!peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+											if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -11118,9 +11125,9 @@ namespace io {
 												if(peer->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = bytes;
 											}
+											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+											result += bytes;
 										}
 										// Уменьшаем количество используемых токенов
 										peer->bandwidth.write.tokens -= static_cast <double> (bytes);
@@ -11129,28 +11136,21 @@ namespace io {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Если токенов для отправки данных больше нет
-											if(peer->bandwidth.write.tokens <= 0.){
+											if(peer->bandwidth.write.tokens < tokens){
 												// Если таймаут на запись данных не активирован
 												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Размер данных для извлечения из очереди
-													size_t size = 0;
-													// Указатель на данные в очереди
-													const void * buffer = nullptr;
-													// Извлекаем данные из очереди для записи в сокет
-													if(peer->transfer.queue.front(&buffer, size)){
-														// Активируем статус таймаута на запись данных
-														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(peer->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															peer->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-													}
+													// Активируем статус таймаута на запись данных
+													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(peer->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														peer->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 												}
 											// Если токены для отправки данных ещё есть
 											} else {
@@ -11175,7 +11175,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(peer->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!peer->transfer.queue.push(buffer, size)){
+									if((result = peer->transfer.queue.push(buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -11188,31 +11188,25 @@ namespace io {
 										if(peer->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 									// Если в очереди событий появились данные для отправки
 									if(!peer->transfer.queue.empty()){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(peer->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(peer->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													peer->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-											}
+											// Активируем статус таймаута на запись данных
+											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(peer->bandwidth.write.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												peer->bandwidth.write.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
@@ -11393,7 +11387,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(peer->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!peer->transfer.queue.push(buffer, size)){
+													if((result = peer->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(peer->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -11402,8 +11396,7 @@ namespace io {
 														if(peer->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!peer->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -11523,7 +11516,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!peer->transfer.queue.push(buffer, size)){
+										if((result = peer->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -11536,31 +11529,25 @@ namespace io {
 											if(peer->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!peer->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(peer->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(peer->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														peer->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-												}
+												// Активируем статус таймаута на запись данных
+												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(peer->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													peer->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
@@ -11603,7 +11590,7 @@ namespace io {
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(peer->transfer.mtx);
 								// Если данные не добавлены в очередь событий
-								if(!peer->transfer.queue.push(buffer, size)){
+								if((result = peer->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -11612,8 +11599,9 @@ namespace io {
 									if(peer->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+								}
 								// Выводим результат работы функции
-								} else return size;
+								return result;
 							}
 						// Если событие является полублокирующим
 						} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -11777,7 +11765,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(peer->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!peer->transfer.queue.push(buffer, size)){
+										if((result = peer->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -11790,31 +11778,25 @@ namespace io {
 											if(peer->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!peer->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(peer->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(peer->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														peer->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-												}
+												// Активируем статус таймаута на запись данных
+												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(peer->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													peer->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
@@ -12324,7 +12306,7 @@ namespace io {
 												// Выполняем блокировку уникальным мютексом
 												const locker_t <> lock(origin->transfer.mtx);
 												// Сохраняем оставшиеся данные для последующей отправки
-												if(!origin->transfer.queue.push(buffer, size)){
+												if((result = origin->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об переполнении очереди
@@ -12333,8 +12315,7 @@ namespace io {
 													if(origin->callbacks.available != nullptr)
 														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 														origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
-												// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-												} else result = size;
+												}
 												// Если в очереди событий появились данные для отправки
 												if(!origin->transfer.queue.empty()){
 													// Выполняем блокировку потоков
@@ -12459,7 +12440,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(origin->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!origin->transfer.queue.push(buffer, size)){
+									if((result = origin->transfer.queue.push(buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -12472,31 +12453,25 @@ namespace io {
 										if(origin->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 									// Если в очереди событий появились данные для отправки
 									if(!origin->transfer.queue.empty()){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(origin->wrate.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(origin->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												origin->wrate.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(origin->wrate.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													origin->wrate.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
-											}
+											// Активируем статус таймаута на запись данных
+											origin->wrate.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(origin->wrate.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												origin->wrate.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if((origin->timeouts.write.delay > 0) && (origin->timeouts.write.status == event::status_t::NONE)){
@@ -12539,7 +12514,7 @@ namespace io {
 							// Выполняем блокировку уникальным мютексом
 							const locker_t <> lock(origin->transfer.mtx);
 							// Если данные не добавлены в очередь событий
-							if(!origin->transfer.queue.push(buffer, size)){
+							if((result = origin->transfer.queue.push(buffer, size)) == 0){
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об переполнении очереди
@@ -12548,8 +12523,9 @@ namespace io {
 								if(origin->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 									origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
+							}
 							// Выводим результат работы функции
-							} else return size;
+							return result;
 						}
 					// Если событие является полублокирующим
 					} else if(origin->state.options & event::options::SM_IO_BLOCK) {
@@ -12703,7 +12679,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(origin->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!origin->transfer.queue.push(buffer, size)){
+									if((result = origin->transfer.queue.push(buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -12716,31 +12692,25 @@ namespace io {
 										if(origin->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											origin->callbacks.available(origin->id, event::status_t::QUEUE_OVERFLOW, origin->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 									// Если в очереди событий появились данные для отправки
 									if(!origin->transfer.queue.empty()){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(origin->wrate.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(origin->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												origin->wrate.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(origin->wrate.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													origin->wrate.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
-											}
+											// Активируем статус таймаута на запись данных
+											origin->wrate.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(origin->wrate.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												origin->wrate.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if((origin->timeouts.write.delay > 0) && (origin->timeouts.write.status == event::status_t::NONE)){
@@ -12987,7 +12957,7 @@ namespace io {
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(tunnel->mtx);
 								// Сохраняем оставшиеся данные для последующей отправки
-								if(!tunnel->queue.push(buffer, size)){
+								if((result = tunnel->queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -12996,8 +12966,7 @@ namespace io {
 									if(tunnel->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										tunnel->callbacks.available(tunnel->id, event::status_t::QUEUE_OVERFLOW, tunnel->queue.available());
-								// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-								} else result = size;
+								}
 								// Если в очереди событий появились данные для отправки
 								if(!tunnel->queue.empty()){
 									// Выполняем блокировку потоков
@@ -13063,7 +13032,7 @@ namespace io {
 					// Выполняем блокировку уникальным мютексом
 					const locker_t <> lock(tunnel->mtx);
 					// Копим данные для дальнейшей отправки
-					if(!tunnel->queue.push(buffer, size)){
+					if((result = tunnel->queue.push(buffer, size)) == 0){
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об переполнении очереди
@@ -13072,8 +13041,7 @@ namespace io {
 						if(tunnel->callbacks.available != nullptr)
 							// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 							tunnel->callbacks.available(tunnel->id, event::status_t::QUEUE_OVERFLOW, tunnel->queue.available());
-					// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-					} else result = size;
+					}
 				}
 			// Если событие является полублокирующим
 			} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
@@ -13602,7 +13570,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(client->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!client->transfer.queue.push(buffer, size)){
+													if((result = client->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -13611,8 +13579,7 @@ namespace io {
 														if(client->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -13704,10 +13671,27 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (client->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
+									break;
+								}
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
-								if(client->bandwidth.write.tokens > 0.){
+								if(client->bandwidth.write.tokens >= tokens){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
@@ -13743,7 +13727,7 @@ namespace io {
 											// Выполняем блокировку уникальным мютексом
 											const locker_t <> lock(client->transfer.mtx);
 											// Сохраняем оставшиеся данные для последующей отправки
-											if(!client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+											if((result = client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -13752,9 +13736,9 @@ namespace io {
 												if(client->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = bytes;
 											}
+											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+											result += bytes;
 										}
 										// Уменьшаем количество используемых токенов
 										client->bandwidth.write.tokens -= static_cast <double> (bytes);
@@ -13763,28 +13747,21 @@ namespace io {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Если токенов для отправки данных больше нет
-											if(client->bandwidth.write.tokens <= 0.){
+											if(client->bandwidth.write.tokens < tokens){
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Размер данных для извлечения из очереди
-													size_t size = 0;
-													// Указатель на данные в очереди
-													const void * buffer = nullptr;
-													// Извлекаем данные из очереди для записи в сокет
-													if(client->transfer.queue.front(&buffer, size)){
-														// Активируем статус таймаута на запись данных
-														client->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(client->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															client->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-													}
+													// Активируем статус таймаута на запись данных
+													client->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(client->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														client->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 												}
 											// Если токены для отправки данных ещё есть
 											} else {
@@ -13810,7 +13787,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!client->transfer.queue.push(buffer, size)){
+									if((result = client->transfer.queue.push(buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -13823,31 +13800,25 @@ namespace io {
 										if(client->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 									// Если в очереди событий появились данные для отправки
 									if(!client->transfer.queue.empty()){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(client->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-											}
+											// Активируем статус таймаута на запись данных
+											client->bandwidth.write.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(client->bandwidth.write.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												client->bandwidth.write.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -13882,7 +13853,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Сохраняем оставшиеся данные для последующей отправки
-										if(!client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+										if((result = client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -13891,9 +13862,9 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-											result = bytes;
 										}
+										// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+										result += bytes;
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
 											// Выполняем блокировку потоков
@@ -13934,7 +13905,7 @@ namespace io {
 							// Выполняем блокировку уникальным мютексом
 							const locker_t <> lock(client->transfer.mtx);
 							// Если данные не добавлены в очередь событий
-							if(!client->transfer.queue.push(buffer, size)){
+							if((result = client->transfer.queue.push(buffer, size)) == 0){
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
@@ -13947,8 +13918,9 @@ namespace io {
 								if(client->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 									client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+							}
 							// Выводим результат работы функции
-							} else return size;
+							return result;
 						}
 					// Если событие является полублокирующим
 					} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -14072,10 +14044,27 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (client->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Определяем достаточное количество токенов для отправки данных в сокет
+										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
+									break;
+								}
 								// Выполняем расчёт токенов для получения данных из сокета
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
-								if(client->bandwidth.write.tokens > 0.){
+								if(client->bandwidth.write.tokens >= tokens){
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
@@ -14111,7 +14100,7 @@ namespace io {
 											// Выполняем блокировку уникальным мютексом
 											const locker_t <> lock(client->transfer.mtx);
 											// Сохраняем оставшиеся данные для последующей отправки
-											if(!client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)){
+											if((result = client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -14120,9 +14109,9 @@ namespace io {
 												if(client->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-												// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-												result = bytes;
 											}
+											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+											result += bytes;
 										}
 										// Уменьшаем количество используемых токенов
 										client->bandwidth.write.tokens -= static_cast <double> (bytes);
@@ -14131,28 +14120,21 @@ namespace io {
 											// Выполняем блокировку потоков
 											const locker_t <> lock(::local::mtx);
 											// Если токенов для отправки данных больше нет
-											if(client->bandwidth.write.tokens <= 0.){
+											if(client->bandwidth.write.tokens < tokens){
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Размер данных для извлечения из очереди
-													size_t size = 0;
-													// Указатель на данные в очереди
-													const void * buffer = nullptr;
-													// Извлекаем данные из очереди для записи в сокет
-													if(client->transfer.queue.front(&buffer, size)){
-														// Активируем статус таймаута на запись данных
-														client->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-														// Если вычисленное время равно нулю миллисекунд
-														if(client->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															client->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-													}
+													// Активируем статус таймаута на запись данных
+													client->bandwidth.write.timeout.status = event::status_t::PENDING;
+													// Добавляем новое событие в список изменений
+													::local::change.push_back((struct kevent){});
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+													// Если задержка времени слишком мала для установки таймаута
+													if(client->bandwidth.write.timeout.delay == 0)
+														// Устанавливаем минимальное значение времени в 1 миллисекунду
+														client->bandwidth.write.timeout.delay = 1;
+													// Устанавливаем таймаут на запись данных
+													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 												}
 											// Если токены для отправки данных ещё есть
 											} else {
@@ -14177,7 +14159,7 @@ namespace io {
 									// Выполняем блокировку уникальным мютексом
 									const locker_t <> lock(client->transfer.mtx);
 									// Если данные не добавлены в очередь событий
-									if(!client->transfer.queue.push(buffer, size)){
+									if((result = client->transfer.queue.push(buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -14190,31 +14172,25 @@ namespace io {
 										if(client->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-									// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-									} else result = size;
+									}
 									// Если в очереди событий появились данные для отправки
 									if(!client->transfer.queue.empty()){
+										// Выполняем блокировку потоков
+										const locker_t <> lock(::local::mtx);
 										// Если таймаут на запись данных не активирован
 										if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Размер данных для извлечения из очереди
-											size_t size = 0;
-											// Указатель на данные в очереди
-											const void * buffer = nullptr;
-											// Извлекаем данные из очереди для записи в сокет
-											if(client->transfer.queue.front(&buffer, size)){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если вычисленное время равно нулю миллисекунд
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-											}
+											// Активируем статус таймаута на запись данных
+											client->bandwidth.write.timeout.status = event::status_t::PENDING;
+											// Добавляем новое событие в список изменений
+											::local::change.push_back((struct kevent){});
+											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+											// Если задержка времени слишком мала для установки таймаута
+											if(client->bandwidth.write.timeout.delay == 0)
+												// Устанавливаем минимальное значение времени в 1 миллисекунду
+												client->bandwidth.write.timeout.delay = 1;
+											// Устанавливаем таймаут на запись данных
+											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 										}
 										// Если установлен таймаут на запись данных и он не активирован
 										if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -14379,7 +14355,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(client->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!client->transfer.queue.push(buffer, size)){
+													if((result = client->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -14388,8 +14364,7 @@ namespace io {
 														if(client->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -14505,7 +14480,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -14518,31 +14493,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -14585,7 +14554,7 @@ namespace io {
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(client->transfer.mtx);
 								// Если данные не добавлены в очередь событий
-								if(!client->transfer.queue.push(buffer, size)){
+								if((result = client->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -14594,8 +14563,9 @@ namespace io {
 									if(client->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+								}
 								// Выводим результат работы функции
-								} else return size;
+								return result;
 							}
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -14745,7 +14715,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -14758,31 +14728,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -14945,7 +14909,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(client->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!client->transfer.queue.push(buffer, size)){
+													if((result = client->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -14954,8 +14918,7 @@ namespace io {
 														if(client->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -15071,7 +15034,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -15084,31 +15047,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -15151,7 +15108,7 @@ namespace io {
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(client->transfer.mtx);
 								// Если данные не добавлены в очередь событий
-								if(!client->transfer.queue.push(buffer, size)){
+								if((result = client->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -15160,8 +15117,9 @@ namespace io {
 									if(client->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+								}
 								// Выводим результат работы функции
-								} else return size;
+								return result;
 							}
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -15311,7 +15269,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -15324,31 +15282,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -15570,7 +15522,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(client->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!client->transfer.queue.push(buffer, size)){
+													if((result = client->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -15579,8 +15531,7 @@ namespace io {
 														if(client->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -15696,7 +15647,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -15709,31 +15660,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -15776,7 +15721,7 @@ namespace io {
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(client->transfer.mtx);
 								// Если данные не добавлены в очередь событий
-								if(!client->transfer.queue.push(buffer, size)){
+								if((result = client->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -15785,8 +15730,9 @@ namespace io {
 									if(client->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+								}
 								// Выводим результат работы функции
-								} else return size;
+								return result;
 							}
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -15963,7 +15909,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -15976,31 +15922,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -16217,7 +16157,7 @@ namespace io {
 													// Выполняем блокировку уникальным мютексом
 													const locker_t <> lock(client->transfer.mtx);
 													// Сохраняем оставшиеся данные для последующей отправки
-													if(!client->transfer.queue.push(buffer, size)){
+													if((result = client->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об переполнении очереди
@@ -16226,8 +16166,7 @@ namespace io {
 														if(client->callbacks.available != nullptr)
 															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 															client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-													// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-													} else result = size;
+													}
 													// Если в очереди событий появились данные для отправки
 													if(!client->transfer.queue.empty()){
 														// Выполняем блокировку потоков
@@ -16343,7 +16282,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -16356,31 +16295,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -16423,7 +16356,7 @@ namespace io {
 								// Выполняем блокировку уникальным мютексом
 								const locker_t <> lock(client->transfer.mtx);
 								// Если данные не добавлены в очередь событий
-								if(!client->transfer.queue.push(buffer, size)){
+								if((result = client->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -16432,8 +16365,9 @@ namespace io {
 									if(client->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
+								}
 								// Выводим результат работы функции
-								} else return size;
+								return result;
 							}
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
@@ -16610,7 +16544,7 @@ namespace io {
 										// Выполняем блокировку уникальным мютексом
 										const locker_t <> lock(client->transfer.mtx);
 										// Если данные не добавлены в очередь событий
-										if(!client->transfer.queue.push(buffer, size)){
+										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -16623,31 +16557,25 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_OVERFLOW, client->transfer.queue.available());
-										// Устанавливаем количество байт данных, добавленных в очередь событий, в качестве результата работы функции
-										} else result = size;
+										}
 										// Если в очереди событий появились данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&buffer, size)){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если вычисленное время равно нулю миллисекунд
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Активируем статус таймаута на запись данных
+												client->bandwidth.write.timeout.status = event::status_t::PENDING;
+												// Добавляем новое событие в список изменений
+												::local::change.push_back((struct kevent){});
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												// Если задержка времени слишком мала для установки таймаута
+												if(client->bandwidth.write.timeout.delay == 0)
+													// Устанавливаем минимальное значение времени в 1 миллисекунду
+													client->bandwidth.write.timeout.delay = 1;
+												// Устанавливаем таймаут на запись данных
+												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
 											}
 											// Если установлен таймаут на запись данных и он не активирован
 											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
@@ -18770,6 +18698,8 @@ namespace io {
 									switch(static_cast <uint8_t> (limiting)){
 										// Если режим ограничения пропускной способности является исходящим
 										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth.write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18785,12 +18715,6 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(peer->bandwidth.write.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidth.write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												peer->bandwidth.write.time = date;
 											}
@@ -18799,6 +18723,8 @@ namespace io {
 										}
 										// Если режим ограничения пропускной способности является входящим
 										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth.read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18836,6 +18762,8 @@ namespace io {
 									switch(static_cast <uint8_t> (limiting)){
 										// Если режим ограничения пропускной способности является исходящим
 										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth.write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18851,12 +18779,6 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(peer->bandwidth.write.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidth.write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												peer->bandwidth.write.time = date;
 											}
@@ -18865,6 +18787,8 @@ namespace io {
 										}
 										// Если режим ограничения пропускной способности является входящим
 										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth.read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18914,6 +18838,8 @@ namespace io {
 										switch(static_cast <uint8_t> (limiting)){
 											// Если режим ограничения пропускной способности является исходящим
 											case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth.write.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18929,12 +18855,6 @@ namespace io {
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 													peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
-													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-													const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
-													// Если количество токенов для ограничения пропускной способности превышает размер ведра
-													if(peer->bandwidth.write.tokens > burst)
-														// Устанавливаем количество токенов равным размеру ведра
-														peer->bandwidth.write.tokens = burst;
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 													peer->bandwidth.write.time = date;
 												}
@@ -18943,6 +18863,8 @@ namespace io {
 											}
 											// Если режим ограничения пропускной способности является входящим
 											case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth.read.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18980,6 +18902,8 @@ namespace io {
 										switch(static_cast <uint8_t> (limiting)){
 											// Если режим ограничения пропускной способности является исходящим
 											case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth.write.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -18995,12 +18919,6 @@ namespace io {
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 													peer->bandwidth.write.tokens += static_cast <double> (peer->bandwidth.write.limit * (elapsed / 1e9));
-													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-													const double burst = ::max(static_cast <double> (peer->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
-													// Если количество токенов для ограничения пропускной способности превышает размер ведра
-													if(peer->bandwidth.write.tokens > burst)
-														// Устанавливаем количество токенов равным размеру ведра
-														peer->bandwidth.write.tokens = burst;
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 													peer->bandwidth.write.time = date;
 												}
@@ -19009,6 +18927,8 @@ namespace io {
 											}
 											// Если режим ограничения пропускной способности является входящим
 											case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+												// Выполняем блокировку потоков
+												const locker_t <> lock(::local::mtx);
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth.read.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19068,78 +18988,54 @@ namespace io {
 							switch(static_cast <uint8_t> (origin->state.family)){
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
-									/**
-									 * Определяем режим ограничения пропускной способности
-									 */
-									switch(static_cast <uint8_t> (limiting)){
-										// Если режим ограничения пропускной способности является исходящим
-										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
-											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
-											if(origin->wrate.time == 0){
-												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												origin->wrate.time = date;
-												// Устанавливаем количество токенов для ограничения пропускной способности
-												origin->wrate.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
-												// Формируем положительный результат
-												return true;
-											}
-											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
-											const uint64_t elapsed = (date - origin->wrate.time);
-											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
-											if(elapsed > 0){
-												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												origin->wrate.tokens += static_cast <double> (origin->wrate.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (origin->wrate.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(origin->wrate.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													origin->wrate.tokens = burst;
-												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												origin->wrate.time = date;
-											}
-											// Формируем положительный результат
-											return true;
-										}
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
+									// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+									if(origin->wrate.time == 0){
+										// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+										origin->wrate.time = date;
+										// Устанавливаем количество токенов для ограничения пропускной способности
+										origin->wrate.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+										// Формируем положительный результат
+										return true;
 									}
-								} break;
+									// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+									const uint64_t elapsed = (date - origin->wrate.time);
+									// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+									if(elapsed > 0){
+										// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+										origin->wrate.tokens += static_cast <double> (origin->wrate.limit * (elapsed / 1e9));
+										// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+										origin->wrate.time = date;
+									}
+									// Формируем положительный результат
+									return true;
+								}
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
-									/**
-									 * Определяем режим ограничения пропускной способности
-									 */
-									switch(static_cast <uint8_t> (limiting)){
-										// Если режим ограничения пропускной способности является исходящим
-										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
-											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
-											if(origin->wrate.time == 0){
-												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												origin->wrate.time = date;
-												// Устанавливаем количество токенов для ограничения пропускной способности
-												origin->wrate.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
-												// Формируем положительный результат
-												return true;
-											}
-											// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
-											const uint64_t elapsed = (date - origin->wrate.time);
-											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
-											if(elapsed > 0){
-												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												origin->wrate.tokens += static_cast <double> (origin->wrate.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (origin->wrate.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(origin->wrate.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													origin->wrate.tokens = burst;
-												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												origin->wrate.time = date;
-											}
-											// Формируем положительный результат
-											return true;
-										}
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
+									// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
+									if(origin->wrate.time == 0){
+										// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+										origin->wrate.time = date;
+										// Устанавливаем количество токенов для ограничения пропускной способности
+										origin->wrate.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+										// Формируем положительный результат
+										return true;
 									}
-								} break;
+									// Определяем сколько времени прошло с момента последнего обновления таймера ограничения пропускной способности
+									const uint64_t elapsed = (date - origin->wrate.time);
+									// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
+									if(elapsed > 0){
+										// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
+										origin->wrate.tokens += static_cast <double> (origin->wrate.limit * (elapsed / 1e9));
+										// Устанавливаем время последнего обновления таймера ограничения пропускной способности
+										origin->wrate.time = date;
+									}
+									// Формируем положительный результат
+									return true;
+								}
 							}
 						} break;
 					}
@@ -19166,6 +19062,8 @@ namespace io {
 									switch(static_cast <uint8_t> (limiting)){
 										// Если режим ограничения пропускной способности является исходящим
 										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19181,12 +19079,6 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(client->bandwidth.write.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidth.write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												client->bandwidth.write.time = date;
 											}
@@ -19195,6 +19087,8 @@ namespace io {
 										}
 										// Если режим ограничения пропускной способности является входящим
 										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19232,6 +19126,8 @@ namespace io {
 									switch(static_cast <uint8_t> (limiting)){
 										// Если режим ограничения пропускной способности является исходящим
 										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19247,12 +19143,6 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(client->bandwidth.write.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidth.write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												client->bandwidth.write.time = date;
 											}
@@ -19261,6 +19151,8 @@ namespace io {
 										}
 										// Если режим ограничения пропускной способности является входящим
 										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19310,6 +19202,8 @@ namespace io {
 									switch(static_cast <uint8_t> (limiting)){
 										// Если режим ограничения пропускной способности является исходящим
 										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19325,12 +19219,6 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(client->bandwidth.write.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidth.write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												client->bandwidth.write.time = date;
 											}
@@ -19339,6 +19227,8 @@ namespace io {
 										}
 										// Если режим ограничения пропускной способности является входящим
 										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19376,6 +19266,8 @@ namespace io {
 									switch(static_cast <uint8_t> (limiting)){
 										// Если режим ограничения пропускной способности является исходящим
 										case static_cast <uint8_t> (event::limiting_t::EGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19391,12 +19283,6 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidth.write.tokens += static_cast <double> (client->bandwidth.write.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth.write.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
-												// Если количество токенов для ограничения пропускной способности превышает размер ведра
-												if(client->bandwidth.write.tokens > burst)
-													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidth.write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												client->bandwidth.write.time = date;
 											}
@@ -19405,6 +19291,8 @@ namespace io {
 										}
 										// Если режим ограничения пропускной способности является входящим
 										case static_cast <uint8_t> (event::limiting_t::INGRESS): {
+											// Выполняем блокировку потоков
+											const locker_t <> lock(::local::mtx);
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth.read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19463,6 +19351,8 @@ namespace io {
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 									if(server->wrate.time == 0){
 										// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -19492,6 +19382,8 @@ namespace io {
 								}
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Выполняем блокировку потоков
+									const locker_t <> lock(::local::mtx);
 									// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 									if(server->wrate.time == 0){
 										// Устанавливаем время последнего обновления таймера ограничения пропускной способности
@@ -43272,7 +43164,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Выполняем блокировку уникальным мютексом
 						const locker_t <> lock(user->mtx);
 						// Добавляем данные в очередь событий пользователя
-						if(user->events.push(buffer, size)){
+						if((result = user->events.push(buffer, size)) > 0){
 							// Создаём событие триггера
 							struct kevent trigger{};
 							// Выполняем установку события триггера
@@ -43292,8 +43184,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 									// Выводим сообщение об ошибке
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
-							// Устанавливаем количество байт данных, добавленных в очередь событий пользователя, в качестве результата работы функции
-							} else result = size;
+							}
 						// Если данные не добавлены в очередь событий пользователя
 						} else {
 							// Если установлена функция обратного вызова

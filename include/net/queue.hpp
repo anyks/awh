@@ -167,9 +167,9 @@ namespace awh {
 			 *
 			 * @param data данные для добавления в очередь
 			 * @param size размер данных для добавления в очередь
-			 * @return     результат (true при успехе, false если недостаточно места)
+			 * @return     количество данных, успешно добавленных в очередь (0 при неудаче, когда недостаточно места)
 			 */
-			bool push(const void * data, const size_t size) noexcept;
+			size_t push(const void * data, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод получения данных из очереди (без удаления - для чтения)

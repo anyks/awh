@@ -392,39 +392,47 @@ bool awh::NetworkQueue::pop(const size_t size) noexcept {
  *
  * @param data данные для добавления в очередь
  * @param size размер данных для добавления в очередь
- * @return     результат (true при успехе, false если недостаточно места)
+ * @return     количество данных, успешно добавленных в очередь (0 при неудаче, когда недостаточно места)
  */
-bool awh::NetworkQueue::push(const void * data, const size_t size) noexcept {
+size_t awh::NetworkQueue::push(const void * data, const size_t size) noexcept {
+	// Результат работы функции
+	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если размер данных для добавления в очередь передан корректно
-		if((size > 0) && (size <= AWH_NETWORK_QUEUE_BUFFER_SIZE)){
+		if(size > 0){
 			/**
 			 * Определяем тип очереди для получения данных
 			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если очередь для потоков данных (например, TCP)
 				case static_cast <uint8_t> (type_t::TCP): {
+					// Устанавливаем результат добавленных данных в очередь
+					result = size;
 					// Быстрая проверка на переполнение буфера
-					if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < size){
+					if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < result){
 						// Недостаточно места в конце - пробуем сжать
 						this->compact();
+						// Выполняем перерасчёт добавляемых данных
+						result = ::min(result, AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write);
 						// Проверяем ещё раз после сжатия
-						if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < size)
+						if(result == 0)
 							// Даже после сжатия нет места
-							return false;
+							return result;
 					}
 					// Копируем данные в буфер очереди
-					::memcpy(this->_buffer + this->_write, data, size);
+					::memcpy(this->_buffer + this->_write, data, result);
 					// Увеличиваем счётчик записей в очереди
-					this->_count += size;
+					this->_count += result;
 				} break;
 				// Если очередь для потоков данных (например, UDP)
 				case static_cast <uint8_t> (type_t::UDP): {
+					// Устанавливаем результат добавленных данных в очередь
+					result = size;
 					// Определяем размер записи = размер данных + заголовок (size_t)
-					const size_t record = (sizeof(size_t) + size);
+					const size_t record = (sizeof(size_t) + result);
 					// Быстрая проверка на переполнение буфера
 					if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < record){
 						// Недостаточно места в конце - пробуем сжать
@@ -432,24 +440,22 @@ bool awh::NetworkQueue::push(const void * data, const size_t size) noexcept {
 						// Проверяем ещё раз после сжатия
 						if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < record)
 							// Даже после сжатия нет места
-							return false;
+							return 0;
 					}
 					// Устанавливаем размер записи (прямой доступ)
-					this->recordSize(this->_write, size);
+					this->recordSize(this->_write, result);
 					// Увеличиваем позицию записи на размер заголовка
 					this->_write += sizeof(size_t);
 					// Копируем данные в буфер очереди
-					::memcpy(this->_buffer + this->_write, data, size);
+					::memcpy(this->_buffer + this->_write, data, result);
 					// Увеличиваем счётчик записей в очереди
 					this->_count++;
 				} break;
 			}
 			// Увеличиваем размер полезных данных в очереди
-			this->_write += size;
+			this->_write += result;
 			// Обновляем кэшированный размер полезных данных
-			this->_total += size;
-			// Выводим результат (true при успешном добавлении данных в очередь)
-			return true;
+			this->_total += result;
 		}
 	/**
 	 * Если возникает ошибка
@@ -469,8 +475,8 @@ bool awh::NetworkQueue::push(const void * data, const size_t size) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию (false) в случае ошибки
-	return false;
+	// Выводим результат работы функции
+	return result;
 }
 /**
  * @brief Метод получения данных из очереди (без удаления - для чтения)
