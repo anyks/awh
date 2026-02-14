@@ -469,20 +469,6 @@ namespace awh {
 			virtual bool isInitialized() const noexcept = 0;
 		public:
 			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode режим безопасности потоков
-			 */
-			virtual void threadSafety(const event::mode_t mode) noexcept = 0;
-			/**
-			 * @brief Метод установки параметров пула потоков
-			 *
-			 * @param mode режим работы пула потоков
-			 * @param size количество потоков в пуле
-			 */
-			virtual void threadPool(const event::mode_t mode, const uint16_t size) noexcept = 0;
-		public:
-			/**
 			 * @brief Метод получения количества событий в основном движке фреймворка
 			 *
 			 * @return количество событий

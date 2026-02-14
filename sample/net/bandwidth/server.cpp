@@ -211,14 +211,12 @@ int32_t main(int32_t argc, char * argv[]){
 						const string message(reinterpret_cast <const char *> (data), size);
 						// Выводим сообщение о переподключении события
 						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
-						/*
 						// Отправляем данные обратно клиенту
 						if(io.send(eid, reinterpret_cast <const char *> (data), size))
 							// Если данные успешно отправлены
 							log.print("Отправлено: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 						// Если данные не отправлены
 						else log.print("Ошибка отправки: ID=%u", log_t::flag_t::CRITICAL, eid);
-						*/
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
 					io.on(cid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
@@ -360,9 +358,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			// io.timeout(eid, event::action_t::READ, 5000);
+			io.timeout(eid, event::action_t::READ, 5000);
 			// Устанавливаем таймаут события на запись
-			// io.timeout(eid, event::action_t::WRITE, 5000);
+			io.timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Если прослушивание события успешно
