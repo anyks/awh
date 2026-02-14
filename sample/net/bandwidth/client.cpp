@@ -61,7 +61,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0") && io.bandwidth(eid, event::limiting_t::INGRESS, "2 Mbps") && io.bandwidth(eid, event::limiting_t::EGRESS, "2 Mbps")){
+		if(io.address(eid, event::address_t::IPV4, "0.0.0.0") && io.bandwidth(eid, event::limiting_t::INGRESS, "100 Mbps") && io.bandwidth(eid, event::limiting_t::EGRESS, "100 Mbps")){
 		// if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
 			if(io.target(eid, "127.0.0.1")){
