@@ -10708,23 +10708,8 @@ namespace io {
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens){
-									// Количество байт данных для отправки в сокет
-									size_t bytes = 0;
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (peer->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
-										break;
-									}
+									// Выполняем отправку данных в сокет
+									const size_t bytes = send(buffer, ::min(size, static_cast <size_t> (peer->bandwidth.write.tokens)));
 									// Если данные отправлены успешно
 									if((bytes > 0) && (errno != EAGAIN)){
 										// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -11081,23 +11066,8 @@ namespace io {
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens){
-									// Количество байт данных для отправки в сокет
-									size_t bytes = 0;
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (peer->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, peer->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
-										break;
-									}
+									// Выполняем отправку данных в сокет
+									const size_t bytes = send(buffer, ::min(size, static_cast <size_t> (peer->bandwidth.write.tokens)));
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -11541,7 +11511,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(peer->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -11790,7 +11760,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(peer->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -12465,7 +12435,7 @@ namespace io {
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+											origin->wrate.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - origin->wrate.tokens) / static_cast <double> (origin->wrate.limit)) * 1000.);
 											// Если задержка времени слишком мала для установки таймаута
 											if(origin->wrate.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -12704,7 +12674,7 @@ namespace io {
 											// Добавляем новое событие в список изменений
 											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
+											origin->wrate.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - origin->wrate.tokens) / static_cast <double> (origin->wrate.limit)) * 1000.);
 											// Если задержка времени слишком мала для установки таймаута
 											if(origin->wrate.timeout.delay == 0)
 												// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -13692,23 +13662,8 @@ namespace io {
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= tokens){
-									// Количество байт данных для отправки в сокет
-									size_t bytes = 0;
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
-										break;
-									}
+									// Выполняем отправку данных в сокет
+									const size_t bytes = send(buffer, ::min(size, static_cast <size_t> (client->bandwidth.write.tokens)));
 									// Если данные отправлены успешно
 									if((bytes > 0) && (errno != EAGAIN)){
 										// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -14065,23 +14020,8 @@ namespace io {
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= tokens){
-									// Количество байт данных для отправки в сокет
-									size_t bytes = 0;
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (client->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
-										break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, client->bandwidth.write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
-										break;
-									}
+									// Выполняем отправку данных в сокет
+									const size_t bytes = send(buffer, ::min(size, static_cast <size_t> (client->bandwidth.write.tokens)));
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -14505,7 +14445,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -14740,7 +14680,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -15059,7 +14999,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -15294,7 +15234,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -15672,7 +15612,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -15934,7 +15874,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -16307,7 +16247,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
@@ -16569,7 +16509,7 @@ namespace io {
 												// Добавляем новое событие в список изменений
 												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
+												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
 												// Если задержка времени слишком мала для установки таймаута
 												if(client->bandwidth.write.timeout.delay == 0)
 													// Устанавливаем минимальное значение времени в 1 миллисекунду
