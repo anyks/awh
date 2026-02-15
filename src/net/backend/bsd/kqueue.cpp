@@ -1498,6 +1498,661 @@ namespace local {
 			((static_cast <A> (b) > static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
 		);
 	}
+	/**
+	 * @brief Функция фиксации состояния событий
+	 *
+	 * @param log объект работы с логами
+	 * @return    результат выполнения обработки
+	 */
+	static bool commit(const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если есть события для добавления в Kqueue
+			if(!::local::change.empty()){
+				// Формируем список результатов установки
+				::local::result.resize(::local::change.size());
+				// Выполняем изменение параметров события
+				if(!(result = (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), nullptr) != net::invalid_socket_t))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+					// Очищаем список изменений
+					::local::change.clear();
+					// Очищаем список результатов активации
+					::local::result.clear();
+					// Очищаем список обработанных событий
+					::__awh_processed__.clear();
+					// Выходим из функции с ошибкой
+					return result;
+				}
+				// Значение узла для обработки изменений
+				::io::node_t * node = nullptr;
+				// Выполняем переход по всему объекту изменений
+				for(auto i = ::local::result.begin(); i != ::local::result.end();){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим начинающий перенос текста
+						cout << endl;
+						// Выводим все данные события
+						cout << " CHANGE EVENT: " << i->ident << ", FLAGS: " << i->flags << ", DATA: " << i->data << ", FILTER: " << i->filter << ", FFLAGS: " << i->fflags << endl;
+						// Выводим заголовок фильтра
+						cout << " FILTER:";
+						/**
+						 * Определяем активированные флаги
+						 */
+						switch(i->filter){
+							// Если фильтр установлен на пользовательское событие
+							case EVFILT_USER:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_USER " << endl;
+							break;
+							// Если фильтр установлен на событие чтения
+							case EVFILT_READ:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_READ " << endl;
+							break;
+							// Если фильтр установлен на событие записи
+							case EVFILT_WRITE:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_WRITE " << endl;
+							break;
+							// Если фильтр установлен на событие асинхронного ввода/вывода
+							case EVFILT_AIO:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_AIO " << endl;
+							break;
+							// Если фильтр установлен на событие файловой системы
+							case EVFILT_VNODE:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_VNODE " << endl;
+							break;
+							// Если фильтр установлен на событие процессов
+							case EVFILT_PROC:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_PROC " << endl;
+							break;
+							// Если фильтр установлен на событие сигналов
+							case EVFILT_SIGNAL:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_SIGNAL " << endl;
+							break;
+							// Если фильтр установлен на событие файловой системы
+							case EVFILT_FS:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_FS " << endl;
+							break;
+							// Если фильтр установлен на событие виртуальной памяти
+							case EVFILT_VM:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_VM " << endl;
+							break;
+							// Если фильтр установлен на событие исключения
+							case EVFILT_EXCEPT:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_EXCEPT " << endl;
+							break;
+							/**
+							 * Для операционных систем MacOS X
+							 */
+							#if __APPLE__ || __MACH__
+								// Если фильтр установлен на событие machport
+								case EVFILT_MACHPORT:
+									// Выводим название установленного фильтра
+									cout << " EVFILT_MACHPORT " << endl;
+								break;
+							#endif
+							// Если фильтр установлен на событие таймера
+							case EVFILT_TIMER:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_TIMER " << endl;
+							break;
+							// Если фильтр установлен на событие потока
+							case EVFILT_THREADMARKER:
+								// Выводим название установленного фильтра
+								cout << " EVFILT_THREADMARKER " << endl;
+							break;
+						}
+						// Выводим заголовок флагов события
+						cout << endl << " FLAGS:" << endl;
+						// Если установлен флаг добавления события
+						if(i->flags & EV_ADD)
+							// Выводим название флага
+							cout << " EV_ADD " << endl;
+						// Если установлен флаг активации события
+						if(i->flags & EV_ENABLE)
+							// Выводим название флага
+							cout << " EV_ENABLE " << endl;
+						// Если установлен флаг деактивации события
+						if(i->flags & EV_DISABLE)
+							// Выводим название флага
+							cout << " EV_DISABLE " << endl;
+						// Если установлен флаг удаления события
+						if(i->flags & EV_DELETE)
+							// Выводим название флага
+							cout << " EV_DELETE " << endl;
+						// Если установлен флаг перехвата ошибки события
+						if(i->flags & EV_RECEIPT)
+							// Выводим название флага
+							cout << " EV_RECEIPT " << endl;
+						// Если установлен флаг активации одноразового события
+						if(i->flags & EV_ONESHOT)
+							// Выводим название флага
+							cout << " EV_ONESHOT " << endl;
+						// Если установлен флаг сброса события
+						if(i->flags & EV_CLEAR)
+							// Выводим название флага
+							cout << " EV_CLEAR " << endl;
+						// Если установлен флаг завершения работы сокета события
+						if(i->flags & EV_EOF)
+							// Выводим название флага
+							cout << " EV_EOF " << endl;
+						// Если установлен флаг полученной ошибки события
+						if(i->flags & EV_ERROR)
+							// Выводим название флага
+							cout << " EV_ERROR " << endl;
+						// Выводим завершающий перенос текста
+						cout << endl;
+					#endif
+					// Получаем текущее значение узла
+					node = reinterpret_cast <::io::node_t *> (i->udata);
+					// Если узел определён и существует
+					if(node != nullptr){
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::NOTIFY): break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
+								// Получаем текущее значение объекта таймера
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(timer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										timer->callbacks.status(timer->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(timer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										timer->callbacks.error(timer->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если установлена функция обратного вызова
+								} else if((timer->callbacks.status != nullptr) && ::__awh_processed__.find(timer->id) == ::__awh_processed__.end()) {
+									// Добавляем идентификатор события в список обработанных
+									::__awh_processed__.emplace(timer->id);
+									// Вызываем функцию обратного вызова статуса события
+									timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
+								}
+							} break;
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(dir->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										dir->callbacks.status(dir->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(dir->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										dir->callbacks.error(dir->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((dir->callbacks.status != nullptr) && ::__awh_processed__.find(dir->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(dir->id);
+										// Вызываем функцию обратного вызова статуса события
+										dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(dir->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										dir->state.status = dir->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Получаем текущее значение объекта файловой системы
+								::io::file_t * fs = awh_cast <::io::file_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										fs->callbacks.status(fs->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((fs->callbacks.status != nullptr) && ::__awh_processed__.find(fs->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(fs->id);
+										// Вызываем функцию обратного вызова статуса события
+										fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(fs->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										fs->state.status = fs->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+							// Если узел является межпроцессным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC): {
+								// Получаем текущее значение объекта межпроцессного взаимодействия
+								::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(ipc->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(ipc->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((ipc->callbacks.status != nullptr) && ::__awh_processed__.find(ipc->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(ipc->id);
+										// Вызываем функцию обратного вызова статуса события
+										ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(ipc->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										ipc->state.status = ipc->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Получаем текущее значение объекта однорангового узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										peer->callbacks.status(peer->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((peer->callbacks.status != nullptr) && ::__awh_processed__.find(peer->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(peer->id);
+										// Вызываем функцию обратного вызова статуса события
+										peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										peer->state.status = peer->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN): {
+								// Получаем текущее значение объекта однорангового узла-источника
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(origin->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										origin->callbacks.status(origin->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(origin->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										origin->callbacks.error(origin->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((origin->callbacks.status != nullptr) && ::__awh_processed__.find(origin->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(origin->id);
+										// Вызываем функцию обратного вызова статуса события
+										origin->callbacks.status(origin->id, origin->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(origin->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										origin->state.status = origin->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем объект туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((tunnel->callbacks.status != nullptr) && ::__awh_processed__.find(tunnel->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(tunnel->id);
+										// Вызываем функцию обратного вызова статуса события
+										tunnel->callbacks.status(tunnel->id, tunnel->state.status.load(std::memory_order_acquire));
+									}
+								}
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										mediator->callbacks.error(mediator->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((mediator->callbacks.status != nullptr) && ::__awh_processed__.find(mediator->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(mediator->id);
+										// Вызываем функцию обратного вызова статуса события
+										mediator->callbacks.status(mediator->id, mediator->state.status.load(std::memory_order_acquire));
+									}
+								}
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем текущее значение объекта клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((client->callbacks.status != nullptr) && ::__awh_processed__.find(client->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(client->id);
+										// Вызываем функцию обратного вызова статуса события
+										client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										client->state.status = client->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем текущее значение объекта сервера
+								::io::server_t * server = awh_cast <::io::server_t *> (node);
+								// Если мы получили ошибку
+								if((i->flags & EV_ERROR) && (i->data != 0)){
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID, ::strerror(i->data));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
+										#endif
+									}
+								// Если нет ошибки
+								} else {
+									// Если установлена функция обратного вызова
+									if((server->callbacks.status != nullptr) && ::__awh_processed__.find(server->id) == ::__awh_processed__.end()){
+										// Добавляем идентификатор события в список обработанных
+										::__awh_processed__.emplace(server->id);
+										// Вызываем функцию обратного вызова статуса события
+										server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
+									}
+									// Если статус события восстановление из паузы
+									if(server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
+										// Восстанавливаем оригинальное значение статуса события
+										server->state.status = server->state.oldset.load(std::memory_order_acquire);
+								}
+							} break;
+						}
+					}
+					// Если список ещё не очистили раньше
+					if(!::local::result.empty())
+						// Удаляем текущий элемент из списка изменений
+						i = ::local::result.erase(i);
+					// Просто выходим из цикла
+					else break;
+				}
+				// Очищаем список изменений
+				::local::change.clear();
+				// Очищаем список результатов активации
+				::local::result.clear();
+				// Очищаем список обработанных событий
+				::__awh_processed__.clear();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
 };
 
 /**
@@ -1735,6 +2390,113 @@ namespace eth {
 };
 
 /**
+ * Инкапсулируем статические прототипы функций в пространство имён таймаута
+ */
+namespace timeout {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция очистки таймаута
+	 *
+	 * @param timeout объект таймаута
+	 * @param log     объект работы с логами
+	 * @return        результат выполнения обработки
+	 */
+	static bool clear(::io::timeout_t & timeout, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если таймаут ожидания чтения данных активен
+			if((result = (timeout.status == event::status_t::PENDING))){
+				// Снимаем статус таймаута с состояния ожидания
+				timeout.status = event::status_t::NONE;
+				// Добавляем новое событие в список изменений
+				::local::change.push_back((struct kevent){});
+				// Устанавливаем параметры удаления события таймаута
+				EV_SET(&::local::change.back(), timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция создания таймаута
+	 *
+	 * @param timeout объект таймаута
+	 * @param node    узел в котором произошло событие
+	 * @param log     объект работы с логами
+	 * @return        результат выполнения обработки
+	 */
+	static bool create(::io::timeout_t & timeout, ::io::node_t * node, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если таймаут ожидания не активирован ранее
+			if(timeout.status == event::status_t::NONE){
+				// Если время задержки таймаута установлено
+				if((result = (timeout.delay > 0))){
+					// Активируем статус таймаута на получение данных
+					timeout.status = event::status_t::PENDING;
+					// Если задержка времени слишком мала для установки таймаута
+					if(timeout.delay == 0)
+						// Устанавливаем минимальное значение времени в 1 миллисекунду
+						timeout.delay = 1;
+					// Добавляем новое событие в список изменений
+					::local::change.push_back((struct kevent){});
+					// Устанавливаем таймаут на получение данных
+					EV_SET(&::local::change.back(), timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (timeout.delay), node);
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+};
+
+/**
  * Инкапсулируем статические прототипы функций в пространство имён асинхронного движка
  */
 namespace io {
@@ -1743,13 +2505,6 @@ namespace io {
 	 */
 	using namespace awh;
 
-	/**
-	 * @brief Прототип функции обработки события активации
-	 *
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 */
-	static bool apply(const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события закрытия
 	 *
@@ -2777,19 +3532,11 @@ namespace io {
 											// Активируем событие на чтение данных
 											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 										// Если таймаут на получение данных не активирован
-										} else if(peer->bandwidth.read.timeout.status == event::status_t::NONE) {
-											// Активируем статус таймаута на получение данных
-											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
+										} else {
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(peer->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												peer->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
+											peer->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.));
+											// Создаём таймаут на получение данных
+											::timeout::create(peer->bandwidth.read.timeout, peer, log);
 										}
 										// Выходим из цикла
 										break;
@@ -2814,12 +3561,8 @@ namespace io {
 						} else {
 							// Устанавливаем минимальное значение времени в 1 миллисекунду
 							peer->bandwidth.read.timeout.delay = 1;
-							// Активируем статус таймаута на получение данных
-							peer->bandwidth.read.timeout.status = event::status_t::PENDING;
-							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent){});
-							// Устанавливаем таймаут на получение данных
-							EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
+							// Создаём таймаут на получение данных
+							::timeout::create(peer->bandwidth.read.timeout, peer, log);
 						}
 					// Если событие является блокирующим
 					} else {
@@ -3055,21 +3798,10 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->bandwidth.read.limit > 0){
-										// Если таймаут на получение данных не активирован
-										if(peer->bandwidth.read.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на получение данных
-											peer->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(peer->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												peer->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.read.timeout.delay), peer);
-										}
+										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
+										peer->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.read.limit)) * 1000.));
+										// Создаём таймаут на получение данных
+										::timeout::create(peer->bandwidth.read.timeout, peer, log);
 										// Выходим из цикла
 										break;
 									// Если нет лимита для чтения данных из сокета
@@ -3194,18 +3926,10 @@ namespace io {
 					} break;
 				#endif
 			}
-			// Если установлен таймаут на чтение данных
-			if(peer->timeouts.read.delay > 0){
-				// Если событие является неблокирующим
-				if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-					// Активируем статус таймаута на чтение данных
-					peer->timeouts.read.status = event::status_t::PENDING;
-					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent){});
-					// Устанавливаем таймаут на получение данных
-					EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-				}
-			}
+			// Если событие является неблокирующим
+			if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
+				// Создаём таймаут на получение данных
+				::timeout::create(peer->timeouts.read, peer, log);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4336,19 +5060,11 @@ namespace io {
 											// Активируем событие на чтение данных
 											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 										// Если таймаут на получение данных не активирован
-										} else if(client->bandwidth.read.timeout.status == event::status_t::NONE) {
-											// Активируем статус таймаута на получение данных
-											client->bandwidth.read.timeout.status = event::status_t::PENDING;
+										} else {
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
+											client->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.));
+											// Создаём таймаут на получение данных
+											::timeout::create(client->bandwidth.read.timeout, client, log);
 										}
 										// Выходим из цикла
 										break;
@@ -4373,12 +5089,8 @@ namespace io {
 						} else {
 							// Устанавливаем минимальное значение времени в 1 миллисекунду
 							client->bandwidth.read.timeout.delay = 1;
-							// Активируем статус таймаута на получение данных
-							client->bandwidth.read.timeout.status = event::status_t::PENDING;
-							// Добавляем новое событие в список изменений
-							::local::change.push_back((struct kevent){});
-							// Устанавливаем таймаут на получение данных
-							EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
+							// Создаём таймаут на получение данных
+							::timeout::create(client->bandwidth.read.timeout, client, log);
 						}
 					// Если событие является блокирующим
 					} else {
@@ -4583,21 +5295,10 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Если таймаут на получение данных не активирован
-										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на получение данных
-											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
-										}
+										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.));
+										// Создаём таймаут на получение данных
+										::timeout::create(client->bandwidth.read.timeout, client, log);
 										// Выходим из цикла
 										break;
 									// Если нет лимита для чтения данных из сокета
@@ -4771,21 +5472,10 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Если таймаут на получение данных не активирован
-										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на получение данных
-											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
-										}
+										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.));
+										// Создаём таймаут на получение данных
+										::timeout::create(client->bandwidth.read.timeout, client, log);
 										// Выходим из цикла
 										break;
 									// Если нет лимита для чтения данных из сокета
@@ -5010,21 +5700,10 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Если таймаут на получение данных не активирован
-										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на получение данных
-											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
-										}
+										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.));
+										// Создаём таймаут на получение данных
+										::timeout::create(client->bandwidth.read.timeout, client, log);
 										// Выходим из цикла
 										break;
 									// Если нет лимита для чтения данных из сокета
@@ -5300,21 +5979,10 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Если таймаут на получение данных не активирован
-										if(client->bandwidth.read.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на получение данных
-											client->bandwidth.read.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.read.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.read.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.read.timeout.delay), client);
-										}
+										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
+										client->bandwidth.read.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.read.limit)) * 1000.));
+										// Создаём таймаут на получение данных
+										::timeout::create(client->bandwidth.read.timeout, client, log);
 										// Выходим из цикла
 										break;
 									// Если нет лимита для чтения данных из сокета
@@ -5468,18 +6136,10 @@ namespace io {
 					}
 				} break;
 			}
-			// Если установлен таймаут на чтение данных
-			if(client->timeouts.read.delay > 0){
-				// Если событие является неблокирующим
-				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-					// Активируем статус таймаута на чтение данных
-					client->timeouts.read.status = event::status_t::PENDING;
-					// Добавляем новое событие в список изменений
-					::local::change.push_back((struct kevent){});
-					// Устанавливаем таймаут на получение данных
-					EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-				}
-			}
+			// Если событие является неблокирующим
+			if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+				// Создаём таймаут на получение данных
+				::timeout::create(client->timeouts.read, client, log);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -5599,21 +6259,10 @@ namespace io {
 									result = ::io::origin(server, buffer, bytes, io, eth, fmk, log);
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(server->wrate.limit > 0){
-										// Если таймаут на получение данных не активирован
-										if(server->wrate.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на получение данных
-											server->wrate.timeout.status = event::status_t::PENDING;
-											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											server->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (server->wrate.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(server->wrate.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												server->wrate.timeout.delay = 1;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (server->wrate.timeout.delay), server);
-										}
+										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
+										server->wrate.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (server->wrate.limit)) * 1000.));
+										// Создаём таймаут на получение данных
+										::timeout::create(server->wrate.timeout, server, log);
 										// Выходим из цикла
 										break;
 									// Если нет лимита для чтения данных из сокета
@@ -6585,21 +7234,10 @@ namespace io {
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(peer->bandwidth.write.tokens < tokens){
-												// Если таймаут на запись данных не активирован
-												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(peer->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														peer->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(peer->bandwidth.write.timeout, peer, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -6607,70 +7245,18 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
 											}
-											// Если установлен таймаут на запись данных
-											if(peer->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											// Если таймер активирован на ожидание отправки данных
-											} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												peer->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										// Выполняем проверку на наличие таймаута на запись данных
-										} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											peer->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!peer->transfer.queue.empty()) {
-									// Если таймаут на запись данных не активирован
-									if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Активируем статус таймаута на запись данных
-										peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-										// Если задержка времени слишком мала для установки таймаута
-										if(peer->bandwidth.write.timeout.delay == 0)
-											// Устанавливаем минимальное значение времени в 1 миллисекунду
-											peer->bandwidth.write.timeout.delay = 1;
-										// Устанавливаем таймаут на запись данных
-										EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-									}
-									// Если установлен таймаут на запись данных и он не активирован
-									if(peer->timeouts.write.delay > 0){
-										// Если таймаут на запись данных не активирован
-										if(peer->timeouts.write.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											peer->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-										}
-									// Если таймер активирован на ожидание отправки данных
-									} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										peer->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+									// Создаём таймаут на запись данных
+									::timeout::create(peer->bandwidth.write.timeout, peer, log);
+									// Создаём таймаут на запись данных
+									::timeout::create(peer->timeouts.write, peer, log);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -6704,31 +7290,8 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Активируем событие на ожидание готовности сокета на запись
 										EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-										// Если установлен таймаут на запись данных
-										if(peer->timeouts.write.delay > 0){
-											// Активируем статус таймаута на запись данных
-											peer->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-										// Если таймер активирован на ожидание отправки данных
-										} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											peer->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									// Выполняем проверку на наличие таймаута на запись данных
-									} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										peer->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Создаём таймаут на запись данных
+										::timeout::create(peer->timeouts.write, peer, log);
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
@@ -6940,21 +7503,10 @@ namespace io {
 											if(!peer->transfer.queue.empty()){
 												// Если токенов для отправки данных больше нет
 												if(peer->bandwidth.write.tokens < static_cast <double> (size)){
-													// Если таймаут на запись данных не активирован
-													if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-														// Активируем статус таймаута на запись данных
-														peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-														peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-														// Если задержка времени слишком мала для установки таймаута
-														if(peer->bandwidth.write.timeout.delay == 0)
-															// Устанавливаем минимальное значение времени в 1 миллисекунду
-															peer->bandwidth.write.timeout.delay = 1;
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-													}
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+													// Создаём таймаут на запись данных
+													::timeout::create(peer->bandwidth.write.timeout, peer, log);
 												// Если токены для отправки данных ещё есть
 												} else {
 													// Добавляем новое событие в список изменений
@@ -6962,70 +7514,18 @@ namespace io {
 													// Активируем событие на ожидание готовности сокета на запись
 													EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
 												}
-												// Если установлен таймаут на запись данных
-												if(peer->timeouts.write.delay > 0){
-													// Активируем статус таймаута на запись данных
-													peer->timeouts.write.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-												// Если таймер активирован на ожидание отправки данных
-												} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-													// Снимаем статус таймаута с состояния ожидания отправки данных
-													peer->timeouts.write.status = event::status_t::NONE;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Снимаем таймаут на отправку данных
-													EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-												}
-											// Выполняем проверку на наличие таймаута на запись данных
-											} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												peer->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+												// Создаём таймаут на запись данных
+												::timeout::create(peer->timeouts.write, peer, log);
 											}
 										}
 									// Если в очереди событий появились данные для отправки
 									} else if(!peer->transfer.queue.empty()) {
-										// Если таймаут на запись данных не активирован
-										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(peer->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												peer->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if(peer->timeouts.write.delay > 0){
-											// Если таймаут на запись данных не активирован
-											if(peer->timeouts.write.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
-										// Если таймер активирован на ожидание отправки данных
-										} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											peer->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+										peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+										// Создаём таймаут на запись данных
+										::timeout::create(peer->bandwidth.write.timeout, peer, log);
+										// Создаём таймаут на запись данных
+										::timeout::create(peer->timeouts.write, peer, log);
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
 								} else {
@@ -7059,31 +7559,8 @@ namespace io {
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на ожидание готовности сокета на запись
 											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-											// Если установлен таймаут на запись данных
-											if(peer->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											// Если таймер активирован на ожидание отправки данных
-											} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												peer->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										// Выполняем проверку на наличие таймаута на запись данных
-										} else if(peer->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											peer->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
@@ -7347,21 +7824,10 @@ namespace io {
 										if(!origin->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(origin->wrate.tokens < static_cast <double> (size)){
-												// Если таймаут на запись данных не активирован
-												if(origin->wrate.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													origin->wrate.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (origin->wrate.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(origin->wrate.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														origin->wrate.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												origin->wrate.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (origin->wrate.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(origin->wrate.timeout, origin, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -7369,70 +7835,18 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
 											}
-											// Если установлен таймаут на запись данных
-											if(origin->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												origin->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-											// Если таймер активирован на ожидание отправки данных
-											} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												origin->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										// Выполняем проверку на наличие таймаута на запись данных
-										} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											origin->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Создаём таймаут на запись данных
+											::timeout::create(origin->timeouts.write, origin, log);
 										}
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!origin->transfer.queue.empty()) {
-									// Если таймаут на запись данных не активирован
-									if(origin->wrate.timeout.status == event::status_t::NONE){
-										// Активируем статус таймаута на запись данных
-										origin->wrate.timeout.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										origin->wrate.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.);
-										// Если задержка времени слишком мала для установки таймаута
-										if(origin->wrate.timeout.delay == 0)
-											// Устанавливаем минимальное значение времени в 1 миллисекунду
-											origin->wrate.timeout.delay = 1;
-										// Устанавливаем таймаут на запись данных
-										EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
-									}
-									// Если установлен таймаут на запись данных и он не активирован
-									if(origin->timeouts.write.delay > 0){
-										// Если таймаут на запись данных не активирован
-										if(origin->timeouts.write.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											origin->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-										}
-									// Если таймер активирован на ожидание отправки данных
-									} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										origin->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									origin->wrate.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (origin->wrate.limit)) * 1000.));
+									// Создаём таймаут на запись данных
+									::timeout::create(origin->wrate.timeout, origin, log);
+									// Создаём таймаут на запись данных
+									::timeout::create(origin->timeouts.write, origin, log);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -7466,31 +7880,8 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Активируем событие на ожидание готовности сокета на запись
 										EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
-										// Если установлен таймаут на запись данных
-										if(origin->timeouts.write.delay > 0){
-											// Активируем статус таймаута на запись данных
-											origin->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-										// Если таймер активирован на ожидание отправки данных
-										} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											origin->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									// Выполняем проверку на наличие таймаута на запись данных
-									} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										origin->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Создаём таймаут на запись данных
+										::timeout::create(origin->timeouts.write, origin, log);
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
@@ -7956,21 +8347,10 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth.write.tokens < tokens){
-												// Если таймаут на запись данных не активирован
-												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -7978,70 +8358,18 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
-											// Если установлен таймаут на запись данных
-											if(client->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											// Если таймер активирован на ожидание отправки данных
-											} else if(client->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												client->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										// Выполняем проверку на наличие таймаута на запись данных
-										} else if(client->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
-									// Если таймаут на запись данных не активирован
-									if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Активируем статус таймаута на запись данных
-										client->bandwidth.write.timeout.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-										// Если задержка времени слишком мала для установки таймаута
-										if(client->bandwidth.write.timeout.delay == 0)
-											// Устанавливаем минимальное значение времени в 1 миллисекунду
-											client->bandwidth.write.timeout.delay = 1;
-										// Устанавливаем таймаут на запись данных
-										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-									}
-									// Если установлен таймаут на запись данных и он не активирован
-									if(client->timeouts.write.delay > 0){
-										// Если таймаут на запись данных не активирован
-										if(client->timeouts.write.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										}
-									// Если таймер активирован на ожидание отправки данных
-									} else if(client->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+									// Создаём таймаут на запись данных
+									::timeout::create(client->bandwidth.write.timeout, client, log);
+									// Создаём таймаут на запись данных
+									::timeout::create(client->timeouts.write, client, log);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -8075,31 +8403,8 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Активируем событие на ожидание готовности сокета на запись
 										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-										// Если установлен таймаут на запись данных
-										if(client->timeouts.write.delay > 0){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										// Если таймер активирован на ожидание отправки данных
-										} else if(client->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									// Выполняем проверку на наличие таймаута на запись данных
-									} else if(client->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Создаём таймаут на запись данных
+										::timeout::create(client->timeouts.write, client, log);
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
@@ -8306,21 +8611,10 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth.write.tokens < static_cast <double> (size)){
-												// Если таймаут на запись данных не активирован
-												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -8328,70 +8622,18 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
-											// Если установлен таймаут на запись данных
-											if(client->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											// Если таймер активирован на ожидание отправки данных
-											} else if(client->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												client->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										// Выполняем проверку на наличие таймаута на запись данных
-										} else if(client->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
-									// Если таймаут на запись данных не активирован
-									if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Активируем статус таймаута на запись данных
-										client->bandwidth.write.timeout.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-										// Если задержка времени слишком мала для установки таймаута
-										if(client->bandwidth.write.timeout.delay == 0)
-											// Устанавливаем минимальное значение времени в 1 миллисекунду
-											client->bandwidth.write.timeout.delay = 1;
-										// Устанавливаем таймаут на запись данных
-										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-									}
-									// Если установлен таймаут на запись данных и он не активирован
-									if(client->timeouts.write.delay > 0){
-										// Если таймаут на запись данных не активирован
-										if(client->timeouts.write.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										}
-									// Если таймер активирован на ожидание отправки данных
-									} else if(client->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+									// Создаём таймаут на запись данных
+									::timeout::create(client->bandwidth.write.timeout, client, log);
+									// Создаём таймаут на запись данных
+									::timeout::create(client->timeouts.write, client, log);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -8425,31 +8667,8 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Активируем событие на ожидание готовности сокета на запись
 										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-										// Если установлен таймаут на запись данных
-										if(client->timeouts.write.delay > 0){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										// Если таймер активирован на ожидание отправки данных
-										} else if(client->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									// Выполняем проверку на наличие таймаута на запись данных
-									} else if(client->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Создаём таймаут на запись данных
+										::timeout::create(client->timeouts.write, client, log);
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
@@ -8713,21 +8932,10 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth.write.tokens < static_cast <double> (size)){
-												// Если таймаут на запись данных не активирован
-												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -8735,70 +8943,18 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
-											// Если установлен таймаут на запись данных
-											if(client->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											// Если таймер активирован на ожидание отправки данных
-											} else if(client->timeouts.write.status == event::status_t::PENDING) {
-												// Снимаем статус таймаута с состояния ожидания отправки данных
-												client->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Снимаем таймаут на отправку данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										// Выполняем проверку на наличие таймаута на запись данных
-										} else if(client->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
-									// Если таймаут на запись данных не активирован
-									if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-										// Активируем статус таймаута на запись данных
-										client->bandwidth.write.timeout.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-										// Если задержка времени слишком мала для установки таймаута
-										if(client->bandwidth.write.timeout.delay == 0)
-											// Устанавливаем минимальное значение времени в 1 миллисекунду
-											client->bandwidth.write.timeout.delay = 1;
-										// Устанавливаем таймаут на запись данных
-										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-									}
-									// Если установлен таймаут на запись данных и он не активирован
-									if(client->timeouts.write.delay > 0){
-										// Если таймаут на запись данных не активирован
-										if(client->timeouts.write.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										}
-									// Если таймер активирован на ожидание отправки данных
-									} else if(client->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+									client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+									// Создаём таймаут на запись данных
+									::timeout::create(client->bandwidth.write.timeout, client, log);
+									// Создаём таймаут на запись данных
+									::timeout::create(client->timeouts.write, client, log);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -8832,31 +8988,8 @@ namespace io {
 										::local::change.push_back((struct kevent){});
 										// Активируем событие на ожидание готовности сокета на запись
 										EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-										// Если установлен таймаут на запись данных
-										if(client->timeouts.write.delay > 0){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										// Если таймер активирован на ожидание отправки данных
-										} else if(client->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									// Выполняем проверку на наличие таймаута на запись данных
-									} else if(client->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Создаём таймаут на запись данных
+										::timeout::create(client->timeouts.write, client, log);
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
@@ -9026,31 +9159,8 @@ namespace io {
 									if(!origin->transfer.queue.empty()){
 										// Устанавливаем флаг наличия данных для отправки
 										hasTransferData = true;
-										// Если установлен таймаут на запись данных
-										if(origin->timeouts.write.delay > 0){
-											// Активируем статус таймаута на запись данных
-											origin->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-										// Если таймер активирован на ожидание отправки данных
-										} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-											// Снимаем статус таймаута с состояния ожидания отправки данных
-											origin->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Снимаем таймаут на отправку данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									// Выполняем проверку на наличие таймаута на запись данных
-									} else if(origin->timeouts.write.status == event::status_t::PENDING) {
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										origin->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+										// Создаём таймаут на запись данных
+										::timeout::create(origin->timeouts.write, origin, log);
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
@@ -10311,15 +10421,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-														// Если установлен таймаут на запись данных
-														if(peer->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															peer->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(peer->timeouts.write, peer, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -10452,21 +10555,10 @@ namespace io {
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(peer->bandwidth.write.tokens < tokens){
-												// Если таймаут на запись данных не активирован
-												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(peer->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														peer->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(peer->bandwidth.write.timeout, peer, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -10474,15 +10566,8 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
 											}
-											// Если установлен таймаут на запись данных
-											if(peer->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 									// Если данные не отправлены полностью и произошла ошибка EAGAIN
 									} else result = bytes;
@@ -10507,28 +10592,13 @@ namespace io {
 									if(!peer->transfer.queue.empty()){
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(peer->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												peer->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+											peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->bandwidth.write.timeout, peer, log);
 										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
-											// Активируем статус таймаута на запись данных
-											peer->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-										}
+										// Создаём таймаут на запись данных
+										::timeout::create(peer->timeouts.write, peer, log);
 									}
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
@@ -10569,15 +10639,8 @@ namespace io {
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на ожидание готовности сокета на запись
 											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-											// Если установлен таймаут на запись данных
-											if(peer->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 									}
 									// Если установлено ограничение пропускной способности на запись данных
@@ -10796,21 +10859,10 @@ namespace io {
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(peer->bandwidth.write.tokens < tokens){
-												// Если таймаут на запись данных не активирован
-												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(peer->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														peer->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(peer->bandwidth.write.timeout, peer, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -10818,15 +10870,8 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
 											}
-											// Если установлен таймаут на запись данных
-											if(peer->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 									}
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
@@ -10850,28 +10895,13 @@ namespace io {
 									if(!peer->transfer.queue.empty()){
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(peer->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												peer->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+											peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->bandwidth.write.timeout, peer, log);
 										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
-											// Активируем статус таймаута на запись данных
-											peer->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-										}
+										// Создаём таймаут на запись данных
+										::timeout::create(peer->timeouts.write, peer, log);
 									}
 									// Переводим сокет обратно в неблокирующий режим
 									eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -11056,15 +11086,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-														// Если установлен таймаут на запись данных
-														if(peer->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															peer->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(peer->timeouts.write, peer, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -11183,28 +11206,13 @@ namespace io {
 										if(!peer->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(peer->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													peer->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+												peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(peer->bandwidth.write.timeout, peer, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
@@ -11426,28 +11434,13 @@ namespace io {
 										if(!peer->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												peer->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(peer->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													peer->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->bandwidth.write.timeout.delay), peer);
+												peer->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(peer->bandwidth.write.timeout, peer, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((peer->timeouts.write.delay > 0) && (peer->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(peer->timeouts.write, peer, log);
 										}
 										// Переводим сокет обратно в неблокирующий режим
 										eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -11961,15 +11954,8 @@ namespace io {
 													::local::change.push_back((struct kevent){});
 													// Активируем событие на ожидание готовности сокета на запись
 													EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
-													// Если установлен таймаут на запись данных
-													if(origin->timeouts.write.delay > 0){
-														// Активируем статус таймаута на запись данных
-														origin->timeouts.write.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Устанавливаем таймаут на запись данных
-														EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-													}
+													// Создаём таймаут на запись данных
+													::timeout::create(origin->timeouts.write, origin, log);
 												}
 											} break;
 											// Если сокет является недействительным
@@ -12093,28 +12079,13 @@ namespace io {
 									if(!origin->transfer.queue.empty()){
 										// Если таймаут на запись данных не активирован
 										if(origin->wrate.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											origin->wrate.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											origin->wrate.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - origin->wrate.tokens) / static_cast <double> (origin->wrate.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(origin->wrate.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												origin->wrate.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
+											origin->wrate.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - origin->wrate.tokens) / static_cast <double> (origin->wrate.limit)) * 1000.));
+											// Создаём таймаут на запись данных
+											::timeout::create(origin->wrate.timeout, origin, log);
 										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if((origin->timeouts.write.delay > 0) && (origin->timeouts.write.status == event::status_t::NONE)){
-											// Активируем статус таймаута на запись данных
-											origin->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-										}
+										// Создаём таймаут на запись данных
+										::timeout::create(origin->timeouts.write, origin, log);
 									}
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
@@ -12326,28 +12297,13 @@ namespace io {
 									if(!origin->transfer.queue.empty()){
 										// Если таймаут на запись данных не активирован
 										if(origin->wrate.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											origin->wrate.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											origin->wrate.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - origin->wrate.tokens) / static_cast <double> (origin->wrate.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(origin->wrate.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												origin->wrate.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->wrate.timeout.delay), origin);
+											origin->wrate.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - origin->wrate.tokens) / static_cast <double> (origin->wrate.limit)) * 1000.));
+											// Создаём таймаут на запись данных
+											::timeout::create(origin->wrate.timeout, origin, log);
 										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if((origin->timeouts.write.delay > 0) && (origin->timeouts.write.status == event::status_t::NONE)){
-											// Активируем статус таймаута на запись данных
-											origin->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-										}
+										// Создаём таймаут на запись данных
+										::timeout::create(origin->timeouts.write, origin, log);
 									}
 									// Переводим сокет обратно в неблокирующий режим
 									eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -13201,15 +13157,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-														// Если установлен таймаут на запись данных
-														if(client->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															client->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(client->timeouts.write, client, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -13342,21 +13291,10 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth.write.tokens < tokens){
-												// Если таймаут на запись данных не активирован
-												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -13364,15 +13302,8 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
-											// Если установлен таймаут на запись данных
-											if(client->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									// Если данные не отправлены полностью и произошла ошибка EAGAIN
 									} else result = bytes;
@@ -13397,28 +13328,13 @@ namespace io {
 									if(!client->transfer.queue.empty()){
 										// Если таймаут на запись данных не активирован
 										if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											client->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+											client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+											// Создаём таймаут на запись данных
+											::timeout::create(client->bandwidth.write.timeout, client, log);
 										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										}
+										// Создаём таймаут на запись данных
+										::timeout::create(client->timeouts.write, client, log);
 									}
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
@@ -13459,15 +13375,8 @@ namespace io {
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на ожидание готовности сокета на запись
 											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-											// Если установлен таймаут на запись данных
-											if(client->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 									// Если установлено ограничение пропускной способности на запись данных
@@ -13686,21 +13595,10 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth.write.tokens < tokens){
-												// Если таймаут на запись данных не активирован
-												if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-													// Активируем статус таймаута на запись данных
-													client->bandwidth.write.timeout.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-													// Если задержка времени слишком мала для установки таймаута
-													if(client->bandwidth.write.timeout.delay == 0)
-														// Устанавливаем минимальное значение времени в 1 миллисекунду
-														client->bandwidth.write.timeout.delay = 1;
-													// Устанавливаем таймаут на запись данных
-													EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
-												}
+												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											// Если токены для отправки данных ещё есть
 											} else {
 												// Добавляем новое событие в список изменений
@@ -13708,15 +13606,8 @@ namespace io {
 												// Активируем событие на ожидание готовности сокета на запись
 												EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
 											}
-											// Если установлен таймаут на запись данных
-											if(client->timeouts.write.delay > 0){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
@@ -13740,28 +13631,13 @@ namespace io {
 									if(!client->transfer.queue.empty()){
 										// Если таймаут на запись данных не активирован
 										if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-											// Активируем статус таймаута на запись данных
-											client->bandwidth.write.timeout.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-											// Если задержка времени слишком мала для установки таймаута
-											if(client->bandwidth.write.timeout.delay == 0)
-												// Устанавливаем минимальное значение времени в 1 миллисекунду
-												client->bandwidth.write.timeout.delay = 1;
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+											client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+											// Создаём таймаут на запись данных
+											::timeout::create(client->bandwidth.write.timeout, client, log);
 										}
-										// Если установлен таймаут на запись данных и он не активирован
-										if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-											// Активируем статус таймаута на запись данных
-											client->timeouts.write.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-										}
+										// Создаём таймаут на запись данных
+										::timeout::create(client->timeouts.write, client, log);
 									}
 									// Переводим сокет обратно в неблокирующий режим
 									eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -13930,15 +13806,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-														// Если установлен таймаут на запись данных
-														if(client->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															client->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(client->timeouts.write, client, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -14053,28 +13922,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
@@ -14282,28 +14136,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 										// Переводим сокет обратно в неблокирующий режим
 										eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -14470,15 +14309,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-														// Если установлен таймаут на запись данных
-														if(client->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															client->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(client->timeouts.write, client, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -14593,28 +14425,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
@@ -14822,28 +14639,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 										// Переводим сокет обратно в неблокирующий режим
 										eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -15069,15 +14871,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-														// Если установлен таймаут на запись данных
-														if(client->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															client->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(client->timeouts.write, client, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -15192,28 +14987,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
@@ -15448,28 +15228,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 										// Переводим сокет обратно в неблокирующий режим
 										eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -15690,15 +15455,8 @@ namespace io {
 														::local::change.push_back((struct kevent){});
 														// Активируем событие на ожидание готовности сокета на запись
 														EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-														// Если установлен таймаут на запись данных
-														if(client->timeouts.write.delay > 0){
-															// Активируем статус таймаута на запись данных
-															client->timeouts.write.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-														}
+														// Создаём таймаут на запись данных
+														::timeout::create(client->timeouts.write, client, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -15813,28 +15571,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
@@ -16069,28 +15812,13 @@ namespace io {
 										if(!client->transfer.queue.empty()){
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Активируем статус таймаута на запись данных
-												client->bandwidth.write.timeout.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.);
-												// Если задержка времени слишком мала для установки таймаута
-												if(client->bandwidth.write.timeout.delay == 0)
-													// Устанавливаем минимальное значение времени в 1 миллисекунду
-													client->bandwidth.write.timeout.delay = 1;
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->bandwidth.write.timeout.delay), client);
+												client->bandwidth.write.timeout.delay = ::max(1U, static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidth.write.tokens) / static_cast <double> (client->bandwidth.write.limit)) * 1000.));
+												// Создаём таймаут на запись данных
+												::timeout::create(client->bandwidth.write.timeout, client, log);
 											}
-											// Если установлен таймаут на запись данных и он не активирован
-											if((client->timeouts.write.delay > 0) && (client->timeouts.write.status == event::status_t::NONE)){
-												// Активируем статус таймаута на запись данных
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на запись данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на запись данных
+											::timeout::create(client->timeouts.write, client, log);
 										}
 										// Переводим сокет обратно в неблокирующий режим
 										eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
@@ -16929,661 +16657,6 @@ namespace io {
 	using namespace awh;
 
 	/**
-	 * @brief Прототип функции обработки события активации
-	 *
-	 * @param log объект работы с логами
-	 * @return    результат выполнения обработки
-	 */
-	static bool apply(const log_t * log) noexcept {
-		// Результат работы функции
-		bool result = false;
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если есть события для добавления в Kqueue
-			if(!::local::change.empty()){
-				// Формируем список результатов установки
-				::local::result.resize(::local::change.size());
-				// Выполняем изменение параметров события
-				if(!(result = (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), nullptr) != net::invalid_socket_t))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-					// Очищаем список изменений
-					::local::change.clear();
-					// Очищаем список результатов активации
-					::local::result.clear();
-					// Очищаем список обработанных событий
-					::__awh_processed__.clear();
-					// Выходим из функции с ошибкой
-					return result;
-				}
-				// Значение узла для обработки изменений
-				::io::node_t * node = nullptr;
-				// Выполняем переход по всему объекту изменений
-				for(auto i = ::local::result.begin(); i != ::local::result.end();){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим начинающий перенос текста
-						cout << endl;
-						// Выводим все данные события
-						cout << " CHANGE EVENT: " << i->ident << ", FLAGS: " << i->flags << ", DATA: " << i->data << ", FILTER: " << i->filter << ", FFLAGS: " << i->fflags << endl;
-						// Выводим заголовок фильтра
-						cout << " FILTER:";
-						/**
-						 * Определяем активированные флаги
-						 */
-						switch(i->filter){
-							// Если фильтр установлен на пользовательское событие
-							case EVFILT_USER:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_USER " << endl;
-							break;
-							// Если фильтр установлен на событие чтения
-							case EVFILT_READ:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_READ " << endl;
-							break;
-							// Если фильтр установлен на событие записи
-							case EVFILT_WRITE:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_WRITE " << endl;
-							break;
-							// Если фильтр установлен на событие асинхронного ввода/вывода
-							case EVFILT_AIO:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_AIO " << endl;
-							break;
-							// Если фильтр установлен на событие файловой системы
-							case EVFILT_VNODE:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_VNODE " << endl;
-							break;
-							// Если фильтр установлен на событие процессов
-							case EVFILT_PROC:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_PROC " << endl;
-							break;
-							// Если фильтр установлен на событие сигналов
-							case EVFILT_SIGNAL:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_SIGNAL " << endl;
-							break;
-							// Если фильтр установлен на событие файловой системы
-							case EVFILT_FS:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_FS " << endl;
-							break;
-							// Если фильтр установлен на событие виртуальной памяти
-							case EVFILT_VM:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_VM " << endl;
-							break;
-							// Если фильтр установлен на событие исключения
-							case EVFILT_EXCEPT:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_EXCEPT " << endl;
-							break;
-							/**
-							 * Для операционных систем MacOS X
-							 */
-							#if __APPLE__ || __MACH__
-								// Если фильтр установлен на событие machport
-								case EVFILT_MACHPORT:
-									// Выводим название установленного фильтра
-									cout << " EVFILT_MACHPORT " << endl;
-								break;
-							#endif
-							// Если фильтр установлен на событие таймера
-							case EVFILT_TIMER:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_TIMER " << endl;
-							break;
-							// Если фильтр установлен на событие потока
-							case EVFILT_THREADMARKER:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_THREADMARKER " << endl;
-							break;
-						}
-						// Выводим заголовок флагов события
-						cout << endl << " FLAGS:" << endl;
-						// Если установлен флаг добавления события
-						if(i->flags & EV_ADD)
-							// Выводим название флага
-							cout << " EV_ADD " << endl;
-						// Если установлен флаг активации события
-						if(i->flags & EV_ENABLE)
-							// Выводим название флага
-							cout << " EV_ENABLE " << endl;
-						// Если установлен флаг деактивации события
-						if(i->flags & EV_DISABLE)
-							// Выводим название флага
-							cout << " EV_DISABLE " << endl;
-						// Если установлен флаг удаления события
-						if(i->flags & EV_DELETE)
-							// Выводим название флага
-							cout << " EV_DELETE " << endl;
-						// Если установлен флаг перехвата ошибки события
-						if(i->flags & EV_RECEIPT)
-							// Выводим название флага
-							cout << " EV_RECEIPT " << endl;
-						// Если установлен флаг активации одноразового события
-						if(i->flags & EV_ONESHOT)
-							// Выводим название флага
-							cout << " EV_ONESHOT " << endl;
-						// Если установлен флаг сброса события
-						if(i->flags & EV_CLEAR)
-							// Выводим название флага
-							cout << " EV_CLEAR " << endl;
-						// Если установлен флаг завершения работы сокета события
-						if(i->flags & EV_EOF)
-							// Выводим название флага
-							cout << " EV_EOF " << endl;
-						// Если установлен флаг полученной ошибки события
-						if(i->flags & EV_ERROR)
-							// Выводим название флага
-							cout << " EV_ERROR " << endl;
-						// Выводим завершающий перенос текста
-						cout << endl;
-					#endif
-					// Получаем текущее значение узла
-					node = reinterpret_cast <::io::node_t *> (i->udata);
-					// Если узел определён и существует
-					if(node != nullptr){
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::NOTIFY): break;
-							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMEOUT):
-							// Если узел является интервалом
-							case static_cast <uint8_t> (event::node_t::INTERVAL): {
-								// Получаем текущее значение объекта таймера
-								::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(timer->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										timer->callbacks.status(timer->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(timer->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										timer->callbacks.error(timer->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если установлена функция обратного вызова
-								} else if((timer->callbacks.status != nullptr) && ::__awh_processed__.find(timer->id) == ::__awh_processed__.end()) {
-									// Добавляем идентификатор события в список обработанных
-									::__awh_processed__.emplace(timer->id);
-									// Вызываем функцию обратного вызова статуса события
-									timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
-								}
-							} break;
-							// Если узел является директорией
-							case static_cast <uint8_t> (event::node_t::DIR): {
-								// Получаем текущее значение объекта директории
-								::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(dir->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										dir->callbacks.status(dir->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(dir->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										dir->callbacks.error(dir->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((dir->callbacks.status != nullptr) && ::__awh_processed__.find(dir->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(dir->id);
-										// Вызываем функцию обратного вызова статуса события
-										dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(dir->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										dir->state.status = dir->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE): {
-								// Получаем текущее значение объекта файловой системы
-								::io::file_t * fs = awh_cast <::io::file_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(fs->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										fs->callbacks.status(fs->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(fs->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										fs->callbacks.error(fs->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((fs->callbacks.status != nullptr) && ::__awh_processed__.find(fs->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(fs->id);
-										// Вызываем функцию обратного вызова статуса события
-										fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(fs->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										fs->state.status = fs->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC): {
-								// Получаем текущее значение объекта межпроцессного взаимодействия
-								::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(ipc->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(ipc->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((ipc->callbacks.status != nullptr) && ::__awh_processed__.find(ipc->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(ipc->id);
-										// Вызываем функцию обратного вызова статуса события
-										ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(ipc->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										ipc->state.status = ipc->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										peer->callbacks.status(peer->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										peer->callbacks.error(peer->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((peer->callbacks.status != nullptr) && ::__awh_processed__.find(peer->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(peer->id);
-										// Вызываем функцию обратного вызова статуса события
-										peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										peer->state.status = peer->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN): {
-								// Получаем текущее значение объекта однорангового узла-источника
-								::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(origin->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										origin->callbacks.status(origin->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(origin->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										origin->callbacks.error(origin->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((origin->callbacks.status != nullptr) && ::__awh_processed__.find(origin->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(origin->id);
-										// Вызываем функцию обратного вызова статуса события
-										origin->callbacks.status(origin->id, origin->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(origin->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										origin->state.status = origin->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-							// Если узел является туннелем
-							case static_cast <uint8_t> (event::node_t::TUNNEL): {
-								// Получаем объект туннеля
-								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(tunnel->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(tunnel->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((tunnel->callbacks.status != nullptr) && ::__awh_processed__.find(tunnel->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(tunnel->id);
-										// Вызываем функцию обратного вызова статуса события
-										tunnel->callbacks.status(tunnel->id, tunnel->state.status.load(std::memory_order_acquire));
-									}
-								}
-							} break;
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-								// Получаем объект посредника
-								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										mediator->callbacks.error(mediator->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((mediator->callbacks.status != nullptr) && ::__awh_processed__.find(mediator->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(mediator->id);
-										// Вызываем функцию обратного вызова статуса события
-										mediator->callbacks.status(mediator->id, mediator->state.status.load(std::memory_order_acquire));
-									}
-								}
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(client->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										client->callbacks.status(client->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(client->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((client->callbacks.status != nullptr) && ::__awh_processed__.find(client->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(client->id);
-										// Вызываем функцию обратного вызова статуса события
-										client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										client->state.status = client->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Получаем текущее значение объекта сервера
-								::io::server_t * server = awh_cast <::io::server_t *> (node);
-								// Если мы получили ошибку
-								if((i->flags & EV_ERROR) && (i->data != 0)){
-									// Если установлена функция обратного вызова
-									if(server->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										server->callbacks.status(server->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(server->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, event::error_t::INVALID, ::strerror(i->data));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(i->data));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(i->data));
-										#endif
-									}
-								// Если нет ошибки
-								} else {
-									// Если установлена функция обратного вызова
-									if((server->callbacks.status != nullptr) && ::__awh_processed__.find(server->id) == ::__awh_processed__.end()){
-										// Добавляем идентификатор события в список обработанных
-										::__awh_processed__.emplace(server->id);
-										// Вызываем функцию обратного вызова статуса события
-										server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
-									}
-									// Если статус события восстановление из паузы
-									if(server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)
-										// Восстанавливаем оригинальное значение статуса события
-										server->state.status = server->state.oldset.load(std::memory_order_acquire);
-								}
-							} break;
-						}
-					}
-					// Если список ещё не очистили раньше
-					if(!::local::result.empty())
-						// Удаляем текущий элемент из списка изменений
-						i = ::local::result.erase(i);
-					// Просто выходим из цикла
-					else break;
-				}
-				// Очищаем список изменений
-				::local::change.clear();
-				// Очищаем список результатов активации
-				::local::result.clear();
-				// Очищаем список обработанных событий
-				::__awh_processed__.clear();
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат
-		return result;
-	}
-	/**
 	 * @brief Функция обработки события закрытия
 	 *
 	 * @param node узел в котором произошло событие
@@ -17651,34 +16724,16 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-					// Если таймер активирован на ожидание получения данных
-					if(peer->timeouts.read.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на получение данных
-						EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
-					// Если таймер активирован на ожидание отправки данных
-					if(peer->timeouts.write.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на отправку данных
-						EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
-					// Если таймер активирован на ограничение пропускной способности
-					if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на ограничение пропускной способности
-						EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
-					// Если таймер активирован на ограничение пропускной способности
-					if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на ограничение пропускной способности
-						EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
+					// Удаляем таймаут ожидания получения данных
+					::timeout::clear(peer->timeouts.read, log);
+					// Удаляем таймаут ожидания отправки данных
+					::timeout::clear(peer->timeouts.write, log);
+					// Удаляем таймаут на ограничение пропускной способности на получение данных
+					::timeout::clear(peer->bandwidth.read.timeout, log);
+					// Удаляем таймаут на ограничение пропускной способности на отправку данных
+					::timeout::clear(peer->bandwidth.write.timeout, log);
+					// Выполняем фиксацию изменений к ядру
+					::local::commit(log);
 					// Уменьшаем общее количество подключений сервера
 					if(peer->peers > 0)
 						// Уменьшаем общее количество подключений сервера
@@ -17699,27 +16754,14 @@ namespace io {
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
-					// Если таймер активирован на ожидание получения данных
-					if(origin->timeouts.read.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на получение данных
-						EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
-					// Если таймер активирован на ожидание отправки данных
-					if(origin->timeouts.write.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на отправку данных
-						EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
-					// Если таймер активирован на ограничение пропускной способности
-					if(origin->wrate.timeout.status == event::status_t::PENDING){
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на ограничение пропускной способности
-						EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
+					// Удаляем таймаут на ограничение пропускной способности
+					::timeout::clear(origin->wrate.timeout, log);
+					// Удаляем таймаут ожидания получения данных
+					::timeout::clear(origin->timeouts.read, log);
+					// Удаляем таймаут ожидания отправки данных
+					::timeout::clear(origin->timeouts.write, log);
+					// Выполняем фиксацию изменений к ядру
+					::local::commit(log);
 					// Уменьшаем общее количество подключений сервера
 					if(origin->origins > 0)
 						// Уменьшаем общее количество подключений сервера
@@ -17788,61 +16830,20 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Если таймер активирован на ожидание подключения к серверу
-								if(client->timeouts.connect.status == event::status_t::PENDING){
-									// Снимаем статус таймаута с состояния ожидания подключения к серверу
-									client->timeouts.connect.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Снимаем таймаут на ожидание подключения к серверу
-									EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-								// Если таймер активирован на ожидание переподключения к серверу
-								} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-									// Снимаем статус таймаута с состояния ожидания переподключения к серверу
-									client->timeouts.reconnect.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Снимаем таймаут на ожидание переподключения к серверу
-									EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-								// Если таймер активирован на ожидание подключения к серверу
-								} else {
-									// Если таймер активирован на ожидание получения данных
-									if(client->timeouts.read.status == event::status_t::PENDING){
-										// Снимаем статус таймаута с состояния ожидания получения данных
-										client->timeouts.read.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
-									// Если таймер активирован на ожидание отправки данных
-									if(client->timeouts.write.status == event::status_t::PENDING){
-										// Снимаем статус таймаута с состояния ожидания отправки данных
-										client->timeouts.write.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на отправку данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
-									// Если таймер активирован на ограничение пропускной способности
-									if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-										// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
-										client->bandwidth.read.timeout.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на ограничение пропускной способности
-										EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
-									// Если таймер активирован на ограничение пропускной способности
-									if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-										// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
-										client->bandwidth.write.timeout.status = event::status_t::NONE;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Снимаем таймаут на ограничение пропускной способности
-										EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
-								}
+								// Удаляем таймаут ожидания получения данных
+								::timeout::clear(client->timeouts.read, log);
+								// Удаляем таймаут ожидания отправки данных
+								::timeout::clear(client->timeouts.write, log);
+								// Удаляем таймаут ожидания подключения к серверу
+								::timeout::clear(client->timeouts.connect, log);
+								// Удаляем таймаут ожидания переподключения к серверу
+								::timeout::clear(client->timeouts.reconnect, log);
+								// Удаляем таймаут на ограничение пропускной способности на получение данных
+								::timeout::clear(client->bandwidth.read.timeout, log);
+								// Удаляем таймаут на ограничение пропускной способности на отправку данных
+								::timeout::clear(client->bandwidth.write.timeout, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Если установлен режим постоянного подключения
 								if(client->state.options & event::options::KEEPALIVE){
 									// Если событие переподключения к серверу разрешено
@@ -17853,18 +16854,12 @@ namespace io {
 											return !guard.isGarbage();
 										// Устанавливаем статус события в состояние переподключения
 										client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
-										// Время задержки таймаута
-										uint64_t delay = 0x1388; // 5 секунд
-										// Если установлено значение задержки таймаута на переподключение в конфигурации клиента
-										if(client->timeouts.reconnect.delay > 0)
-											// Устанавливаем задержку таймаута на значение из конфигурации
-											delay = (static_cast <intptr_t> (client->timeouts.reconnect.delay));
-										// Устанавливаем статус таймаута на ожидание переподключения к серверу
-										client->timeouts.reconnect.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, delay, client);
+										// Если задержка таймаута на переподключение не установлена
+										if(client->timeouts.reconnect.delay == 0)
+											// Устанавливаем задержку таймаута на значение в 5 секунд
+											client->timeouts.reconnect.delay = 0x1388;
+										// Создаём таймаут на переподключение
+										::timeout::create(client->timeouts.reconnect, client, log);
 									}
 								}
 							} break;
@@ -17881,6 +16876,14 @@ namespace io {
 					if(server->actions & ::action::CLOSE){
 						// Создаём охранника узла события
 						::local::guard_t guard(node);
+						// Удаляем таймаут на ограничение пропускной способности на получение данных
+						::timeout::clear(server->wrate.timeout, log);
+						// Удаляем таймаут ожидания получения данных
+						::timeout::clear(server->timeouts.read, log);
+						// Удаляем таймаут ожидания отправки данных
+						::timeout::clear(server->timeouts.write, log);
+						// Выполняем фиксацию изменений к ядру
+						::local::commit(log);
 						// Если установлена функция обратного вызова
 						if(server->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова флаг события
@@ -20388,15 +19391,11 @@ namespace io {
 								// Если установлен таймаут на чтение данных
 								if(peer->timeouts.read.delay > 0){
 									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-										// Активируем статус таймаута на чтение данных
-										peer->timeouts.read.status = event::status_t::PENDING;
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(peer->timeouts.read, peer, log);
 									// Если событие является блокирующим
-									} else eth->socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+									else eth->socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								}
 								// Выводим положительный результат
 								return !guard.isGarbage();
@@ -20468,18 +19467,11 @@ namespace io {
 				// Активируем событие на чтение данных
 				EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 				// Если событие является неблокирующим
-				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-					// Если таймер активирован на ожидание подключения к серверу
-					if(client->timeouts.connect.status == event::status_t::PENDING){
-						// Снимаем статус таймаута с состояния ожидания подключения к серверу
-						client->timeouts.connect.status = event::status_t::NONE;
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Снимаем таймаут на ожидание подключения к серверу
-						EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-					}
+				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+					// Удаляем таймаут ожидания подключения к серверу
+					::timeout::clear(client->timeouts.connect, log);
 				// Если событие является блокирующим
-				} else eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+				else eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 				// Если функция обратного вызова для вывода подключения установлена
 				if(client->callbacks.connect != nullptr)
 					// Вызываем функцию обратного вызова для подключения
@@ -20487,15 +19479,11 @@ namespace io {
 				// Если установлен таймаут на чтение данных
 				if(client->timeouts.read.delay > 0){
 					// Если событие является неблокирующим
-					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-						// Активируем статус таймаута на чтение данных
-						client->timeouts.read.status = event::status_t::PENDING;
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Устанавливаем таймаут на получение данных
-						EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
+					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+						// Создаём таймаут на ожидание получения данных
+						::timeout::create(client->timeouts.read, client, log);
 					// Если событие является блокирующим
-					} else eth->socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+					else eth->socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 				}
 				// Выполняем "пинок" для применения изменений
 				result = const_cast <engine::io_t *> (io)->kick();
@@ -21158,12 +20146,20 @@ namespace io {
 							} else if(static_cast <uint32_t> (ev.ident) == peer->bandwidth.read.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
 								peer->bandwidth.read.timeout.status = event::status_t::NONE;
+								// Удаляем таймаут ожидания чтения данных, так как сокет готов к чтению
+								::timeout::clear(peer->timeouts.read, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Обрабатываем событие готовности сокета на чтение
 								return ::io::read(node, io, eth, fmk, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == peer->bandwidth.write.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
 								peer->bandwidth.write.timeout.status = event::status_t::NONE;
+								// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
+								::timeout::clear(peer->timeouts.write, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Обрабатываем событие доступности сокета на запись
 								return ::io::write(node, io, eth, fmk, log);
 							}
@@ -21203,6 +20199,10 @@ namespace io {
 							} else if(static_cast <uint32_t> (ev.ident) == origin->wrate.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
 								origin->wrate.timeout.status = event::status_t::NONE;
+								// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
+								::timeout::clear(origin->timeouts.write, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Обрабатываем событие доступности сокета на запись
 								return ::io::write(node, io, eth, fmk, log);
 							}
@@ -21222,12 +20222,20 @@ namespace io {
 							if(static_cast <uint32_t> (ev.ident) == client->bandwidth.read.timeout.id){
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
 								client->bandwidth.read.timeout.status = event::status_t::NONE;
+								// Удаляем таймаут ожидания чтения данных, так как сокет готов к чтению
+								::timeout::clear(client->timeouts.read, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Обрабатываем событие готовности сокета на чтение
 								return ::io::read(node, io, eth, fmk, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == client->bandwidth.write.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
 								client->bandwidth.write.timeout.status = event::status_t::NONE;
+								// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
+								::timeout::clear(client->timeouts.write, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Обрабатываем событие доступности сокета на запись
 								return ::io::write(node, io, eth, fmk, log);
 							}
@@ -21311,6 +20319,10 @@ namespace io {
 							if(static_cast <uint32_t> (ev.ident) == server->wrate.timeout.id){
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
 								server->wrate.timeout.status = event::status_t::NONE;
+								// Удаляем таймаут ожидания чтения данных, так как сокет готов к чтению
+								::timeout::clear(server->timeouts.read, log);
+								// Выполняем фиксацию изменений к ядру
+								::local::commit(log);
 								// Обрабатываем событие готовности сокета на чтение
 								return ::io::read(node, io, eth, fmk, log);
 							// Если идентификатор события не определён, значит это как-то фантомный таймер ошибки
@@ -21372,17 +20384,8 @@ namespace io {
 								// Деактивируем событие на чтение данных
 								EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 							}
-							// Если таймаут ожидания чтения данных активен
-							if(peer->timeouts.read.status == event::status_t::PENDING){
-								// Снимаем статус таймаута с состояния ожидания
-								peer->timeouts.read.status = event::status_t::NONE;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Деактивируем таймаут на чтение данных, так как сокет готов к чтению
-								EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Выполняем применение изменений к ядру
-							::io::apply(log);
+							// Удаляем таймаут ожидания чтения данных, так как сокет готов к чтению
+							::timeout::clear(peer->timeouts.read, log);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -21395,17 +20398,8 @@ namespace io {
 								// Деактивируем событие на чтение данных
 								EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 							}
-							// Если таймаут ожидания чтения данных активен
-							if(client->timeouts.read.status == event::status_t::PENDING){
-								// Снимаем статус таймаута с состояния ожидания
-								client->timeouts.read.status = event::status_t::NONE;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Деактивируем таймаут на чтение данных, так как сокет готов к чтению
-								EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Выполняем применение изменений к ядру
-							::io::apply(log);
+							// Удаляем таймаут ожидания чтения данных, так как сокет готов к чтению
+							::timeout::clear(client->timeouts.read, log);
 						} break;
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -21418,19 +20412,12 @@ namespace io {
 								// Деактивируем событие на чтение данных
 								EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 							}
-							// Если таймаут ожидания чтения данных активен
-							if(server->timeouts.read.status == event::status_t::PENDING){
-								// Снимаем статус таймаута с состояния ожидания
-								server->timeouts.read.status = event::status_t::NONE;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Деактивируем таймаут на чтение данных, так как сокет готов к чтению
-								EV_SET(&::local::change.back(), server->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Выполняем применение изменений к ядру
-							::io::apply(log);
+							// Удаляем таймаут ожидания чтения данных, так как сокет готов к чтению
+							::timeout::clear(server->timeouts.read, log);
 						} break;
 					}
+					// Выполняем фиксацию изменений к ядру
+					::local::commit(log);
 					// Обрабатываем событие доступности сокета на чтение
 					return ::io::read(node, io, eth, fmk, log);
 				}
@@ -21460,54 +20447,23 @@ namespace io {
 						 */
 						switch(static_cast <uint8_t> (node->state.node)){
 							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если таймаут ожидания записи данных активен
-								if(peer->timeouts.write.status == event::status_t::PENDING){
-									// Снимаем статус таймаута с состояния ожидания
-									peer->timeouts.write.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Деактивируем таймаут на запись данных, так как сокет готов к записи
-									EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									// Выполняем применение изменений к ядру
-									::io::apply(log);
-								}
-							} break;
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
+								::timeout::clear(awh_cast <::io::peer_t *> (node)->timeouts.write, log);
+							break;
 							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если таймаут ожидания записи данных активен
-								if(client->timeouts.write.status == event::status_t::PENDING){
-									// Снимаем статус таймаута с состояния ожидания
-									client->timeouts.write.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Деактивируем таймаут на запись данных, так как сокет готов к записи
-									EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									// Выполняем применение изменений к ядру
-									::io::apply(log);
-								}
-							} break;
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
+								::timeout::clear(awh_cast <::io::client_t *> (node)->timeouts.write, log);
+							break;
 							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Получаем текущее значение объекта сервера
-								::io::server_t * server = awh_cast <::io::server_t *> (node);
-								// Если таймаут ожидания записи данных активен
-								if(server->timeouts.write.status == event::status_t::PENDING){
-									// Снимаем статус таймаута с состояния ожидания
-									server->timeouts.write.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Деактивируем таймаут на запись данных, так как сокет готов к записи
-									EV_SET(&::local::change.back(), server->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									// Выполняем применение изменений к ядру
-									::io::apply(log);
-								}
-							} break;
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
+								::timeout::clear(awh_cast <::io::server_t *> (node)->timeouts.write, log);
+							break;
 						}
+						// Выполняем фиксацию изменений к ядру
+						::local::commit(log);
 						// Обрабатываем событие доступности сокета на запись
 						return ::io::write(node, io, eth, fmk, log);
 					// Если мы поймали шум
@@ -21604,18 +20560,10 @@ namespace io {
 				if((origin->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
 					// Формируем отрицательный результат
 					return false;
-				// Если установлен таймаут на чтение данных
-				if(origin->timeouts.read.delay > 0){
-					// Если событие является неблокирующим
-					if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-						// Активируем статус таймаута на чтение данных
-						origin->timeouts.read.status = event::status_t::PENDING;
-						// Добавляем новое событие в список изменений
-						::local::change.push_back((struct kevent){});
-						// Устанавливаем таймаут на получение данных
-						EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.read.delay), origin);
-					}
-				}
+				// Если событие является неблокирующим
+				if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
+					// Создаём таймаут на ожидание получения данных
+					::timeout::create(origin->timeouts.read, origin, log);
 			}
 			// Заполняем структуру клиента нулями после того как извлекли данные
 			::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
@@ -22093,15 +21041,11 @@ namespace io {
 						// Если установлен таймаут на чтение данных
 						if(origin->timeouts.read.delay > 0){
 							// Если событие является неблокирующим
-							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-								// Активируем статус таймаута на чтение данных
-								origin->timeouts.read.status = event::status_t::PENDING;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Устанавливаем таймаут на получение данных
-								EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.read.delay), origin);
+							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
+								// Создаём таймаут на ожидание получения данных
+								::timeout::create(origin->timeouts.read, origin, log);
 							// Если событие является блокирующим установки таймаута на чтение данных
-							} else eth->socket.timeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
+							else eth->socket.timeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
 						}
 						// Выводим положительный результат
 						return !guard.isGarbage();
@@ -37955,15 +36899,8 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 													break;
 												}
 											}
-											// Если необходимо активировать таймаут на чтение для однорангового узла
-											if(peer->timeouts.read.delay > 0){
-												// Устанавливаем статус таймаута на чтение как ожидающий
-												peer->timeouts.read.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-											}
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(peer->timeouts.read, peer, this->_log);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -38033,39 +36970,17 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 												}
 											}
 											// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
-											if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
-												// Если необходимо активировать таймаут на подключение к серверу
-												if(client->timeouts.connect.delay > 0){
-													// Устанавливаем статус таймаута на подключение как ожидающий
-													client->timeouts.connect.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Устанавливаем таймаут на подключение к серверу
-													EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-												}
+											if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)
+												// Создаём таймаут на ожидание подключения к серверу
+												::timeout::create(client->timeouts.connect, client, this->_log);
 											// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
-											} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
-												// Если необходимо активировать таймаут на переподключение к серверу
-												if(client->timeouts.reconnect.delay > 0){
-													// Устанавливаем статус таймаута на переподключение как ожидающий
-													client->timeouts.reconnect.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Устанавливаем таймаут на переподключение к серверу
-													EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-												}
+											else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED)
+												// Создаём таймаут на ожидание переподключения к серверу
+												::timeout::create(client->timeouts.reconnect, client, this->_log);
 											// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-											} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
-												// Если необходимо активировать таймаут на чтение для клиента
-												if(client->timeouts.read.delay > 0){
-													// Устанавливаем статус таймаута на чтение как ожидающий
-													client->timeouts.read.status = event::status_t::PENDING;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Устанавливаем таймаут на получение данных
-													EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-												}
-											}
+											else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, this->_log);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -38197,42 +37112,14 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 											EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 											// Получаем текущее значение объекта однорангового узла
 											::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-											// Если таймаут на чтение уже был активирован
-											if(peer->timeouts.read.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												peer->timeouts.read.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на получение данных
-												EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-											// Если таймаут на запись уже был активирован
-											if(peer->timeouts.write.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												peer->timeouts.write.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на запись данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-											// Если таймаут ограничителя скорости на чтение уже был активирован
-											if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												peer->bandwidth.read.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на получение данных для ограничителя скорости
-												EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-											// Если таймаут ограничителя скорости на запись уже был активирован
-											if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												peer->bandwidth.write.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на запись данных для ограничителя скорости
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
+											// Удаляем таймаут ожидания получения данных
+											::timeout::clear(peer->timeouts.read, this->_log);
+											// Удаляем таймаут ожидания отправки данных
+											::timeout::clear(peer->timeouts.write, this->_log);
+											// Удаляем таймаут на ограничение пропускной способности на получение данных
+											::timeout::clear(peer->bandwidth.read.timeout, this->_log);
+											// Удаляем таймаут на ограничение пропускной способности на отправку данных
+											::timeout::clear(peer->bandwidth.write.timeout, this->_log);
 											// Если необходимо активировать таймаут на чтение для однорангового узла
 											if(peer->timeouts.read.delay > 0)
 												// Устанавливаем таймаут на получение данных
@@ -38267,73 +37154,26 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 											if(i->second->state.node == event::node_t::CLIENT){
 												// Получаем текущее значение объекта клиента
 												::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-												// Если таймаут на подключение уже был активирован
-												if(client->timeouts.connect.status == event::status_t::PENDING){
-													// Снимаем флаг ожидания работы таймаута
-													client->timeouts.connect.status = event::status_t::NONE;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Удаляем таймаут на подключение к серверу
-													EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+												// Удаляем таймаут ожидания получения данных
+												::timeout::clear(client->timeouts.read, this->_log);
+												// Удаляем таймаут ожидания отправки данных
+												::timeout::clear(client->timeouts.write, this->_log);
+												// Удаляем таймаут ожидания подключения к серверу
+												::timeout::clear(client->timeouts.connect, this->_log);
+												// Удаляем таймаут ожидания переподключения к серверу
+												::timeout::clear(client->timeouts.reconnect, this->_log);
+												// Удаляем таймаут на ограничение пропускной способности на получение данных
+												::timeout::clear(client->bandwidth.read.timeout, this->_log);
+												// Удаляем таймаут на ограничение пропускной способности на отправку данных
+												::timeout::clear(client->bandwidth.write.timeout, this->_log);
+												// Если необходимо активировать таймаут на чтение для клиента
+												if(client->timeouts.read.delay > 0)
+													// Устанавливаем таймаут на получение данных
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+												// Если необходимо активировать таймаут на запись для клиента
+												if(client->timeouts.write.delay > 0)
 													// Устанавливаем таймаут на запись данных
-													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
-												// Если таймаут на переподключение уже был активирован
-												} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-													// Снимаем флаг ожидания работы таймаута
-													client->timeouts.reconnect.status = event::status_t::NONE;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Удаляем таймаут на переподключение к серверу
-													EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													// Устанавливаем таймаут на запись данных
-													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.reconnect.delay);
-												// Если таймауты ни на подключение, не на переподключения активированы небыли
-												} else {
-													// Если таймаут на чтение уже был активирован
-													if(client->timeouts.read.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														client->timeouts.read.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на получение данных
-														EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если таймаут на запись уже был активирован
-													if(client->timeouts.write.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														client->timeouts.write.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на запись данных
-														EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если таймаут ограничителя скорости на чтение уже был активирован
-													if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														client->bandwidth.read.timeout.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на получение данных для ограничителя скорости
-														EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если таймаут ограничителя скорости на запись уже был активирован
-													if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														client->bandwidth.write.timeout.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на запись данных для ограничителя скорости
-														EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если необходимо активировать таймаут на чтение для клиента
-													if(client->timeouts.read.delay > 0)
-														// Устанавливаем таймаут на получение данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
-													// Если необходимо активировать таймаут на запись для клиента
-													if(client->timeouts.write.delay > 0)
-														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
-												}
+													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 											}
 										}
 										// Выполняем "пинок" для применения изменений
@@ -38361,15 +37201,8 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 											::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 											// Если сервер находится в состоянии запущено и установлен таймаут на чтение для сервера
 											if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
-												// Если таймаут ограничителя скорости на чтение уже был активирован
-												if(server->wrate.timeout.status == event::status_t::PENDING){
-													// Снимаем флаг ожидания работы таймаута
-													server->wrate.timeout.status = event::status_t::NONE;
-													// Добавляем новое событие в список изменений
-													::local::change.push_back((struct kevent){});
-													// Удаляем таймаут на получение данных для ограничителя скорости
-													EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-												}
+												// Удаляем таймаут пропускной способности на чтение данных
+												::timeout::clear(server->wrate.timeout, this->_log);
 												// Если необходимо активировать таймаут на чтение для клиента
 												if(server->timeouts.read.delay > 0)
 													// Устанавливаем таймаут на получение данных
@@ -38961,15 +37794,8 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 															break;
 														}
 													}
-													// Если необходимо активировать таймаут на чтение для однорангового узла
-													if(peer->timeouts.read.delay > 0){
-														// Устанавливаем статус таймаута на чтение как ожидающий
-														peer->timeouts.read.status = event::status_t::PENDING;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Устанавливаем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-													}
+													// Создаём таймаут на ожидание получения данных
+													::timeout::create(peer->timeouts.read, peer, this->_log);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -39039,39 +37865,17 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 														}
 													}
 													// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
-													if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
-														// Если необходимо активировать таймаут на подключение к серверу
-														if(client->timeouts.connect.delay > 0){
-															// Устанавливаем статус таймаута на подключение как ожидающий
-															client->timeouts.connect.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на подключение к серверу
-															EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-														}
+													if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)
+														// Создаём таймаут на ожидание подключения к серверу
+														::timeout::create(client->timeouts.connect, client, this->_log);
 													// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
-													} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED) {
-														// Если необходимо активировать таймаут на переподключение к серверу
-														if(client->timeouts.reconnect.delay > 0){
-															// Устанавливаем статус таймаута на переподключение как ожидающий
-															client->timeouts.reconnect.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на переподключение к серверу
-															EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-														}
+													else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED)
+														// Создаём таймаут на ожидание переподключения к серверу
+														::timeout::create(client->timeouts.reconnect, client, this->_log);
 													// Если клиент находится в состоянии подключено и установлен таймаут на чтение для клиента
-													} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) {
-														// Если необходимо активировать таймаут на чтение для клиента
-														if(client->timeouts.read.delay > 0){
-															// Устанавливаем статус таймаута на чтение как ожидающий
-															client->timeouts.read.status = event::status_t::PENDING;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Устанавливаем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-														}
-													}
+													else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)
+														// Создаём таймаут на ожидание получения данных
+														::timeout::create(client->timeouts.read, client, this->_log);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -39203,42 +38007,14 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 													// Получаем текущее значение объекта однорангового узла
 													::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-													// Если таймаут на чтение уже был активирован
-													if(peer->timeouts.read.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														peer->timeouts.read.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на получение данных
-														EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если таймаут на запись уже был активирован
-													if(peer->timeouts.write.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														peer->timeouts.write.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на запись данных
-														EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если таймаут ограничителя скорости на чтение уже был активирован
-													if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														peer->bandwidth.read.timeout.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на получение данных для ограничителя скорости
-														EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
-													// Если таймаут ограничителя скорости на запись уже был активирован
-													if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														peer->bandwidth.write.timeout.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на запись данных для ограничителя скорости
-														EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-													}
+													// Удаляем таймаут ожидания получения данных
+													::timeout::clear(peer->timeouts.read, this->_log);
+													// Удаляем таймаут ожидания отправки данных
+													::timeout::clear(peer->timeouts.write, this->_log);
+													// Удаляем таймаут на ограничение пропускной способности на получение данных
+													::timeout::clear(peer->bandwidth.read.timeout, this->_log);
+													// Удаляем таймаут на ограничение пропускной способности на отправку данных
+													::timeout::clear(peer->bandwidth.write.timeout, this->_log);
 													// Если необходимо активировать таймаут на чтение для однорангового узла
 													if(peer->timeouts.read.delay > 0)
 														// Устанавливаем таймаут на получение данных
@@ -39271,73 +38047,26 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 													EV_SET(&::local::change.back(), fd, EVFILT_READ, EV_ADD | EV_RECEIPT, 0, 0, nullptr);
 													// Получаем текущее значение объекта клиента
 													::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-													// Если таймаут на подключение уже был активирован
-													if(client->timeouts.connect.status == event::status_t::PENDING){
-														// Снимаем флаг ожидания работы таймаута
-														client->timeouts.connect.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на подключение к серверу
-														EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
+													// Удаляем таймаут ожидания получения данных
+													::timeout::clear(client->timeouts.read, this->_log);
+													// Удаляем таймаут ожидания отправки данных
+													::timeout::clear(client->timeouts.write, this->_log);
+													// Удаляем таймаут ожидания подключения к серверу
+													::timeout::clear(client->timeouts.connect, this->_log);
+													// Удаляем таймаут ожидания переподключения к серверу
+													::timeout::clear(client->timeouts.reconnect, this->_log);
+													// Удаляем таймаут на ограничение пропускной способности на получение данных
+													::timeout::clear(client->bandwidth.read.timeout, this->_log);
+													// Удаляем таймаут на ограничение пропускной способности на отправку данных
+													::timeout::clear(client->bandwidth.write.timeout, this->_log);
+													// Если необходимо активировать таймаут на чтение для клиента
+													if(client->timeouts.read.delay > 0)
+														// Устанавливаем таймаут на получение данных
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+													// Если необходимо активировать таймаут на запись для клиента
+													if(client->timeouts.write.delay > 0)
 														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
-													// Если таймаут на переподключение уже был активирован
-													} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-														// Снимаем флаг ожидания работы таймаута
-														client->timeouts.reconnect.status = event::status_t::NONE;
-														// Добавляем новое событие в список изменений
-														::local::change.push_back((struct kevent){});
-														// Удаляем таймаут на переподключение к серверу
-														EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.reconnect.delay);
-													// Если таймауты ни на подключение, не на переподключения активированы небыли
-													} else {
-														// Если таймаут на чтение уже был активирован
-														if(client->timeouts.read.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->timeouts.read.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на получение данных
-															EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если таймаут на запись уже был активирован
-														if(client->timeouts.write.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->timeouts.write.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на запись данных
-															EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если таймаут ограничителя скорости на чтение уже был активирован
-														if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->bandwidth.read.timeout.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на получение данных для ограничителя скорости
-															EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если таймаут ограничителя скорости на запись уже был активирован
-														if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															client->bandwidth.write.timeout.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на запись данных для ограничителя скорости
-															EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
-														// Если необходимо активировать таймаут на чтение для клиента
-														if(client->timeouts.read.delay > 0)
-															// Устанавливаем таймаут на получение данных
-															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
-														// Если необходимо активировать таймаут на запись для клиента
-														if(client->timeouts.write.delay > 0)
-															// Устанавливаем таймаут на запись данных
-															this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
-													}
+														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -39364,15 +38093,8 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 													::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 													// Если сервер находится в состоянии запущено и установлен таймаут на чтение для сервера
 													if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
-														// Если таймаут ограничителя скорости на чтение уже был активирован
-														if(server->wrate.timeout.status == event::status_t::PENDING){
-															// Снимаем флаг ожидания работы таймаута
-															server->wrate.timeout.status = event::status_t::NONE;
-															// Добавляем новое событие в список изменений
-															::local::change.push_back((struct kevent){});
-															// Удаляем таймаут на получение данных для ограничителя скорости
-															EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-														}
+														// Удаляем таймаут пропускной способности на чтение данных
+														::timeout::clear(server->wrate.timeout, this->_log);
 														// Если необходимо активировать таймаут на чтение для клиента
 														if(server->timeouts.read.delay > 0)
 															// Устанавливаем таймаут на получение данных
@@ -40921,15 +39643,11 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										// Если необходимо активировать таймаут на чтение для клиента
 										if(client->timeouts.read.delay > 0){
 											// Если событие является неблокирующим
-											if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-												// Устанавливаем статус таймаута на чтение как ожидающий
-												client->timeouts.read.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
+											if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, this->_log);
 											// Если событие является блокирующим
-											} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+											else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 										}
 									} break;
 									// Если узел является сервером
@@ -41047,15 +39765,11 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										// Если необходимо активировать таймаут на подключение к серверу
 										if(client->timeouts.connect.delay > 0){
 											// Если событие является неблокирующим
-											if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-												// Устанавливаем статус таймаута на чтение как ожидающий
-												client->timeouts.connect.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
+											if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+												// Создаём таймаут на ожидание подключения к серверу
+												::timeout::create(client->timeouts.connect, client, this->_log);
 											// Если событие является блокирующим
-											} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
+											else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
 										}
 									} break;
 									// Если узел является сервером
@@ -44776,17 +43490,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
 										else peer->bandwidth.write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
-										if(peer->bandwidth.write.limit == 0){
-											// Если таймаут ограничителя скорости на запись уже был активирован
-											if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												peer->bandwidth.write.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на запись данных для ограничителя скорости
-												EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										}
+										if(peer->bandwidth.write.limit == 0)
+											// Удаляем таймаут на ограничение пропускной способности на отправку данных
+											::timeout::clear(peer->bandwidth.write.timeout, this->_log);
 									} break;
 									// Если режим ограничения пропускной способности является входящим
 									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
@@ -44797,17 +43503,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Устанавливаем пропускную способность для ограничения входящего трафика
 										else peer->bandwidth.read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
-										if(peer->bandwidth.read.limit == 0){
-											// Если таймаут ограничителя скорости на чтение уже был активирован
-											if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												peer->bandwidth.read.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на получение данных для ограничителя скорости
-												EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										}
+										if(peer->bandwidth.read.limit == 0)
+											// Удаляем таймаут на ограничение пропускной способности на получение данных
+											::timeout::clear(peer->bandwidth.read.timeout, this->_log);
 										// Если тип события является потоком
 										if(peer->state.type == event::type_t::STREAM){
 											// Добавляем новое событие в список изменений
@@ -44837,7 +43535,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 									} break;
 								}
 								// Устанавливаем результат выполнения операции
-								return true;
+								return this->kick();
 							}
 							// Для других семейств событий
 							default: {
@@ -44900,19 +43598,11 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
 										else origin->wrate.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
-										if(origin->wrate.limit == 0){
-											// Если таймаут ограничителя скорости на запись уже был активирован
-											if(origin->wrate.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												origin->wrate.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на запись данных для ограничителя скорости
-												EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										}
+										if(origin->wrate.limit == 0)
+											// Удаляем таймаут на ограничение пропускной способности
+											::timeout::clear(origin->wrate.timeout, this->_log);
 										// Устанавливаем результат выполнения операции
-										return true;
+										return this->kick();
 									}
 									// Если режим ограничения пропускной способности является входящим
 									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
@@ -44997,17 +43687,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
 										else client->bandwidth.write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
-										if(client->bandwidth.write.limit == 0){
-											// Если таймаут ограничителя скорости на запись уже был активирован
-											if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												client->bandwidth.write.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на запись данных для ограничителя скорости
-												EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										}
+										if(client->bandwidth.write.limit == 0)
+											// Удаляем таймаут на ограничение пропускной способности на отправку данных
+											::timeout::clear(client->bandwidth.write.timeout, this->_log);
 									} break;
 									// Если режим ограничения пропускной способности является входящим
 									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
@@ -45018,17 +43700,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Устанавливаем пропускную способность для ограничения входящего трафика
 										else client->bandwidth.read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
-										if(client->bandwidth.read.limit == 0){
-											// Если таймаут ограничителя скорости на чтение уже был активирован
-											if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												client->bandwidth.read.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на получение данных для ограничителя скорости
-												EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										}
+										if(client->bandwidth.read.limit == 0)
+											// Удаляем таймаут на ограничение пропускной способности на получение данных
+											::timeout::clear(client->bandwidth.read.timeout, this->_log);
 										// Если тип события является потоком
 										if(client->state.type == event::type_t::STREAM){
 											// Добавляем новое событие в список изменений
@@ -45062,7 +43736,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 									} break;
 								}
 								// Устанавливаем результат выполнения операции
-								return true;
+								return this->kick();
 							}
 							// Для других семейств событий
 							default: {
@@ -45141,17 +43815,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Устанавливаем пропускную способность для ограничения входящего трафика
 										else server->wrate.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
-										if(server->wrate.limit == 0){
-											// Если таймаут ограничителя скорости на чтение уже был активирован
-											if(server->wrate.timeout.status == event::status_t::PENDING){
-												// Снимаем флаг ожидания работы таймаута
-												server->wrate.timeout.status = event::status_t::NONE;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Удаляем таймаут на получение данных для ограничителя скорости
-												EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-											}
-										}
+										if(server->wrate.limit == 0)
+											// Удаляем таймаут на ограничение пропускной способности
+											::timeout::clear(server->wrate.timeout, this->_log);
 										// Если тип события является потоком
 										if(server->state.type == event::type_t::STREAM){
 											// Добавляем новое событие в список изменений
@@ -45185,7 +43851,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 									} break;
 								}
 								// Устанавливаем результат выполнения операции
-								return true;
+								return this->kick();
 							}
 							// Для других семейств событий
 							default: {
@@ -45787,15 +44453,10 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 								// Если таймаут для действия чтения был отключён но при этом находится в состоянии ожидания
 								if((peer->timeouts.read.delay == 0) && (peer->timeouts.read.status == event::status_t::PENDING)){
-									// Снимаем флаг ожидания работы таймаута
-									peer->timeouts.read.status = event::status_t::NONE;
 									// Если событие не находится в состоянии паузы
-									if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем таймаут на получение данных
-										EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+										// Удаляем таймаут ожидания получения данных
+										::timeout::clear(peer->timeouts.read, this->_log);
 								}
 								// Обнуляем таймаут для действия чтения, так как неблокирующие сокеты не используют таймауты
 								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
@@ -45810,15 +44471,10 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 								// Если таймаут для действия записи был отключён но при этом находится в состоянии ожидания
 								if((peer->timeouts.write.delay == 0) && (peer->timeouts.write.status == event::status_t::PENDING)){
-									// Снимаем флаг ожидания работы таймаута
-									peer->timeouts.write.status = event::status_t::NONE;
 									// Если событие не находится в состоянии паузы
-									if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем таймаут на запись данных
-										EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+										// Удаляем таймаут ожидания отправки данных
+										::timeout::clear(peer->timeouts.write, this->_log);
 								}
 								// Обнуляем таймаут для действия записи, так как неблокирующие сокеты не используют таймауты
 								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
@@ -45855,6 +44511,8 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							}
 						}
 					}
+					// Выполняем "пинок" для применения изменений
+					this->kick();
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -45930,15 +44588,10 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 								// Если таймаут для действия чтения был отключён но при этом находится в состоянии ожидания
 								if((client->timeouts.read.delay == 0) && (client->timeouts.read.status == event::status_t::PENDING)){
-									// Снимаем флаг ожидания работы таймаута
-									client->timeouts.read.status = event::status_t::NONE;
 									// Если событие не находится в состоянии паузы
-									if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+										// Удаляем таймаут ожидания получения данных
+										::timeout::clear(client->timeouts.read, this->_log);
 								}
 								// Обнуляем таймаут для действия чтения, так как неблокирующие сокеты не используют таймауты
 								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
@@ -45953,15 +44606,10 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 								// Если таймаут для действия записи был отключён но при этом находится в состоянии ожидания
 								if((client->timeouts.write.delay == 0) && (client->timeouts.write.status == event::status_t::PENDING)){
-									// Снимаем флаг ожидания работы таймаута
-									client->timeouts.write.status = event::status_t::NONE;
 									// Если событие не находится в состоянии паузы
-									if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Удаляем таймаут на запись данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-									}
+									if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+										// Удаляем таймаут ожидания отправки данных
+										::timeout::clear(client->timeouts.write, this->_log);
 								}
 								// Обнуляем таймаут для действия записи, так как неблокирующие сокеты не используют таймауты
 								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
@@ -46008,23 +44656,41 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							}
 						}
 					}
+					// Выполняем "пинок" для применения изменений
+					this->kick();
 				} break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем объект события сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
 					 * Определяем тип действия события
 					 */
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
-						case static_cast <uint8_t> (event::action_t::READ):
+						case static_cast <uint8_t> (event::action_t::READ): {
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <::io::server_t *> (i->second.get())->timeouts.read.delay = timeout;
-						break;
+							server->timeouts.read.delay = timeout;
+							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+							if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+								// Если событие является блокирующим
+								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
+									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
+									this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, timeout);
+							}
+						} break;
 						// Если действие является записью
-						case static_cast <uint8_t> (event::action_t::WRITE):
+						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Устанавливаем значение таймаута для действия события
-							awh_cast <::io::server_t *> (i->second.get())->timeouts.write.delay = timeout;
-						break;
+							server->timeouts.write.delay = timeout;
+							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+							if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+								// Если событие является блокирующим
+								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
+									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
+									this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, timeout);
+							}
+						} break;
 						// Для остальных типов действий
 						default: {
 							// Получаем объект события сервера
@@ -46812,9 +45478,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									fs->actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является чтением файла
 						case static_cast <uint8_t> (event::action_t::READ): {
 							/**
@@ -46832,9 +45496,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									fs->actions &= ~::action::READ;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является изменением каталога
 						case static_cast <uint8_t> (event::action_t::CHANGE): {
 							/**
@@ -47051,9 +45713,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									ipc->transfer.actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -47081,18 +45741,11 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Активируем событие на чтение данных
 									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-										// Если необходимо активировать таймаут на чтение для однорангового узла
-										if(peer->timeouts.read.delay > 0){
-											// Устанавливаем флаг ожидания работы таймаута
-											peer->timeouts.read.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-										}
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(peer->timeouts.read, peer, this->_log);
 									// Если необходимо активировать таймаут на чтение для однорангового узла
-									} else if(peer->timeouts.read.delay > 0)
+									else if(peer->timeouts.read.delay > 0)
 										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 										this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								} break;
@@ -47104,24 +45757,10 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 									// Если событие является неблокирующим
 									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на чтение уже был активирован
-										if(peer->timeouts.read.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											peer->timeouts.read.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на получение данных
-											EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-										// Если таймаут ограничителя скорости на чтение уже был активирован
-										if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											peer->bandwidth.read.timeout.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на получение данных для ограничителя скорости
-											EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+										// Удаляем таймаут ожидания получения данных
+										::timeout::clear(peer->timeouts.read, this->_log);
+										// Удаляем таймаут на ограничение пропускной способности на получение данных
+										::timeout::clear(peer->bandwidth.read.timeout, this->_log);
 									// Снимаем таймаут на получение данных
 									} else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
 								} break;
@@ -47145,15 +45784,8 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на ожидание готовности сокета на запись
 											EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-											// Если необходимо активировать таймаут на запись для однорангового узла
-											if(peer->timeouts.write.delay > 0){
-												// Устанавливаем флаг ожидания работы таймаута
-												peer->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											}
+											// Создаём таймаут на ожидание отправки данных
+											::timeout::create(peer->timeouts.write, peer, this->_log);
 										}
 									// Если необходимо активировать таймаут на запись для однорангового узла
 									} else if(peer->timeouts.write.delay > 0)
@@ -47166,24 +45798,10 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									peer->transfer.actions &= ~::action::WRITE;
 									// Если событие является неблокирующим
 									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на запись уже был активирован
-										if(peer->timeouts.write.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											peer->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на запись данных
-											EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-										// Если таймаут ограничителя скорости на запись уже был активирован
-										if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											peer->bandwidth.write.timeout.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на запись данных для ограничителя скорости
-											EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+										// Удаляем таймаут ожидания отправки данных
+										::timeout::clear(peer->timeouts.write, this->_log);
+										// Удаляем таймаут на ограничение пропускной способности на отправку данных
+										::timeout::clear(peer->bandwidth.write.timeout, this->_log);
 									// Снимаем таймаут на запись данных
 									} else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 								} break;
@@ -47206,9 +45824,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									peer->transfer.actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является отключением от сервера
 						case static_cast <uint8_t> (event::action_t::DISCONNECT): {
 							/**
@@ -47226,9 +45842,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									peer->transfer.actions &= ~::action::DISCONNECT;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -47252,34 +45866,18 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Добавляем действие события в список разрешённых действий
 									origin->transfer.actions |= ::action::READ;
 									// Если событие является неблокирующим
-									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-										// Если необходимо активировать таймаут на чтение для однорангового узла
-										if(origin->timeouts.read.delay > 0){
-											// Устанавливаем флаг ожидания работы таймаута
-											origin->timeouts.read.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.read.delay), origin);
-										}
-									}
+									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(origin->timeouts.read, origin, this->_log);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									origin->transfer.actions &= ~::action::READ;
 									// Если событие является неблокирующим
-									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на чтение уже был активирован
-										if(origin->timeouts.read.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											origin->timeouts.read.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на получение данных
-											EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									}
+									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
+										// Удаляем таймаут ожидания получения данных
+										::timeout::clear(origin->timeouts.read, this->_log);
 								} break;
 							}
 						} break;
@@ -47301,15 +45899,8 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на ожидание готовности сокета на запись
 											EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
-											// Если необходимо активировать таймаут на запись для однорангового узла
-											if(origin->timeouts.write.delay > 0){
-												// Устанавливаем флаг ожидания работы таймаута
-												origin->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-											}
+											// Создаём таймаут на ожидание отправки данных
+											::timeout::create(origin->timeouts.write, origin, this->_log);
 										}
 									}
 								} break;
@@ -47319,24 +45910,10 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									origin->transfer.actions &= ~::action::WRITE;
 									// Если событие является неблокирующим
 									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на запись уже был активирован
-										if(origin->timeouts.write.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											origin->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на запись данных
-											EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-										// Если таймаут ограничителя скорости на запись уже был активирован
-										if(origin->wrate.timeout.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											origin->wrate.timeout.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на запись данных для ограничителя скорости
-											EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+										// Удаляем таймаут на ограничение пропускной способности
+										::timeout::clear(origin->wrate.timeout, this->_log);
+										// Удаляем таймаут ожидания отправки данных
+										::timeout::clear(origin->timeouts.write, this->_log);
 									}
 								} break;
 							}
@@ -47358,9 +45935,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									origin->transfer.actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является отключением от сервера
 						case static_cast <uint8_t> (event::action_t::DISCONNECT): {
 							/**
@@ -47378,9 +45953,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									origin->transfer.actions &= ~::action::DISCONNECT;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -47452,9 +46025,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									tunnel->actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -47491,18 +46062,11 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Активируем событие на чтение данных
 									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если необходимо активировать таймаут на чтение для клиента
-										if(client->timeouts.read.delay > 0){
-											// Устанавливаем флаг ожидания работы таймаута
-											client->timeouts.read.status = event::status_t::PENDING;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-										}
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(client->timeouts.read, client, this->_log);
 									// Если необходимо активировать таймаут на чтение для клиента
-									} else if(client->timeouts.read.delay > 0)
+									else if(client->timeouts.read.delay > 0)
 										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 										this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								} break;
@@ -47514,24 +46078,10 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на чтение уже был активирован
-										if(client->timeouts.read.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											client->timeouts.read.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на получение данных
-											EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-										// Если таймаут ограничителя скорости на чтение уже был активирован
-										if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											client->bandwidth.read.timeout.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на получение данных для ограничителя скорости
-											EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+										// Удаляем таймаут ожидания получения данных
+										::timeout::clear(client->timeouts.read, this->_log);
+										// Удаляем таймаут на ограничение пропускной способности на получение данных
+										::timeout::clear(client->bandwidth.read.timeout, this->_log);
 									// Снимаем таймаут на получение данных
 									} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
 								} break;
@@ -47555,15 +46105,8 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 											::local::change.push_back((struct kevent){});
 											// Активируем событие на ожидание готовности сокета на запись
 											EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-											// Если необходимо активировать таймаут на запись для клиента
-											if(client->timeouts.write.delay > 0){
-												// Устанавливаем флаг ожидания работы таймаута
-												client->timeouts.write.status = event::status_t::PENDING;
-												// Добавляем новое событие в список изменений
-												::local::change.push_back((struct kevent){});
-												// Устанавливаем таймаут на получение данных
-												EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											}
+											// Создаём таймаут на ожидание отправки данных
+											::timeout::create(client->timeouts.write, client, this->_log);
 										}
 									// Если необходимо активировать таймаут на запись для клиента
 									} else if(client->timeouts.write.delay > 0)
@@ -47576,24 +46119,10 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									client->transfer.actions &= ~::action::WRITE;
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на запись уже был активирован
-										if(client->timeouts.write.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											client->timeouts.write.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на запись данных
-											EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-										// Если таймаут ограничителя скорости на запись уже был активирован
-										if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-											// Снимаем флаг ожидания работы таймаута
-											client->bandwidth.write.timeout.status = event::status_t::NONE;
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на запись данных для ограничителя скорости
-											EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+										// Удаляем таймаут ожидания отправки данных
+										::timeout::clear(client->timeouts.write, this->_log);
+										// Удаляем таймаут на ограничение пропускной способности на отправку данных
+										::timeout::clear(client->bandwidth.write.timeout, this->_log);
 									// Снимаем таймаут на запись данных
 									} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 								} break;
@@ -47616,9 +46145,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									client->transfer.actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является подключением к серверу
 						case static_cast <uint8_t> (event::action_t::CONNECT): {
 							/**
@@ -47629,15 +46156,12 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 								case static_cast <uint8_t> (event::mode_t::ENABLED): {
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::CONNECT;
-									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на подключение уже был активирован
-										if(client->timeouts.connect.status == event::status_t::PENDING){
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на подключение к серверу
-											EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-										}
+									// Если клиент находится в состоянии ожидания подключения к серверу
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+										// Если событие является неблокирующим
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+											// Создаём таймаут на ожидание подключения к серверу
+											::timeout::create(client->timeouts.connect, client, this->_log);
 									}
 								} break;
 								// Если режим действия события является отключённым
@@ -47645,15 +46169,9 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~::action::CONNECT;
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на подключение уже был активирован
-										if(client->timeouts.connect.status == event::status_t::PENDING){
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на подключение к серверу
-											EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									}
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+										// Удаляем таймаут ожидания подключения к серверу
+										::timeout::clear(client->timeouts.connect, this->_log);
 								} break;
 							}
 						} break;
@@ -47667,15 +46185,12 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 								case static_cast <uint8_t> (event::mode_t::ENABLED): {
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::RECONNECT;
-									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на переподключение уже был активирован
-										if(client->timeouts.reconnect.status == event::status_t::PENDING){
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Устанавливаем таймаут на переподключение к серверу
-											EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-										}
+									// Если клиент находится в состоянии ожидания переподключения к серверу
+									if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
+										// Если событие является неблокирующим
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+											// Создаём таймаут на ожидание переподключения к серверу
+											::timeout::create(client->timeouts.reconnect, client, this->_log);
 									}
 								} break;
 								// Если режим действия события является отключённым
@@ -47683,20 +46198,12 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~::action::RECONNECT;
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут на переподключение уже был активирован
-										if(client->timeouts.reconnect.status == event::status_t::PENDING){
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на переподключение к серверу
-											EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
-									}
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+										// Удаляем таймаут ожидания переподключения к серверу
+										::timeout::clear(client->timeouts.reconnect, this->_log);
 								} break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является отключением от сервера
 						case static_cast <uint8_t> (event::action_t::DISCONNECT): {
 							/**
@@ -47714,9 +46221,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									client->transfer.actions &= ~::action::DISCONNECT;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 					}
 					// Выполняем "пинок" для применения изменений
 					return this->kick();
@@ -47746,9 +46251,12 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Если событие является блокирующим
 									if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 										// Если необходимо активировать таймаут на чтение для сервера
-										if(server->timeouts.read.delay > 0)
-											// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-											this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+										if(server->timeouts.read.delay > 0){
+											// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+											if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+												// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
+												this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+										}
 									}
 								} break;
 								// Если режим действия события является отключённым
@@ -47758,16 +46266,11 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Деактивируем событие на чтение данных
 									EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 									// Если событие является неблокирующим
-									if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
-										// Если таймаут ограничителя скорости на чтение уже был активирован
-										if(server->wrate.timeout.status == event::status_t::PENDING){
-											// Добавляем новое событие в список изменений
-											::local::change.push_back((struct kevent){});
-											// Удаляем таймаут на получение данных для ограничителя скорости
-											EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-										}
+									if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
+										// Удаляем таймаут на ограничение пропускной способности на получение данных
+										::timeout::clear(server->wrate.timeout, this->_log);
 									// Снимаем таймаут на получение данных
-									} else this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
+									else this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
 								} break;
 							}
 						} break;
@@ -47784,9 +46287,12 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Если событие является блокирующим
 									if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 										// Если необходимо активировать таймаут на запись для сервера
-										if(server->timeouts.write.delay > 0)
-											// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-											this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+										if(server->timeouts.write.delay > 0){
+											// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+											if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+												// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
+												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+										}
 									}
 								} break;
 								// Если режим действия события является отключённым
@@ -47817,9 +46323,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									server->actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
-							return true;
-						}
+						} break;
 						// Если действие является принятием входящего соединения
 						case static_cast <uint8_t> (event::action_t::ACCEPT): {
 							// Добавляем новое событие в список изменений
@@ -48048,38 +46552,14 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, peer);
 						// Если событие является неблокирующим
 						if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-							// Если таймаут на чтение уже был активирован
-							if(peer->timeouts.read.status == event::status_t::PENDING){
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на получение данных
-								EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Если таймаут на запись уже был активирован
-							if(peer->timeouts.write.status == event::status_t::PENDING){
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на запись данных
-								EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на чтение уже был активирован
-							if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								peer->bandwidth.read.timeout.status = event::status_t::NONE;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на получение данных для ограничителя скорости
-								EV_SET(&::local::change.back(), peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на запись уже был активирован
-							if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								peer->bandwidth.write.timeout.status = event::status_t::NONE;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на запись данных для ограничителя скорости
-								EV_SET(&::local::change.back(), peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
+							// Удаляем таймаут ожидания получения данных
+							::timeout::clear(peer->timeouts.read, this->_log);
+							// Удаляем таймаут ожидания отправки данных
+							::timeout::clear(peer->timeouts.write, this->_log);
+							// Удаляем таймаут на ограничение пропускной способности на получение данных
+							::timeout::clear(peer->bandwidth.read.timeout, this->_log);
+							// Удаляем таймаут на ограничение пропускной способности на отправку данных
+							::timeout::clear(peer->bandwidth.write.timeout, this->_log);
 						// Если событие является блокирующим
 						} else {
 							// Снимаем таймаут на получение данных
@@ -48103,29 +46583,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						origin->state.status.store(event::status_t::PAUSED, std::memory_order_release);
 						// Если событие является неблокирующим
 						if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-							// Если таймаут на чтение уже был активирован
-							if(origin->timeouts.read.status == event::status_t::PENDING){
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на получение данных
-								EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Если таймаут на запись уже был активирован
-							if(origin->timeouts.write.status == event::status_t::PENDING){
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на запись данных
-								EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на запись уже был активирован
-							if(origin->wrate.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								origin->wrate.timeout.status = event::status_t::NONE;
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на запись данных для ограничителя скорости
-								EV_SET(&::local::change.back(), origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
+							// Удаляем таймаут на ограничение пропускной способности
+							::timeout::clear(origin->wrate.timeout, this->_log);
+							// Удаляем таймаут ожидания получения данных
+							::timeout::clear(origin->timeouts.read, this->_log);
+							// Удаляем таймаут ожидания отправки данных
+							::timeout::clear(origin->timeouts.write, this->_log);
 						}
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
@@ -48157,53 +46620,14 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, client);
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-							// Если таймаут на подключение уже был активирован
-							if(client->timeouts.connect.status == event::status_t::PENDING){
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на подключение к серверу
-								EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							// Если таймаут на переподключение уже был активирован
-							} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на переподключение к серверу
-								EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							// Если таймауты ни на подключение, не на переподключения активированы небыли
-							} else {
-								// Если таймаут на чтение уже был активирован
-								if(client->timeouts.read.status == event::status_t::PENDING){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Удаляем таймаут на получение данных
-									EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-								}
-								// Если таймаут на запись уже был активирован
-								if(client->timeouts.write.status == event::status_t::PENDING){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Удаляем таймаут на запись данных
-									EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-								}
-								// Если таймаут ограничителя скорости на чтение уже был активирован
-								if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-									// Снимаем флаг ожидания работы таймаута
-									client->bandwidth.read.timeout.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Удаляем таймаут на получение данных для ограничителя скорости
-									EV_SET(&::local::change.back(), client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-								}
-								// Если таймаут ограничителя скорости на запись уже был активирован
-								if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-									// Снимаем флаг ожидания работы таймаута
-									client->bandwidth.write.timeout.status = event::status_t::NONE;
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Удаляем таймаут на запись данных для ограничителя скорости
-									EV_SET(&::local::change.back(), client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-								}
-							}
+							// Удаляем таймаут ожидания получения данных
+							::timeout::clear(client->timeouts.read, this->_log);
+							// Удаляем таймаут ожидания отправки данных
+							::timeout::clear(client->timeouts.write, this->_log);
+							// Удаляем таймаут на ограничение пропускной способности на получение данных
+							::timeout::clear(client->bandwidth.read.timeout, this->_log);
+							// Удаляем таймаут на ограничение пропускной способности на отправку данных
+							::timeout::clear(client->bandwidth.write.timeout, this->_log);
 						// Если событие является блокирующим
 						} else {
 							// Снимаем таймаут на получение данных
@@ -48231,16 +46655,11 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						// Деактивируем событие на чтение данных
 						EV_SET(&::local::change.back(), server->fd, EVFILT_READ, EV_DISABLE | EV_RECEIPT, 0, 0, server);
 						// Если событие является неблокирующим
-						if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
-							// Если таймаут ограничителя скорости на чтение уже был активирован
-							if(server->wrate.timeout.status == event::status_t::PENDING){
-								// Добавляем новое событие в список изменений
-								::local::change.push_back((struct kevent){});
-								// Удаляем таймаут на получение данных для ограничителя скорости
-								EV_SET(&::local::change.back(), server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE | EV_RECEIPT, 0, 0, nullptr);
-							}
+						if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))
+							// Удаляем таймаут пропускной способности на получение данных
+							::timeout::clear(server->wrate.timeout, this->_log);
 						// Если событие является блокирующим
-						} else {
+						else {
 							// Снимаем таймаут на получение данных
 							this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
 							// Снимаем таймаут на запись данных
@@ -48419,16 +46838,11 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							// Активируем событие на чтение данных
 							EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, peer);
 							// Если событие является неблокирующим
-							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-								// Если необходимо активировать таймаут на чтение для однорангового узла
-								if(peer->timeouts.read.delay > 0){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-								}
+							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
+								// Создаём таймаут на ожидание получения данных
+								::timeout::create(peer->timeouts.read, peer, this->_log);
 							// Если необходимо активировать таймаут на чтение для однорангового узла
-							} else if(peer->timeouts.read.delay > 0)
+							else if(peer->timeouts.read.delay > 0)
 								// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 						}
@@ -48442,13 +46856,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									::local::change.push_back((struct kevent){});
 									// Активируем событие на ожидание готовности сокета на запись
 									EV_SET(&::local::change.back(), peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, peer);
-									// Если необходимо активировать таймаут на запись для однорангового узла
-									if(peer->timeouts.write.delay > 0){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-									}
+									// Создаём таймаут на ожидание отправки данных
+									::timeout::create(peer->timeouts.write, peer, this->_log);
 								}
 							// Если необходимо активировать таймаут на запись для однорангового узла
 							} else if(peer->timeouts.write.delay > 0)
@@ -48467,15 +46876,9 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если событие чтения из сокета разрешено
 						if(origin->transfer.actions & ::action::READ){
 							// Если событие является неблокирующим
-							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-								// Если необходимо активировать таймаут на чтение для однорангового узла
-								if(origin->timeouts.read.delay > 0){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), origin->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.read.delay), origin);
-								}
-							}
+							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
+								// Создаём таймаут на ожидание получения данных
+								::timeout::create(origin->timeouts.read, origin, this->_log);
 						}
 						// Если событие записи в сокет разрешено
 						if(origin->transfer.actions & ::action::WRITE){
@@ -48487,13 +46890,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									::local::change.push_back((struct kevent){});
 									// Активируем событие на ожидание готовности сокета на запись
 									EV_SET(&::local::change.back(), origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, origin);
-									// Если необходимо активировать таймаут на запись для однорангового узла
-									if(origin->timeouts.write.delay > 0){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-									}
+									// Создаём таймаут на ожидание отправки данных
+									::timeout::create(origin->timeouts.write, origin, this->_log);
 								}
 							}
 						}
@@ -48515,40 +46913,6 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
 						client->state.status.store(event::status_t::RESUMED, std::memory_order_release);
-						// Если событие подключение ксерверу разрешено
-						if(client->transfer.actions & ::action::CONNECT){
-							// Если событие является неблокирующим
-							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут на подключение уже был активирован
-								if(client->timeouts.connect.status == event::status_t::PENDING){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Активируем событие на ожидание готовности сокета на запись
-									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на подключение к серверу
-									EV_SET(&::local::change.back(), client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-								}
-							}
-						}
-						// Если событие переподключение ксерверу разрешено
-						if(client->transfer.actions & ::action::RECONNECT){
-							// Если событие является неблокирующим
-							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут на переподключение уже был активирован
-								if(client->timeouts.reconnect.status == event::status_t::PENDING){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Активируем событие на ожидание готовности сокета на запись
-									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на переподключение к серверу
-									EV_SET(&::local::change.back(), client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-								}
-							}
-						}
 						// Если событие чтения из сокета разрешено
 						if(client->transfer.actions & ::action::READ){
 							// Добавляем новое событие в список изменений
@@ -48556,16 +46920,11 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							// Активируем событие на чтение данных
 							EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_READ, EV_ENABLE | EV_RECEIPT, 0, 0, client);
 							// Если событие является неблокирующим
-							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-								// Если необходимо активировать таймаут на чтение для клиента
-								if(client->timeouts.read.delay > 0){
-									// Добавляем новое событие в список изменений
-									::local::change.push_back((struct kevent){});
-									// Устанавливаем таймаут на получение данных
-									EV_SET(&::local::change.back(), client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-								}
+							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+								// Создаём таймаут на ожидание получения данных
+								::timeout::create(client->timeouts.read, client, this->_log);
 							// Если необходимо активировать таймаут на чтение для клиента
-							} else if(client->timeouts.read.delay > 0)
+							else if(client->timeouts.read.delay > 0)
 								// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 						}
@@ -48579,13 +46938,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									::local::change.push_back((struct kevent){});
 									// Активируем событие на ожидание готовности сокета на запись
 									EV_SET(&::local::change.back(), client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, 0, client);
-									// Если необходимо активировать таймаут на запись для клиента
-									if(client->timeouts.write.delay > 0){
-										// Добавляем новое событие в список изменений
-										::local::change.push_back((struct kevent){});
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&::local::change.back(), client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_RECEIPT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-									}
+									// Создаём таймаут на ожидание отправки данных
+									::timeout::create(client->timeouts.write, client, this->_log);
 								}
 							// Если необходимо активировать таймаут на запись для клиента
 							} else if(client->timeouts.write.delay > 0)
@@ -48610,9 +46964,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							// Если событие является блокирующим
 							if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 								// Если необходимо активировать таймаут на чтение для сервера
-								if(server->timeouts.read.delay > 0)
-									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+								if(server->timeouts.read.delay > 0){
+									// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+									if(server->state.oldset.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
+										this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+								}
 							}
 						}
 						// Если событие записи в сокет разрешено
@@ -48620,9 +46977,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							// Если событие является блокирующим
 							if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 								// Если необходимо активировать таймаут на запись для сервера
-								if(server->timeouts.write.delay > 0)
-									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+								if(server->timeouts.write.delay > 0){
+									// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+									if(server->state.oldset.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
+										this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+								}
 							}
 						}
 						// Выполняем "пинок" для применения изменений
@@ -49742,9 +48102,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Если событие является блокирующим
 							if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 								// Если необходимо активировать таймаут на чтение для сервера
-								if(server->timeouts.read.delay > 0)
-									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+								if(server->timeouts.read.delay > 0){
+									// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+									if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
+										this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+								}
 							}
 						}
 						// Если событие записи в сокет разрешено
@@ -49752,9 +48115,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Если событие является блокирующим
 							if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 								// Если необходимо активировать таймаут на запись для сервера
-								if(server->timeouts.write.delay > 0)
-									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+								if(server->timeouts.write.delay > 0){
+									// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
+									if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
+										this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+								}
 							}
 						}
 					}
@@ -50363,8 +48729,8 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем применение изменений к ядру
-			::io::apply(this->_log);
+			// Выполняем фиксацию изменений к ядру
+			::local::commit(this->_log);
 			/**
 			 * Подготавливаем параметры таймаута для опроса событий
 			 */
