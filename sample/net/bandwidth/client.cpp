@@ -1063,11 +1063,11 @@ Public License instead of this License.  But first, please read
 					}
 				});
 				// Устанавливаем таймаут события на чтение
-				// io.timeout(eid, event::action_t::READ, 5000);
+				io.timeout(eid, event::action_t::READ, 5000);
 				// Устанавливаем таймаут события на запись
-				// io.timeout(eid, event::action_t::WRITE, 5000);
+				io.timeout(eid, event::action_t::WRITE, 5000);
 				// Устанавливаем таймаут события на подключение
-				// io.timeout(eid, event::action_t::CONNECT, 5000);
+				io.timeout(eid, event::action_t::CONNECT, 5000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Если подключение к серверу прошло успешно
