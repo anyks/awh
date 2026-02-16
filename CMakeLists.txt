@@ -74,17 +74,23 @@ if (CMAKE_MAX_SSL_BUFFER_SIZE)
     message(STATUS "Build with max SSL buffer size: ${CMAKE_MAX_SSL_BUFFER_SIZE}\n")
 endif (CMAKE_MAX_SSL_BUFFER_SIZE)
 
-# Если активирован флаг установки максимального размера буфера на четение данных событий
-if (CMAKE_MAX_EVENT_BUFFER_SIZE)
-    add_compile_definitions(AWH_MAX_EVENT_BUFFER_SIZE=${CMAKE_MAX_EVENT_BUFFER_SIZE})
-    message(STATUS "Build with max event buffer size: ${CMAKE_MAX_EVENT_BUFFER_SIZE}\n")
-endif (CMAKE_MAX_EVENT_BUFFER_SIZE)
+# Если активирован флаг установки максимального размера буфера на чтение данных событий
+if (CMAKE_EVENT_MAX_BUFFER_SIZE)
+    add_compile_definitions(AWH_EVENT_MAX_BUFFER_SIZE=${CMAKE_EVENT_MAX_BUFFER_SIZE})
+    message(STATUS "Build with max event buffer size: ${CMAKE_EVENT_MAX_BUFFER_SIZE}\n")
+endif (CMAKE_EVENT_MAX_BUFFER_SIZE)
 
 # Если активирован флаг установки максимального количества опрашиваемых событий за одну итерацию
 if (CMAKE_MAX_POLL_EVENTS_COUNT)
     add_compile_definitions(AWH_MAX_POLL_EVENTS_COUNT=${CMAKE_MAX_POLL_EVENTS_COUNT})
     message(STATUS "Build with max poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
 endif (CMAKE_MAX_POLL_EVENTS_COUNT)
+
+# Если активирован флаг установки максимального времени ожидания получения данных в наносекундхах
+if (CMAKE_EVENT_MAX_LOOP_WAIT)
+    add_compile_definitions(AWH_EVENT_MAX_LOOP_WAIT=${CMAKE_EVENT_MAX_LOOP_WAIT})
+    message(STATUS "Build with max event loop wait: ${CMAKE_EVENT_MAX_LOOP_WAIT}\n")
+endif (CMAKE_EVENT_MAX_LOOP_WAIT)
 
 # Если активирован флаг установки максимального размера очереди
 if (CMAKE_MAX_RECORDS_QUEUE)

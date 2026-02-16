@@ -884,7 +884,7 @@ Public License instead of this License.  But first, please read
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&bytesSent, &dateSent, &fmk, &log](const event::id_t eid, const size_t size) noexcept -> void {
 					// Получаем текущее время в миллисекундах
-					const uint64_t currentTime = fmk.timestamp<uint64_t>(fmk_t::chrono_t::MILLISECONDS);
+					const uint64_t currentTime = fmk.timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если с момента последнего отправленного сообщения прошло 60 секунд
 					if((currentTime - dateSent) >= 60000){
 						// Биты в секунду = (байты * 8 бит/байт * 1000 мс/сек) / миллисекунды
@@ -988,7 +988,8 @@ Public License instead of this License.  But first, please read
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
 				io.on(eid, static_cast <event::callback::connect_t> ([&sendMessage, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
 					// Выводим сообщение о принятии события
-					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
+					// log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
+					cout << " Событие подключения: ID=" << eid << ", результат: " << (ok ? "YES" : "NO") << endl;
 					// Если подключение успешно
 					if(ok)
 						// Выполняем отправку данных клиенту
