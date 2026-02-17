@@ -33,7 +33,7 @@
 #endif
 
 /**
- * Если максимальное время ожидания получения данных не определёно
+ * Если максимальное время ожидания получения данных не определено
  */
 #ifndef AWH_EVENT_MAX_LOOP_WAIT
 	/**
@@ -420,7 +420,7 @@ namespace {
 			explicit OriginId() noexcept : family(event::family_t::NONE) {};
 	} origin_id_t;
 	/**
-	 * @brief Шаблон фуркции выполнения приведения типа B к типу A
+	 * @brief Шаблон функции выполнения приведения типа B к типу A
 	 *
 	 * @tparam A тип объекта к которому необходимо привести объект B
 	 * @tparam B тип объекта который необходимо привести объекту A
@@ -732,11 +732,11 @@ namespace io {
 	} timeouts_client_t;
 
 	/**
-	 * @brief Структура пропускной способности записи
+	 * @brief Структура ограничения пропускной способности
 	 *
 	 */
 	typedef struct Ratewidth {
-		// Количество токенов в пропускной способности записи
+		// Количество токенов в пропускной способности
 		double tokens;
 		// Время последнего обновления пропускной способности в наносекундах
 		uint64_t time;
@@ -5010,7 +5010,7 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->bandwidth.read.limit > 0){
-										// Достаточное количество токенов для отправки данных
+										// Достаточное количество токенов для получения данных
 										double tokens = 0.;
 										/**
 										 * Определяем семейство события
@@ -5018,12 +5018,12 @@ namespace io {
 										switch(static_cast <uint8_t> (peer->state.family)){
 											// Для семейства IPv4
 											case static_cast <uint8_t> (event::family_t::IPV4):
-												// Определяем достаточное количество токенов для отправки данных в сокет
+												// Определяем достаточное количество токенов для получения данных из сокета
 												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE));
 											break;
 											// Для семейства IPv6
 											case static_cast <uint8_t> (event::family_t::IPV6):
-												// Определяем достаточное количество токенов для отправки данных в сокет
+												// Определяем достаточное количество токенов для получения данных из сокета
 												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE));
 											break;
 										}
@@ -6544,7 +6544,7 @@ namespace io {
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->bandwidth.read.limit > 0){
-										// Достаточное количество токенов для отправки данных
+										// Достаточное количество токенов для получения данных
 										double tokens = 0.;
 										/**
 										 * Определяем семейство события
@@ -6552,12 +6552,12 @@ namespace io {
 										switch(static_cast <uint8_t> (client->state.family)){
 											// Для семейства IPv4
 											case static_cast <uint8_t> (event::family_t::IPV4):
-												// Определяем достаточное количество токенов для отправки данных в сокет
+												// Определяем достаточное количество токенов для получения данных из сокета
 												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE));
 											break;
 											// Для семейства IPv6
 											case static_cast <uint8_t> (event::family_t::IPV6):
-												// Определяем достаточное количество токенов для отправки данных в сокет
+												// Определяем достаточное количество токенов для получения данных из сокета
 												tokens = static_cast <double> (::min(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE));
 											break;
 										}
@@ -8693,7 +8693,7 @@ namespace io {
 										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 									break;
 								}
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens){
@@ -8979,7 +8979,7 @@ namespace io {
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(peer->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
 									// Если токены для отправки данных присутствуют
 									if(peer->bandwidth.write.tokens >= static_cast <double> (size)){
@@ -9299,7 +9299,7 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(origin->wrate.limit > 0){
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(origin->wrate.tokens >= static_cast <double> (size)){
@@ -9797,7 +9797,7 @@ namespace io {
 										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 									break;
 								}
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= tokens){
@@ -10078,7 +10078,7 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= static_cast <double> (size)){
@@ -10401,7 +10401,7 @@ namespace io {
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->bandwidth.write.limit > 0){
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= static_cast <double> (size)){
@@ -11818,7 +11818,7 @@ namespace io {
 										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 									break;
 								}
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens)
@@ -12116,7 +12116,7 @@ namespace io {
 										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 									break;
 								}
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(peer, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens){
@@ -12490,7 +12490,7 @@ namespace io {
 									if(size == 0)
 										// Завершаем выполнение функции, так как отправлять нечего
 										return result;
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(peer, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
@@ -12768,7 +12768,7 @@ namespace io {
 										if(size == 0)
 											// Завершаем выполнение функции, так как отправлять нечего
 											return result;
-										// Выполняем расчёт токенов для получения данных из сокета
+										// Выполняем расчёт токенов для отправки данных в сокет
 										::io::tokens(peer, event::limiting_t::EGRESS, log);
 										// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 										if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
@@ -13490,7 +13490,7 @@ namespace io {
 								if(size == 0)
 									// Завершаем выполнение функции, так как отправлять нечего
 									return result;
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(origin, event::limiting_t::EGRESS, log);
 								// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 								if(static_cast <size_t> (origin->wrate.tokens) >= size){
@@ -13735,7 +13735,7 @@ namespace io {
 									if(size == 0)
 										// Завершаем выполнение функции, так как отправлять нечего
 										return result;
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(origin, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (origin->wrate.tokens) >= size){
@@ -14738,7 +14738,7 @@ namespace io {
 										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 									break;
 								}
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= tokens)
@@ -15036,7 +15036,7 @@ namespace io {
 										tokens = static_cast <double> (::min(size, static_cast <size_t> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 									break;
 								}
-								// Выполняем расчёт токенов для получения данных из сокета
+								// Выполняем расчёт токенов для отправки данных в сокет
 								::io::tokens(client, event::limiting_t::EGRESS, log);
 								// Если токены для отправки данных присутствуют
 								if(client->bandwidth.write.tokens >= tokens){
@@ -15394,7 +15394,7 @@ namespace io {
 									if(size == 0)
 										// Завершаем выполнение функции, так как отправлять нечего
 										return result;
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -15658,7 +15658,7 @@ namespace io {
 										if(size == 0)
 											// Завершаем выполнение функции, так как отправлять нечего
 											return result;
-										// Выполняем расчёт токенов для получения данных из сокета
+										// Выполняем расчёт токенов для отправки данных в сокет
 										::io::tokens(client, event::limiting_t::EGRESS, log);
 										// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 										if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -16001,7 +16001,7 @@ namespace io {
 									if(size == 0)
 										// Завершаем выполнение функции, так как отправлять нечего
 										return result;
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -16265,7 +16265,7 @@ namespace io {
 										if(size == 0)
 											// Завершаем выполнение функции, так как отправлять нечего
 											return result;
-										// Выполняем расчёт токенов для получения данных из сокета
+										// Выполняем расчёт токенов для отправки данных в сокет
 										::io::tokens(client, event::limiting_t::EGRESS, log);
 										// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 										if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -16667,7 +16667,7 @@ namespace io {
 									if(size == 0)
 										// Завершаем выполнение функции, так как отправлять нечего
 										return result;
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -16958,7 +16958,7 @@ namespace io {
 										if(size == 0)
 											// Завершаем выполнение функции, так как отправлять нечего
 											return result;
-										// Выполняем расчёт токенов для получения данных из сокета
+										// Выполняем расчёт токенов для отправки данных в сокет
 										::io::tokens(client, event::limiting_t::EGRESS, log);
 										// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 										if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -17355,7 +17355,7 @@ namespace io {
 									if(size == 0)
 										// Завершаем выполнение функции, так как отправлять нечего
 										return result;
-									// Выполняем расчёт токенов для получения данных из сокета
+									// Выполняем расчёт токенов для отправки данных в сокет
 									::io::tokens(client, event::limiting_t::EGRESS, log);
 									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 									if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
@@ -17646,7 +17646,7 @@ namespace io {
 										if(size == 0)
 											// Завершаем выполнение функции, так как отправлять нечего
 											return result;
-										// Выполняем расчёт токенов для получения данных из сокета
+										// Выполняем расчёт токенов для отправки данных в сокет
 										::io::tokens(client, event::limiting_t::EGRESS, log);
 										// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
 										if(static_cast <size_t> (client->bandwidth.write.tokens) >= size){
