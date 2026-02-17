@@ -4808,11 +4808,14 @@ namespace io {
 										// Уменьшаем количество используемых токенов
 										peer->bandwidth.read.tokens -= static_cast <double> (bytes);
 										// Если токены для получения данных ещё доступны
-										if((peer->bandwidth.read.tokens > tokens) && !(peer->activity & ::activity::READ)){
-											// Отмечаем активность чтения данных
-											peer->activity |= ::activity::READ;
-											// Активируем событие на чтение данных из сокета
-											::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										if(peer->bandwidth.read.tokens > tokens){
+											// Если чтение данных не активно в данный момент
+											if(!(peer->activity & ::activity::READ)){
+												// Отмечаем активность чтения данных
+												peer->activity |= ::activity::READ;
+												// Активируем событие на чтение данных из сокета
+												::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											}
 										// Если таймаут на получение данных не активирован
 										} else {
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
@@ -6375,11 +6378,14 @@ namespace io {
 										// Уменьшаем количество используемых токенов
 										client->bandwidth.read.tokens -= static_cast <double> (bytes);
 										// Если токены для получения данных ещё доступны
-										if((client->bandwidth.read.tokens >= tokens) && !(client->activity & ::activity::READ)){
-											// Отмечаем активность чтения данных
-											client->activity |= ::activity::READ;
-											// Активируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										if(client->bandwidth.read.tokens >= tokens){
+											// Если чтение данных не активно в данный момент
+											if(!(client->activity & ::activity::READ)){
+												// Отмечаем активность чтения данных
+												client->activity |= ::activity::READ;
+												// Активируем событие на чтение данных из сокета
+												::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											}
 										// Если таймаут на получение данных не активирован
 										} else {
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
@@ -11858,10 +11864,10 @@ namespace io {
 							};
 							// Количество байт данных, отправленных событием
 							size_t bytes = 0;
-							// Достаточное количество токенов для отправки данных
-							double tokens = 0.;
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->bandwidth.write.limit > 0){
+								// Достаточное количество токенов для отправки данных
+								double tokens = 0.;
 								/**
 								 * Определяем семейство события
 								 */
@@ -11882,7 +11888,7 @@ namespace io {
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens)
 									// Выполняем отправку данных в сокет
-									bytes = send(buffer, ::min(size, static_cast <size_t> (peer->bandwidth.write.tokens)));
+									bytes = send(buffer, static_cast <size_t> (tokens));
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								else {
 									// Если данные не добавлены в очередь событий
@@ -11931,7 +11937,7 @@ namespace io {
 										return bytes;
 								}
 								// Если данные отправлены не полностью
-								if(bytes != size){
+								if(bytes < size){
 									// Сохраняем оставшиеся данные для последующей отправки
 									if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 										// Если установлена функция обратного вызова
@@ -11955,7 +11961,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных в сокет
 									if(peer->bandwidth.write.limit > 0){
 										// Если токенов для отправки данных больше нет
-										if(peer->bandwidth.write.tokens < tokens){
+										if(peer->bandwidth.write.tokens < static_cast <double> (size - bytes)){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 											// Обновляем таймаут на запись данных
@@ -12033,8 +12039,6 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 									peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
 							}
-							// Выводим результат работы функции
-							return result;
 						}
 					// Если событие является полублокирующим
 					} else if(peer->state.options & event::options::SM_IO_BLOCK) {
@@ -12184,7 +12188,7 @@ namespace io {
 								// Если токены для отправки данных присутствуют
 								if(peer->bandwidth.write.tokens >= tokens){
 									// Выполняем отправку данных в сокет
-									const size_t bytes = send(buffer, ::min(size, static_cast <size_t> (peer->bandwidth.write.tokens)));
+									const size_t bytes = send(buffer, static_cast <size_t> (tokens));
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -12199,7 +12203,7 @@ namespace io {
 												return bytes;
 										}
 										// Если данные отправлены не полностью
-										if(bytes != size){
+										if(bytes < size){
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
@@ -12219,7 +12223,7 @@ namespace io {
 										// Если очередь передачи данных не пуста
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
-											if(peer->bandwidth.write.tokens < tokens){
+											if(peer->bandwidth.write.tokens < static_cast <double> (size - bytes)){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
 												// Обновляем таймаут на запись данных
@@ -12231,6 +12235,28 @@ namespace io {
 												// Активируем событие на запись данных в сокет
 												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
 											}
+											// Создаём таймаут на ожидание записи данных
+											::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+										}
+									// Если данные не отправлены и нужно подождать
+									} else if(errno == EAGAIN) {
+										// Сохраняем оставшиеся данные для последующей отправки
+										if((result = peer->transfer.queue.push(buffer, size)) == 0){
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об переполнении очереди
+												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+											// Если функция обратного вызова для вывода доступных данных установлена
+											if(peer->callbacks.available != nullptr)
+												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+										}
+										// Если в очереди событий появились данные для отправки
+										if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
+											// Отмечаем активность записи данных
+											peer->activity |= ::activity::WRITE;
+											// Активируем событие на запись данных в сокет
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
 											// Создаём таймаут на ожидание записи данных
 											::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
 										}
@@ -12281,6 +12307,28 @@ namespace io {
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+								// Если данные не отправлены и нужно подождать
+								} else if(errno == EAGAIN) {
+									// Сохраняем оставшиеся данные для последующей отправки
+									if((result = peer->transfer.queue.push(buffer, size)) == 0){
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об переполнении очереди
+											peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+										// Если функция обратного вызова для вывода доступных данных установлена
+										if(peer->callbacks.available != nullptr)
+											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+											peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+									}
+									// Если в очереди событий появились данные для отправки
+									if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
+										// Отмечаем активность записи данных
+										peer->activity |= ::activity::WRITE;
+										// Активируем событие на запись данных в сокет
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										// Создаём таймаут на ожидание записи данных
+										::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+									}
 								}
 							}
 						}
@@ -12430,35 +12478,14 @@ namespace io {
 											 */
 											switch(errno){
 												// Если ошибки нет
-												case 0: break;
+												case 0:
+												// Если нам нужно попытаться отправить позже
+												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
-												// Если нам нужно попытаться отправить позже
-												case EAGAIN: {
-													// Сохраняем оставшиеся данные для последующей отправки
-													if((result = peer->transfer.queue.push(buffer, size)) == 0){
-														// Если установлена функция обратного вызова
-														if(peer->callbacks.status != nullptr)
-															// Вызываем функцию обратного вызова об переполнении очереди
-															peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
-														// Если функция обратного вызова для вывода доступных данных установлена
-														if(peer->callbacks.available != nullptr)
-															// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-															peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-													}
-													// Если в очереди событий появились данные для отправки
-													if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
-														// Отмечаем активность записи данных
-														peer->activity |= ::activity::WRITE;
-														// Активируем событие на запись данных в сокет
-														::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
-														// Создаём таймаут на ожидание записи данных
-														::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
-													}
-												} break;
 												// Если мы получили другую непонятную ошибку
 												default:
 													// Устанавливаем идентификатор полученной ошибки
@@ -12507,242 +12534,6 @@ namespace io {
 												}
 											}
 										}
-									/**
-									 * Если возникает ошибка
-									 */
-									} catch(const exception & error) {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::CRITICAL, error.what());
-										#endif
-									}
-									// Выводим результат работы функции
-									return result;
-								};
-								// Если установлено ограничение пропускной способности на запись данных в сокет
-								if(peer->bandwidth.write.limit > 0){
-									// Выполняем расчёт токенов для получения данных из сокета
-									::io::tokens(peer, event::limiting_t::EGRESS, log);
-									// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
-									if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
-										// Выполняем отправку данных в сокет
-										result = send(buffer, size);
-										// Если данные отправлены успешно
-										if((result > 0) && (errno != EAGAIN)){
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(peer->callbacks.write != nullptr){
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												peer->callbacks.write(peer->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(peer->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
-													return result;
-											}
-											// Уменьшаем количество используемых токенов
-											peer->bandwidth.write.tokens -= static_cast <double> (result);
-											// Если установлено ограничение пропускной способности на запись данных
-											if(::bandwidth::write > 0)
-												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
-										}
-									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
-									} else {
-										// Если данные не добавлены в очередь событий
-										if((result = peer->transfer.queue.push(buffer, size)) == 0){
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(peer->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												peer->callbacks.write(peer->id, 0);
-											// Если установлена функция обратного вызова
-											if(peer->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об переполнении очереди
-												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
-											// Если функция обратного вызова для вывода доступных данных установлена
-											if(peer->callbacks.available != nullptr)
-												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-										}
-										// Если в очереди событий появились данные для отправки
-										if(!peer->transfer.queue.empty()){
-											// Если таймаут на запись данных не активирован
-											if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
-												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
-												// Обновляем таймаут на запись данных
-												::timeout::update(peer->bandwidth.write.timeout, peer, event::rate_t::DEFERRED, log);
-											}
-											// Создаём таймаут на ожидание записи данных
-											::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
-										}
-									}
-								// Если ограничитель пропускной способности на запись данных не установлен
-								} else {
-									// Выполняем отправку данных в сокет
-									result = send(buffer, size);
-									// Если данные отправлены успешно
-									if((result > 0) && (errno != EAGAIN)){
-										// Если функция обратного вызова для вывода записанных данных установлена
-										if(peer->callbacks.write != nullptr)
-											// Вызываем функцию обратного вызова для вывода записанных данных
-											peer->callbacks.write(peer->id, result);
-										// Если установлено ограничение пропускной способности на запись данных
-										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
-									}
-								}
-							// Если очередь передачи данных не пуста
-							} else {
-								// Если функция обратного вызова для вывода записанных данных установлена
-								if(peer->callbacks.write != nullptr){
-									// Вызываем функцию обратного вызова для вывода записанных данных
-									peer->callbacks.write(peer->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
-										return result;
-								}
-								// Если данные не добавлены в очередь событий
-								if((result = peer->transfer.queue.push(buffer, size)) == 0){
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об переполнении очереди
-										peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
-									// Если функция обратного вызова для вывода доступных данных установлена
-									if(peer->callbacks.available != nullptr)
-										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-										peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-								}
-								// Выводим результат работы функции
-								return result;
-							}
-						// Если событие является полублокирующим
-						} else if(peer->state.options & event::options::SM_IO_BLOCK) {
-							// Переводим сокет в блокирующий режим
-							if(eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
-								// Если необходимо активировать таймаут на запись данных в сокет
-								if(peer->timeouts.write.delay > 0)
-									// Устанавливаем таймаут на запись данных в сокет
-									eth->socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
-								/**
-								 * @brief Функция для отправки данных в сокет
-								 *
-								 * @param buffer буфер данных для отправки
-								 * @param size   размер данных для отправки
-								 * @return       количество отправленных байт
-								 */
-								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
-									size_t result = 0;
-									/**
-									 * Выполняем перехват ошибок
-									 */
-									try {
-										/**
-										 * Сбрасываем значение errno перед отправкой данных в сокет
-										 */
-										errno = 0;
-										// Количество прочитанных байт
-										ssize_t bytes = 0;
-										// Если протокол интернета установлен как SCTP
-										if(peer->state.protocol == event::protocol_t::SCTP)
-											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
-												peer->transfer.fd,
-												buffer, size, nullptr, 0,
-												peer->transfer.sctp.info.sinfo_ppid,
-												peer->transfer.sctp.info.sinfo_flags,
-												peer->transfer.sctp.info.sinfo_stream,
-												peer->transfer.sctp.info.sinfo_timetolive,
-												peer->transfer.sctp.info.sinfo_context
-											);
-										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-										// Если данные отправлены успешно
-										if(bytes > 0)
-											// Выводим количество байт данных, отправленных событием
-											result = static_cast <size_t> (bytes);
-										// Если данные не отправлены
-										else {
-											// Идентификатор полученной ошибки
-											event::error_t error = event::error_t::NONE;
-											/**
-											 * Определяем возникшую ошибку
-											 */
-											switch(errno){
-												// Если ошибки нет
-												case 0: break;
-												// Если мы получили ошибку отправки слишком большого пакета
-												case EMSGSIZE:
-													// Устанавливаем идентификатор полученной ошибки
-													error = event::error_t::PACKET_TOO_BIG;
-												break;
-												// Если нам нужно попытаться отправить позже
-												case EAGAIN:
-													// Устанавливаем идентификатор полученной ошибки
-													error = event::error_t::EVENT_FAIL;
-												break;
-												// Если мы получили другую непонятную ошибку
-												default:
-													// Устанавливаем идентификатор полученной ошибки
-													error = event::error_t::INVALID_SOCKET;
-											}
-											// Если функция обратного вызова для вывода записанных данных установлена
-											if(peer->callbacks.write != nullptr)
-												// Вызываем функцию обратного вызова для вывода записанных данных
-												peer->callbacks.write(peer->id, 0);
-											// Если данные не записаны в сокет
-											if(error != event::error_t::NONE){
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													peer->callbacks.status(peer->id, event::status_t::FAILURE);
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, error, ::strerror(errno));
-												// Если функция обратного вызова для вывода события не установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Если сокет повреждён
-												if(error == event::error_t::INVALID_SOCKET){
-													// Если функция обратного вызова для возврата данных при неудачной отправке установлена
-													if(peer->callbacks.spool != nullptr)
-														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-														peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(peer, eth, log);
-													// Выводим результат работы функции
-													return result;
-												}
-											}
-										}
-										// Переводим сокет обратно в неблокирующий режим
-										eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 									/**
 									 * Если возникает ошибка
 									 */
@@ -12785,6 +12576,28 @@ namespace io {
 											}
 											// Уменьшаем количество используемых токенов
 											peer->bandwidth.write.tokens -= static_cast <double> (result);
+										// Если данные не отправлены и нужно подождать
+										} else if(errno == EAGAIN) {
+											// Сохраняем оставшиеся данные для последующей отправки
+											if((result = peer->transfer.queue.push(buffer, size)) == 0){
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об переполнении очереди
+													peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+												// Если функция обратного вызова для вывода доступных данных установлена
+												if(peer->callbacks.available != nullptr)
+													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+											}
+											// Если в очереди событий появились данные для отправки
+											if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
+												// Отмечаем активность записи данных
+												peer->activity |= ::activity::WRITE;
+												// Активируем событие на запись данных в сокет
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												// Создаём таймаут на ожидание записи данных
+												::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+											}
 										}
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
@@ -12815,8 +12628,6 @@ namespace io {
 											// Создаём таймаут на ожидание записи данных
 											::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
 										}
-										// Переводим сокет обратно в неблокирующий режим
-										eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
 								} else {
@@ -12832,7 +12643,330 @@ namespace io {
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
 											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									// Если данные не отправлены и нужно подождать
+									} else if(errno == EAGAIN) {
+										// Сохраняем оставшиеся данные для последующей отправки
+										if((result = peer->transfer.queue.push(buffer, size)) == 0){
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об переполнении очереди
+												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+											// Если функция обратного вызова для вывода доступных данных установлена
+											if(peer->callbacks.available != nullptr)
+												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+										}
+										// Если в очереди событий появились данные для отправки
+										if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
+											// Отмечаем активность записи данных
+											peer->activity |= ::activity::WRITE;
+											// Активируем событие на запись данных в сокет
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											// Создаём таймаут на ожидание записи данных
+											::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+										}
 									}
+								}
+							// Если очередь передачи данных не пуста
+							} else {
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(peer->callbacks.write != nullptr){
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									peer->callbacks.write(peer->id, 0);
+									// Если дескриптор сокета стал недействительным
+									if(peer->transfer.fd == net::invalid_socket_t)
+										// Выводим результат работы функции
+										return result;
+								}
+								// Если данные не добавлены в очередь событий
+								if((result = peer->transfer.queue.push(buffer, size)) == 0){
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об переполнении очереди
+										peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+									// Если функция обратного вызова для вывода доступных данных установлена
+									if(peer->callbacks.available != nullptr)
+										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+										peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+								}
+							}
+						// Если событие является полублокирующим
+						} else if(peer->state.options & event::options::SM_IO_BLOCK) {
+							// Если очередь передачи данных пустая
+							if(peer->transfer.queue.empty()){
+								// Переводим сокет в блокирующий режим
+								if(eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+									// Если необходимо активировать таймаут на запись данных в сокет
+									if(peer->timeouts.write.delay > 0)
+										// Устанавливаем таймаут на запись данных в сокет
+										eth->socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
+									/**
+									 * @brief Функция для отправки данных в сокет
+									 *
+									 * @param buffer буфер данных для отправки
+									 * @param size   размер данных для отправки
+									 * @return       количество отправленных байт
+									 */
+									auto send = [&](const void * buffer, const size_t size) -> size_t {
+										// Результат работы функции
+										size_t result = 0;
+										/**
+										 * Выполняем перехват ошибок
+										 */
+										try {
+											/**
+											 * Сбрасываем значение errno перед отправкой данных в сокет
+											 */
+											errno = 0;
+											// Количество прочитанных байт
+											ssize_t bytes = 0;
+											// Если протокол интернета установлен как SCTP
+											if(peer->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в TCP/IP сокет
+												bytes = ::sctp_sendmsg(
+													peer->transfer.fd,
+													buffer, size, nullptr, 0,
+													peer->transfer.sctp.info.sinfo_ppid,
+													peer->transfer.sctp.info.sinfo_flags,
+													peer->transfer.sctp.info.sinfo_stream,
+													peer->transfer.sctp.info.sinfo_timetolive,
+													peer->transfer.sctp.info.sinfo_context
+												);
+											// Выполняем отправку данных в TCP/IP сокет
+											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+											// Если данные отправлены успешно
+											if(bytes > 0)
+												// Выводим количество байт данных, отправленных событием
+												result = static_cast <size_t> (bytes);
+											// Если данные не отправлены
+											else {
+												// Идентификатор полученной ошибки
+												event::error_t error = event::error_t::NONE;
+												/**
+												 * Определяем возникшую ошибку
+												 */
+												switch(errno){
+													// Если ошибки нет
+													case 0: break;
+													// Если мы получили ошибку отправки слишком большого пакета
+													case EMSGSIZE:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::PACKET_TOO_BIG;
+													break;
+													// Если нам нужно попытаться отправить позже
+													case EAGAIN:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::EVENT_FAIL;
+													break;
+													// Если мы получили другую непонятную ошибку
+													default:
+														// Устанавливаем идентификатор полученной ошибки
+														error = event::error_t::INVALID_SOCKET;
+												}
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(peer->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													peer->callbacks.write(peer->id, 0);
+												// Если данные не записаны в сокет
+												if(error != event::error_t::NONE){
+													// Если установлена функция обратного вызова
+													if(peer->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														peer->callbacks.status(peer->id, event::status_t::FAILURE);
+													// Если установлена функция обратного вызова
+													if(peer->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														peer->callbacks.error(peer->id, error, ::strerror(errno));
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														#endif
+													}
+													// Если сокет повреждён
+													if(error == event::error_t::INVALID_SOCKET){
+														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
+														if(peer->callbacks.spool != nullptr)
+															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+															peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+														// Выполняем обработку закрытия подключения
+														if(::io::close(peer, eth, log))
+															// Выполняем удаление узла
+															::io::destroy(peer, eth, log);
+														// Выводим результат работы функции
+														return result;
+													}
+												}
+											}
+											// Переводим сокет обратно в неблокирующий режим
+											eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+										/**
+										 * Если возникает ошибка
+										 */
+										} catch(const exception & error) {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												log->print("%s", log_t::flag_t::CRITICAL, error.what());
+											#endif
+										}
+										// Выводим результат работы функции
+										return result;
+									};
+									// Если установлено ограничение пропускной способности на запись данных в сокет
+									if(peer->bandwidth.write.limit > 0){
+										// Выполняем расчёт токенов для получения данных из сокета
+										::io::tokens(peer, event::limiting_t::EGRESS, log);
+										// Если токенов достаточно для отправки всех данных в сокет с учётом установленного ограничения пропускной способности
+										if(static_cast <size_t> (peer->bandwidth.write.tokens) >= size){
+											// Выполняем отправку данных в сокет
+											result = send(buffer, size);
+											// Если данные отправлены успешно
+											if(result > 0){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(peer->callbacks.write != nullptr){
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													peer->callbacks.write(peer->id, result);
+													// Если дескриптор сокета стал недействительным
+													if(peer->transfer.fd == net::invalid_socket_t)
+														// Выводим результат работы функции
+														return result;
+												}
+												// Уменьшаем количество используемых токенов
+												peer->bandwidth.write.tokens -= static_cast <double> (result);
+											// Если данные не отправлены и нужно подождать
+											} else if(errno == EAGAIN) {
+												// Сохраняем оставшиеся данные для последующей отправки
+												if((result = peer->transfer.queue.push(buffer, size)) == 0){
+													// Если установлена функция обратного вызова
+													if(peer->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об переполнении очереди
+														peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+													// Если функция обратного вызова для вывода доступных данных установлена
+													if(peer->callbacks.available != nullptr)
+														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+														peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+												}
+												// Если в очереди событий появились данные для отправки
+												if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
+													// Отмечаем активность записи данных
+													peer->activity |= ::activity::WRITE;
+													// Активируем событие на запись данных в сокет
+													::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													// Создаём таймаут на ожидание записи данных
+													::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+												}
+											}
+										// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
+										} else {
+											// Если данные не добавлены в очередь событий
+											if((result = peer->transfer.queue.push(buffer, size)) == 0){
+												// Если функция обратного вызова для вывода записанных данных установлена
+												if(peer->callbacks.write != nullptr)
+													// Вызываем функцию обратного вызова для вывода записанных данных
+													peer->callbacks.write(peer->id, 0);
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об переполнении очереди
+													peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+												// Если функция обратного вызова для вывода доступных данных установлена
+												if(peer->callbacks.available != nullptr)
+													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+											}
+											// Если в очереди событий появились данные для отправки
+											if(!peer->transfer.queue.empty()){
+												// Если таймаут на запись данных не активирован
+												if(peer->bandwidth.write.timeout.status == event::status_t::NONE){
+													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+													peer->bandwidth.write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth.write.tokens) / static_cast <double> (peer->bandwidth.write.limit)) * 1000.);
+													// Обновляем таймаут на запись данных
+													::timeout::update(peer->bandwidth.write.timeout, peer, event::rate_t::DEFERRED, log);
+												}
+												// Создаём таймаут на ожидание записи данных
+												::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+											}
+											// Переводим сокет обратно в неблокирующий режим
+											eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+										}
+									// Если ограничитель пропускной способности на запись данных не установлен
+									} else {
+										// Выполняем отправку данных в сокет
+										result = send(buffer, size);
+										// Если данные отправлены успешно
+										if(result > 0){
+											// Если функция обратного вызова для вывода записанных данных установлена
+											if(peer->callbacks.write != nullptr)
+												// Вызываем функцию обратного вызова для вывода записанных данных
+												peer->callbacks.write(peer->id, result);
+											// Если установлено ограничение пропускной способности на запись данных
+											if(::bandwidth::write > 0)
+												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										// Если данные не отправлены и нужно подождать
+										} else if(errno == EAGAIN) {
+											// Сохраняем оставшиеся данные для последующей отправки
+											if((result = peer->transfer.queue.push(buffer, size)) == 0){
+												// Если установлена функция обратного вызова
+												if(peer->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об переполнении очереди
+													peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+												// Если функция обратного вызова для вывода доступных данных установлена
+												if(peer->callbacks.available != nullptr)
+													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+											}
+											// Если в очереди событий появились данные для отправки
+											if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
+												// Отмечаем активность записи данных
+												peer->activity |= ::activity::WRITE;
+												// Активируем событие на запись данных в сокет
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												// Создаём таймаут на ожидание записи данных
+												::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
+											}
+										}
+									}
+								}
+							// Если очередь передачи данных не пуста
+							} else {
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(peer->callbacks.write != nullptr){
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									peer->callbacks.write(peer->id, 0);
+									// Если дескриптор сокета стал недействительным
+									if(peer->transfer.fd == net::invalid_socket_t)
+										// Выводим результат работы функции
+										return result;
+								}
+								// Если данные не добавлены в очередь событий
+								if((result = peer->transfer.queue.push(buffer, size)) == 0){
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об переполнении очереди
+										peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+									// Если функция обратного вызова для вывода доступных данных установлена
+									if(peer->callbacks.available != nullptr)
+										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+										peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
 								}
 							}
 						// Если событие является блокирующим
@@ -21885,14 +22019,12 @@ namespace io {
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
 							::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-							// Если активность на чтения данных установлена
-							if(peer->activity & ::activity::READ)
-								// Снимаем статус активности на чтение данных
-								peer->activity &= ~::activity::READ;
+							// Снимаем статус активности на чтение данных
+							peer->activity &= ~::activity::READ;
 							// Если установлено ограничение пропускной способности на чтение данных из сокета
 							if(peer->bandwidth.read.limit > 0)
 								// Деактивируем событие на чтение данных из сокета
-								::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::DEFERRED, log);
+								::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 							// Если таймаут ожидания чтения данных установлен
 							if(peer->timeouts.read.delay > 0)
 								// Обновляем таймаут ожидания чтения данных, так как сокет готов к чтению
@@ -21902,14 +22034,12 @@ namespace io {
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем текущее значение объекта клиента
 							::io::client_t * client = awh_cast <::io::client_t *> (node);
-							// Если активность на чтения данных установлена
-							if(client->activity & ::activity::READ)
-								// Снимаем статус активности на чтение данных
-								client->activity &= ~::activity::READ;
+							// Снимаем статус активности на чтение данных
+							client->activity &= ~::activity::READ;
 							// Если установлено ограничение пропускной способности на чтение данных из сокета
 							if(client->bandwidth.read.limit > 0)
 								// Деактивируем событие на чтение данных из сокета
-								::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::DEFERRED, log);
+								::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 							// Если таймаут ожидания чтения данных установлен
 							if(client->timeouts.read.delay > 0)
 								// Обновляем таймаут ожидания чтения данных, так как сокет готов к чтению
@@ -21919,14 +22049,12 @@ namespace io {
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем текущее значение объекта сервера
 							::io::server_t * server = awh_cast <::io::server_t *> (node);
-							// Если активность на чтения данных установлена
-							if(server->activity & ::activity::READ)
-								// Снимаем статус активности на чтение данных
-								server->activity &= ~::activity::READ;
+							// Снимаем статус активности на чтение данных
+							server->activity &= ~::activity::READ;
 							// Если установлено ограничение пропускной способности на чтение данных из сокета
 							if(server->wrate.limit > 0)
 								// Деактивируем событие на чтение данных из сокета
-								::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::DEFERRED, log);
+								::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 						} break;
 					}
 					// Обрабатываем событие доступности сокета на чтение
@@ -21961,10 +22089,8 @@ namespace io {
 							case static_cast <uint8_t> (event::node_t::PEER): {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если активность на запись данных установлена
-								if(peer->activity & ::activity::WRITE)
-									// Снимаем статус активности на запись данных
-									peer->activity &= ~::activity::WRITE;
+								// Снимаем статус активности на запись данных
+								peer->activity &= ~::activity::WRITE;
 								// Если таймаут ожидания записи данных установлен
 								if(peer->timeouts.write.delay > 0)
 									// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
@@ -21974,10 +22100,8 @@ namespace io {
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если активность на запись данных установлена
-								if(client->activity & ::activity::WRITE)
-									// Снимаем статус активности на запись данных
-									client->activity &= ~::activity::WRITE;
+								// Снимаем статус активности на запись данных
+								client->activity &= ~::activity::WRITE;
 								// Если таймаут ожидания записи данных установлен
 								if(client->timeouts.write.delay > 0)
 									// Удаляем таймаут ожидания записи данных, так как сокет готов к записи
