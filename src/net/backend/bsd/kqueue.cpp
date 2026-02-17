@@ -655,12 +655,12 @@ namespace io {
 		event::node_t node;              // Флаг узла события
 		event::hops_t hops;              // Флаг хопов события
 		event::type_t type;              // Флаг типа события
+		event::status_t stash;           // Флаг статуса сохранённого события
+		event::status_t status;          // Флаг статуса события
 		event::family_t family;          // Флаг семейства события
 		event::address_t address;        // Флаг адреса события
 		event::protocol_t protocol;      // Флаг протокола события
 		event::delivery_mode_t delivery; // Флаг типа режима доставки события
-		atomic <event::status_t> status; // Флаг статуса события
-		atomic <event::status_t> oldset; // Флаг старого статуса события
 		/**
 		 * @brief Конструктор
 		 *
@@ -670,12 +670,12 @@ namespace io {
 		 node(event::node_t::NONE),
 		 hops(event::hops_t::WORLD),
 		 type(event::type_t::NONE),
+		 stash(event::status_t::NONE),
+		 status(event::status_t::NONE),
 		 family(event::family_t::NONE),
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
-		 delivery(event::delivery_mode_t::UNICAST),
-		 status(event::status_t::NONE),
-		 oldset(event::status_t::NONE) {}
+		 delivery(event::delivery_mode_t::UNICAST) {}
 	} __attribute__((packed)) state_t;
 
 	/**
@@ -1332,6 +1332,185 @@ namespace {
 };
 
 /**
+ * Инкапсулируем статические функции в пространство имён файловой системы
+ */
+namespace fs {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция получения полного пути файла или каталога
+	 *
+	 * @param input входная строка пути
+	 * @param log   объект работы с логами
+	 * @return      полная строка пути
+	 */
+	static string fullpath(const string_view input, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если входная строка пуста, возвращаем текущий рабочий каталог
+			if(input.empty()){
+				// Временный буфер для текущего рабочего каталога
+				char cwd[PATH_MAX];
+				// Получаем текущий рабочий каталог
+				return (::getcwd(cwd, sizeof(cwd)) ? cwd : AWH_FS_SEPARATOR);
+			}
+			// 1. Обрабатываем вход: превращаем в абсолютный путь как строку
+			string path = "";
+			// Если путь уже абсолютный
+			if(input.front() == AWH_FS_SEPARATOR[0])
+				// Уже абсолютный
+				path = input;
+			// Если путь начинается с '~'
+			else if(input.front() == '~') {
+				// Выполняем поиск следующего слэша ~/ или ~
+				const size_t pos = input.find(AWH_FS_SEPARATOR[0], 1);
+				// Получаем домашний каталог пользователя
+				const char * home = ::getenv("HOME");
+				// Если переменная окружения не установлена
+				if(home == nullptr){
+					// Получаем информацию о пользователе из системы
+					struct passwd * pw = ::getpwuid(::getuid());
+					// Если информация о пользователе получена
+					if(pw != nullptr)
+						// Устанавливаем домашний каталог пользователя
+						home = pw->pw_dir;
+				}
+				// Добавляем домашний каталог пользователя в путь
+				path.append(home != nullptr ? home : AWH_FS_SEPARATOR);
+				// Если найден слэш после тильды
+				if(pos != string::npos)
+					// Добавляем оставшуюся часть пути
+					path.append(input.substr(pos));
+			// Если путь относительный
+			} else {
+				// Временный буфер для текущего рабочего каталога
+				char cwd[PATH_MAX];
+				// Получаем текущий рабочий каталог
+				if(!::getcwd(cwd, sizeof(cwd))){
+					// Устанавливаем корневой каталог как текущий
+					cwd[0] = '/';
+					// Завершаем строку
+					cwd[1] = '\0';
+				}
+				// Добавляем текущий рабочий каталог в путь
+				path.append(cwd);
+				// Добавляем слэш разделителя файловой системы
+				path.append(AWH_FS_SEPARATOR);
+				// Добавляем оставшуюся часть пути
+				path.append(input);
+			}
+			// Компонент пути
+			string part = "";
+			// Составные части пути
+			vector <string> parts;
+			// 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
+			for(char letter : path){
+				// Если встретили слэш разделителя файловой системы
+				if(letter == AWH_FS_SEPARATOR[0]){
+					// Если компонент не пустой
+					if(!part.empty()){
+						// Обрабатываем компонент пути
+						if(part == ".."){
+							// Если есть из чего удалять, удаляем последний компонент
+							if(!parts.empty())
+								// Удаляем последний компонент пути
+								parts.pop_back();
+						// Если компонент не текущий каталог
+						} else if(part != ".")
+							// Добавляем компонент в составные части пути
+							parts.push_back(part);
+						// Очищаем компонент пути
+						part.clear();
+					}
+				// Иначе накапливаем символ в компонент пути
+				} else part.append(1, letter);
+			}
+			// Последний компонент
+			if(!part.empty()){
+				// Обрабатываем компонент пути
+				if(part == ".."){
+					// Если есть из чего удалять, удаляем последний компонент
+					if(!parts.empty())
+						// Удаляем последний компонент пути
+						parts.pop_back();
+				// Если компонент не текущий каталог
+				} else if(part != ".")
+					// Добавляем компонент в составные части пути
+					parts.push_back(part);
+			}
+			// 3. Собираем результат — строго один слэш в начале
+			string result = AWH_FS_SEPARATOR;
+			// Проходим по всем частям пути
+			for(size_t i = 0; i < parts.size(); ++i){
+				// Если это не первая часть пути
+				if(i > 0)
+					// Добавляем слэш разделителя файловой системы
+					result.append(AWH_FS_SEPARATOR);
+				// Добавляем часть пути
+				result.append(parts[i]);
+			}
+			// 4. Возвращаем результат
+			return result;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(input), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return AWH_FS_SEPARATOR;
+	}
+	/**
+	 * @brief Функция получения строки адреса UNIX-сокета
+	 *
+	 * @param addr структура параметров подключения инициатора запроса
+	 * @param size размер структуры параметров подключения
+	 * @return     строка адреса UNIX-сокета
+	 */
+	static string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
+		// Проверяем корректность длины структуры
+		if(size <= offsetof(struct sockaddr_un, sun_path))
+			// Возвращаем пустую строку
+			return "";
+		// Вычисляем длину пути сокета
+		size_t length = (size - offsetof(struct sockaddr_un, sun_path));
+		// Если сокет является абстрактным (только для Linux)
+		if((length > 0) && (addr.sun_path[0] == '\0'))
+			// Имя начинается со второго байта
+			return ("@" + string(addr.sun_path + 1, length - 1));
+		// Обрезаем по первому \0, если он есть (защита от мусора)
+		for(uint8_t i = 0; i < static_cast <uint8_t> (length); ++i){
+			// Если встретили нулевой байт
+			if(addr.sun_path[i] == '\0'){
+				// Устанавливаем длину пути сокета
+				length = i;
+				// Прекращаем цикл
+				break;
+			}
+		}
+		// Возвращаем путь сокета как строку
+		return string(addr.sun_path, length);
+	}
+};
+
+/**
  * Инкапсулируем статические типы данных в пространство имён
  */
 namespace {
@@ -1389,8 +1568,8 @@ namespace {
 	bool GuardTransportLayerNode::isGarbage() const noexcept {
 		// Проверяем статус узла события
 		return (
-			(this->_node->refs.load(std::memory_order_acquire) == 1) &&
-			(this->_node->state.status.load(std::memory_order_acquire) == event::status_t::GARBAGE)
+			(this->_node->refs == 1) &&
+			(this->_node->state.status == event::status_t::GARBAGE)
 		);
 	}
 	/**
@@ -1410,10 +1589,273 @@ namespace {
 		// Уменьшаем счётчик ссылок узла
 		this->_node->refs.fetch_sub(1, std::memory_order_release);
 		// Если счётчик ссылок узла равен нулю и статус узла установлен как мусорный
-		if((this->_node->refs.load(std::memory_order_acquire) == 0) &&
-		   (this->_node->state.status.load(std::memory_order_acquire) == event::status_t::GARBAGE))
+		if((this->_node->refs == 0) &&
+		   (this->_node->state.status == event::status_t::GARBAGE)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (this->_node->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::NOTIFY): {
+					// Выполняем извлечение текущего значения объекта пользовательского события
+					::io::user_t * user = awh_cast <::io::user_t *> (this->_node);
+					// Если установлена функция обратного вызова
+					if(user->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						user->callbacks.status(user->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
+					// Выполняем извлечение текущего значения объекта таймера
+					::io::timer_t * timer = awh_cast <::io::timer_t *> (this->_node);
+					// Если установлена функция обратного вызова
+					if(timer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						timer->callbacks.status(timer->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (this->_node);
+					// Если каталог открыт
+					if(dir->handle != nullptr){
+						// Закрываем каталог
+						::closedir(dir->handle);
+						// Сбрасываем значение указателя на каталог
+						dir->handle = nullptr;
+					}
+					// Если дескриптор сокета инициализирован
+					if(dir->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(dir->fd);
+						// Сбрасываем значение дескриптора сокета
+						dir->fd = net::invalid_socket_t;
+					}
+					// Если установлена функция обратного вызова
+					if(dir->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						dir->callbacks.status(dir->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					::io::file_t * fs = awh_cast <::io::file_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(fs->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(fs->fd);
+						// Сбрасываем значение дескриптора сокета
+						fs->fd = net::invalid_socket_t;
+					}
+					// Если установлена функция обратного вызова
+					if(fs->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						fs->callbacks.status(fs->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (this->_node);
+					// Если установлена функция обратного вызова
+					if(ipc->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						ipc->callbacks.status(ipc->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(peer->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(peer->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						peer->transfer.fd = net::invalid_socket_t;
+					}
+					// Если установлена функция обратного вызова
+					if(peer->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						peer->callbacks.status(peer->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(origin->transfer.fd != net::invalid_socket_t)
+						// Сбрасываем значение дескриптора сокета
+						origin->transfer.fd = net::invalid_socket_t;
+					// Идентификатор сессии источника
+					origin_id_t sid;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (origin->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS):
+							// Формируем идентификатор источника
+							sid.from(::trust_cast <struct sockaddr_un> (origin->endpoint.client));
+						break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+							// Формируем идентификатор источника
+							sid.from(::trust_cast <struct sockaddr_in> (origin->endpoint.client));
+						break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+							// Формируем идентификатор источника
+							sid.from(::trust_cast <struct sockaddr_in6> (origin->endpoint.client));
+						break;
+					}
+					// Ищем сессию по идентификатору источника
+					auto i = ::__awh_origin_sessions__.find(sid);
+					// Если сессия найдена
+					if(i != ::__awh_origin_sessions__.end())
+						// Удаляем сессию
+						::__awh_origin_sessions__.erase(i);
+					// Если установлена функция обратного вызова
+					if(origin->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						origin->callbacks.status(origin->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем текущее значение объекта туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (this->_node);
+					// Если установлена функция обратного вызова
+					if(tunnel->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						tunnel->callbacks.status(tunnel->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем текущее значение объекта посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (this->_node);
+					// Идентификатор сессии источника
+					origin_id_t sid;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (mediator->state.family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Объект структуры адреса IPv4
+							struct sockaddr_in addr{0};
+							// Устанавливаем произвольный порт
+							addr.sin_port = htons(0);
+							// Устанавливаем семейство IP-адресов
+							addr.sin_family = AF_INET;
+							// Устанавливаем длину структуры
+							addr.sin_len = sizeof(struct sockaddr_in);
+							// Устанавливаем адрес для хоста целевой машины
+							addr.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address;
+							// Формируем идентификатор источника
+							sid.from(addr);
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Объект структуры адреса IPv6
+							struct sockaddr_in6 addr{0};
+							// Устанавливаем произвольный порт
+							addr.sin6_port = htons(0);
+							// Устанавливаем семейство IP-адресов
+							addr.sin6_family = AF_INET6;
+							// Устанавливаем длину структуры
+							addr.sin6_len = sizeof(struct sockaddr_in6);
+							// Устанавливаем адрес для хоста целевой машины
+							::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
+							// Формируем идентификатор источника
+							sid.from(addr);
+						} break;
+					}
+					// Ищем сессию по идентификатору источника
+					auto i = ::__awh_origin_sessions__.find(sid);
+					// Если сессия найдена
+					if(i != ::__awh_origin_sessions__.end())
+						// Удаляем сессию
+						::__awh_origin_sessions__.erase(i);
+					// Если установлена функция обратного вызова
+					if(mediator->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						mediator->callbacks.status(mediator->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(client->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(client->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						client->transfer.fd = net::invalid_socket_t;
+					}
+					// Если событие является UNIX-доменным
+					if(client->state.family == event::family_t::UDS){
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (client->state.type)){
+							/**
+							 * Для операционной системы MacOS X, NetBSD, OpenBSD
+							 */
+							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+								// Если событие принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET):
+							#endif
+							// Если событие принадлежит к типу DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Извлекаем файл сокета клиента
+								const string & address = ::fs::unixSocketAddress(
+									::trust_cast <struct sockaddr_un> (client->endpoint.client),
+									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+								);
+								// Если адрес получен
+								if(!address.empty())
+									// Удаляем файл сокета клиента
+									::unlink(address.c_str());
+							} break;
+						}
+					}
+					// Если установлена функция обратного вызова
+					if(client->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						client->callbacks.status(client->id, event::status_t::DESTROYED);
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(server->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(server->fd);
+						// Сбрасываем значение дескриптора сокета
+						server->fd = net::invalid_socket_t;
+					}
+					// Если событие является UNIX-доменным датаграммным сокетом
+					if(server->state.family == event::family_t::UDS){
+						// Извлекаем файл сокета клиента
+						const string & address = ::fs::unixSocketAddress(
+							::trust_cast <struct sockaddr_un> (server->endpoint.server),
+							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+						);
+						// Если адрес получен
+						if(!address.empty())
+							// Удаляем файл сокета клиента
+							::unlink(address.c_str());
+					}
+					// Если установлена функция обратного вызова
+					if(server->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова при уничтожении события
+						server->callbacks.status(server->id, event::status_t::DESTROYED);
+				} break;
+			}
 			// Производим удаление узла
 			::__awh_nodes__.erase(this->_node->id);
+		}
 	}
 };
 
@@ -1957,185 +2399,6 @@ namespace local {
 };
 
 /**
- * Инкапсулируем статические функции в пространство имён файловой системы
- */
-namespace fs {
-	/**
-	 * Подписываемся на пространство имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Функция получения полного пути файла или каталога
-	 *
-	 * @param input входная строка пути
-	 * @param log   объект работы с логами
-	 * @return      полная строка пути
-	 */
-	static string fullpath(const string_view input, const log_t * log) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если входная строка пуста, возвращаем текущий рабочий каталог
-			if(input.empty()){
-				// Временный буфер для текущего рабочего каталога
-				char cwd[PATH_MAX];
-				// Получаем текущий рабочий каталог
-				return (::getcwd(cwd, sizeof(cwd)) ? cwd : AWH_FS_SEPARATOR);
-			}
-			// 1. Обрабатываем вход: превращаем в абсолютный путь как строку
-			string path = "";
-			// Если путь уже абсолютный
-			if(input.front() == AWH_FS_SEPARATOR[0])
-				// Уже абсолютный
-				path = input;
-			// Если путь начинается с '~'
-			else if(input.front() == '~') {
-				// Выполняем поиск следующего слэша ~/ или ~
-				const size_t pos = input.find(AWH_FS_SEPARATOR[0], 1);
-				// Получаем домашний каталог пользователя
-				const char * home = ::getenv("HOME");
-				// Если переменная окружения не установлена
-				if(home == nullptr){
-					// Получаем информацию о пользователе из системы
-					struct passwd * pw = ::getpwuid(::getuid());
-					// Если информация о пользователе получена
-					if(pw != nullptr)
-						// Устанавливаем домашний каталог пользователя
-						home = pw->pw_dir;
-				}
-				// Добавляем домашний каталог пользователя в путь
-				path.append(home != nullptr ? home : AWH_FS_SEPARATOR);
-				// Если найден слэш после тильды
-				if(pos != string::npos)
-					// Добавляем оставшуюся часть пути
-					path.append(input.substr(pos));
-			// Если путь относительный
-			} else {
-				// Временный буфер для текущего рабочего каталога
-				char cwd[PATH_MAX];
-				// Получаем текущий рабочий каталог
-				if(!::getcwd(cwd, sizeof(cwd))){
-					// Устанавливаем корневой каталог как текущий
-					cwd[0] = '/';
-					// Завершаем строку
-					cwd[1] = '\0';
-				}
-				// Добавляем текущий рабочий каталог в путь
-				path.append(cwd);
-				// Добавляем слэш разделителя файловой системы
-				path.append(AWH_FS_SEPARATOR);
-				// Добавляем оставшуюся часть пути
-				path.append(input);
-			}
-			// Компонент пути
-			string part = "";
-			// Составные части пути
-			vector <string> parts;
-			// 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
-			for(char letter : path){
-				// Если встретили слэш разделителя файловой системы
-				if(letter == AWH_FS_SEPARATOR[0]){
-					// Если компонент не пустой
-					if(!part.empty()){
-						// Обрабатываем компонент пути
-						if(part == ".."){
-							// Если есть из чего удалять, удаляем последний компонент
-							if(!parts.empty())
-								// Удаляем последний компонент пути
-								parts.pop_back();
-						// Если компонент не текущий каталог
-						} else if(part != ".")
-							// Добавляем компонент в составные части пути
-							parts.push_back(part);
-						// Очищаем компонент пути
-						part.clear();
-					}
-				// Иначе накапливаем символ в компонент пути
-				} else part.append(1, letter);
-			}
-			// Последний компонент
-			if(!part.empty()){
-				// Обрабатываем компонент пути
-				if(part == ".."){
-					// Если есть из чего удалять, удаляем последний компонент
-					if(!parts.empty())
-						// Удаляем последний компонент пути
-						parts.pop_back();
-				// Если компонент не текущий каталог
-				} else if(part != ".")
-					// Добавляем компонент в составные части пути
-					parts.push_back(part);
-			}
-			// 3. Собираем результат — строго один слэш в начале
-			string result = AWH_FS_SEPARATOR;
-			// Проходим по всем частям пути
-			for(size_t i = 0; i < parts.size(); ++i){
-				// Если это не первая часть пути
-				if(i > 0)
-					// Добавляем слэш разделителя файловой системы
-					result.append(AWH_FS_SEPARATOR);
-				// Добавляем часть пути
-				result.append(parts[i]);
-			}
-			// 4. Возвращаем результат
-			return result;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(input), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат
-		return AWH_FS_SEPARATOR;
-	}
-	/**
-	 * @brief Функция получения строки адреса UNIX-сокета
-	 *
-	 * @param addr структура параметров подключения инициатора запроса
-	 * @param size размер структуры параметров подключения
-	 * @return     строка адреса UNIX-сокета
-	 */
-	static string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
-		// Проверяем корректность длины структуры
-		if(size <= offsetof(struct sockaddr_un, sun_path))
-			// Возвращаем пустую строку
-			return "";
-		// Вычисляем длину пути сокета
-		size_t length = (size - offsetof(struct sockaddr_un, sun_path));
-		// Если сокет является абстрактным (только для Linux)
-		if((length > 0) && (addr.sun_path[0] == '\0'))
-			// Имя начинается со второго байта
-			return ("@" + string(addr.sun_path + 1, length - 1));
-		// Обрезаем по первому \0, если он есть (защита от мусора)
-		for(uint8_t i = 0; i < static_cast <uint8_t> (length); ++i){
-			// Если встретили нулевой байт
-			if(addr.sun_path[i] == '\0'){
-				// Устанавливаем длину пути сокета
-				length = i;
-				// Прекращаем цикл
-				break;
-			}
-		}
-		// Возвращаем путь сокета как строку
-		return string(addr.sun_path, length);
-	}
-};
-
-/**
  * Инкапсулируем статические функции в пространство имён Ethernet
  */
 namespace eth {
@@ -2241,13 +2504,13 @@ namespace events {
 					// Получаем текущее значение объекта таймера
 					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 					// Если статусы события изменились
-					if(timer->state.status.load(std::memory_order_acquire) != timer->state.oldset.load(std::memory_order_acquire)){
+					if(timer->state.status != timer->state.stash){
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							timer->callbacks.status(timer->id, timer->state.status.load(std::memory_order_acquire));
+							timer->callbacks.status(timer->id, timer->state.status);
 						// Запоминаем текущее значение статуса события для последующего сравнения
-						timer->state.oldset = timer->state.status.load(std::memory_order_acquire);
+						timer->state.stash = timer->state.status;
 					}
 				} break;
 				// Если узел является директорией
@@ -2255,23 +2518,23 @@ namespace events {
 					// Получаем текущее значение объекта директории
 					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 					// Если статусы события изменились
-					if(dir->state.status.load(std::memory_order_acquire) != dir->state.oldset.load(std::memory_order_acquire)){
+					if(dir->state.status != dir->state.stash){
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
+							dir->callbacks.status(dir->id, dir->state.status);
 						// Если статус события восстановление из паузы
-						if(dir->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(dir->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							dir->state.status = dir->state.oldset.load(std::memory_order_acquire);
+							dir->state.status = dir->state.stash;
 							// Если установлена функция обратного вызова
 							if(dir->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								dir->callbacks.status(dir->id, dir->state.status.load(std::memory_order_acquire));
+								dir->callbacks.status(dir->id, dir->state.status);
 						// Если статус события не является паузой
-						} else if(dir->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(dir->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							dir->state.oldset = dir->state.status.load(std::memory_order_acquire);
+							dir->state.stash = dir->state.status;
 					}
 				} break;
 				// Если узел является файловой системой
@@ -2279,23 +2542,23 @@ namespace events {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если статусы события изменились
-					if(fs->state.status.load(std::memory_order_acquire) != fs->state.oldset.load(std::memory_order_acquire)){
+					if(fs->state.status != fs->state.stash){
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
+							fs->callbacks.status(fs->id, fs->state.status);
 						// Если статус события восстановление из паузы
-						if(fs->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(fs->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							fs->state.status = fs->state.oldset.load(std::memory_order_acquire);
+							fs->state.status = fs->state.stash;
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								fs->callbacks.status(fs->id, fs->state.status.load(std::memory_order_acquire));
+								fs->callbacks.status(fs->id, fs->state.status);
 						// Если статус события не является паузой
-						} else if(fs->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(fs->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							fs->state.oldset = fs->state.status.load(std::memory_order_acquire);
+							fs->state.stash = fs->state.status;
 					}
 				} break;
 				// Если узел является межпроцессным взаимодействием
@@ -2303,23 +2566,23 @@ namespace events {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если статусы события изменились
-					if(ipc->state.status.load(std::memory_order_acquire) != ipc->state.oldset.load(std::memory_order_acquire)){
+					if(ipc->state.status != ipc->state.stash){
 						// Если установлена функция обратного вызова
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
+							ipc->callbacks.status(ipc->id, ipc->state.status);
 						// Если статус события восстановление из паузы
-						if(ipc->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(ipc->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							ipc->state.status = ipc->state.oldset.load(std::memory_order_acquire);
+							ipc->state.status = ipc->state.stash;
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								ipc->callbacks.status(ipc->id, ipc->state.status.load(std::memory_order_acquire));
+								ipc->callbacks.status(ipc->id, ipc->state.status);
 						// Если статус события не является паузой
-						} else if(ipc->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(ipc->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							ipc->state.oldset = ipc->state.status.load(std::memory_order_acquire);
+							ipc->state.stash = ipc->state.status;
 					}
 				} break;
 				// Если узел является одноранговым узлом
@@ -2327,23 +2590,23 @@ namespace events {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если статусы события изменились
-					if(peer->state.status.load(std::memory_order_acquire) != peer->state.oldset.load(std::memory_order_acquire)){
+					if(peer->state.status != peer->state.stash){
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
+							peer->callbacks.status(peer->id, peer->state.status);
 						// Если статус события восстановление из паузы
-						if(peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(peer->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							peer->state.status = peer->state.oldset.load(std::memory_order_acquire);
+							peer->state.status = peer->state.stash;
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								peer->callbacks.status(peer->id, peer->state.status.load(std::memory_order_acquire));
+								peer->callbacks.status(peer->id, peer->state.status);
 						// Если статус события не является паузой
-						} else if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(peer->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							peer->state.oldset = peer->state.status.load(std::memory_order_acquire);
+							peer->state.stash = peer->state.status;
 					}
 				} break;
 				// Если узел является одноранговым узлом-источником
@@ -2351,23 +2614,23 @@ namespace events {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Если статусы события изменились
-					if(origin->state.status.load(std::memory_order_acquire) != origin->state.oldset.load(std::memory_order_acquire)){
+					if(origin->state.status != origin->state.stash){
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							origin->callbacks.status(origin->id, origin->state.status.load(std::memory_order_acquire));
+							origin->callbacks.status(origin->id, origin->state.status);
 						// Если статус события восстановление из паузы
-						if(origin->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(origin->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							origin->state.status = origin->state.oldset.load(std::memory_order_acquire);
+							origin->state.status = origin->state.stash;
 							// Если установлена функция обратного вызова
 							if(origin->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								origin->callbacks.status(origin->id, origin->state.status.load(std::memory_order_acquire));
+								origin->callbacks.status(origin->id, origin->state.status);
 						// Если статус события не является паузой
-						} else if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(origin->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							origin->state.oldset = origin->state.status.load(std::memory_order_acquire);
+							origin->state.stash = origin->state.status;
 					}
 				} break;
 				// Если узел является туннелем
@@ -2375,13 +2638,13 @@ namespace events {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
 					// Если статусы события изменились
-					if(tunnel->state.status.load(std::memory_order_acquire) != tunnel->state.oldset.load(std::memory_order_acquire)){
+					if(tunnel->state.status != tunnel->state.stash){
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							tunnel->callbacks.status(tunnel->id, tunnel->state.status.load(std::memory_order_acquire));
+							tunnel->callbacks.status(tunnel->id, tunnel->state.status);
 						// Запоминаем текущее значение статуса события для последующего сравнения
-						tunnel->state.oldset = tunnel->state.status.load(std::memory_order_acquire);
+						tunnel->state.stash = tunnel->state.status;
 					}
 				} break;
 				// Если узел является посредником
@@ -2389,13 +2652,13 @@ namespace events {
 					// Получаем объект посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
 					// Если статусы события изменились
-					if(mediator->state.status.load(std::memory_order_acquire) != mediator->state.oldset.load(std::memory_order_acquire)){
+					if(mediator->state.status != mediator->state.stash){
 						// Если установлена функция обратного вызова
 						if(mediator->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							mediator->callbacks.status(mediator->id, mediator->state.status.load(std::memory_order_acquire));
+							mediator->callbacks.status(mediator->id, mediator->state.status);
 						// Запоминаем текущее значение статуса события для последующего сравнения
-						mediator->state.oldset = mediator->state.status.load(std::memory_order_acquire);
+						mediator->state.stash = mediator->state.status;
 					}
 				} break;
 				// Если узел является клиентом
@@ -2403,23 +2666,23 @@ namespace events {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если статусы события изменились
-					if(client->state.status.load(std::memory_order_acquire) != client->state.oldset.load(std::memory_order_acquire)){
+					if(client->state.status != client->state.stash){
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
+							client->callbacks.status(client->id, client->state.status);
 						// Если статус события восстановление из паузы
-						if(client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(client->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							client->state.status = client->state.oldset.load(std::memory_order_acquire);
+							client->state.status = client->state.stash;
 							// Если установлена функция обратного вызова
 							if(client->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								client->callbacks.status(client->id, client->state.status.load(std::memory_order_acquire));
+								client->callbacks.status(client->id, client->state.status);
 						// Если статус события не является паузой
-						} else if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(client->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							client->state.oldset = client->state.status.load(std::memory_order_acquire);
+							client->state.stash = client->state.status;
 					}
 				} break;
 				// Если узел является сервером
@@ -2427,23 +2690,23 @@ namespace events {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если статусы события изменились
-					if(server->state.status.load(std::memory_order_acquire) != server->state.oldset.load(std::memory_order_acquire)){
+					if(server->state.status != server->state.stash){
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
-							server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
+							server->callbacks.status(server->id, server->state.status);
 						// Если статус события восстановление из паузы
-						if(server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED){
+						if(server->state.status == event::status_t::RESUMED){
 							// Восстанавливаем оригинальное значение статуса события
-							server->state.status = server->state.oldset.load(std::memory_order_acquire);
+							server->state.status = server->state.stash;
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
-								server->callbacks.status(server->id, server->state.status.load(std::memory_order_acquire));
+								server->callbacks.status(server->id, server->state.status);
 						// Если статус события не является паузой
-						} else if(server->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						} else if(server->state.status != event::status_t::PAUSED)
 							// Запоминаем текущее значение статуса события для последующего сравнения
-							server->state.oldset = server->state.status.load(std::memory_order_acquire);
+							server->state.stash = server->state.status;
 					}
 				} break;
 			}
@@ -3761,15 +4024,6 @@ namespace io {
 	using namespace awh;
 
 	/**
-	 * @brief Прототип функции обработки события закрытия
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 */
-	static bool close(::io::node_t *, const eth_t *, const log_t *) noexcept;
-	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param  узел в котором произошло событие
@@ -4170,10 +4424,8 @@ namespace io {
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
-											// Выполняем обработку закрытия подключения
-											if(::io::close(ipc, eth, log))
-												// Выполняем удаление узла
-												::io::destroy(ipc, eth, log);
+											// Выполняем удаление узла
+											::io::destroy(ipc, eth, log);
 											// Формируем отрицательный результат
 											return result;
 										}
@@ -4197,10 +4449,8 @@ namespace io {
 											return result;
 									// Если произошёл дисконнект
 									} else {
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -4235,10 +4485,6 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
-									// Выполняем обработку закрытия подключения
-									if(::io::close(ipc, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(ipc, eth, log);
 								// Если мы получили данные из сокета
 								} else if((result = (bytes > 0))) {
 									// Если функция обратного вызова для вывода события установлена
@@ -4253,13 +4499,11 @@ namespace io {
 											ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
-								// Если произошёл дисконнект
-								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(ipc, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(ipc, eth, log);
+									// Выводим результат
+									return result;
 								}
+								// Выполняем удаление узла
+								::io::destroy(ipc, eth, log);
 							}
 						} break;
 						// Для других семейств событий
@@ -4345,10 +4589,8 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
-									// Выполняем обработку закрытия подключения
-									if(::io::close(ipc, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(ipc, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(ipc, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -4372,10 +4614,8 @@ namespace io {
 									return result;
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(ipc, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(ipc, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(ipc, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -4410,10 +4650,6 @@ namespace io {
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
-							// Выполняем обработку закрытия подключения
-							if(::io::close(ipc, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(ipc, eth, log);
 						// Если мы получили данные из сокета
 						} else if((result = (bytes > 0))) {
 							// Если функция обратного вызова для вывода события установлена
@@ -4428,13 +4664,11 @@ namespace io {
 									ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
-						// Если произошёл дисконнект
-						} else {
-							// Выполняем обработку закрытия подключения
-							if(::io::close(ipc, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(ipc, eth, log);
+							// Выводим результат
+							return result;
 						}
+						// Выполняем удаление узла
+						::io::destroy(ipc, eth, log);
 					}
 				} break;
 				// Если событие принадлежит к типу DATAGRAM
@@ -4491,10 +4725,8 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
-									// Выполняем обработку закрытия подключения
-									if(::io::close(ipc, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(ipc, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(ipc, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -4518,10 +4750,8 @@ namespace io {
 									return result;
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(ipc, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(ipc, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(ipc, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -4556,10 +4786,6 @@ namespace io {
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
-							// Выполняем обработку закрытия подключения
-							if(::io::close(ipc, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(ipc, eth, log);
 						// Если мы получили данные из сокета
 						} else if((result = (bytes > 0))) {
 							// Если функция обратного вызова для вывода события установлена
@@ -4574,13 +4800,11 @@ namespace io {
 									ipc->callbacks.read(ipc->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, buffer, static_cast <size_t> (bytes));
-						// Если произошёл дисконнект
-						} else {
-							// Выполняем обработку закрытия подключения
-							if(::io::close(ipc, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(ipc, eth, log);
+							// Выводим результат
+							return result;
 						}
+						// Выполняем удаление узла
+						::io::destroy(ipc, eth, log);
 					}
 				} break;
 			}
@@ -4735,10 +4959,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(peer, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(peer, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(peer, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -4834,10 +5056,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(peer, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(peer, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(peer, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -4907,12 +5127,9 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(peer, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(peer, eth, log);
-							}
+							if(errno != EAGAIN)
+								// Выполняем удаление узла
+								::io::destroy(peer, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						// Если мы получили данные из сокета
@@ -4967,10 +5184,8 @@ namespace io {
 								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 						// Если произошёл дисконнект
 						} else {
-							// Выполняем обработку закрытия подключения
-							if(::io::close(peer, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(peer, eth, log);
+							// Выполняем удаление узла
+							::io::destroy(peer, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						}
@@ -5047,10 +5262,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(peer, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(peer, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(peer, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -5108,10 +5321,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(peer, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(peer, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(peer, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -5163,12 +5374,9 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN){
-									// Выполняем обработку закрытия подключения
-									if(::io::close(peer, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(peer, eth, log);
-								}
+								if(errno != EAGAIN)
+									// Выполняем удаление узла
+									::io::destroy(peer, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							// Если мы получили данные из сокета
@@ -5214,10 +5422,8 @@ namespace io {
 									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(peer, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(peer, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(peer, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -5332,10 +5538,8 @@ namespace io {
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
-							// Выполняем обработку закрытия подключения
-							if(::io::close(tunnel, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(tunnel, eth, log);
+							// Выполняем удаление узла
+							::io::destroy(tunnel, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						}
@@ -5374,7 +5578,7 @@ namespace io {
 											// Получаем текущее значение объекта посредника
 											::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
 											// Если событие находится в состоянии инициализированного
-											if((result = (mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL))){
+											if((result = (mediator->state.status == event::status_t::INITIAL))){
 												// Создаём охранника узла события
 												::local::guard_t guard(mediator);
 												// Если функция обратного вызова для вывода события установлена
@@ -5471,7 +5675,7 @@ namespace io {
 											// Получаем текущее значение объекта посредника
 											::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
 											// Если событие находится в состоянии инициализированного
-											if((result = (mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL))){
+											if((result = (mediator->state.status == event::status_t::INITIAL))){
 												// Создаём охранника узла события
 												::local::guard_t guard(mediator);
 												// Если функция обратного вызова для вывода события установлена
@@ -5633,10 +5837,8 @@ namespace io {
 							}
 							// Если сокет повреждён
 							if(error == event::error_t::INVALID_SOCKET){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(tunnel, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(tunnel, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(tunnel, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -5673,10 +5875,8 @@ namespace io {
 							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
-					// Выполняем обработку закрытия подключения
-					if(::io::close(tunnel, eth, log))
-						// Выполняем удаление узла
-						::io::destroy(tunnel, eth, log);
+					// Выполняем удаление узла
+					::io::destroy(tunnel, eth, log);
 				// Если мы получили данные из сокета
 				} else if(bytes > static_cast <ssize_t> (sizeof(family))) {
 					// Если мы получили семейство протоколов в неверном порядке байт
@@ -5712,7 +5912,7 @@ namespace io {
 										// Получаем текущее значение объекта посредника
 										::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
 										// Если событие находится в состоянии инициализированного
-										if((result = (mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL))){
+										if((result = (mediator->state.status == event::status_t::INITIAL))){
 											// Создаём охранника узла события
 											::local::guard_t guard(mediator);
 											// Если функция обратного вызова для вывода события установлена
@@ -5809,7 +6009,7 @@ namespace io {
 										// Получаем текущее значение объекта посредника
 										::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second);
 										// Если событие находится в состоянии инициализированного
-										if((result = (mediator->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL))){
+										if((result = (mediator->state.status == event::status_t::INITIAL))){
 											// Создаём охранника узла события
 											::local::guard_t guard(mediator);
 											// Если функция обратного вызова для вывода события установлена
@@ -5970,12 +6170,9 @@ namespace io {
 							#endif
 						}
 						// Если сокет повреждён
-						if(error == event::error_t::INVALID_SOCKET){
-							// Выполняем обработку закрытия подключения
-							if(::io::close(tunnel, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(tunnel, eth, log);
-						}
+						if(error == event::error_t::INVALID_SOCKET)
+							// Выполняем удаление узла
+							::io::destroy(tunnel, eth, log);
 					}
 				}
 			}
@@ -6077,10 +6274,8 @@ namespace io {
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -6108,10 +6303,8 @@ namespace io {
 									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -6156,12 +6349,9 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
-							}
+							if(errno != EAGAIN)
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						// Если мы получили данные из сокета
@@ -6188,10 +6378,8 @@ namespace io {
 								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 						// Если произошёл дисконнект
 						} else {
-							// Выполняем обработку закрытия подключения
-							if(::io::close(client, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(client, eth, log);
+							// Выполняем удаление узла
+							::io::destroy(client, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						}
@@ -6305,10 +6493,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -6404,10 +6590,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -6477,12 +6661,9 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
-							}
+							if(errno != EAGAIN)
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						// Если мы получили данные из сокета
@@ -6537,10 +6718,8 @@ namespace io {
 								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 						// Если произошёл дисконнект
 						} else {
-							// Выполняем обработку закрытия подключения
-							if(::io::close(client, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(client, eth, log);
+							// Выполняем удаление узла
+							::io::destroy(client, eth, log);
 							// Формируем отрицательный результат
 							return result;
 						}
@@ -6549,7 +6728,7 @@ namespace io {
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если клиент находится в состоянии подключено
-					if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+					if(client->state.status == event::status_t::CONNECTED){
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -6605,10 +6784,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -6647,10 +6824,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -6690,12 +6865,9 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN){
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
-								}
+								if(errno != EAGAIN)
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							// Если мы получили данные из сокета
@@ -6722,16 +6894,14 @@ namespace io {
 									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
 						}
 					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+					} else if(client->state.status == event::status_t::LAUNCHED) {
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -6792,10 +6962,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -6834,10 +7002,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -6882,12 +7048,9 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN){
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
-								}
+								if(errno != EAGAIN)
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							// Если мы получили данные из сокета
@@ -6914,10 +7077,8 @@ namespace io {
 									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -6927,7 +7088,7 @@ namespace io {
 				// Если событие принадлежит к типу SEQPACKET
 				case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 					// Если клиент находится в состоянии подключено
-					if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+					if(client->state.status == event::status_t::CONNECTED){
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -7004,10 +7165,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -7072,10 +7231,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -7138,12 +7295,9 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN){
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
-								}
+								if(errno != EAGAIN)
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							// Если мы получили данные из сокета
@@ -7196,16 +7350,14 @@ namespace io {
 									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
 						}
 					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+					} else if(client->state.status == event::status_t::LAUNCHED) {
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -7293,10 +7445,8 @@ namespace io {
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 										// Формируем отрицательный результат
 										return result;
 									}
@@ -7361,10 +7511,8 @@ namespace io {
 									}
 								// Если произошёл дисконнект
 								} else {
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 									// Формируем отрицательный результат
 									return result;
 								}
@@ -7438,12 +7586,9 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN){
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
-								}
+								if(errno != EAGAIN)
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							// Если мы получили данные из сокета
@@ -7496,10 +7641,8 @@ namespace io {
 									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 							// Если произошёл дисконнект
 							} else {
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
 								return result;
 							}
@@ -7704,10 +7847,8 @@ namespace io {
 										}
 										// Если сокет повреждён
 										if(error == event::error_t::INVALID_SOCKET){
-											// Выполняем обработку закрытия подключения
-											if(::io::close(server, eth, log))
-												// Выполняем удаление узла
-												::io::destroy(server, eth, log);
+											// Выполняем удаление узла
+											::io::destroy(server, eth, log);
 											// Формируем отрицательный результат
 											return result;
 										}
@@ -7807,12 +7948,9 @@ namespace io {
 										#endif
 									}
 									// Если сокет повреждён
-									if(error == event::error_t::INVALID_SOCKET){
-										// Выполняем обработку закрытия подключения
-										if(::io::close(server, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(server, eth, log);
-									}
+									if(error == event::error_t::INVALID_SOCKET)
+										// Выполняем удаление узла
+										::io::destroy(server, eth, log);
 								}
 							}
 						}
@@ -8033,10 +8171,8 @@ namespace io {
 													// Удаляем запись из очереди
 													ipc->transfer.queue.pop(size);
 												}
-												// Выполняем обработку закрытия подключения
-												if(::io::close(ipc, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(ipc, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(ipc, eth, log);
 											}
 										}
 									}
@@ -8188,10 +8324,8 @@ namespace io {
 											// Удаляем запись из очереди
 											ipc->transfer.queue.pop(size);
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 									}
 								}
 							}
@@ -8323,10 +8457,8 @@ namespace io {
 											// Удаляем запись из очереди
 											ipc->transfer.queue.pop();
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 									}
 								}
 							}
@@ -8516,10 +8648,8 @@ namespace io {
 													// Удаляем запись из очереди
 													peer->transfer.queue.pop(size);
 												}
-												// Выполняем обработку закрытия подключения
-												if(::io::close(peer, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(peer, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(peer, eth, log);
 											}
 										}
 									}
@@ -8821,10 +8951,8 @@ namespace io {
 														// Удаляем запись из очереди
 														peer->transfer.queue.pop();
 													}
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(peer, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(peer, eth, log);
 												}
 											}
 										}
@@ -9143,10 +9271,8 @@ namespace io {
 													// Удаляем запись из очереди
 													origin->transfer.queue.pop();
 												}
-												// Выполняем обработку закрытия подключения
-												if(::io::close(origin, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(origin, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(origin, eth, log);
 											}
 										}
 									}
@@ -9437,12 +9563,9 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(error == event::error_t::INVALID_SOCKET){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(tunnel, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(tunnel, eth, log);
-							}
+							if(error == event::error_t::INVALID_SOCKET)
+								// Выполняем удаление узла
+								::io::destroy(tunnel, eth, log);
 						}
 					}
 				}
@@ -9629,10 +9752,8 @@ namespace io {
 													// Удаляем запись из очереди
 													client->transfer.queue.pop(size);
 												}
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(client, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(client, eth, log);
 											}
 										}
 									}
@@ -9821,11 +9942,11 @@ namespace io {
 									 */
 									errno = 0;
 									// Если клиент находится в состоянии подключено
-									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)
+									if(client->state.status == event::status_t::CONNECTED)
 										// Выполняем отправку данных в TCP/IP сокет
 										bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									// Если клиент находится в запущенном состоянии
-									else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+									else if(client->state.status == event::status_t::LAUNCHED)
 										// Выполняем отправку данных в UDP-сокет
 										bytes = ::sendto(
 											client->transfer.fd,
@@ -9929,10 +10050,8 @@ namespace io {
 													// Удаляем запись из очереди
 													client->transfer.queue.pop();
 												}
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(client, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(client, eth, log);
 											}
 										}
 									}
@@ -10085,7 +10204,7 @@ namespace io {
 								 */
 								try {
 									// Если клиент находится в состоянии подключено
-									if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+									if(client->state.status == event::status_t::CONNECTED){
 										/**
 										 * Если операционной системой является FreeBSD
 										 */
@@ -10114,7 +10233,7 @@ namespace io {
 											bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 										#endif
 									// Если клиент находится в запущенном состоянии
-									} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+									} else if(client->state.status == event::status_t::LAUNCHED) {
 										/**
 										 * Сбрасываем значение errno перед отправкой данных в сокет
 										 */
@@ -10254,10 +10373,8 @@ namespace io {
 													// Удаляем запись из очереди
 													client->transfer.queue.pop();
 												}
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(client, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(client, eth, log);
 											}
 										}
 									}
@@ -10432,7 +10549,7 @@ namespace io {
 				// Если событие записи разрешено
 				if(origin->transfer.actions & ::action::WRITE){
 					// Если событие находится не в состоянии паузы
-					if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+					if(origin->state.status != event::status_t::PAUSED){
 						// Если есть данные для отправки в сокет
 						if(!origin->transfer.queue.empty()){
 							// Размер данных для извлечения из очереди
@@ -10515,10 +10632,8 @@ namespace io {
 											// Удаляем запись из очереди
 											origin->transfer.queue.pop();
 										}
-										// Выполняем обработку закрытия подключения
-										if(::io::close(origin, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(origin, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(origin, eth, log);
 										// Пропускаем итерацию цикла
 										continue;
 									}
@@ -10655,14 +10770,10 @@ namespace io {
 												// Удаляем запись из очереди
 												origin->transfer.queue.pop();
 											}
-											// Выполняем обработку закрытия подключения
-											if(::io::close(origin, eth, log))
-												// Выполняем удаление узла
-												::io::destroy(origin, eth, log);
-											// Выполняем обработку закрытия подключения
-											if(::io::close(server, eth, log))
-												// Выполняем удаление узла
-												::io::destroy(server, eth, log);
+											// Выполняем удаление узла
+											::io::destroy(origin, eth, log);
+											// Выполняем удаление узла
+											::io::destroy(server, eth, log);
 											// Выходим из функции обработки события, так как сокет уже недействителен
 											return result;
 										}
@@ -10961,10 +11072,8 @@ namespace io {
 												if(ipc->callbacks.spool != nullptr)
 													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 													ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-												// Выполняем обработку закрытия подключения
-												if(::io::close(ipc, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(ipc, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(ipc, eth, log);
 											}
 										}
 									}
@@ -11041,10 +11150,8 @@ namespace io {
 										if(ipc->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 									}
 								}
 							// Если событие является блокирующим
@@ -11093,10 +11200,8 @@ namespace io {
 									if(ipc->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(ipc, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(ipc, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(ipc, eth, log);
 								}
 							}
 						} break;
@@ -11252,10 +11357,8 @@ namespace io {
 										if(ipc->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 									}
 								}
 							}
@@ -11332,10 +11435,8 @@ namespace io {
 								if(ipc->callbacks.spool != nullptr)
 									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 									ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-								// Выполняем обработку закрытия подключения
-								if(::io::close(ipc, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(ipc, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(ipc, eth, log);
 							}
 						}
 					// Если событие является блокирующим
@@ -11384,10 +11485,8 @@ namespace io {
 							if(ipc->callbacks.spool != nullptr)
 								// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 								ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-							// Выполняем обработку закрытия подключения
-							if(::io::close(ipc, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(ipc, eth, log);
+							// Выполняем удаление узла
+							::io::destroy(ipc, eth, log);
 						}
 					}
 				} break;
@@ -11487,10 +11586,8 @@ namespace io {
 										if(ipc->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 									}
 								}
 							}
@@ -11587,10 +11684,8 @@ namespace io {
 										if(ipc->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(ipc, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(ipc, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(ipc, eth, log);
 										// Выводим результат работы функции
 										return result;
 									}
@@ -11667,10 +11762,8 @@ namespace io {
 									if(ipc->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(ipc, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(ipc, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(ipc, eth, log);
 								}
 							}
 						}
@@ -11834,10 +11927,8 @@ namespace io {
 												if(peer->callbacks.spool != nullptr)
 													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 													peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-												// Выполняем обработку закрытия подключения
-												if(::io::close(peer, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(peer, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(peer, eth, log);
 											}
 										}
 									}
@@ -12133,10 +12224,8 @@ namespace io {
 											if(peer->callbacks.spool != nullptr)
 												// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 												peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-											// Выполняем обработку закрытия подключения
-											if(::io::close(peer, eth, log))
-												// Выполняем удаление узла
-												::io::destroy(peer, eth, log);
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
 											// Выводим результат работы функции
 											return result;
 										}
@@ -12413,10 +12502,8 @@ namespace io {
 								if(peer->callbacks.spool != nullptr)
 									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 									peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-								// Выполняем обработку закрытия подключения
-								if(::io::close(peer, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(peer, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(peer, eth, log);
 							}
 						}
 					}
@@ -12527,10 +12614,8 @@ namespace io {
 													if(peer->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(peer, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(peer, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(peer, eth, log);
 												}
 											}
 										}
@@ -12799,10 +12884,8 @@ namespace io {
 														if(peer->callbacks.spool != nullptr)
 															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 															peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-														// Выполняем обработку закрытия подключения
-														if(::io::close(peer, eth, log))
-															// Выполняем удаление узла
-															::io::destroy(peer, eth, log);
+														// Выполняем удаление узла
+														::io::destroy(peer, eth, log);
 														// Выводим результат работы функции
 														return result;
 													}
@@ -13064,10 +13147,8 @@ namespace io {
 										if(peer->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(peer, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(peer, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(peer, eth, log);
 									}
 								}
 							}
@@ -13206,10 +13287,8 @@ namespace io {
 									if(origin->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(origin, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(origin, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(origin, eth, log);
 								}
 							}
 						}
@@ -13300,10 +13379,8 @@ namespace io {
 										if(origin->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(origin, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(origin, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(origin, eth, log);
 										// Выводим результат работы функции
 										return result;
 									}
@@ -13393,10 +13470,8 @@ namespace io {
 									if(origin->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(origin, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(origin, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(origin, eth, log);
 								}
 							}
 						}
@@ -13525,10 +13600,8 @@ namespace io {
 												if(origin->callbacks.spool != nullptr)
 													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 													origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-												// Выполняем обработку закрытия подключения
-												if(::io::close(origin, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(origin, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(origin, eth, log);
 											}
 										}
 									}
@@ -13739,10 +13812,8 @@ namespace io {
 												if(origin->callbacks.spool != nullptr)
 													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 													origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-												// Выполняем обработку закрытия подключения
-												if(::io::close(origin, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(origin, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(origin, eth, log);
 												// Выводим результат работы функции
 												return result;
 											}
@@ -13923,10 +13994,8 @@ namespace io {
 									if(origin->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(origin, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(origin, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(origin, eth, log);
 								}
 							}
 						}
@@ -14111,12 +14180,9 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(error == event::error_t::INVALID_SOCKET){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(tunnel, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(tunnel, eth, log);
-							}
+							if(error == event::error_t::INVALID_SOCKET)
+								// Выполняем удаление узла
+								::io::destroy(tunnel, eth, log);
 						}
 					// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
 					} else result = static_cast <size_t> (bytes);
@@ -14201,10 +14267,8 @@ namespace io {
 							}
 							// Если сокет повреждён
 							if(error == event::error_t::INVALID_SOCKET){
-								// Выполняем обработку закрытия подключения
-								if(::io::close(tunnel, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(tunnel, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(tunnel, eth, log);
 								// Выводим результат работы функции
 								return result;
 							}
@@ -14278,12 +14342,9 @@ namespace io {
 							#endif
 						}
 						// Если сокет повреждён
-						if(error == event::error_t::INVALID_SOCKET){
-							// Выполняем обработку закрытия подключения
-							if(::io::close(tunnel, eth, log))
-								// Выполняем удаление узла
-								::io::destroy(tunnel, eth, log);
-						}
+						if(error == event::error_t::INVALID_SOCKET)
+							// Выполняем удаление узла
+							::io::destroy(tunnel, eth, log);
 					}
 				// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
 				} else result = static_cast <size_t> (bytes);
@@ -14413,10 +14474,8 @@ namespace io {
 									if(client->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 								}
 							}
 						}
@@ -14503,10 +14562,8 @@ namespace io {
 										if(client->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 										// Выводим результат работы функции
 										return result;
 									}
@@ -14592,10 +14649,8 @@ namespace io {
 									if(client->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(client, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(client, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(client, eth, log);
 								}
 							}
 						}
@@ -14737,10 +14792,8 @@ namespace io {
 												if(client->callbacks.spool != nullptr)
 													// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 													client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-												// Выполняем обработку закрытия подключения
-												if(::io::close(client, eth, log))
-													// Выполняем удаление узла
-													::io::destroy(client, eth, log);
+												// Выполняем удаление узла
+												::io::destroy(client, eth, log);
 											}
 										}
 									}
@@ -15042,10 +15095,8 @@ namespace io {
 											if(client->callbacks.spool != nullptr)
 												// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 												client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-											// Выполняем обработку закрытия подключения
-											if(::io::close(client, eth, log))
-												// Выполняем удаление узла
-												::io::destroy(client, eth, log);
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 											// Выводим результат работы функции
 											return result;
 										}
@@ -15278,10 +15329,8 @@ namespace io {
 								if(client->callbacks.spool != nullptr)
 									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 									client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-								// Выполняем обработку закрытия подключения
-								if(::io::close(client, eth, log))
-									// Выполняем удаление узла
-									::io::destroy(client, eth, log);
+								// Выполняем удаление узла
+								::io::destroy(client, eth, log);
 							}
 						}
 					}
@@ -15289,7 +15338,7 @@ namespace io {
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если клиент находится в состоянии подключено
-					if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+					if(client->state.status == event::status_t::CONNECTED){
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -15397,10 +15446,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 												}
 											}
 										}
@@ -15611,10 +15658,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 													// Выводим результат работы функции
 													return result;
 												}
@@ -15795,16 +15840,14 @@ namespace io {
 										if(client->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 									}
 								}
 							}
 						}
 					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+					} else if(client->state.status == event::status_t::LAUNCHED) {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -15912,10 +15955,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 												}
 											}
 										}
@@ -16126,10 +16167,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 													// Выводим результат работы функции
 													return result;
 												}
@@ -16310,10 +16349,8 @@ namespace io {
 										if(client->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 									}
 								}
 							}
@@ -16351,7 +16388,7 @@ namespace io {
 				// Если событие принадлежит к типу SEQPACKET
 				case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 					// Если клиент находится в состоянии подключено
-					if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED){
+					if(client->state.status == event::status_t::CONNECTED){
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -16486,10 +16523,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 												}
 											}
 										}
@@ -16727,10 +16762,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 													// Выводим результат работы функции
 													return result;
 												}
@@ -16938,16 +16971,14 @@ namespace io {
 										if(client->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 									}
 								}
 							}
 						}
 					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+					} else if(client->state.status == event::status_t::LAUNCHED) {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -17082,10 +17113,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 												}
 											}
 										}
@@ -17323,10 +17352,8 @@ namespace io {
 													if(client->callbacks.spool != nullptr)
 														// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 														client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-													// Выполняем обработку закрытия подключения
-													if(::io::close(client, eth, log))
-														// Выполняем удаление узла
-														::io::destroy(client, eth, log);
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
 													// Выводим результат работы функции
 													return result;
 												}
@@ -17534,10 +17561,8 @@ namespace io {
 										if(client->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(client, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(client, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(client, eth, log);
 									}
 								}
 							}
@@ -17704,10 +17729,8 @@ namespace io {
 									if(server->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(server, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(server, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(server, eth, log);
 								}
 							}
 						}
@@ -17798,10 +17821,8 @@ namespace io {
 										if(server->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(server, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(server, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(server, eth, log);
 										// Выводим результат работы функции
 										return result;
 									}
@@ -17891,10 +17912,8 @@ namespace io {
 									if(server->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(server, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(server, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(server, eth, log);
 								}
 							}
 						}
@@ -17996,10 +18015,8 @@ namespace io {
 									if(server->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(server, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(server, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(server, eth, log);
 								}
 							}
 						}
@@ -18090,10 +18107,8 @@ namespace io {
 										if(server->callbacks.spool != nullptr)
 											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 											server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем обработку закрытия подключения
-										if(::io::close(server, eth, log))
-											// Выполняем удаление узла
-											::io::destroy(server, eth, log);
+										// Выполняем удаление узла
+										::io::destroy(server, eth, log);
 										// Выводим результат работы функции
 										return result;
 									}
@@ -18183,10 +18198,8 @@ namespace io {
 									if(server->callbacks.spool != nullptr)
 										// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
 										server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем обработку закрытия подключения
-									if(::io::close(server, eth, log))
-										// Выполняем удаление узла
-										::io::destroy(server, eth, log);
+									// Выполняем удаление узла
+									::io::destroy(server, eth, log);
 								}
 							}
 						}
@@ -18255,172 +18268,226 @@ namespace io {
 	using namespace awh;
 
 	/**
-	 * @brief Функция обработки события закрытия
+	 * @brief Функция обработки события удаления узла
 	 *
 	 * @param node узел в котором произошло событие
 	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 */
-	static bool close(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
-		// Создаём охранника узла события
-		::local::guard_t guard(node);
+	static bool destroy(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является директорией
-				case static_cast <uint8_t> (event::node_t::DIR): {
-					// Получаем текущее значение объекта директории
-					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
-					// Если событие закрытия разрешено
-					if(dir->actions & ::action::CLOSE){
-						// Если установлена функция обратного вызова
-						if(dir->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
-							dir->callbacks.event(dir->id, event::action_t::CLOSE);
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-				// Если узел является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Получаем текущее значение объекта файловой системы
-					::io::file_t * fs = awh_cast <::io::file_t *> (node);
-					// Если событие закрытия разрешено
-					if(fs->actions & ::action::CLOSE){
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
-							fs->callbacks.event(fs->id, event::action_t::CLOSE);
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-				// Если узел является межпроцессным взаимодействием
-				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпроцессного взаимодействия
-					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
-					// Сбрасываем очередь передачи данных события
-					ipc->transfer.queue.clear();
-					// Если событие закрытия разрешено
-					if(ipc->transfer.actions & ::action::CLOSE){
-						// Если установлена функция обратного вызова
-						if(ipc->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
-							ipc->callbacks.event(ipc->id, event::action_t::CLOSE);
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Получаем текущее значение объекта однорангового узла
-					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-					// Сбрасываем очередь передачи данных события
-					peer->transfer.queue.clear();
-					// Удаляем все установленные активные таймауты
-					::timeout::clear(
-						peer->timeouts.read,
-						peer->timeouts.write,
-						peer->bandwidth.read.timeout,
-						peer->bandwidth.write.timeout,
-						event::rate_t::DEFERRED, log
-					);
-					// Если дескриптор сокета действительный
-					if(peer->transfer.fd != net::invalid_socket_t){
-						// Если в сокете нет ошибок
-						if(eth->socket.error(peer->transfer.fd) == 0){
-							// Если активность на чтения данных установлена
-							if(peer->activity & ::activity::READ){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Деактивируем событие на чтение данных из сокета
-								EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-								// Добавляем новое событие в список изменений
-								::events::add(std::move(event));
-							}
-							// Если активность на запись данных установлена
-							if(peer->activity & ::activity::WRITE){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Деактивируем событие на запись данных в сокет
-								EV_SET(&event, peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-								// Добавляем новое событие в список изменений
-								::events::add(std::move(event));
+			// Если статус события не является состоянием подлежащего уничтожению
+			if((node->state.status != event::status_t::GARBAGE) &&
+			   (node->state.status != event::status_t::DESTROYED)){
+				// Устанавливаем статус события в состояние подлежащего уничтожению
+				node->state.status = event::status_t::DESTROYED;
+				// Создаём охранника узла события
+				::local::guard_t guard(node);
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (node->state.node)){
+					// Если узел является пользовательским событием
+					case static_cast <uint8_t> (event::node_t::NOTIFY): {
+						// Выполняем извлечение текущего значения объекта пользовательского события
+						::io::user_t * user = awh_cast <::io::user_t *> (node);
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, user->id, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
+						// Добавляем новое событие в список изменений
+						::events::add(std::move(event));
+					} break;
+					// Если узел является таймаутом
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
+					// Если узел является интервалом
+					case static_cast <uint8_t> (event::node_t::INTERVAL): {
+						// Выполняем извлечение текущего значения объекта таймера
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
+						// Добавляем новое событие в список изменений
+						::events::add(std::move(event));
+					} break;
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Получаем текущее значение объекта директории
+						::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
+						// Добавляем новое событие в список изменений
+						::events::add(std::move(event));
+						// Если событие закрытия разрешено
+						if(dir->actions & ::action::CLOSE){
+							// Если установлена функция обратного вызова
+							if(dir->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								dir->callbacks.event(dir->id, event::action_t::CLOSE);
+						}
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Получаем текущее значение объекта файловой системы
+						::io::file_t * fs = awh_cast <::io::file_t *> (node);
+						// Объект события для удаления из списка ожидания
+						struct kevent event{};
+						// Снимаем событие из списка ожидания
+						EV_SET(&event, fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
+						// Добавляем новое событие в список изменений
+						::events::add(std::move(event));
+						// Если событие закрытия разрешено
+						if(fs->actions & ::action::CLOSE){
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								fs->callbacks.event(fs->id, event::action_t::CLOSE);
+						}
+					} break;
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпроцессного взаимодействия
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
+						// Сбрасываем очередь передачи данных события
+						ipc->transfer.queue.clear();
+						// Если дескриптор сокета инициализирован
+						if(ipc->transfer.fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(ipc->transfer.fd);
+							// Сбрасываем значение дескриптора сокета
+							ipc->transfer.fd = net::invalid_socket_t;
+						}
+						// Если событие закрытия разрешено
+						if(ipc->transfer.actions & ::action::CLOSE){
+							// Если установлена функция обратного вызова
+							if(ipc->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								ipc->callbacks.event(ipc->id, event::action_t::CLOSE);
+						}
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+						// Сбрасываем очередь передачи данных события
+						peer->transfer.queue.clear();
+						// Удаляем все установленные активные таймауты
+						::timeout::clear(
+							peer->timeouts.read,
+							peer->timeouts.write,
+							peer->bandwidth.read.timeout,
+							peer->bandwidth.write.timeout,
+							event::rate_t::DEFERRED, log
+						);
+						// Если дескриптор сокета действительный
+						if(peer->transfer.fd != net::invalid_socket_t){
+							// Если в сокете нет ошибок
+							if(eth->socket.error(peer->transfer.fd) == 0){
+								// Если активность на чтения данных установлена
+								if(peer->activity & ::activity::READ){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									// Добавляем новое событие в список изменений
+									::events::add(std::move(event));
+								}
+								// Если активность на запись данных установлена
+								if(peer->activity & ::activity::WRITE){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на запись данных в сокет
+									EV_SET(&event, peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+									// Добавляем новое событие в список изменений
+									::events::add(std::move(event));
+								}
 							}
 						}
-					}
-					// Уменьшаем общее количество подключений сервера
-					if(peer->peers > 0)
 						// Уменьшаем общее количество подключений сервера
-						peer->peers--;
-					// Если событие отключения от сервера разрешено
-					if(peer->transfer.actions & ::action::DISCONNECT){
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
-							peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-				// Если узел является одноранговым узлом-источником
-				case static_cast <uint8_t> (event::node_t::ORIGIN): {
-					// Получаем текущее значение объекта однорангового узла-источника
-					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
-					// Сбрасываем очередь передачи данных события
-					origin->transfer.queue.clear();
-					// Удаляем все установленные активные таймауты
-					::timeout::clear(
-						origin->wrate.timeout,
-						origin->timeouts.read,
-						origin->timeouts.write,
-						event::rate_t::DEFERRED, log
-					);
-					// Уменьшаем общее количество подключений сервера
-					if(origin->origins > 0)
+						if(peer->peers > 0)
+							// Уменьшаем общее количество подключений сервера
+							peer->peers--;
+						// Если событие закрытия разрешено
+						if(peer->transfer.actions & ::action::CLOSE){
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								peer->callbacks.event(peer->id, event::action_t::CLOSE);
+						}
+					} break;
+					// Если узел является одноранговым узлом-источником
+					case static_cast <uint8_t> (event::node_t::ORIGIN): {
+						// Получаем текущее значение объекта однорангового узла-источника
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
+						// Сбрасываем очередь передачи данных события
+						origin->transfer.queue.clear();
+						// Удаляем все установленные активные таймауты
+						::timeout::clear(
+							origin->wrate.timeout,
+							origin->timeouts.read,
+							origin->timeouts.write,
+							event::rate_t::DEFERRED, log
+						);
 						// Уменьшаем общее количество подключений сервера
-						origin->origins--;
-					// Если событие отключения от сервера разрешено
-					if(origin->transfer.actions & ::action::DISCONNECT){
+						if(origin->origins > 0)
+							// Уменьшаем общее количество подключений сервера
+							origin->origins--;
+						// Если событие закрытия разрешено
+						if(origin->transfer.actions & ::action::CLOSE){
+							// Если установлена функция обратного вызова
+							if(origin->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								origin->callbacks.event(origin->id, event::action_t::CLOSE);
+						}
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем текущее значение объекта туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+						// Сбрасываем очередь передачи данных события
+						tunnel->queue.clear();
+						/**
+						 * Для операционной системы FreeBSD
+						 */
+						#if __FreeBSD__
+							// Если событие закрытия разрешено
+							if(tunnel->actions & ::action::CLOSE){
+								// Если туннель создан
+								if(!tunnel->iface.empty())
+									// Выполняем удаление сетевого интерфейса туннеля
+									eth->iface.destroy(tunnel->iface);
+							}
+						#endif
+						// Если дескриптор сокета инициализирован
+						if(tunnel->fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(tunnel->fd);
+							// Сбрасываем значение дескриптора сокета
+							tunnel->fd = net::invalid_socket_t;
+						}
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем текущее значение объекта посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
 						// Если установлена функция обратного вызова
-						if(origin->callbacks.event != nullptr)
+						if(mediator->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова флаг события
-							origin->callbacks.event(origin->id, event::action_t::DISCONNECT);
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-				// Если узел является туннелем
-				case static_cast <uint8_t> (event::node_t::TUNNEL):
-					// Если событие закрытия разрешено
-					return (awh_cast <::io::tun_t *> (node)->actions & ::action::CLOSE);
-				// Если узел является посредником
-				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-					// Получаем текущее значение объекта посредника
-					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
-					// Если установлена функция обратного вызова
-					if(mediator->callbacks.event != nullptr)
-						// Вызываем функцию обратного вызова флаг события
-						mediator->callbacks.event(mediator->id, event::action_t::CLOSE);
-					// Выводим результат выполнения функции
-					return !guard.isGarbage();
-				} break;
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Получаем текущее значение объекта клиента
-					::io::client_t * client = awh_cast <::io::client_t *> (node);
-					// Если событие отключения от сервера разрешено
-					if(client->transfer.actions & ::action::DISCONNECT){
-						// Если установлена функция обратного вызова
-						if(client->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
-							client->callbacks.event(client->id, event::action_t::DISCONNECT);
+							mediator->callbacks.event(mediator->id, event::action_t::CLOSE);
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (node);
+						// Сбрасываем очередь передачи данных события
+						client->transfer.queue.clear();
 						/**
 						 * Если операционной системой является FreeBSD
 						 */
@@ -18444,8 +18511,6 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Сбрасываем очередь передачи данных события
-								client->transfer.queue.clear();
 								// Удаляем все установленные активные таймауты
 								::timeout::clear(
 									client->timeouts.read,
@@ -18485,31 +18550,35 @@ namespace io {
 									// Если событие переподключения к серверу разрешено
 									if(client->transfer.actions & ::action::RECONNECT){
 										// Если клиент не подразумевает переподключение
-										if(client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
-											// Выводим результат выполнения функции
-											return !guard.isGarbage();
+										if(client->state.status == event::status_t::LAUNCHED)
+											// Выходим из условия и продолжаем выполнение функции
+											break;
 										// Устанавливаем статус события в состояние переподключения
-										client->state.status.store(event::status_t::RECONNECTED, std::memory_order_release);
+										client->state.status = event::status_t::RECONNECTED;
 										// Если задержка таймаута на переподключение не установлена
 										if(client->timeouts.reconnect.delay == 0)
 											// Устанавливаем задержку таймаута на значение в 5 секунд
 											client->timeouts.reconnect.delay = 0x1388;
 										// Создаём таймаут на переподключение
 										::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, log);
+										// Выводим результат выполнения функции
+										return !guard.isGarbage();
 									}
 								}
 							} break;
 						}
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем текущее значение объекта сервера
-					::io::server_t * server = awh_cast <::io::server_t *> (node);
-					// Если событие закрытия разрешено
-					if(server->actions & ::action::CLOSE){
+						// Если событие закрытия разрешено
+						if(client->transfer.actions & ::action::CLOSE){
+							// Если установлена функция обратного вызова
+							if(client->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								client->callbacks.event(client->id, event::action_t::CLOSE);
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (node);
 						// Удаляем все установленные активные таймауты
 						::timeout::clear(
 							server->wrate.timeout,
@@ -18532,10 +18601,6 @@ namespace io {
 								}
 							}
 						}
-						// Если установлена функция обратного вызова
-						if(server->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
-							server->callbacks.event(server->id, event::action_t::CLOSE);
 						/**
 						 * Если операционной системой является FreeBSD
 						 */
@@ -18549,351 +18614,12 @@ namespace io {
 								server->sctp.callbacks = ::move(callbacks);
 							}
 						#endif
-						// Выводим результат выполнения функции
-						return !guard.isGarbage();
-					}
-				} break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат по умолчанию
-		return false;
-	}
-	/**
-	 * @brief Функция обработки события удаления узла
-	 *
-	 * @param node узел в котором произошло событие
-	 * @param eth  объект работы с сетевыми интерфейсами
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
-	 */
-	static bool destroy(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если статус события не является состоянием подлежащего уничтожению
-			if(node->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED){
-				// Создаём охранника узла события
-				::local::guard_t guard(node);
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (node->state.node)){
-					// Если узел является пользовательским событием
-					case static_cast <uint8_t> (event::node_t::NOTIFY): {
-						// Получаем текущее значение объекта пользовательского события
-						::io::user_t * user = awh_cast <::io::user_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						user->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если установлена функция обратного вызова
-						if(user->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							user->callbacks.status(user->id, user->state.status);
-					} break;
-					// Если узел является директорией
-					case static_cast <uint8_t> (event::node_t::DIR): {
-						// Получаем текущее значение объекта директории
-						::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						dir->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если дескриптор сокета инициализирован
-						if(dir->fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(dir->fd);
-							// Сбрасываем значение дескриптора сокета
-							dir->fd = net::invalid_socket_t;
-						}
-						// Если установлена функция обратного вызова
-						if(dir->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							dir->callbacks.status(dir->id, dir->state.status);
-					} break;
-					// Если узел является файловой системой
-					case static_cast <uint8_t> (event::node_t::FILE): {
-						// Получаем текущее значение объекта файловой системы
-						::io::file_t * fs = awh_cast <::io::file_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						fs->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если дескриптор сокета инициализирован
-						if(fs->fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(fs->fd);
-							// Сбрасываем значение дескриптора сокета
-							fs->fd = net::invalid_socket_t;
-						}
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							fs->callbacks.status(fs->id, fs->state.status);
-					} break;
-					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMEOUT):
-					// Если узел является интервалом
-					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Получаем текущее значение объекта таймера
-						::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						timer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если установлена функция обратного вызова
-						if(timer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							timer->callbacks.status(timer->id, timer->state.status);
-					} break;
-					// Если узел является межпроцессным взаимодействием
-					case static_cast <uint8_t> (event::node_t::IPC): {
-						// Получаем текущее значение объекта межпроцессного взаимодействия
-						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						ipc->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если дескриптор сокета инициализирован
-						if(ipc->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(ipc->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							ipc->transfer.fd = net::invalid_socket_t;
-						}
-						// Если установлена функция обратного вызова
-						if(ipc->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							ipc->callbacks.status(ipc->id, ipc->state.status);
-					} break;
-					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER): {
-						// Получаем текущее значение объекта однорангового узла
-						::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						peer->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если дескриптор сокета инициализирован
-						if(peer->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(peer->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							peer->transfer.fd = net::invalid_socket_t;
-						}
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							peer->callbacks.status(peer->id, peer->state.status);
-					} break;
-					// Если узел является одноранговым узлом-источником
-					case static_cast <uint8_t> (event::node_t::ORIGIN): {
-						// Получаем текущее значение объекта однорангового узла-источника
-						::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						origin->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если дескриптор сокета инициализирован
-						if(origin->transfer.fd != net::invalid_socket_t)
-							// Сбрасываем значение дескриптора сокета
-							origin->transfer.fd = net::invalid_socket_t;
-						// Если установлена функция обратного вызова
-						if(origin->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							origin->callbacks.status(origin->id, origin->state.status);
-						// Идентификатор сессии источника
-						origin_id_t sid;
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (origin->state.family)){
-							// Для семейства UNIX-доменных сокетов
-							case static_cast <uint8_t> (event::family_t::UDS):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_un> (origin->endpoint.client));
-							break;
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_in> (origin->endpoint.client));
-							break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_in6> (origin->endpoint.client));
-							break;
-						}
-						// Ищем сессию по идентификатору источника
-						auto i = ::__awh_origin_sessions__.find(sid);
-						// Если сессия найдена
-						if(i != ::__awh_origin_sessions__.end())
-							// Удаляем сессию
-							::__awh_origin_sessions__.erase(i);
-					} break;
-					// Если узел является туннелем
-					case static_cast <uint8_t> (event::node_t::TUNNEL): {
-						// Получаем текущее значение объекта туннеля
-						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						tunnel->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						/**
-						 * Для операционной системы FreeBSD
-						 */
-						#if __FreeBSD__
-							// Если туннель создан
-							if(!tunnel->iface.empty())
-								// Выполняем удаление сетевого интерфейса туннеля
-								eth->iface.destroy(tunnel->iface);
-						#endif
-						// Если дескриптор сокета инициализирован
-						if(tunnel->fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(tunnel->fd);
-							// Сбрасываем значение дескриптора сокета
-							tunnel->fd = net::invalid_socket_t;
-						}
-						// Если установлена функция обратного вызова
-						if(tunnel->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							tunnel->callbacks.status(tunnel->id, tunnel->state.status);
-					} break;
-					// Если узел является посредником
-					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-						// Получаем текущее значение объекта посредника
-						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						mediator->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если установлена функция обратного вызова
-						if(mediator->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							mediator->callbacks.status(mediator->id, mediator->state.status);
-						// Идентификатор сессии источника
-						origin_id_t sid;
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (mediator->state.family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Объект структуры адреса IPv4
-								struct sockaddr_in addr{0};
-								// Устанавливаем произвольный порт
-								addr.sin_port = htons(0);
-								// Устанавливаем семейство IP-адресов
-								addr.sin_family = AF_INET;
-								// Устанавливаем длину структуры
-								addr.sin_len = sizeof(struct sockaddr_in);
-								// Устанавливаем адрес для хоста целевой машины
-								addr.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address;
-								// Формируем идентификатор источника
-								sid.from(addr);
-							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Объект структуры адреса IPv6
-								struct sockaddr_in6 addr{0};
-								// Устанавливаем произвольный порт
-								addr.sin6_port = htons(0);
-								// Устанавливаем семейство IP-адресов
-								addr.sin6_family = AF_INET6;
-								// Устанавливаем длину структуры
-								addr.sin6_len = sizeof(struct sockaddr_in6);
-								// Устанавливаем адрес для хоста целевой машины
-								::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
-								// Формируем идентификатор источника
-								sid.from(addr);
-							} break;
-						}
-						// Ищем сессию по идентификатору источника
-						auto i = ::__awh_origin_sessions__.find(sid);
-						// Если сессия найдена
-						if(i != ::__awh_origin_sessions__.end())
-							// Удаляем сессию
-							::__awh_origin_sessions__.erase(i);
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (node);
-						// Если дескриптор сокета инициализирован
-						if(client->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(client->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							client->transfer.fd = net::invalid_socket_t;
-						}
-						// Если режим постоянного подключения не установлен
-						if(!(client->state.options & event::options::KEEPALIVE) ||
-						    (client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)){
-							// Устанавливаем статус события в состояние подлежащего уничтожению
-							client->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
+						// Если событие закрытия разрешено
+						if(server->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
-							if(client->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова при уничтожении события
-								client->callbacks.status(client->id, client->state.status);
-							// Если событие является UNIX-доменным
-							if(client->state.family == event::family_t::UDS){
-								/**
-								 * Определяем тип сокета
-								 */
-								switch(static_cast <uint8_t> (client->state.type)){
-									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Если событие принадлежит к типу SEQPACKET
-										case static_cast <uint8_t> (event::type_t::SEQPACKET):
-									#endif
-									// Если событие принадлежит к типу DATAGRAM
-									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-										// Извлекаем файл сокета клиента
-										const string & address = ::fs::unixSocketAddress(
-											::trust_cast <struct sockaddr_un> (client->endpoint.client),
-											(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
-										);
-										// Если адрес получен
-										if(!address.empty())
-											// Удаляем файл сокета клиента
-											::unlink(address.c_str());
-									} break;
-								}
-							}
-						// Завершаем работу уничтожения узла
-						} else return false;
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем текущее значение объекта сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (node);
-						// Устанавливаем статус события в состояние подлежащего уничтожению
-						server->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-						// Если дескриптор сокета инициализирован
-						if(server->fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(server->fd);
-							// Сбрасываем значение дескриптора сокета
-							server->fd = net::invalid_socket_t;
-						}
-						// Если установлена функция обратного вызова
-						if(server->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова при уничтожении события
-							server->callbacks.status(server->id, server->state.status);
-						// Если событие является UNIX-доменным датаграммным сокетом
-						if(server->state.family == event::family_t::UDS){
-							// Извлекаем файл сокета клиента
-							const string & address = ::fs::unixSocketAddress(
-								::trust_cast <struct sockaddr_un> (server->endpoint.server),
-								(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
-							);
-							// Если адрес получен
-							if(!address.empty())
-								// Удаляем файл сокета клиента
-								::unlink(address.c_str());
+							if(server->callbacks.event != nullptr)
+								// Вызываем функцию обратного вызова флаг события
+								server->callbacks.event(server->id, event::action_t::CLOSE);
 						}
 					} break;
 				}
@@ -20999,7 +20725,7 @@ namespace io {
 							// Если узел не помечен как мусорный
 							if(!guard.isGarbage()){
 								// Устанавливаем статус события в состояние успешного подключения
-								peer->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+								peer->state.status = event::status_t::SUCCESS;
 								// Устанавливаем таймаут на чтение данных для нового подключения
 								peer->timeouts.read.delay = server->timeouts.read.delay;
 								// Устанавливаем таймаут на запись данных для нового подключения
@@ -21170,7 +20896,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(fs->actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
-						if(fs->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(fs->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла файловой системы
 							return ::io::read(fs, io, eth, log);
 					}
@@ -21182,7 +20908,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(ipc->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
-						if(ipc->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(ipc->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла межпроцессного взаимодействия
 							return ::io::read(ipc, io, eth, log);
 					}
@@ -21194,7 +20920,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(peer->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
-						if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(peer->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из однорангового узла
 							return ::io::read(peer, io, eth, log);
 					}
@@ -21215,7 +20941,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(client->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
-						if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(client->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла клиента
 							return ::io::read(client, io, eth, log);
 					}
@@ -21225,7 +20951,7 @@ namespace io {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если активирован режим прослушивания
-					if(server->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING){
+					if(server->state.status == event::status_t::LISTENING){
 						/**
 						 * Определяем тип сокета
 						 */
@@ -21286,11 +21012,11 @@ namespace io {
 							}
 						}
 					// Если сервер находится в запущенном состоянии
-					} else if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) {
+					} else if(server->state.status == event::status_t::LAUNCHED) {
 						// Если событие чтения разрешено
 						if(server->actions & ::action::READ){
 							// Если событие находится не в состоянии паузы
-							if(server->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							if(server->state.status != event::status_t::PAUSED)
 								// Выполняем чтение данных из узла сервера
 								return ::io::read(server, io, eth, fmk, log);
 						}
@@ -21350,7 +21076,7 @@ namespace io {
 					// Если событие записи разрешено
 					if(ipc->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
-						if(ipc->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(ipc->state.status != event::status_t::PAUSED)
 							// Выполняем обработку события записи данных в сокет межпроцессного взаимодействия
 							return ::io::write(ipc, eth, log);
 					}
@@ -21362,7 +21088,7 @@ namespace io {
 					// Если событие записи разрешено
 					if(peer->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
-						if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(peer->state.status != event::status_t::PAUSED)
 							// Выполняем обработку события записи данных в сокет однорангового узла
 							return ::io::write(peer, eth, log);
 					}
@@ -21374,7 +21100,7 @@ namespace io {
 					// Если событие записи разрешено
 					if(origin->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
-						if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+						if(origin->state.status != event::status_t::PAUSED)
 							// Выполняем обработку события записи данных в сокет однорангового узла-источника
 							return ::io::write(origin, eth, log);
 					}
@@ -21395,11 +21121,11 @@ namespace io {
 					// Если событие записи разрешено
 					if(client->transfer.actions & ::action::WRITE){
 						// Если событие находится не в состоянии паузы
-						if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+						if(client->state.status != event::status_t::PAUSED){
 							// Если статус события находится в состоянии ожидания подключения
-							if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+							if(client->state.status == event::status_t::PENDING){
 								// Устанавливаем статус события в состояние подключено
-								client->state.status.store(event::status_t::CONNECTED, std::memory_order_release);
+								client->state.status = event::status_t::CONNECTED;
 								// Выполняем обработку события подключения клиента
 								return ::io::connected(client, io, eth, log);
 							}
@@ -21738,10 +21464,8 @@ namespace io {
 						if(ev.flags & EV_ERROR){
 							// Выполняем обработку ошибки
 							::io::error(node, ev.data, log);
-							// Выполняем обработку закрытия подключения
-							if(::io::close(node, eth, log))
-								// Выполняем удаление узла
-								return !::io::destroy(node, eth, log);
+							// Выполняем удаление узла
+							return !::io::destroy(node, eth, log);
 						// Если мы детектировали событие отзыва однорангового узла
 						} else {
 							// Получаем текущее значение объекта однорангового узла
@@ -21750,18 +21474,14 @@ namespace io {
 							if(static_cast <uint32_t> (ev.ident) == peer->timeouts.write.id){
 								// Снимаем статус таймаута с состояния ожидания отправки данных
 								peer->timeouts.write.status = event::status_t::NONE;
-								// Выполняем обработку закрытия подключения
-								if(::io::close(node, eth, log))
-									// Выполняем удаление узла
-									return !::io::destroy(node, eth, log);
+								// Выполняем удаление узла
+								return !::io::destroy(node, eth, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(static_cast <uint32_t> (ev.ident) == peer->timeouts.read.id) {
 								// Снимаем статус таймаута с состояния ожидания чтения данных
 								peer->timeouts.read.status = event::status_t::NONE;
-								// Выполняем обработку закрытия подключения
-								if(::io::close(node, eth, log))
-									// Выполняем удаление узла
-									return !::io::destroy(node, eth, log);
+								// Выполняем удаление узла
+								return !::io::destroy(node, eth, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на чтение данных
 							} else if(static_cast <uint32_t> (ev.ident) == peer->bandwidth.read.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на чтение данных
@@ -21797,10 +21517,8 @@ namespace io {
 						if(ev.flags & EV_ERROR){
 							// Выполняем обработку ошибки
 							::io::error(node, ev.data, log);
-							// Выполняем обработку закрытия подключения
-							if(::io::close(node, eth, log))
-								// Выполняем удаление узла
-								return !::io::destroy(node, eth, log);
+							// Выполняем удаление узла
+							return !::io::destroy(node, eth, log);
 						// Если мы детектировали событие отзыва однорангового узла-источника
 						} else {
 							// Получаем текущее значение объекта однорангового узла-источника
@@ -21809,18 +21527,14 @@ namespace io {
 							if(static_cast <uint32_t> (ev.ident) == origin->timeouts.write.id){
 								// Снимаем статус таймаута с состояния ожидания отправки данных
 								origin->timeouts.write.status = event::status_t::NONE;
-								// Выполняем обработку закрытия подключения
-								if(::io::close(node, eth, log))
-									// Выполняем удаление узла
-									return !::io::destroy(node, eth, log);
+								// Выполняем удаление узла
+								return !::io::destroy(node, eth, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(static_cast <uint32_t> (ev.ident) == origin->timeouts.read.id) {
 								// Снимаем статус таймаута с состояния ожидания чтения данных
 								origin->timeouts.read.status = event::status_t::NONE;
-								// Выполняем обработку закрытия подключения
-								if(::io::close(node, eth, log))
-									// Выполняем удаление узла
-									return !::io::destroy(node, eth, log);
+								// Выполняем удаление узла
+								return !::io::destroy(node, eth, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == origin->wrate.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
@@ -21887,11 +21601,11 @@ namespace io {
 						// Если мы получили фантомный таймаут, который не соответствует ни одному из таймаутов клиента
 						else return false;
 						// Если статус события восстановление соединения
-						if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
+						if(client->state.status == event::status_t::RECONNECTED){
 							// Если переподключение разрешено
 							if(client->transfer.actions & ::action::RECONNECT){
 								// Устанавливаем статус события в состояние не инициализировано
-								client->state.status.store(event::status_t::NONE, std::memory_order_release);
+								client->state.status = event::status_t::NONE;
 								// Обрабатываем событие сокета
 								if(::io::socket(client, eth, log)){
 									// Запоминаем текущие опции события
@@ -21917,7 +21631,7 @@ namespace io {
 								}
 							}
 						// Если статус события подключение в ожидании
-						} else if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) {
+						} else if(client->state.status == event::status_t::PENDING) {
 							// Если подключение к серверу разрешено
 							if(client->transfer.actions & ::action::READ){
 								// Если функция обратного вызова для вывода подключения установлена
@@ -21926,21 +21640,17 @@ namespace io {
 									client->callbacks.connect(client->id, false);
 							}
 						}
-						// Выполняем обработку закрытия подключения
-						if(::io::close(node, eth, log))
-							// Выполняем удаление узла
-							return !::io::destroy(node, eth, log);
-					} break;
+						// Выполняем удаление узла
+						return !::io::destroy(node, eth, log);
+					}
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & EV_ERROR){
 							// Выполняем обработку ошибки
 							::io::error(node, ev.data, log);
-							// Выполняем обработку закрытия подключения
-							if(::io::close(node, eth, log))
-								// Выполняем удаление узла
-								return !::io::destroy(node, eth, log);
+							// Выполняем удаление узла
+							return !::io::destroy(node, eth, log);
 						// Если мы детектировали событие отзыва однорангового узла
 						} else {
 							// Получаем текущее значение объекта сервера
@@ -21986,9 +21696,9 @@ namespace io {
 						// Если событие получил какой-то другой узел
 						default: {
 							// Если статус события установлен как подлежащий к уничтожению
-							if(node->state.status.load(std::memory_order_acquire) == event::status_t::DESTROYED)
+							if(node->state.status == event::status_t::DESTROYED)
 								// Устанавливаем статус события в состояние мусора
-								node->state.status.store(event::status_t::GARBAGE, std::memory_order_release);
+								node->state.status = event::status_t::GARBAGE;
 						}
 					}
 				}
@@ -21996,21 +21706,11 @@ namespace io {
 			// Если мы детектировали событие готовности сокета на чтение данных
 			case EVFILT_READ: {
 				// Если мы детектировали событие закрытия подключения или ошибку
-				if(ev.flags & EV_ERROR){
-					// Если мы детектировали наличие ошибки
-					if(ev.flags & EV_ERROR)
-						// Выполняем обработку ошибки
-						::io::error(node, ev.data, log);
-					// Если мы детектировали закрытие подключения
-					if(ev.flags & EV_EOF)
-						// Выполняем обработку события закрытия
-						::io::close(node, eth, log);
-					// Выполняем удаление узла
-					::io::destroy(node, eth, log);
-					// Пропускаем дальнейшую обработку события
-					return false;
+				if(ev.flags & EV_ERROR)
+					// Выполняем обработку ошибки
+					::io::error(node, ev.data, log);
 				// Если в сокете нет ошибок
-				} else {
+				else {
 					/**
 					 * Определяем чем является текущий узел
 					 */
@@ -22060,25 +21760,17 @@ namespace io {
 					// Обрабатываем событие доступности сокета на чтение
 					return ::io::read(node, io, eth, fmk, log);
 				}
-			} break;
+				// Выполняем удаление узла
+				return !::io::destroy(node, eth, log);
+			}
 			// Если мы детектировали событие готовности сокета на запись данных
 			case EVFILT_WRITE: {
 				// Если мы детектировали событие закрытия подключения или ошибку
-				if(ev.flags & EV_ERROR){
-					// Если мы детектировали наличие ошибки
-					if(ev.flags & EV_ERROR)
-						// Выполняем обработку ошибки
-						::io::error(node, ev.data, log);
-					// Если мы детектировали закрытие подключения
-					if(ev.flags & EV_EOF)
-						// Выполняем обработку события закрытия
-						::io::close(node, eth, log);
-					// Выполняем удаление узла
-					::io::destroy(node, eth, log);
-					// Пропускаем дальнейшую обработку события
-					return false;
+				if(ev.flags & EV_ERROR)
+					// Выполняем обработку ошибки
+					::io::error(node, ev.data, log);
 				// Если в сокете нет ошибок
-				} else {
+				else {
 					// Если в сокете нет ошибок
 					if(eth->socket.error(ev.ident) == 0){
 						/**
@@ -22110,17 +21802,11 @@ namespace io {
 						}
 						// Обрабатываем событие доступности сокета на запись
 						return ::io::write(node, io, eth, fmk, log);
-					// Если мы поймали шум
-					} else {
-						// Выполняем обработку события закрытия
-						if(::io::close(node, eth, log))
-							// Выполняем удаление узла
-							::io::destroy(node, eth, log);
-						// Пропускаем дальнейшую обработку события
-						return false;
 					}
 				}
-			} break;
+				// Выполняем удаление узла
+				return !::io::destroy(node, eth, log);
+			}
 			// Для остальных типов событий
 			default: {
 				// Если мы детектировали событие закрытия подключения или ошибку
@@ -22129,14 +21815,8 @@ namespace io {
 					if(ev.flags & EV_ERROR)
 						// Выполняем обработку ошибки
 						::io::error(node, ev.data, log);
-					// Если мы детектировали закрытие подключения
-					if(ev.flags & EV_EOF)
-						// Выполняем обработку события закрытия
-						::io::close(node, eth, log);
 					// Выполняем удаление узла
-					::io::destroy(node, eth, log);
-					// Пропускаем дальнейшую обработку события
-					return false;
+					return !::io::destroy(node, eth, log);
 				}
 			}
 		}
@@ -22185,7 +21865,7 @@ namespace io {
 			// Получаем текущее значение объекта однорангового узла-источника
 			::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second);
 			// Если событие находится не в состоянии паузы
-			if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+			if(origin->state.status != event::status_t::PAUSED){
 				// Создаём охранника узла события
 				::local::guard_t guard(origin);
 				// Если функция обратного вызова для вывода события установлена
@@ -22674,7 +22354,7 @@ namespace io {
 					// Если узел не помечен как мусорный
 					if(!guard.isGarbage()){
 						// Устанавливаем статус события в состояние успешного подключения
-						origin->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+						origin->state.status = event::status_t::SUCCESS;
 						// Устанавливаем таймаут на чтение данных для нового подключения
 						origin->timeouts.read.delay = server->timeouts.read.delay;
 						// Устанавливаем таймаут на запись данных для нового подключения
@@ -23973,7 +23653,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -24043,7 +23723,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -24311,7 +23991,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -24513,7 +24193,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -24695,7 +24375,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -24751,7 +24431,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -24870,7 +24550,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -25059,7 +24739,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -25248,7 +24928,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -25370,7 +25050,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -25515,7 +25195,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -25639,7 +25319,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				// Очищаем список чанков
@@ -25802,7 +25482,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -25960,7 +25640,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				/**
 				 * Если операционной системой является FreeBSD
 				 */
@@ -26033,7 +25713,7 @@ namespace sctp {
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				/**
 				 * Если операционной системой является FreeBSD
 				 */
@@ -26108,7 +25788,7 @@ bool awh::engine::IO::ControlList::clear(const event::id_t id) noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -26219,7 +25899,7 @@ bool awh::engine::IO::ControlList::add(const event::id_t id, const string & valu
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -26505,7 +26185,7 @@ bool awh::engine::IO::ControlList::remove(const event::id_t id, const string & v
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -26664,7 +26344,7 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::ControlLi
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -26767,7 +26447,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end()){
 			// Если событие ещё не инициализировано или клонированно от другого события
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
+			if(i->second->state.status == event::status_t::NONE){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -26779,7 +26459,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Выполняем извлечение текущего значения объекта пользовательского события
 						::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						user->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						user->state.status = event::status_t::INITIAL;
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						// Устанавливаем пользовательское событие
@@ -26794,7 +26474,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Выполняем извлечение текущего значения объекта таймера
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						timer->state.status = event::status_t::INITIAL;
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						/**
@@ -26820,7 +26500,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Выполняем извлечение текущего значения объекта таймера
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						timer->state.status = event::status_t::INITIAL;
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						/**
@@ -26846,7 +26526,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта директории
 						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						dir->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						dir->state.status = event::status_t::INITIAL;
 						// Если путь к директории существует
 						if(dir->path != nullptr){
 							// Получаем адрес каталога
@@ -26931,7 +26611,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										#endif
 									}
 									// Снимаем флаг ожидания подключения
-									dir->state.status.store(event::status_t::NONE, std::memory_order_release);
+									dir->state.status = event::status_t::NONE;
 								}
 							// Если путь к директории не существует
 							} else {
@@ -26962,7 +26642,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									#endif
 								}
 								// Снимаем флаг ожидания подключения
-								dir->state.status.store(event::status_t::NONE, std::memory_order_release);
+								dir->state.status = event::status_t::NONE;
 							}
 						// Если путь к директории не существует
 						} else {
@@ -26993,7 +26673,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							dir->state.status.store(event::status_t::NONE, std::memory_order_release);
+							dir->state.status = event::status_t::NONE;
 						}
 					} break;
 					// Если узел является файловой системой
@@ -27001,7 +26681,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта файловой системы
 						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						fs->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						fs->state.status = event::status_t::INITIAL;
 						// Если путь к файлу существует
 						if(fs->path != nullptr){
 							// Получаем адрес файла
@@ -27056,7 +26736,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										#endif
 									}
 									// Снимаем флаг ожидания подключения
-									fs->state.status.store(event::status_t::NONE, std::memory_order_release);
+									fs->state.status = event::status_t::NONE;
 								}
 							// Если путь к файлу не существует
 							} else {
@@ -27087,7 +26767,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									#endif
 								}
 								// Снимаем флаг ожидания подключения
-								fs->state.status.store(event::status_t::NONE, std::memory_order_release);
+								fs->state.status = event::status_t::NONE;
 							}
 						// Если путь к файлу не существует
 						} else {
@@ -27118,7 +26798,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							fs->state.status.store(event::status_t::NONE, std::memory_order_release);
+							fs->state.status = event::status_t::NONE;
 						}
 					} break;
 					// Если узел является межпроцессным взаимодействием
@@ -27126,7 +26806,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						ipc->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						ipc->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор межпроцессного взаимодействия существует
 						if((result = (ipc->transfer.fd != net::invalid_socket_t))){
 							/**
@@ -27215,7 +26895,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							ipc->state.status.store(event::status_t::NONE, std::memory_order_release);
+							ipc->state.status = event::status_t::NONE;
 						}
 					} break;
 					// Если узел является туннелем
@@ -27223,7 +26903,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						tunnel->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						tunnel->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор туннеля существует
 						if((result = (tunnel->fd != net::invalid_socket_t))){
 							/**
@@ -27377,7 +27057,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							tunnel->state.status.store(event::status_t::NONE, std::memory_order_release);
+							tunnel->state.status = event::status_t::NONE;
 						}
 					} break;
 					// Если узел является посредником
@@ -27385,7 +27065,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта посредника
 						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						mediator->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						mediator->state.status = event::status_t::INITIAL;
 						// Если объект хоста существует
 						if((result = (mediator->host != nullptr))){
 							// Идентификатор сессии источника
@@ -27456,7 +27136,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							mediator->state.status.store(event::status_t::NONE, std::memory_order_release);
+							mediator->state.status = event::status_t::NONE;
 						}
 					} break;
 					// Если узел является клиентом
@@ -27464,7 +27144,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						client->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор клиента существует
 						if((client->transfer.fd != net::invalid_socket_t) && (client->target != nullptr)){
 							/**
@@ -27550,7 +27230,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												client->state.status.store(event::status_t::NONE, std::memory_order_release);
+												client->state.status = event::status_t::NONE;
 											}
 										} break;
 										// Для семейства IPv6
@@ -27626,7 +27306,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												client->state.status.store(event::status_t::NONE, std::memory_order_release);
+												client->state.status = event::status_t::NONE;
 											}
 										} break;
 									}
@@ -27888,7 +27568,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	#endif
 																}
 																// Снимаем флаг ожидания подключения
-																client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																client->state.status = event::status_t::NONE;
 																// Выходим из функции с ошибкой
 																return false;
 															}
@@ -27940,7 +27620,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															#endif
 														}
 														// Снимаем флаг ожидания подключения
-														client->state.status.store(event::status_t::NONE, std::memory_order_release);
+														client->state.status = event::status_t::NONE;
 													}
 												} break;
 												// Для других типов сокетов
@@ -28067,7 +27747,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#endif
 															}
 															// Снимаем флаг ожидания подключения
-															client->state.status.store(event::status_t::NONE, std::memory_order_release);
+															client->state.status = event::status_t::NONE;
 														// Если бинд выполнен успешно
 														} else {
 															// Создаём объект события для Kqueue
@@ -28147,7 +27827,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			#endif
 																		}
 																		// Снимаем флаг ожидания подключения
-																		client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																		client->state.status = event::status_t::NONE;
 																	}
 																// Если режим ручного формирования заголовков не активирован
 																} else {
@@ -28178,7 +27858,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
-																	client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																	client->state.status = event::status_t::NONE;
 																}
 															} break;
 															// Если протокол определён как UDP
@@ -28270,7 +27950,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				#endif
 																			}
 																			// Снимаем флаг ожидания подключения
-																			client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																			client->state.status = event::status_t::NONE;
 																		}
 																	}
 																// Если источник сетевого адреса не установлен
@@ -28302,7 +27982,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
-																	client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																	client->state.status = event::status_t::NONE;
 																}
 															} break;
 															// Если протокол определён как ICMP
@@ -28370,7 +28050,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
-																	client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																	client->state.status = event::status_t::NONE;
 																}
 															} break;
 															// Если протокол определён как RAW
@@ -28410,7 +28090,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	#endif
 																}
 																// Снимаем флаг ожидания подключения
-																client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																client->state.status = event::status_t::NONE;
 															}
 														}
 													} break;
@@ -28475,7 +28155,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												client->state.status.store(event::status_t::NONE, std::memory_order_release);
+												client->state.status = event::status_t::NONE;
 											}
 										} break;
 										// Для семейства IPv6
@@ -28569,7 +28249,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#endif
 															}
 															// Снимаем флаг ожидания подключения
-															client->state.status.store(event::status_t::NONE, std::memory_order_release);
+															client->state.status = event::status_t::NONE;
 														// Если бинд выполнен успешно
 														} else {
 															// Создаём объект события для Kqueue
@@ -28649,7 +28329,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			#endif
 																		}
 																		// Снимаем флаг ожидания подключения
-																		client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																		client->state.status = event::status_t::NONE;
 																	}
 																// Если режим ручного формирования заголовков не активирован
 																} else {
@@ -28680,7 +28360,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
-																	client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																	client->state.status = event::status_t::NONE;
 																}
 															} break;
 															// Если протокол определён как UDP
@@ -28770,7 +28450,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				#endif
 																			}
 																			// Снимаем флаг ожидания подключения
-																			client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																			client->state.status = event::status_t::NONE;
 																		}
 																	}
 																// Если источник сетевого адреса не установлен
@@ -28802,7 +28482,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
-																	client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																	client->state.status = event::status_t::NONE;
 																}
 															} break;
 															// Если протокол определён как ICMP
@@ -28870,7 +28550,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
-																	client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																	client->state.status = event::status_t::NONE;
 																}
 															} break;
 															// Если протокол определён как RAW
@@ -28910,7 +28590,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	#endif
 																}
 																// Снимаем флаг ожидания подключения
-																client->state.status.store(event::status_t::NONE, std::memory_order_release);
+																client->state.status = event::status_t::NONE;
 															}
 														}
 													} break;
@@ -28975,7 +28655,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												client->state.status.store(event::status_t::NONE, std::memory_order_release);
+												client->state.status = event::status_t::NONE;
 											}
 										} break;
 									}
@@ -29009,7 +28689,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										#endif
 									}
 									// Снимаем флаг ожидания подключения
-									client->state.status.store(event::status_t::NONE, std::memory_order_release);
+									client->state.status = event::status_t::NONE;
 								}
 							}
 						// Если файловый дескриптор клиента не существует
@@ -29041,7 +28721,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							client->state.status.store(event::status_t::NONE, std::memory_order_release);
+							client->state.status = event::status_t::NONE;
 						}
 					} break;
 					// Если узел является сервером
@@ -29049,7 +28729,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
-						server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						server->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор сервера существует
 						if((server->fd != net::invalid_socket_t) && (server->host != nullptr)){
 							/**
@@ -29129,7 +28809,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												server->state.status.store(event::status_t::NONE, std::memory_order_release);
+												server->state.status = event::status_t::NONE;
 											}
 										} break;
 										// Для семейства IPv6
@@ -29199,7 +28879,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												server->state.status.store(event::status_t::NONE, std::memory_order_release);
+												server->state.status = event::status_t::NONE;
 											}
 										} break;
 									}
@@ -29385,7 +29065,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	#endif
 																}
 																// Снимаем флаг ожидания подключения
-																server->state.status.store(event::status_t::NONE, std::memory_order_release);
+																server->state.status = event::status_t::NONE;
 																// Выходим из функции с ошибкой
 																return false;
 															}
@@ -29433,7 +29113,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															#endif
 														}
 														// Снимаем флаг ожидания подключения
-														server->state.status.store(event::status_t::NONE, std::memory_order_release);
+														server->state.status = event::status_t::NONE;
 													}
 												} break;
 												// Для других типов сокетов
@@ -29632,7 +29312,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												server->state.status.store(event::status_t::NONE, std::memory_order_release);
+												server->state.status = event::status_t::NONE;
 											}
 										} break;
 										// Для семейства IPv6
@@ -29798,7 +29478,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												server->state.status.store(event::status_t::NONE, std::memory_order_release);
+												server->state.status = event::status_t::NONE;
 											}
 										} break;
 									}
@@ -29832,7 +29512,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										#endif
 									}
 									// Снимаем флаг ожидания подключения
-									server->state.status.store(event::status_t::NONE, std::memory_order_release);
+									server->state.status = event::status_t::NONE;
 								}
 							}
 						// Если файловый дескриптор сервера не существует
@@ -29864,7 +29544,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								#endif
 							}
 							// Снимаем флаг ожидания подключения
-							server->state.status.store(event::status_t::NONE, std::memory_order_release);
+							server->state.status = event::status_t::NONE;
 						}
 					} break;
 				}
@@ -30255,7 +29935,7 @@ uint16_t awh::engine::IO::port(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -30408,7 +30088,7 @@ bool awh::engine::IO::port(const event::id_t id, const uint16_t port) noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -30545,7 +30225,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -30766,7 +30446,7 @@ bool awh::engine::IO::iface(const event::id_t id, const string & name) noexcept 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -31031,7 +30711,7 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -31284,7 +30964,7 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -31536,7 +31216,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -32197,7 +31877,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end()){
 			// Если событие ещё не инициализировано или клонированно от другого события
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
+			if(i->second->state.status == event::status_t::NONE){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -32917,7 +32597,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -34425,7 +34105,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end()){
 			// Если событие ещё не инициализировано или клонированно от другого события
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
+			if(i->second->state.status == event::status_t::NONE){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -36609,196 +36289,10 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 	try {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
-			// Устанавливаем статус события в состояние уничтожения
-			i->second->state.status.store(event::status_t::DESTROYED, std::memory_order_release);
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является пользовательским событием
-				case static_cast <uint8_t> (event::node_t::NOTIFY): {
-					// Выполняем извлечение текущего значения объекта пользовательского события
-					::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
-					// Объект события для удаления из списка ожидания
-					struct kevent event{};
-					// Снимаем событие из списка ожидания
-					EV_SET(&event, user->id, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
-					// Выполняем удаление события из списка ожидания
-					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-					// Выполняем удаление узла
-					return ::io::destroy(user, &this->_eth, this->_log);
-				}
-				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMEOUT):
-				// Если узел является интервалом
-				case static_cast <uint8_t> (event::node_t::INTERVAL): {
-					// Выполняем извлечение текущего значения объекта таймера
-					::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t)
-						// Выполняем удаление узла
-						return ::io::destroy(timer, &this->_eth, this->_log);
-					// Если дескриптор сокета активен
-					else {
-						// Объект события для удаления из списка ожидания
-						struct kevent event{};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-						// Выполняем удаление события из списка ожидания
-						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-						// Выполняем удаление узла
-						return ::io::destroy(timer, &this->_eth, this->_log);
-					}
-				}
-				// Если узел является директорией
-				case static_cast <uint8_t> (event::node_t::DIR): {
-					// Получаем текущее значение объекта директории
-					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
-					// Объект события для удаления из списка ожидания
-					struct kevent event{};
-					// Снимаем событие из списка ожидания
-					EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
-					// Выполняем удаление события из списка ожидания
-					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-					// Если каталог открыт
-					if(dir->handle != nullptr){
-						// Закрываем каталог
-						::closedir(dir->handle);
-						// Сбрасываем значение указателя на каталог
-						dir->handle = nullptr;
-					}
-					// Выполняем удаление узла
-					return ::io::destroy(dir, &this->_eth, this->_log);
-				}
-				// Если узел является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Получаем текущее значение объекта файловой системы
-					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
-					// Объект события для удаления из списка ожидания
-					struct kevent event{};
-					// Снимаем событие из списка ожидания
-					EV_SET(&event, fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
-					// Выполняем удаление события из списка ожидания
-					::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-					// Выполняем удаление узла
-					return ::io::destroy(fs, &this->_eth, this->_log);
-				}
-				// Если узел является межпроцессным взаимодействием
-				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Выполняем обработку закрытия подключения
-					if(::io::close(i->second.get(), &this->_eth, this->_log))
-						// Выполняем удаление узла
-						return ::io::destroy(i->second.get(), &this->_eth, this->_log);
-				} break;
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Получаем текущее значение объекта однорангового узла
-					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t)
-						// Выполняем удаление узла
-						return ::io::destroy(peer, &this->_eth, this->_log);
-					// Если дескриптор сокета активен
-					else {
-						// Если дескриптор сокета инициализирован
-						if(peer->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(peer->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							peer->transfer.fd = net::invalid_socket_t;
-						}
-					}
-				} break;
-				// Если узел является одноранговым узлом-источником
-				case static_cast <uint8_t> (event::node_t::ORIGIN): {
-					// Выполняем обработку закрытия подключения
-					if(::io::close(i->second.get(), &this->_eth, this->_log))
-						// Выполняем удаление узла-источника
-						return ::io::destroy(i->second.get(), &this->_eth, this->_log);
-				} break;
-				// Если узел является туннелем
-				case static_cast <uint8_t> (event::node_t::TUNNEL):
-					// Выполняем удаление узла туннеля
-					return ::io::destroy(i->second.get(), &this->_eth, this->_log);
-				// Если узел является посредником
-				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-					// Выполняем обработку закрытия подключения
-					if(::io::close(i->second.get(), &this->_eth, this->_log))
-						// Выполняем удаление узла посредника
-						return ::io::destroy(i->second.get(), &this->_eth, this->_log);
-				} break;
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Получаем текущее значение объекта клиента
-					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t)
-						// Выполняем удаление узла
-						return ::io::destroy(client, &this->_eth, this->_log);
-					// Если дескриптор сокета активен
-					else {
-						// Если дескриптор сокета инициализирован
-						if(client->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(client->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							client->transfer.fd = net::invalid_socket_t;
-						}
-					}
-				} break;
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем текущее значение объекта сервера
-					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-					// Если дескриптор сокета не инициализирован
-					if(::__awh_kq__ == net::invalid_socket_t)
-						// Выполняем удаление узла
-						return ::io::destroy(server, &this->_eth, this->_log);
-					// Если дескриптор сокета активен
-					else {
-						// Объект события для удаления из списка ожидания
-						struct kevent event{};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-						// Выполняем удаление события из списка ожидания
-						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) < 0){
-							// Если установлена функция обратного вызова
-							if(server->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова об ошибке отказа
-								server->callbacks.status(server->id, event::status_t::FAILURE);
-							// Если установлена функция обратного вызова
-							if(server->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-							// Если функция обратного вызова для вывода события не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-								#endif
-							}
-						}
-						// Выполняем удаление узла
-						return ::io::destroy(server, &this->_eth, this->_log);
-					}
-				}
-			}
-			// Возвращаем результат работы функции
-			return true;
-		}
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Выполняем уничтожение узла
+			return ::io::destroy(i->second.get(), &this->_eth, this->_log);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -37817,7 +37311,7 @@ size_t awh::engine::IO::seek(const event::id_t id, const event::seek_t seek) noe
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -37906,7 +37400,7 @@ bool awh::engine::IO::seek(const event::id_t id, const event::seek_t seek, const
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -38038,7 +37532,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -38194,7 +37688,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::NO_IO_BLOCK;
 							// Если событие уже создано и не подлежит уничтожению
-							if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+							if(i->second->state.status != event::status_t::NONE){
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -38209,7 +37703,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Получаем текущее значение объекта однорангового узла
 										::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 										// Если событие находится не находится в состоянии паузы
-										if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+										if(peer->state.status != event::status_t::PAUSED){
 											// Если необходимо удалить таймаут на чтение для однорангового узла
 											if(peer->timeouts.read.delay > 0)
 												// Удаляем таймаут на получение данных
@@ -38237,15 +37731,15 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 											// Удаляем таймаут на запись данных
 											this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 										// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
-										if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)
+										if(client->state.status == event::status_t::PENDING)
 											// Создаём таймаут на ожидание подключения к серверу
 											::timeout::create(client->timeouts.connect, client, event::rate_t::DEFERRED, this->_log);
 										// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
-										else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED)
+										else if(client->state.status == event::status_t::RECONNECTED)
 											// Создаём таймаут на ожидание переподключения к серверу
 											::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, this->_log);
 										// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-										else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)
+										else if(client->state.status == event::status_t::CONNECTED)
 											// Создаём таймаут на ожидание получения данных
 											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
 										// Выполняем "пинок" для применения изменений
@@ -38256,7 +37750,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Получаем текущее значение объекта сервера
 										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Если сервер находится в состоянии запущено и установлен таймаут на чтение для сервера
-										if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+										if(server->state.status == event::status_t::LAUNCHED){
 											// Если необходимо удалить таймаут на чтение для сервера
 											if(server->timeouts.read.delay > 0)
 												// Удаляем таймаут на получение данных
@@ -38288,7 +37782,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::NO_IO_BLOCK;
 							// Если событие уже создано и не подлежит уничтожению
-							if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+							if(i->second->state.status != event::status_t::NONE){
 								/**
 								 * Определяем чем является текущий узел
 								 */
@@ -38303,7 +37797,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Получаем текущее значение объекта однорангового узла
 										::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 										// Если событие находится не находится в состоянии паузы
-										if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+										if(peer->state.status != event::status_t::PAUSED){
 											// Удаляем все установленные активные таймауты
 											::timeout::clear(
 												peer->timeouts.read,
@@ -38329,7 +37823,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Получаем текущее значение объекта клиента
 										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Если событие находится не находится в состоянии паузы
-										if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+										if(client->state.status != event::status_t::PAUSED){
 											// Удаляем все установленные активные таймауты
 											::timeout::clear(
 												client->timeouts.read,
@@ -38357,7 +37851,7 @@ bool awh::engine::IO::options(const event::id_t id, const uint16_t options) noex
 										// Получаем текущее значение объекта сервера
 										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Если сервер находится в состоянии запущено и установлен таймаут на чтение для сервера
-										if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+										if(server->state.status == event::status_t::LAUNCHED){
 											// Удаляем таймаут пропускной способности на чтение данных
 											::timeout::clear(server->wrate.timeout, event::rate_t::INSTANT, this->_log);
 											// Если необходимо активировать таймаут на чтение для сервера
@@ -38682,7 +38176,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -38829,7 +38323,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::NO_IO_BLOCK;
 									// Если событие уже создано и не подлежит уничтожению
-									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+									if(i->second->state.status != event::status_t::NONE){
 										/**
 										 * Определяем чем является текущий узел
 										 */
@@ -38843,7 +38337,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Получаем текущее значение объекта однорангового узла
 												::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 												// Если событие находится не находится в состоянии паузы
-												if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+												if(peer->state.status != event::status_t::PAUSED){
 													// Если необходимо удалить таймаут на чтение для однорангового узла
 													if(peer->timeouts.read.delay > 0)
 														// Удаляем таймаут на получение данных
@@ -38871,15 +38365,15 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 													// Удаляем таймаут на запись данных
 													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 												// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
-												if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)
+												if(client->state.status == event::status_t::PENDING)
 													// Создаём таймаут на ожидание подключения к серверу
 													::timeout::create(client->timeouts.connect, client, event::rate_t::DEFERRED, this->_log);
 												// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
-												else if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED)
+												else if(client->state.status == event::status_t::RECONNECTED)
 													// Создаём таймаут на ожидание переподключения к серверу
 													::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, this->_log);
 												// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-												else if(client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)
+												else if(client->state.status == event::status_t::CONNECTED)
 													// Создаём таймаут на ожидание получения данных
 													::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
 												// Выполняем "пинок" для применения изменений
@@ -38890,7 +38384,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Получаем текущее значение объекта сервера
 												::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 												// Если сервер находится в состоянии запущено и установлен таймаут на чтение для сервера
-												if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+												if(server->state.status == event::status_t::LAUNCHED){
 													// Если необходимо удалить таймаут на чтение для сервера
 													if(server->timeouts.read.delay > 0)
 														// Удаляем таймаут на получение данных
@@ -38922,7 +38416,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 										// Устанавливаем опцию события
 										i->second->state.options ^= event::options::NO_IO_BLOCK;
 									// Если событие уже создано и не подлежит уничтожению
-									if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+									if(i->second->state.status != event::status_t::NONE){
 										/**
 										 * Определяем чем является текущий узел
 										 */
@@ -38936,7 +38430,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Получаем текущее значение объекта однорангового узла
 												::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 												// Если событие находится не находится в состоянии паузы
-												if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+												if(peer->state.status != event::status_t::PAUSED){
 													// Удаляем все установленные активные таймауты
 													::timeout::clear(
 														peer->timeouts.read,
@@ -38962,7 +38456,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Получаем текущее значение объекта клиента
 												::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 												// Если событие находится не находится в состоянии паузы
-												if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED){
+												if(client->state.status != event::status_t::PAUSED){
 													// Удаляем все установленные активные таймауты
 													::timeout::clear(
 														client->timeouts.read,
@@ -38990,7 +38484,7 @@ bool awh::engine::IO::option(const event::id_t id, const uint16_t option, const 
 												// Получаем текущее значение объекта сервера
 												::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 												// Если сервер находится в состоянии запущено и установлен таймаут на чтение для сервера
-												if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+												if(server->state.status == event::status_t::LAUNCHED){
 													// Удаляем таймаут пропускной способности на чтение данных
 													::timeout::clear(server->wrate.timeout, event::rate_t::INSTANT, this->_log);
 													// Если необходимо активировать таймаут на чтение для сервера
@@ -39381,13 +38875,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(eid);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			// Выполняем поиск идентификатора события
 			auto j = ::__awh_nodes__.find(dest);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((j != ::__awh_nodes__.end()) && (j->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((j != ::__awh_nodes__.end()) && (j->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(j->second.get());
 				/**
@@ -40397,9 +39891,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY): {
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
-						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						i->second->state.status = event::status_t::PENDING;
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						// Активируем событие на запись для клиентского сокета
@@ -40415,9 +39909,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
-						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						i->second->state.status = event::status_t::PENDING;
 						// Выполняем извлечение текущего значения объекта таймера
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Если событие успешно добавлено
@@ -40443,7 +39937,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							return true;
 						}
 						// Снимаем флаг ожидания выполнения события
-						timer->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+						timer->state.status = event::status_t::INITIAL;
 					}
 				} break;
 				// Если узел является директорией
@@ -40451,9 +39945,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
-						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						i->second->state.status = event::status_t::PENDING;
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						/**
@@ -40484,9 +39978,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние ожидания
-						i->second->state.status.store(event::status_t::PENDING, std::memory_order_release);
+						i->second->state.status = event::status_t::PENDING;
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
@@ -40498,9 +39992,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние подключения
-						i->second->state.status.store(event::status_t::LAUNCHED, std::memory_order_release);
+						i->second->state.status = event::status_t::LAUNCHED;
 						// Получаем текущее значение объекта туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
@@ -40514,9 +40008,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						// Устанавливаем статус события в состояние подключения
-						i->second->state.status.store(event::status_t::LAUNCHED, std::memory_order_release);
+						i->second->state.status = event::status_t::LAUNCHED;
 						/**
 						 * Определяем тип сокета
 						 */
@@ -40595,7 +40089,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 											#endif
 										}
 										// Снимаем флаг ожидания подключения
-										client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+										client->state.status = event::status_t::INITIAL;
 									} break;
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -40628,13 +40122,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 											#endif
 										}
 										// Снимаем флаг ожидания подключения
-										server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+										server->state.status = event::status_t::INITIAL;
 									} break;
 								}
 							}
 						}
 					// Если событие находится в состоянии успешного подключения
-					} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) {
+					} else if(i->second->state.status == event::status_t::SUCCESS) {
 						/**
 						 * Определяем тип сокета
 						 */
@@ -40654,7 +40148,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										// Получаем текущее значение объекта клиента
 										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Устанавливаем статус события в состояние ожидания
-										client->state.status.store(event::status_t::PENDING, std::memory_order_release);
+										client->state.status = event::status_t::PENDING;
 										// Активируем событие на запись данных в сокет
 										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 										// Если необходимо активировать таймаут на подключение к серверу
@@ -40672,7 +40166,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										// Получаем текущее значение объекта сервера
 										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Устанавливаем статус события в состояние прослушивания
-										server->state.status.store(event::status_t::LISTENING, std::memory_order_release);
+										server->state.status = event::status_t::LISTENING;
 										// Активируем событие на чтение данных из сокета
 										::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 									} break;
@@ -40886,8 +40380,9 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 		if(
 			(i != ::__awh_nodes__.end()) &&
 			(
-				(i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED) ||
-				(i->second->state.status.load(std::memory_order_acquire) != event::status_t::CANCELLED)
+				(i->second->state.status != event::status_t::GARBAGE) &&
+				(i->second->state.status != event::status_t::DESTROYED) &&
+				(i->second->state.status != event::status_t::CANCELLED)
 			)
 		){
 			// Создаём охранника узла события
@@ -40898,43 +40393,66 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Устанавливаем статус события в состояние отмены
-					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-					// Если дескриптор сокета инициализирован
-					if(peer->transfer.fd != net::invalid_socket_t){
-						// Закрываем дескриптор сокета
-						::close(peer->transfer.fd);
-						// Сбрасываем значение дескриптора сокета
-						peer->transfer.fd = net::invalid_socket_t;
+					// Если событие отключения от сервера разрешено
+					if(peer->transfer.actions & ::action::DISCONNECT){
+						// Устанавливаем статус события в состояние отмены
+						peer->state.status = event::status_t::CANCELLED;
+						// Если дескриптор сокета инициализирован
+						if(peer->transfer.fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(peer->transfer.fd);
+							// Сбрасываем значение дескриптора сокета
+							peer->transfer.fd = net::invalid_socket_t;
+						}
+						// Если установлена функция обратного вызова
+						if(peer->callbacks.event != nullptr)
+							// Вызываем функцию обратного вызова флаг события
+							peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
+						// Выводим положительный результат
+						return true;
 					}
-					// Выводим положительный результат
-					return true;
-				}
+				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
-					// Устанавливаем статус события в состояние отмены
-					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
-					// Выполняем "пинок" для применения изменений
-					return this->kick();
-				}
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Если событие отключения от сервера разрешено
+					if(origin->transfer.actions & ::action::DISCONNECT){
+						// Устанавливаем статус события в состояние отмены
+						origin->state.status = event::status_t::CANCELLED;
+						// Если установлена функция обратного вызова
+						if(origin->callbacks.event != nullptr)
+							// Вызываем функцию обратного вызова флаг события
+							origin->callbacks.event(origin->id, event::action_t::DISCONNECT);
+						// Выполняем удаление узла
+						return ::io::destroy(origin, &this->_eth, this->_log);
+					}
+				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Устанавливаем статус события в состояние отмены
-					i->second->state.status.store(event::status_t::CANCELLED, std::memory_order_release);
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Если дескриптор сокета инициализирован
-					if(client->transfer.fd != net::invalid_socket_t){
-						// Закрываем дескриптор сокета
-						::close(client->transfer.fd);
-						// Сбрасываем значение дескриптора сокета
-						client->transfer.fd = net::invalid_socket_t;
+					// Если событие отключения от сервера разрешено
+					if(client->transfer.actions & ::action::DISCONNECT){
+						// Устанавливаем статус события в состояние отмены
+						client->state.status = event::status_t::CANCELLED;
+						// Если дескриптор сокета инициализирован
+						if(client->transfer.fd != net::invalid_socket_t){
+							// Закрываем дескриптор сокета
+							::close(client->transfer.fd);
+							// Сбрасываем значение дескриптора сокета
+							client->transfer.fd = net::invalid_socket_t;
+						}
+						// Если установлена функция обратного вызова
+						if(client->callbacks.event != nullptr)
+							// Вызываем функцию обратного вызова флаг события
+							client->callbacks.event(client->id, event::action_t::DISCONNECT);
+						// Выводим положительный результат
+						return true;
 					}
-					// Выводим положительный результат
-					return true;
-				}
+				} break;
 			}
 		}
 	/**
@@ -40982,7 +40500,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 					// Создаём охранника узла события
 					::local::guard_t guard(i->second.get());
 					// Если событие уже инициализировано
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+					if(i->second->state.status == event::status_t::INITIAL){
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -40994,7 +40512,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 								// Если событие подключение к серверу разрешено
 								if(client->transfer.actions & ::action::CONNECT){
 									// Устанавливаем статус события в состояние успешного подключения
-									client->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+									client->state.status = event::status_t::SUCCESS;
 									/**
 									 * Определяем протокол интернета
 									 */
@@ -41057,7 +40575,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																#endif
 															}
 															// Устанавливаем флаг инициализации события
-															client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+															client->state.status = event::status_t::INITIAL;
 															// Если функция обратного вызова для вывода подключения установлена
 															if(client->callbacks.connect != nullptr)
 																// Вызываем функцию обратного вызова для подключения
@@ -41159,7 +40677,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																	#endif
 																}
 																// Снимаем флаг ожидания подключения
-																client->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+																client->state.status = event::status_t::INITIAL;
 																// Если функция обратного вызова для вывода подключения установлена
 																if(client->callbacks.connect != nullptr)
 																	// Вызываем функцию обратного вызова для подключения
@@ -41892,7 +41410,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			// Если событие уже инициализировано
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL){
+			if(i->second->state.status == event::status_t::INITIAL){
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -41904,7 +41422,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 						// Если событие разрешено принимать входящие соединения
 						if(server->actions & ::action::ACCEPT){
 							// Устанавливаем статус события в состояние успешного прослушивания
-							server->state.status.store(event::status_t::SUCCESS, std::memory_order_release);
+							server->state.status = event::status_t::SUCCESS;
 							// Устанавливаем максимальное количество входящих соединений
 							server->backlog.max = max;
 							/**
@@ -41940,7 +41458,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 											#endif
 										}
 										// Снимаем флаг ожидания подключения
-										server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+										server->state.status = event::status_t::INITIAL;
 									}
 								} break;
 								/**
@@ -41978,7 +41496,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 													#endif
 												}
 												// Снимаем флаг ожидания подключения
-												server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+												server->state.status = event::status_t::INITIAL;
 											}
 										// Если протокол интернета не установлен как SCTP
 										} else {
@@ -42009,7 +41527,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
-											server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+											server->state.status = event::status_t::INITIAL;
 										}
 									} break;
 								#endif
@@ -42042,7 +41560,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 										#endif
 									}
 									// Снимаем флаг ожидания подключения
-									server->state.status.store(event::status_t::INITIAL, std::memory_order_release);
+									server->state.status = event::status_t::INITIAL;
 								}
 							}
 						}
@@ -42755,7 +42273,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED))
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
 			// Выполняем чтение данных события
 			return ::io::read(i->second.get(), this, &this->_eth, this->_fmk, this->_log);
 	/**
@@ -42799,7 +42317,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -42813,7 +42331,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если запись в файл разрешена
 						if(fs->actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(fs->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							if(fs->state.status != event::status_t::PAUSED)
 								// Выполняем отправку данных на узел файловой системой
 								return ::io::send(fs, buffer, size, &this->_eth, this->_log);
 						}
@@ -42863,7 +42381,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если записи в сокет разрешено
 						if(ipc->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(ipc->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							if(ipc->state.status != event::status_t::PAUSED)
 								// Выполняем отправку данных на узел межпроцессного взаимодействия
 								return ::io::send(ipc, buffer, size, &this->_eth, this->_log);
 						}
@@ -42875,7 +42393,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если записи в сокет разрешено
 						if(peer->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							if(peer->state.status != event::status_t::PAUSED)
 								// Выполняем отправку данных на одноранговый узел
 								return ::io::send(peer, buffer, size, &this->_eth, this->_log);
 						}
@@ -42887,7 +42405,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если записи в сокет разрешено
 						if(origin->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(origin->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							if(origin->state.status != event::status_t::PAUSED)
 								// Выполняем отправку данных на одноранговый узел-источника
 								return ::io::send(origin, buffer, size, &this->_eth, this->_log);
 						}
@@ -42912,7 +42430,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если событие записи разрешено
 						if(client->transfer.actions & ::action::WRITE){
 							// Если событие находится не в состоянии паузы
-							if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+							if(client->state.status != event::status_t::PAUSED)
 								// Выполняем отправку данных на узел клиента
 								return ::io::send(client, buffer, size, &this->_eth, this->_log);
 						}
@@ -42924,7 +42442,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						// Если записи в сокет разрешено
 						if(server->actions & ::action::WRITE){
 							// Если сервер находится в запущенном состоянии
-							if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+							if(server->state.status == event::status_t::LAUNCHED)
 								// Выполняем отправку данных на узел сервера
 								return ::io::send(server, buffer, size, &this->_eth, this->_log);
 						}
@@ -42973,7 +42491,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -43043,7 +42561,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
-											client->state.status.store(event::status_t::NONE, std::memory_order_release);
+											client->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -43172,7 +42690,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
-											client->state.status.store(event::status_t::NONE, std::memory_order_release);
+											client->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -43319,7 +42837,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
-											server->state.status.store(event::status_t::NONE, std::memory_order_release);
+											server->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -43454,7 +42972,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
-											server->state.status.store(event::status_t::NONE, std::memory_order_release);
+											server->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -43626,7 +43144,7 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -44003,7 +43521,7 @@ bool awh::engine::IO::bufferSize(const event::id_t id, const event::action_t act
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -44351,7 +43869,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -44749,7 +44267,7 @@ awh::event::delivery_mode_t awh::engine::IO::delivery(const event::id_t id) cons
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED))
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
 			// Выводим режим трансляции пакетов
 			return i->second->state.delivery;
 	/**
@@ -44788,7 +44306,7 @@ bool awh::engine::IO::delivery(const event::id_t id, const event::delivery_mode_
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -44885,7 +44403,7 @@ awh::event::hops_t awh::engine::IO::hops(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED))
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
 			// Выводим результат максимального количества хопов
 			return i->second->state.hops;
 	/**
@@ -44927,7 +44445,7 @@ bool awh::engine::IO::hops(const event::id_t id, const event::family_t family, c
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -45193,7 +44711,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -45207,7 +44725,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 					// Устанавливаем значение задержки времени таймаута
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
-					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if(timer->state.status == event::status_t::PENDING){
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						// Останавливаем активный таймаут
@@ -45234,7 +44752,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 					// Устанавливаем значение задержки времени таймаута
 					timer->delay = timeout;
 					// Если таймаут находится в состоянии ожидания
-					if(timer->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if(timer->state.status == event::status_t::PENDING){
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						// Останавливаем активный таймаут
@@ -45271,7 +44789,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 								// Если таймаут для действия чтения был отключён но при этом находится в состоянии ожидания
 								if((peer->timeouts.read.delay == 0) && (peer->timeouts.read.status == event::status_t::PENDING)){
 									// Если событие не находится в состоянии паузы
-									if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+									if(peer->state.status != event::status_t::PAUSED)
 										// Удаляем таймаут ожидания получения данных
 										::timeout::clear(peer->timeouts.read, event::rate_t::INSTANT, this->_log);
 								}
@@ -45289,7 +44807,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 								// Если таймаут для действия записи был отключён но при этом находится в состоянии ожидания
 								if((peer->timeouts.write.delay == 0) && (peer->timeouts.write.status == event::status_t::PENDING)){
 									// Если событие не находится в состоянии паузы
-									if(peer->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+									if(peer->state.status != event::status_t::PAUSED)
 										// Удаляем таймаут ожидания отправки данных
 										::timeout::clear(peer->timeouts.write, event::rate_t::INSTANT, this->_log);
 								}
@@ -45406,7 +44924,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 								// Если таймаут для действия чтения был отключён но при этом находится в состоянии ожидания
 								if((client->timeouts.read.delay == 0) && (client->timeouts.read.status == event::status_t::PENDING)){
 									// Если событие не находится в состоянии паузы
-									if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+									if(client->state.status != event::status_t::PAUSED)
 										// Удаляем таймаут ожидания получения данных
 										::timeout::clear(client->timeouts.read, event::rate_t::INSTANT, this->_log);
 								}
@@ -45424,7 +44942,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 								// Если таймаут для действия записи был отключён но при этом находится в состоянии ожидания
 								if((client->timeouts.write.delay == 0) && (client->timeouts.write.status == event::status_t::PENDING)){
 									// Если событие не находится в состоянии паузы
-									if(client->state.status.load(std::memory_order_acquire) != event::status_t::PAUSED)
+									if(client->state.status != event::status_t::PAUSED)
 										// Удаляем таймаут ожидания отправки данных
 										::timeout::clear(client->timeouts.write, event::rate_t::INSTANT, this->_log);
 								}
@@ -45489,7 +45007,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							// Устанавливаем значение таймаута для действия события
 							server->timeouts.read.delay = timeout;
 							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-							if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+							if(server->state.status == event::status_t::LAUNCHED){
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
@@ -45501,7 +45019,7 @@ void awh::engine::IO::timeout(const event::id_t id, const event::action_t action
 							// Устанавливаем значение таймаута для действия события
 							server->timeouts.write.delay = timeout;
 							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-							if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+							if(server->state.status == event::status_t::LAUNCHED){
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
@@ -45593,7 +45111,7 @@ awh::event::mode_t awh::engine::IO::action(const event::id_t id, const event::ac
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -46086,7 +45604,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -46977,7 +46495,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::CONNECT;
 									// Если клиент находится в состоянии ожидания подключения к серверу
-									if(client->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+									if(client->state.status == event::status_t::PENDING){
 										// Если событие является неблокирующим
 										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 											// Создаём таймаут на ожидание подключения к серверу
@@ -47006,7 +46524,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::RECONNECT;
 									// Если клиент находится в состоянии ожидания переподключения к серверу
-									if(client->state.status.load(std::memory_order_acquire) == event::status_t::RECONNECTED){
+									if(client->state.status == event::status_t::RECONNECTED){
 										// Если событие является неблокирующим
 										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
 											// Создаём таймаут на ожидание переподключения к серверу
@@ -47071,7 +46589,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 										// Если необходимо активировать таймаут на чтение для сервера
 										if(server->timeouts.read.delay > 0){
 											// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-											if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+											if(server->state.status == event::status_t::LAUNCHED)
 												// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 												this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 										}
@@ -47107,7 +46625,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 										// Если необходимо активировать таймаут на запись для сервера
 										if(server->timeouts.write.delay > 0){
 											// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-											if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+											if(server->state.status == event::status_t::LAUNCHED)
 												// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
 												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 										}
@@ -47145,7 +46663,7 @@ bool awh::engine::IO::action(const event::id_t id, const event::action_t action,
 						// Если действие является принятием входящего соединения
 						case static_cast <uint8_t> (event::action_t::ACCEPT): {
 							// Если сервер находится в состоянии прослушивания входящих соединений
-							if(server->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING){
+							if(server->state.status == event::status_t::LISTENING){
 								/**
 								 * Определяем тип действия события
 								 */
@@ -47213,7 +46731,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Файловый дескриптор события
 			 */
@@ -47294,7 +46812,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -47304,13 +46822,13 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является межпроцессным соединением
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Если событие ожидает результата обработки события
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if(i->second->state.status == event::status_t::PENDING){
 						// Получаем текущее значение объекта межпроцессного соединения
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Запоминаем текущее значение статуса события
-						ipc->state.oldset = ipc->state.status.load(std::memory_order_acquire);
+						ipc->state.stash = ipc->state.status;
 						// Устанавливаем статус события в состояние паузы
-						ipc->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+						ipc->state.status = event::status_t::PAUSED;
 						// Деактивируем событие на чтение данных из сокета
 						::events::read(ipc->transfer.fd, ipc,  event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
 						// Выполняем "пинок" для применения изменений
@@ -47320,15 +46838,15 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Если событие ожидает результата обработки события
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if(i->second->state.status == event::status_t::PENDING){
 						// Получаем текущее значение объекта директории
 						::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
 						// Если дескриптор сокета действительный
 						if(dir->fd != net::invalid_socket_t){
 							// Запоминаем текущее значение статуса события
-							dir->state.oldset = dir->state.status.load(std::memory_order_acquire);
+							dir->state.stash = dir->state.status;
 							// Устанавливаем статус события в состояние паузы
-							dir->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+							dir->state.status = event::status_t::PAUSED;
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Удаляем предыдущее события из списка изменений
@@ -47343,15 +46861,15 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
 					// Если событие ожидает результата обработки события
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if(i->second->state.status == event::status_t::PENDING){
 						// Получаем текущее значение объекта файловой системы
 						::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 						// Если дескриптор сокета действительный
 						if(fs->fd != net::invalid_socket_t){
 							// Запоминаем текущее значение статуса события
-							fs->state.oldset = fs->state.status.load(std::memory_order_acquire);
+							fs->state.stash = fs->state.status;
 							// Устанавливаем статус события в состояние паузы
-							fs->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+							fs->state.status = event::status_t::PAUSED;
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Удаляем предыдущее события из списка изменений
@@ -47366,15 +46884,15 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является успешным
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
+					if(i->second->state.status == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если дескриптор сокета действительный
 						if(peer->transfer.fd != net::invalid_socket_t){
 							// Запоминаем текущее значение статуса события
-							peer->state.oldset = peer->state.status.load(std::memory_order_acquire);
+							peer->state.stash = peer->state.status;
 							// Устанавливаем статус события в состояние паузы
-							peer->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+							peer->state.status = event::status_t::PAUSED;
 							// Деактивируем событие на чтение данных из сокета
 							::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
 							// Если событие является неблокирующим
@@ -47402,15 +46920,15 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Если статус события является успешным
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
+					if(i->second->state.status == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла-источника
 						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если дескриптор сокета действительный
 						if(origin->transfer.fd != net::invalid_socket_t){
 							// Запоминаем текущее значение статуса события
-							origin->state.oldset = origin->state.status.load(std::memory_order_acquire);
+							origin->state.stash = origin->state.status;
 							// Устанавливаем статус события в состояние паузы
-							origin->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+							origin->state.status = event::status_t::PAUSED;
 							// Если событие является неблокирующим
 							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
 								// Удаляем все установленные активные таймауты
@@ -47437,16 +46955,16 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если подключение клиента установлено
-					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
-					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)){
+					if((i->second->state.status == event::status_t::LAUNCHED) ||
+					   (i->second->state.status == event::status_t::CONNECTED)){
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
 							// Запоминаем текущее значение статуса события
-							client->state.oldset = client->state.status.load(std::memory_order_acquire);
+							client->state.stash = client->state.status;
 							// Устанавливаем статус события в состояние паузы
-							client->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+							client->state.status = event::status_t::PAUSED;
 							// Деактивируем событие на чтение данных из сокета
 							::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
 							// Если событие является неблокирующим
@@ -47474,16 +46992,16 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Если событие находится в запущенном состоянии
-					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
-					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING)){
+					if((i->second->state.status == event::status_t::LAUNCHED) ||
+					   (i->second->state.status == event::status_t::LISTENING)){
 						// Получаем объект события сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если дескриптор сокета действительный
 						if(server->fd != net::invalid_socket_t){
 							// Запоминаем текущее значение статуса события
-							server->state.oldset = server->state.status.load(std::memory_order_acquire);
+							server->state.stash = server->state.status;
 							// Устанавливаем статус события в состояние паузы
-							server->state.status.store(event::status_t::PAUSED, std::memory_order_release);
+							server->state.status = event::status_t::PAUSED;
 							// Деактивируем событие на чтение данных из сокета
 							::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
 							// Если событие является неблокирующим
@@ -47546,9 +47064,9 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Если статус события является паузой
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED){
+			if(i->second->state.status == event::status_t::PAUSED){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
@@ -47560,7 +47078,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта межпроцессного соединения
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Устанавливаем статус события в состояние возобновлено
-						ipc->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+						ipc->state.status = event::status_t::RESUMED;
 						// Если событие чтения из сокета разрешено
 						if(ipc->transfer.actions & ::action::READ){
 							// Активируем событие на чтение данных из сокета
@@ -47576,7 +47094,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если дескриптор сокета действительный
 						if(dir->fd != net::invalid_socket_t){
 							// Устанавливаем статус события в состояние возобновлено
-							dir->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+							dir->state.status = event::status_t::RESUMED;
 							// Флаги событий каталога
 							uint32_t flags = 0;
 							// Если действие изменения каталога разрешено
@@ -47629,7 +47147,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если дескриптор сокета действительный
 						if(fs->fd != net::invalid_socket_t){
 							// Устанавливаем статус события в состояние возобновлено
-							fs->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+							fs->state.status = event::status_t::RESUMED;
 							// Флаги событий каталога
 							uint32_t flags = 0;
 							// Если действие изменения каталога разрешено
@@ -47682,7 +47200,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если дескриптор сокета действительный
 						if(peer->transfer.fd != net::invalid_socket_t){
 							// Устанавливаем статус события в состояние возобновлено
-							peer->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+							peer->state.status = event::status_t::RESUMED;
 							// Если событие чтения из сокета разрешено
 							if(peer->transfer.actions & ::action::READ){
 								// Активируем событие на чтение данных из сокета
@@ -47723,7 +47241,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если дескриптор сокета действительный
 						if(origin->transfer.fd != net::invalid_socket_t){
 							// Устанавливаем статус события в состояние возобновлено
-							origin->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+							origin->state.status = event::status_t::RESUMED;
 							// Если событие чтения из сокета разрешено
 							if(origin->transfer.actions & ::action::READ){
 								// Если событие является неблокирующим
@@ -47764,7 +47282,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
 							// Устанавливаем статус события в состояние возобновлено
-							client->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+							client->state.status = event::status_t::RESUMED;
 							// Если событие чтения из сокета разрешено
 							if(client->transfer.actions & ::action::READ){
 								// Активируем событие на чтение данных из сокета
@@ -47805,9 +47323,9 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если дескриптор сокета действительный
 						if(server->fd != net::invalid_socket_t){
 							// Устанавливаем статус события в состояние возобновлено
-							server->state.status.store(event::status_t::RESUMED, std::memory_order_release);
+							server->state.status = event::status_t::RESUMED;
 							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-							if(server->state.oldset.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+							if(server->state.stash == event::status_t::LAUNCHED){
 								// Если событие чтения из сокета разрешено
 								if(server->actions & ::action::READ){
 									// Активируем событие на чтение данных из сокета
@@ -47821,7 +47339,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									}
 								}
 							// Если сервер находится в состоянии прослушивания и обрабатывает одноранговые узлы
-							} else if(server->state.oldset.load(std::memory_order_acquire) == event::status_t::LISTENING) {
+							} else if(server->state.stash == event::status_t::LISTENING) {
 								// Если событие принятия соединений разрешено
 								if(server->actions & ::action::ACCEPT)
 									// Активируем событие на чтение данных из сокета
@@ -47834,7 +47352,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									// Если необходимо активировать таймаут на запись для сервера
 									if(server->timeouts.write.delay > 0){
 										// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-										if(server->state.oldset.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										if(server->state.stash == event::status_t::LAUNCHED)
 											// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
 											this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 									}
@@ -47882,7 +47400,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -47890,14 +47408,14 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является успешным
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS)
+					if(i->second->state.status == event::status_t::SUCCESS)
 						// Выводим результат проверки
 						return (this->_eth.socket.error(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd) == 0);
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Если статус события является успешным
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS){
+					if(i->second->state.status == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла-источника
 						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Идентификатор сессии источника
@@ -47929,7 +47447,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Если клиент находится в состоянии запущено
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+					if(i->second->state.status == event::status_t::LAUNCHED)
 						// Выводим результат проверки
 						return (this->_eth.socket.error(awh_cast <::io::tun_t *> (i->second.get())->fd) == 0);
 				} break;
@@ -47945,7 +47463,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если клиент находится в состоянии подключено
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED)
+					if(i->second->state.status == event::status_t::CONNECTED)
 						// Выводим результат проверки
 						return (this->_eth.socket.error(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
 				} break;
@@ -47984,7 +47502,7 @@ void awh::engine::IO::clear() noexcept {
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			// Если узел уже находится в рабочем состоянии
-			if(i->second->state.status.load(std::memory_order_acquire) != event::status_t::NONE){
+			if(i->second->state.status != event::status_t::NONE){
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -48517,7 +48035,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 		// Выполняем перебор всех активных узлов
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			// Если узел ещё не находится в рабочем состоянии
-			if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::NONE){
+			if(i->second->state.status == event::status_t::NONE){
 				// Увеличиваем значение итератора
 				++i;
 				// Пропускаем текущий узел
@@ -48534,9 +48052,9 @@ bool awh::engine::IO::reinitialize() noexcept {
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Если событие ожидает результата обработки события
-					if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING){
+					if(i->second->state.status == event::status_t::PENDING){
 						// Выполняем сброс статуса ожидания события
-						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						i->second->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						this->commit(i->first);
 						// Увеличиваем значение итератора
@@ -48547,18 +48065,18 @@ bool awh::engine::IO::reinitialize() noexcept {
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Если событие ожидает результата обработки события
-					if((i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) ||
-					   (i->second->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+					if((i->second->state.status == event::status_t::PENDING) ||
+					   (i->second->state.status == event::status_t::RESUMED)){
 						// Выполняем сброс статуса ожидания события
-						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						i->second->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если событие поставлено на паузу
-					} else if(i->second->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+					} else if(i->second->state.status == event::status_t::PAUSED) {
 						// Выполняем сброс статуса ожидания события
-						i->second->state.status.store(event::status_t::NONE, std::memory_order_release);
+						i->second->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						if(this->commit(i->first))
 							// Устанавливаем статус события в состояние паузы
@@ -48581,18 +48099,18 @@ bool awh::engine::IO::reinitialize() noexcept {
 						// Закрываем дескриптор сокета
 						::close(dir->fd);
 					// Если событие ожидает результата обработки события
-					if((dir->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) ||
-					   (dir->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+					if((dir->state.status == event::status_t::PENDING) ||
+					   (dir->state.status == event::status_t::RESUMED)){
 						// Выполняем сброс статуса ожидания события
-						dir->state.status.store(event::status_t::NONE, std::memory_order_release);
+						dir->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если событие поставлено на паузу
-					} else if(dir->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+					} else if(dir->state.status == event::status_t::PAUSED) {
 						// Выполняем сброс статуса ожидания события
-						dir->state.status.store(event::status_t::NONE, std::memory_order_release);
+						dir->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						if(this->commit(i->first))
 							// Устанавливаем статус события в состояние паузы
@@ -48611,18 +48129,18 @@ bool awh::engine::IO::reinitialize() noexcept {
 						// Закрываем дескриптор сокета
 						::close(fs->fd);
 					// Если событие ожидает результата обработки события
-					if((fs->state.status.load(std::memory_order_acquire) == event::status_t::PENDING) ||
-					   (fs->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+					if((fs->state.status == event::status_t::PENDING) ||
+					   (fs->state.status == event::status_t::RESUMED)){
 						// Выполняем сброс статуса ожидания события
-						fs->state.status.store(event::status_t::NONE, std::memory_order_release);
+						fs->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						this->commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если событие поставлено на паузу
-					} else if(fs->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+					} else if(fs->state.status == event::status_t::PAUSED) {
 						// Выполняем сброс статуса ожидания события
-						fs->state.status.store(event::status_t::NONE, std::memory_order_release);
+						fs->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
 						if(this->commit(i->first))
 							// Устанавливаем статус события в состояние паузы
@@ -48639,8 +48157,8 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета действительный
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Если событие находится в состоянии инициализации
-						if((peer->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) ||
-						   (peer->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						if((peer->state.status == event::status_t::SUCCESS) ||
+						   (peer->state.status == event::status_t::RESUMED)){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение и активируем его
@@ -48701,7 +48219,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Увеличиваем значение итератора
 							++i;
 						// Если событие поставлено на паузу
-						} else if(peer->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED) {
+						} else if(peer->state.status == event::status_t::PAUSED) {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
@@ -48722,8 +48240,8 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета действительный
 					if(origin->transfer.fd != net::invalid_socket_t){
 						// Если событие находится в состоянии инициализации
-						if((origin->state.status.load(std::memory_order_acquire) == event::status_t::SUCCESS) ||
-						   (origin->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						if((origin->state.status == event::status_t::SUCCESS) ||
+						   (origin->state.status == event::status_t::RESUMED)){
 							// Если событие чтения из сокета разрешено
 							if(origin->transfer.actions & ::action::READ){
 								// Если событие является неблокирующим
@@ -48777,8 +48295,8 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета действительный
 					if(tunnel->fd != net::invalid_socket_t){
 						// Если событие находится в состоянии инициализации
-						if((tunnel->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-						   (tunnel->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)){
+						if((tunnel->state.status == event::status_t::INITIAL) ||
+						   (tunnel->state.status == event::status_t::LAUNCHED)){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
@@ -48793,7 +48311,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							break;
 						}
 						// Если событие находится в подключённом состоянии
-						if(tunnel->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED){
+						if(tunnel->state.status == event::status_t::LAUNCHED){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Активируем событие на чтение для серверного сокета
@@ -48813,11 +48331,11 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета действительный
 					if(client->transfer.fd != net::invalid_socket_t){
 						// Если событие находится в состоянии инициализации
-						if((client->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-						   (client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
-						   (client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
-						   (client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED) ||
-						   (client->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)){
+						if((client->state.status == event::status_t::INITIAL) ||
+						   (client->state.status == event::status_t::LAUNCHED) ||
+						   (client->state.status == event::status_t::CONNECTED) ||
+						   (client->state.status == event::status_t::RESUMED) ||
+						   (client->state.status == event::status_t::PAUSED)){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
@@ -48832,9 +48350,9 @@ bool awh::engine::IO::reinitialize() noexcept {
 							break;
 						}
 						// Если событие находится в подключённом состоянии
-						if((client->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
-						   (client->state.status.load(std::memory_order_acquire) == event::status_t::CONNECTED) ||
-						   (client->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						if((client->state.status == event::status_t::LAUNCHED) ||
+						   (client->state.status == event::status_t::CONNECTED) ||
+						   (client->state.status == event::status_t::RESUMED)){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Активируем событие на чтение для серверного сокета
@@ -48921,11 +48439,11 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета действительный
 					if(server->fd != net::invalid_socket_t){
 						// Если событие находится в состоянии инициализации
-						if((server->state.status.load(std::memory_order_acquire) == event::status_t::INITIAL) ||
-						   (server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
-						   (server->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING) ||
-						   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED) ||
-						   (server->state.status.load(std::memory_order_acquire) == event::status_t::PAUSED)){
+						if((server->state.status == event::status_t::INITIAL) ||
+						   (server->state.status == event::status_t::LAUNCHED) ||
+						   (server->state.status == event::status_t::LISTENING) ||
+						   (server->state.status == event::status_t::RESUMED) ||
+						   (server->state.status == event::status_t::PAUSED)){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
@@ -48940,9 +48458,9 @@ bool awh::engine::IO::reinitialize() noexcept {
 							break;
 						}
 						// Если событие находится в запущенном состоянии
-						if((server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED) ||
-						   (server->state.status.load(std::memory_order_acquire) == event::status_t::LISTENING) ||
-						   (server->state.status.load(std::memory_order_acquire) == event::status_t::RESUMED)){
+						if((server->state.status == event::status_t::LAUNCHED) ||
+						   (server->state.status == event::status_t::LISTENING) ||
+						   (server->state.status == event::status_t::RESUMED)){
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Активируем событие на чтение для серверного сокета
@@ -48962,7 +48480,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 									// Если необходимо активировать таймаут на чтение для сервера
 									if(server->timeouts.read.delay > 0){
 										// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-										if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										if(server->state.status == event::status_t::LAUNCHED)
 											// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 											this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 									}
@@ -48975,7 +48493,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 									// Если необходимо активировать таймаут на запись для сервера
 									if(server->timeouts.write.delay > 0){
 										// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
-										if(server->state.status.load(std::memory_order_acquire) == event::status_t::LAUNCHED)
+										if(server->state.status == event::status_t::LAUNCHED)
 											// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
 											this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 									}
@@ -49254,7 +48772,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status == event::status_t::PENDING)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -49354,7 +48872,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) == event::status_t::PENDING)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status == event::status_t::PENDING)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -49696,7 +49214,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::read_t & c
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -49789,7 +49307,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -49882,7 +49400,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::spool_t & 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -49970,7 +49488,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::event_t & 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -50073,7 +49591,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::error_t & 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -50188,7 +49706,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::status_t &
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -50303,7 +49821,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::change_t &
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -50371,7 +49889,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::accept_t &
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -50434,7 +49952,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::connect_t 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -50497,7 +50015,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::available_
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status.load(std::memory_order_acquire) != event::status_t::DESTROYED)){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
