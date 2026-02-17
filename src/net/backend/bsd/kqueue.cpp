@@ -18511,6 +18511,58 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Если установлен режим постоянного подключения
+								if(client->state.options & event::options::KEEPALIVE){
+									// Если событие переподключения к серверу разрешено
+									if(client->transfer.actions & ::action::RECONNECT){
+										// Если клиент не подразумевает переподключение
+										if(client->state.status == event::status_t::LAUNCHED)
+											// Выходим из условия и продолжаем выполнение функции
+											break;
+										// Удаляем все установленные активные таймауты
+										::timeout::clear(
+											client->timeouts.read,
+											client->timeouts.write,
+											client->timeouts.connect,
+											client->timeouts.reconnect,
+											client->bandwidth.read.timeout,
+											client->bandwidth.write.timeout,
+											event::rate_t::INSTANT, log
+										);
+										// Если дескриптор сокета действительный
+										if(client->transfer.fd != net::invalid_socket_t){
+											// Если в сокете нет ошибок
+											if(eth->socket.error(client->transfer.fd) == 0){
+												// Количество событий подлежащих удалению
+												uint8_t count = 0;
+												// Список объектов события для удаления
+												struct kevent events[2] = {0};
+												// Если активность на чтения данных установлена
+												if(client->activity & ::activity::READ)
+													// Деактивируем событие на чтение данных из сокета
+													EV_SET(&events[count++], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+												// Если активность на запись данных установлена
+												if(client->activity & ::activity::WRITE)
+													// Деактивируем событие на запись данных в сокет
+													EV_SET(&events[count++], client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+												// Выполняем удаление событий из списка ожидания
+												::kevent(::__awh_kq__, events, count, nullptr, 0, nullptr);
+											}
+											// Закрываем дескриптор сокета
+											::close(client->transfer.fd);
+										}
+										// Устанавливаем статус события в состояние переподключения
+										client->state.status = event::status_t::RECONNECTED;
+										// Если задержка таймаута на переподключение не установлена
+										if(client->timeouts.reconnect.delay == 0)
+											// Устанавливаем задержку таймаута на значение в 5 секунд
+											client->timeouts.reconnect.delay = 0x1388;
+										// Создаём таймаут на переподключение
+										::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, log);
+										// Выводим результат выполнения функции
+										return !guard.isGarbage();
+									}
+								}
 								// Удаляем все установленные активные таймауты
 								::timeout::clear(
 									client->timeouts.read,
@@ -18543,26 +18595,6 @@ namespace io {
 											// Добавляем новое событие в список изменений
 											::events::add(std::move(event));
 										}
-									}
-								}
-								// Если установлен режим постоянного подключения
-								if(client->state.options & event::options::KEEPALIVE){
-									// Если событие переподключения к серверу разрешено
-									if(client->transfer.actions & ::action::RECONNECT){
-										// Если клиент не подразумевает переподключение
-										if(client->state.status == event::status_t::LAUNCHED)
-											// Выходим из условия и продолжаем выполнение функции
-											break;
-										// Устанавливаем статус события в состояние переподключения
-										client->state.status = event::status_t::RECONNECTED;
-										// Если задержка таймаута на переподключение не установлена
-										if(client->timeouts.reconnect.delay == 0)
-											// Устанавливаем задержку таймаута на значение в 5 секунд
-											client->timeouts.reconnect.delay = 0x1388;
-										// Создаём таймаут на переподключение
-										::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, log);
-										// Выводим результат выполнения функции
-										return !guard.isGarbage();
 									}
 								}
 							} break;
@@ -21614,14 +21646,14 @@ namespace io {
 									client->state.options = event::options::NONE;
 									// Получаем объект работы с асинхронными событиями
 									engine::io_t * self = const_cast <engine::io_t *> (io);
-									// Если установлена функция обратного вызова
-									if(client->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова для возрождения клиента
-										client->callbacks.status(client->id, event::status_t::REBIRTHED);
 									// Выполняем установку опций события и фиксацию изменений
 									if(self->options(client->id, options) && self->commit(client->id)){
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова для возрождения клиента
+											client->callbacks.status(client->id, event::status_t::REBIRTHED);
 										// Выполняем повторное подключение клиента
-										if(!self->connect({client->id}) || !self->launch(client->id)){
+										if(!self->connect(client->id) || !self->launch(client->id)){
 											// Если функция обратного вызова для вывода подключения установлена
 											if(client->callbacks.connect != nullptr)
 												// Вызываем функцию обратного вызова для подключения
