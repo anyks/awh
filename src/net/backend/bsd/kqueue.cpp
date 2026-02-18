@@ -40857,7 +40857,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
  */
-bool awh::engine::IO::connect(initializer_list <event::id_t> ids) noexcept {
+bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -40865,7 +40865,7 @@ bool awh::engine::IO::connect(initializer_list <event::id_t> ids) noexcept {
 	 */
 	try {
 		// Если список идентификаторов событий для подключения не пустой
-		if(!std::empty(ids)){
+		if(!ids.empty()){
 			// Выполняем перебор всех идентификаторов
 			for(const event::id_t & id : ids){
 				// Выполняем поиск идентификатора события

@@ -256,7 +256,7 @@ namespace awh {
 			 * @param ids список идентификаторов событий для подключения
 			 * @return    результат выполнения подключения
 			 */
-			virtual bool connect(initializer_list <event::id_t> ids) noexcept = 0;
+			virtual bool connect(const vector <event::id_t> & ids) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений
