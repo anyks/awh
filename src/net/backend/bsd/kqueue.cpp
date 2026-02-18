@@ -2082,36 +2082,36 @@ namespace local {
 								// Выводим название установленного фильтра
 								cout << " EVFILT_FS " << endl;
 							break;
-							// Если фильтр установлен на событие виртуальной памяти
-							case EVFILT_VM:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_VM " << endl;
-							break;
-							// Если фильтр установлен на событие исключения
-							case EVFILT_EXCEPT:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_EXCEPT " << endl;
-							break;
-							/**
-							 * Для операционных систем MacOS X
-							 */
-							#if __APPLE__ || __MACH__
-								// Если фильтр установлен на событие machport
-								case EVFILT_MACHPORT:
-									// Выводим название установленного фильтра
-									cout << " EVFILT_MACHPORT " << endl;
-								break;
-							#endif
 							// Если фильтр установлен на событие таймера
 							case EVFILT_TIMER:
 								// Выводим название установленного фильтра
 								cout << " EVFILT_TIMER " << endl;
 							break;
-							// Если фильтр установлен на событие потока
-							case EVFILT_THREADMARKER:
-								// Выводим название установленного фильтра
-								cout << " EVFILT_THREADMARKER " << endl;
-							break;
+							/**
+							 * Для операционных систем MacOS X
+							 */
+							#if __APPLE__ || __MACH__
+								// Если фильтр установлен на событие виртуальной памяти
+								case EVFILT_VM:
+									// Выводим название установленного фильтра
+									cout << " EVFILT_VM " << endl;
+								break;
+								// Если фильтр установлен на событие исключения
+								case EVFILT_EXCEPT:
+									// Выводим название установленного фильтра
+									cout << " EVFILT_EXCEPT " << endl;
+								break;
+								// Если фильтр установлен на событие machport
+								case EVFILT_MACHPORT:
+									// Выводим название установленного фильтра
+									cout << " EVFILT_MACHPORT " << endl;
+								break;
+								// Если фильтр установлен на событие потока
+								case EVFILT_THREADMARKER:
+									// Выводим название установленного фильтра
+									cout << " EVFILT_THREADMARKER " << endl;
+								break;
+							#endif
 						}
 						// Выводим заголовок флагов события
 						cout << endl << " FLAGS:" << endl;
