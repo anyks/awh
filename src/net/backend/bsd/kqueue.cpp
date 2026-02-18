@@ -20575,7 +20575,8 @@ namespace io {
 											// Выполняем чтение данных из SCTP-сокета
 											bytes = ::sctp_recvmsg(
 												server->fd,
-												::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE,
+												::__awh_buffer__,
+												AWH_EVENT_MAX_BUFFER_SIZE,
 												&::trust_cast <struct sockaddr> (server->endpoint.client),
 												&server->endpoint.size,
 												&server->sctp.info,
@@ -21099,7 +21100,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (bytes));
+										peer->callbacks.read(peer->id, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (bytes));
 								}
 							#endif
 							// Если узел не помечен как мусорный
@@ -21599,23 +21600,21 @@ namespace io {
 								 * Для операционной системы MacOS X
 								 */
 								#if __APPLE__ || __MACH__
-									// Буфер для хранения пути директории
-									char buffer[PATH_MAX];
 									// Получаем актуальный путь директории
-									if(::fcntl(dir->fd, F_GETPATH, buffer) == 0){
+									if(::fcntl(dir->fd, F_GETPATH, ::__awh_buffer__) == 0){
 										// Множество уже прочитанных записей каталога
 										unordered_map <string, event::vnode_t> entries;
 										// Проходим по всем записям в директории
 										for(auto i = dir->entries.begin(); i != dir->entries.end();){
 											// Добавляем запись в список содержимого директории с новым путём
-											entries.emplace(fmk->format("%s%s", buffer, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
+											entries.emplace(fmk->format("%s%s", ::__awh_buffer__, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
 											// Удаляем старую запись из списка содержимого директории
 											i = dir->entries.erase(i);
 										}
 										// Заменяем старый список записей в дирректории на новый
 										dir->entries = ::move(entries);
 										// Устанавливаем новый путь директории
-										awh_cast <net::addr_fs_t *> (dir->path.get())->address = buffer;
+										awh_cast <net::addr_fs_t *> (dir->path.get())->address = ::__awh_buffer__;
 										// Если событие переименования директории разрешено
 										if(dir->actions & ::action::RENAME)
 											// Вызываем функцию обратного вызова флаг события
@@ -23122,10 +23121,8 @@ namespace sctp {
 							switch(spc->spc_aaddr.ss_family){
 								// Если адрес является IPv4
 								case AF_INET: {
-									// Буфер данных для хранения IPv4 адреса
-									char buffer[INET_ADDRSTRLEN];
 									// Преобразуем IPv4 адрес в строковое представление
-									::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (&spc->spc_aaddr))->sin_addr, buffer, sizeof(buffer));
+									::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (&spc->spc_aaddr))->sin_addr, ::__awh_buffer__, INET_ADDRSTRLEN);
 									// Выводим информацию о событии изменения адреса однорангового узла SCTP
 									log->print(
 										"SCTP_PEER_ADDR_CHANGE: ID=%u, IP=%s, STATE=%d, ERROR=%d",
@@ -23138,10 +23135,8 @@ namespace sctp {
 								} break;
 								// Если адрес является IPv6
 								case AF_INET6: {
-									// Буфер данных для хранения IPv6 адреса
-									char buffer[INET6_ADDRSTRLEN];
 									// Преобразуем IPv6 адрес в строковое представление
-									::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (&spc->spc_aaddr))->sin6_addr, buffer, sizeof(buffer));
+									::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (&spc->spc_aaddr))->sin6_addr, ::__awh_buffer__, INET6_ADDRSTRLEN);
 									// Выводим информацию о событии изменения адреса однорангового узла SCTP
 									log->print(
 										"SCTP_PEER_ADDR_CHANGE: ID=%u, IP=%s, STATE=%d, ERROR=%d",
