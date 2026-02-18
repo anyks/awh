@@ -4255,7 +4255,7 @@ namespace io {
 							if((result = (buffer != MAP_FAILED))){
 								// Если функция обратного вызова для вывода события установлена
 								if(fs->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::READ);
 								// Получаем размер прочитанных данных из файла
 								size = ::min(fs->size, static_cast <size_t> (fs->info.st_size - fs->offset));
@@ -4451,7 +4451,7 @@ namespace io {
 									} else if((result = (bytes > 0))) {
 										// Если функция обратного вызова для вывода события установлена
 										if(ipc->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова флаг события
+											// Вызываем функцию обратного вызова с установленным флагом события
 											ipc->callbacks.event(ipc->id, event::action_t::READ);
 										// Если идентификатор события для передачи данных не установлен
 										if(ipc->transfer.dest == 0){
@@ -4507,7 +4507,7 @@ namespace io {
 								} else if((result = (bytes > 0))) {
 									// Если функция обратного вызова для вывода события установлена
 									if(ipc->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										ipc->callbacks.event(ipc->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(ipc->transfer.dest == 0){
@@ -4614,7 +4614,7 @@ namespace io {
 							} else if((result = (bytes > 0))) {
 								// Если функция обратного вызова для вывода события установлена
 								if(ipc->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									ipc->callbacks.event(ipc->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(ipc->transfer.dest == 0){
@@ -4670,7 +4670,7 @@ namespace io {
 						} else if((result = (bytes > 0))) {
 							// Если функция обратного вызова для вывода события установлена
 							if(ipc->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								ipc->callbacks.event(ipc->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(ipc->transfer.dest == 0){
@@ -4748,7 +4748,7 @@ namespace io {
 							} else if((result = (bytes > 0))) {
 								// Если функция обратного вызова для вывода события установлена
 								if(ipc->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									ipc->callbacks.event(ipc->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(ipc->transfer.dest == 0){
@@ -4804,7 +4804,7 @@ namespace io {
 						} else if((result = (bytes > 0))) {
 							// Если функция обратного вызова для вывода события установлена
 							if(ipc->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								ipc->callbacks.event(ipc->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(ipc->transfer.dest == 0){
@@ -5006,7 +5006,7 @@ namespace io {
 									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(peer->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										peer->callbacks.event(peer->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(peer->transfer.dest == 0){
@@ -5177,7 +5177,7 @@ namespace io {
 							#endif
 							// Если функция обратного вызова для вывода события установлена
 							if(peer->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								peer->callbacks.event(peer->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(peer->transfer.dest == 0){
@@ -5304,7 +5304,7 @@ namespace io {
 									}
 									// Если функция обратного вызова для вывода события установлена
 									if(peer->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										peer->callbacks.event(peer->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(peer->transfer.dest == 0){
@@ -5417,7 +5417,7 @@ namespace io {
 								}
 								// Если функция обратного вызова для вывода события установлена
 								if(peer->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									peer->callbacks.event(peer->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(peer->transfer.dest == 0){
@@ -5596,7 +5596,7 @@ namespace io {
 												::local::guard_t guard(mediator);
 												// Если функция обратного вызова для вывода события установлена
 												if(mediator->callbacks.event != nullptr)
-													// Вызываем функцию обратного вызова флаг события
+													// Вызываем функцию обратного вызова с установленным флагом события
 													mediator->callbacks.event(mediator->id, event::action_t::READ);
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
@@ -5693,7 +5693,7 @@ namespace io {
 												::local::guard_t guard(mediator);
 												// Если функция обратного вызова для вывода события установлена
 												if(mediator->callbacks.event != nullptr)
-													// Вызываем функцию обратного вызова флаг события
+													// Вызываем функцию обратного вызова с установленным флагом события
 													mediator->callbacks.event(mediator->id, event::action_t::READ);
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
@@ -5930,7 +5930,7 @@ namespace io {
 											::local::guard_t guard(mediator);
 											// Если функция обратного вызова для вывода события установлена
 											if(mediator->callbacks.event != nullptr)
-												// Вызываем функцию обратного вызова флаг события
+												// Вызываем функцию обратного вызова с установленным флагом события
 												mediator->callbacks.event(mediator->id, event::action_t::READ);
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
@@ -6027,7 +6027,7 @@ namespace io {
 											::local::guard_t guard(mediator);
 											// Если функция обратного вызова для вывода события установлена
 											if(mediator->callbacks.event != nullptr)
-												// Вызываем функцию обратного вызова флаг события
+												// Вызываем функцию обратного вызова с установленным флагом события
 												mediator->callbacks.event(mediator->id, event::action_t::READ);
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
@@ -6295,7 +6295,7 @@ namespace io {
 							} else if((result = (bytes > 0))) {
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
@@ -6371,7 +6371,7 @@ namespace io {
 						} else if((result = (bytes > 0))) {
 							// Если функция обратного вызова для вывода события установлена
 							if(client->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								client->callbacks.event(client->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(client->transfer.dest == 0){
@@ -6541,7 +6541,7 @@ namespace io {
 									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
@@ -6712,7 +6712,7 @@ namespace io {
 							#endif
 							// Если функция обратного вызова для вывода события установлена
 							if(client->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								client->callbacks.event(client->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(client->transfer.dest == 0){
@@ -6807,7 +6807,7 @@ namespace io {
 								} else if((result = (bytes > 0))) {
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
@@ -6888,7 +6888,7 @@ namespace io {
 							} else if((result = (bytes > 0))) {
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
@@ -6986,7 +6986,7 @@ namespace io {
 								} else if((result = (bytes > 0))) {
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
@@ -7073,7 +7073,7 @@ namespace io {
 							} else if((result = (bytes > 0))) {
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
@@ -7217,7 +7217,7 @@ namespace io {
 									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
@@ -7348,7 +7348,7 @@ namespace io {
 								#endif
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
@@ -7501,7 +7501,7 @@ namespace io {
 									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
-										// Вызываем функцию обратного вызова флаг события
+										// Вызываем функцию обратного вызова с установленным флагом события
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
@@ -7645,7 +7645,7 @@ namespace io {
 								#endif
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
@@ -18694,7 +18694,7 @@ namespace io {
 						if(dir->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(dir->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								dir->callbacks.event(dir->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -18712,7 +18712,7 @@ namespace io {
 						if(fs->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								fs->callbacks.event(fs->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -18733,7 +18733,7 @@ namespace io {
 						if(ipc->transfer.actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								ipc->callbacks.event(ipc->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -18783,7 +18783,7 @@ namespace io {
 						if(peer->transfer.actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								peer->callbacks.event(peer->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -18808,7 +18808,7 @@ namespace io {
 						if(origin->transfer.actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(origin->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								origin->callbacks.event(origin->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -18844,7 +18844,7 @@ namespace io {
 						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
 						// Если установлена функция обратного вызова
 						if(mediator->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
+							// Вызываем функцию обратного вызова с установленным флагом события
 							mediator->callbacks.event(mediator->id, event::action_t::CLOSE);
 					} break;
 					// Если узел является клиентом
@@ -18968,7 +18968,7 @@ namespace io {
 						if(client->transfer.actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(client->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								client->callbacks.event(client->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -19015,7 +19015,7 @@ namespace io {
 						if(server->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
 							if(server->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								server->callbacks.event(server->id, event::action_t::CLOSE);
 						}
 					} break;
@@ -21096,7 +21096,7 @@ namespace io {
 							::local::guard_t guard(peer);
 							// Если установлена функция обратного вызова
 							if(server->callbacks.event != nullptr)
-								// Вызываем функцию обратного вызова флаг события
+								// Вызываем функцию обратного вызова с установленным флагом события
 								server->callbacks.event(server->id, event::action_t::ACCEPT);
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
@@ -21204,7 +21204,7 @@ namespace io {
 				::local::guard_t guard(client);
 				// Если установлена функция обратного вызова
 				if(client->callbacks.event != nullptr)
-					// Вызываем функцию обратного вызова флаг события
+					// Вызываем функцию обратного вызова с установленным флагом события
 					client->callbacks.event(client->id, event::action_t::CONNECT);
 				// Активируем событие на чтение данных из сокета
 				::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
@@ -21604,7 +21604,7 @@ namespace io {
 							if(ev.fflags & NOTE_WRITE){
 								// Если событие изменения директории разрешено
 								if(dir->actions & ::action::CHANGE){
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::CHANGE);
 									// Выполняем изменение содержимого в директории
 									return ::io::change(dir, io, fmk, log);
@@ -21632,7 +21632,7 @@ namespace io {
 										awh_cast <net::addr_fs_t *> (dir->path.get())->address = ::__awh_buffer__;
 										// Если событие переименования директории разрешено
 										if(dir->actions & ::action::RENAME)
-											// Вызываем функцию обратного вызова флаг события
+											// Вызываем функцию обратного вызова с установленным флагом события
 											dir->callbacks.event(dir->id, event::action_t::RENAME);
 										// Формируем положительный результат
 										return true;
@@ -21640,7 +21640,7 @@ namespace io {
 								#endif
 								// Если событие удаления директории разрешено
 								if(dir->actions & ::action::DELETE)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::DELETE);
 								// Выполняем удаление узла
 								::io::destroy(node, eth, log);
@@ -21650,7 +21650,7 @@ namespace io {
 							} else if(ev.fflags & NOTE_DELETE) {
 								// Если событие удаления директории разрешено
 								if(dir->actions & ::action::DELETE)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::DELETE);
 								// Выполняем удаление узла
 								::io::destroy(node, eth, log);
@@ -21660,19 +21660,19 @@ namespace io {
 							} else if(ev.fflags & NOTE_ATTRIB) {
 								// Если событие изменения атрибутов директории разрешено
 								if(dir->actions & ::action::ATTRIB)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::ATTRIB);
 							// Если мы детектировали событие отзыва директории
 							} else if(ev.fflags & NOTE_REVOKE) {
 								// Если событие отзыва директории разрешено
 								if(dir->actions & ::action::REVOKE)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::REVOKE);
 							// Если мы детектировали событие изменение жёсткой ссылки директории
 							} else if(ev.fflags & NOTE_LINK) {
 								// Если событие изменение жёсткой ссылки директории разрешено
 								if(dir->actions & ::action::HDLINK)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::HDLINK);
 								// Если событие изменения директории разрешено
 								if(dir->actions & ::action::CHANGE)
@@ -21718,7 +21718,7 @@ namespace io {
 							if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
 								// Если событие изменения файла разрешено
 								if(fs->actions & ::action::CHANGE){
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::CHANGE);
 									// Если функция обратного вызова для сигнализации изменения файла установлена
 									if(fs->callbacks.change != nullptr)
@@ -21733,13 +21733,13 @@ namespace io {
 							} else if(ev.fflags & NOTE_RENAME) {
 								// Если событие переименования файла разрешено
 								if(fs->actions & ::action::RENAME)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::RENAME);
 							// Если мы детектировали событие удаления файла
 							} else if(ev.fflags & NOTE_DELETE) {
 								// Если событие удаления файла разрешено
 								if(fs->actions & ::action::DELETE){
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::DELETE);
 									// Если событие изменения файла разрешено
 									if(fs->actions & ::action::CHANGE){
@@ -21757,19 +21757,19 @@ namespace io {
 							} else if(ev.fflags & NOTE_ATTRIB) {
 								// Если событие изменения атрибутов файла разрешено
 								if(fs->actions & ::action::ATTRIB)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::ATTRIB);
 							// Если мы детектировали событие отзыва файла
 							} else if(ev.fflags & NOTE_REVOKE) {
 								// Если событие отзыва файла разрешено
 								if(fs->actions & ::action::REVOKE)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::REVOKE);
 							// Если мы детектировали событие изменение жёсткой ссылки файла
 							} else if(ev.fflags & NOTE_LINK) {
 								// Если событие изменение жёсткой ссылки файла разрешено
 								if(fs->actions & ::action::HDLINK)
-									// Вызываем функцию обратного вызова флаг события
+									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::HDLINK);
 							}
 						// Если функция обратного вызова не установлена
@@ -22264,7 +22264,7 @@ namespace io {
 				::local::guard_t guard(origin);
 				// Если функция обратного вызова для вывода события установлена
 				if(origin->callbacks.event != nullptr)
-					// Вызываем функцию обратного вызова флаг события
+					// Вызываем функцию обратного вызова с установленным флагом события
 					origin->callbacks.event(origin->id, event::action_t::READ);
 				// Если идентификатор события для передачи данных не установлен
 				if(origin->transfer.dest == 0){
@@ -22727,7 +22727,7 @@ namespace io {
 					::local::guard_t guard(origin);
 					// Если установлена функция обратного вызова
 					if(server->callbacks.event != nullptr)
-						// Вызываем функцию обратного вызова флаг события
+						// Вызываем функцию обратного вызова с установленным флагом события
 						server->callbacks.event(server->id, event::action_t::ACCEPT);
 					// Если установлена функция обратного вызова
 					if(server->callbacks.status != nullptr)
@@ -40755,7 +40755,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						}
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
+							// Вызываем функцию обратного вызова с установленным флагом события
 							peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
 						// Выводим положительный результат
 						return true;
@@ -40771,7 +40771,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						origin->state.status = event::status_t::CANCELLED;
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
+							// Вызываем функцию обратного вызова с установленным флагом события
 							origin->callbacks.event(origin->id, event::action_t::DISCONNECT);
 						// Выполняем удаление узла
 						return ::io::destroy(origin, &this->_eth, this->_log);
@@ -40794,7 +40794,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						}
 						// Если установлена функция обратного вызова
 						if(client->callbacks.event != nullptr)
-							// Вызываем функцию обратного вызова флаг события
+							// Вызываем функцию обратного вызова с установленным флагом события
 							client->callbacks.event(client->id, event::action_t::DISCONNECT);
 						// Выводим положительный результат
 						return true;
