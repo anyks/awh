@@ -273,7 +273,7 @@ namespace {
 	 * @brief Класс идентификатора инициатора запроса
 	 *
 	 */
-	typedef class OriginId {
+	typedef class Origin_Identifier {
 		public:
 			// Семейство адресов инициатора запроса
 			event::family_t family;
@@ -321,7 +321,7 @@ namespace {
 			 * @param addr структура параметров подключения инициатора запроса
 			 * @return     идентификатор инициатора запроса
 			 */
-			OriginId & from(const struct sockaddr_in6 & addr) noexcept {
+			Origin_Identifier & from(const struct sockaddr_in6 & addr) noexcept {
 				// Устанавливаем порт
 				this->ip6.port = addr.sin6_port;
 				// Устанавливаем зону видимости адреса
@@ -339,7 +339,7 @@ namespace {
 			 * @param addr структура параметров подключения инициатора запроса
 			 * @return     идентификатор инициатора запроса
 			 */
-			OriginId & from(const struct sockaddr_in & addr) noexcept {
+			Origin_Identifier & from(const struct sockaddr_in & addr) noexcept {
 				// Устанавливаем порт
 				this->ip4.port = addr.sin_port;
 				// Устанавливаем адрес инициатора запроса
@@ -355,7 +355,7 @@ namespace {
 			 * @param addr структура параметров подключения инициатора запроса
 			 * @return     идентификатор инициатора запроса
 			 */
-			OriginId & from(const struct sockaddr_un & addr) noexcept {
+			Origin_Identifier & from(const struct sockaddr_un & addr) noexcept {
 				// Обнуляем, чтобы избежать мусора
 				::memset(this->un.path, 0, sizeof(this->un.path));
 				// Копируем до конца строки или до лимита
@@ -379,7 +379,7 @@ namespace {
 			 * @param other другой объект для сравнения
 			 * @return      результат сравнения
 			 */
-			bool operator == (const OriginId & other) const noexcept {
+			bool operator == (const Origin_Identifier & other) const noexcept {
 				// Сравниваем семейство адресов
 				if(this->family != other.family)
 					// Выводим отрицательный результат
@@ -416,7 +416,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit OriginId() noexcept : family(event::family_t::NONE) {};
+			explicit Origin_Identifier() noexcept : family(event::family_t::NONE) {};
 	} origin_id_t;
 	/**
 	 * @brief Шаблон функции выполнения приведения типа B к типу A
@@ -450,7 +450,7 @@ namespace std {
 	 * @brief Специализация хеш-функции для структуры идентификатора инициатора запроса
 	 *
 	 */
-	typedef class OriginIdHash {
+	typedef class Origin_Identifier_Hash {
 		private:
 			/**
 			 * @brief Метод комбинирования хеш-кодов
@@ -518,7 +518,7 @@ namespace std {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit OriginIdHash() noexcept = default;
+			explicit Origin_Identifier_Hash() noexcept = default;
 	} origin_id_hash_t;
 };
 
@@ -1920,10 +1920,18 @@ namespace local {
 	 * @return уникальный идентификатор
 	 */
 	static event::id_t identifier() noexcept {
+		// Результат работы функции
+		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint32_t id{1};
 		// Выводим новое значение идентификатора
-		return id.fetch_add(1, memory_order_relaxed);
+		result = id.fetch_add(1, memory_order_relaxed);
+		// Если результат не получен
+		if(result == 0)
+			// Генерируем результат заново
+			return identifier();
+		// Выводим полученный результат
+		return result;
 	}
 	/**
 	 * @brief Функция получения текущего штампа времени в наносекундах
@@ -2943,10 +2951,18 @@ namespace timeout {
 	 * @return уникальный идентификатор
 	 */
 	static event::id_t identifier() noexcept {
+		// Результат работы функции
+		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint32_t id{1};
 		// Выводим новое значение идентификатора
-		return id.fetch_add(1, memory_order_relaxed);
+		result = id.fetch_add(1, memory_order_relaxed);
+		// Если результат не получен
+		if(result == 0)
+			// Генерируем результат заново
+			return identifier();
+		// Выводим полученный результат
+		return result;
 	}
 	/**
 	 * @brief Шаблон функции очистки таймаута
