@@ -460,7 +460,7 @@ namespace std {
 			 */
 			static void combine(size_t & seed, const size_t value) noexcept {
 				// Комбинируем хеш-коды
-				seed ^= (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+				seed ^= (value + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 			}
 		public:
 			/**
@@ -536,26 +536,26 @@ namespace io {
 	 */
 	#if __FreeBSD__
 		/**
-		 * @brief Структура функций обратного вызова SCTP
+		 * @brief Структура функций обратного вызова SCTP-протокола
 		 *
 		 */
-		typedef struct CallbackStreamControlTransmissionProtocol {
-			// Функция обратного вызова для получения информационных собщений SCTP
+		typedef struct SCTP_Callback {
+			// Функция обратного вызова для получения информационных собщений SCTP-протокола
 			net::sctp::callback::info_t info;
-			// Функция обратного вызова для получения событий SCTP
+			// Функция обратного вызова для получения событий SCTP-протокола
 			net::sctp::callback::events_t events;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit CallbackStreamControlTransmissionProtocol() noexcept :
+			explicit SCTP_Callback() noexcept :
 			 info(nullptr), events(nullptr) {}
 		} sctp_callback_t;
 		/**
-		 * @brief Структура SCTP-событий
+		 * @brief Структура событий SCTP-протокола
 		 *
 		 */
-		typedef struct EndpointStreamControlTransmissionProtocol {
+		typedef struct SCTP_Endpoint {
 			// Идентификатор SCTP-события
 			sctp_assoc_t id;
 			// Флаги SCTP-событий
@@ -570,7 +570,7 @@ namespace io {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit EndpointStreamControlTransmissionProtocol() noexcept :
+			explicit SCTP_Endpoint() noexcept :
 			 id(0), flags(0), info{0} {}
 		} sctp_endpoint_t;
 	#endif
@@ -718,7 +718,7 @@ namespace io {
 	 * @brief Структура таймаутов клиента
 	 *
 	 */
-	typedef struct TimeoutsClient : public Timeouts {
+	typedef struct Timeouts_Client : public Timeouts {
 		// Таймаут подключения
 		timeout_t connect;
 		// Таймаут переподключения
@@ -727,7 +727,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit TimeoutsClient() = default;
+		explicit Timeouts_Client() = default;
 	} timeouts_client_t;
 
 	/**
@@ -795,7 +795,7 @@ namespace io {
 	 * @brief Структура обратных вызовов файловой системы
 	 *
 	 */
-	typedef struct FileSystemCallbacks : public callbacks_t {
+	typedef struct Filesystem_Callbacks : public callbacks_t {
 		// Обратный вызов при чтении события
 		event::callback::read_t read;
 		// Обратный вызов при записи события
@@ -808,7 +808,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit FileSystemCallbacks() noexcept :
+		explicit Filesystem_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), change(nullptr) {}
 	} fs_callbacks_t;
@@ -817,7 +817,7 @@ namespace io {
 	 * @brief Структура обратных вызовов посредника
 	 *
 	 */
-	typedef struct MediatorCallbacks : public callbacks_t {
+	typedef struct Mediator_Callbacks : public callbacks_t {
 		// Обратный вызов при чтении события
 		event::callback::read_t read;
 		// Обратный вызов при получении общего события
@@ -826,7 +826,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit MediatorCallbacks() noexcept :
+		explicit Mediator_Callbacks() noexcept :
 		 read(nullptr), event(nullptr) {}
 	} mediator_callbacks_t;
 
@@ -834,7 +834,7 @@ namespace io {
 	 * @brief Структура обратных вызовов сервера
 	 *
 	 */
-	typedef struct ServerCallbacks : public callbacks_t {
+	typedef struct Server_Callbacks : public callbacks_t {
 		// Обратный вызов при записи события
 		event::callback::write_t write;
 		// Обратный вызов при получении общего события
@@ -845,7 +845,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit ServerCallbacks() noexcept :
+		explicit Server_Callbacks() noexcept :
 		 write(nullptr), event(nullptr), accept(nullptr) {}
 	} server_callbacks_t;
 
@@ -853,21 +853,21 @@ namespace io {
 	 * @brief Структура обратных вызовов туннеля
 	 *
 	 */
-	typedef struct TunnelCallbacks : public callbacks_t {
+	typedef struct Tunnel_Callbacks : public callbacks_t {
 		// Обратный вызов при доступности очереди события
 		event::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit TunnelCallbacks() noexcept : available(nullptr) {}
+		explicit Tunnel_Callbacks() noexcept : available(nullptr) {}
 	} tunnel_callbacks_t;
 
 	/**
 	 * @brief Структура обратных вызовов клиента
 	 *
 	 */
-	typedef struct ClientCallbacks : public callbacks_t {
+	typedef struct Client_Callbacks : public callbacks_t {
 		// Обратный вызов при чтении события
 		event::callback::read_t read;
 		// Обратный вызов при записи события
@@ -882,7 +882,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit ClientCallbacks() noexcept :
+		explicit Client_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), connect(nullptr), available(nullptr) {}
 	} client_callbacks_t;
@@ -891,7 +891,7 @@ namespace io {
 	 * @brief Структура обратных вызовов подключённого клиента
 	 *
 	 */
-	typedef struct PeerCallbacks : public callbacks_t {
+	typedef struct Peer_Callbacks : public callbacks_t {
 		// Обратный вызов при чтении события
 		event::callback::read_t read;
 		// Обратный вызов при записи события
@@ -904,7 +904,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit PeerCallbacks() noexcept :
+		explicit Peer_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), available(nullptr) {}
 	} peer_callbacks_t;
@@ -978,7 +978,7 @@ namespace io {
 	 * @brief Структура файловой системы
 	 *
 	 */
-	typedef struct FileSystem : public node_t {
+	typedef struct Filesystem : public node_t {
 		// Обратные вызовы события
 		fs_callbacks_t callbacks;
 		// Путь к файлу, каталогу или сокету
@@ -987,12 +987,12 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit FileSystem() noexcept : path(nullptr) {}
+		explicit Filesystem() noexcept : path(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
-		virtual ~FileSystem() = default;
+		virtual ~Filesystem() = default;
 	} fs_t;
 
 	/**
@@ -1060,7 +1060,7 @@ namespace io {
 	 * @brief Структура межпроцессного взаимодействия
 	 *
 	 */
-	typedef struct InterProcessCommunication : public node_t {
+	typedef struct Inter_Process_Communication : public node_t {
 		// Объект передачи данных
 		transfer_t transfer;
 		// Обратные вызовы события
@@ -1071,7 +1071,7 @@ namespace io {
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit InterProcessCommunication(const fmk_t * fmk, const log_t * log) noexcept :
+		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept :
 		 transfer(fmk, log) {}
 	} ipc_t;
 

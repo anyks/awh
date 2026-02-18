@@ -139,20 +139,21 @@ namespace awh {
 		 * @brief Структура MAC-адреса
 		 *
 		 */
-		typedef struct AddressMAC : public addr_t {
+		typedef struct Address_MAC : public addr_t {
 			// Буфер MAC-адреса
 			array <uint8_t, 6> address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit AddressMAC() noexcept : addr_t(6), address{0} {}
+			explicit Address_MAC() noexcept :
+			 addr_t(6), address{0} {}
 		} addr_mac_t;
 		/**
 		 * @brief Структура сетевого адреса
 		 *
 		 */
-		typedef struct AddressNetwork : public addr_t {
+		typedef struct Address_Network : public addr_t {
 			// Префикс сети
 			uint8_t prefix;
 			/**
@@ -161,52 +162,54 @@ namespace awh {
 			 * @param prefix префикс сети
 			 * @param size   размер адреса
 			 */
-			explicit AddressNetwork(const uint8_t prefix, const uint16_t size) noexcept :
+			explicit Address_Network(const uint8_t prefix, const uint16_t size) noexcept :
 			 addr_t(size), prefix(prefix) {}
 		} addr_net_t;
 		/**
 		 * @brief Структура IPv4 сетевого адреса
 		 *
 		 */
-		typedef struct AddressNetworkIPv4 : public addr_net_t {
+		typedef struct Address_Network_IPv4 : public addr_net_t {
 			// IP-адрес сети
 			uint32_t address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit AddressNetworkIPv4() noexcept : addr_net_t(32, 4), address(0) {}
+			explicit Address_Network_IPv4() noexcept :
+			 addr_net_t(32, 4), address(0) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			virtual ~AddressNetworkIPv4() noexcept = default;
+			virtual ~Address_Network_IPv4() noexcept = default;
 		} addr_net_ipv4_t;
 		/**
 		 * @brief Структура IPv6 сетевого адреса
 		 *
 		 */
-		typedef struct AddressNetworkIPv6 : public addr_net_t {
+		typedef struct Address_Network_IPv6 : public addr_net_t {
 			// Буфер IP-адрес сети
 			array <uint8_t, 16> address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit AddressNetworkIPv6() noexcept : addr_net_t(128, 16), address{0} {}
+			explicit Address_Network_IPv6() noexcept :
+			 addr_net_t(128, 16), address{0} {}
 		} addr_net_ipv6_t;
 		/**
 		 * @brief Структура адреса файловой системы
 		 *
 		 */
-		typedef struct AddressFilesystem : public addr_t {
+		typedef struct Address_Filesystem : public addr_t {
 			// Путь к файлу, каталогу или сокету
 			string address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit AddressFilesystem() noexcept : address{""} {}
+			explicit Address_Filesystem() noexcept : address{""} {}
 		} addr_fs_t;
 		/**
 		 * @brief Структура сетевых адресов текущей машины
@@ -225,7 +228,8 @@ namespace awh {
 			 * @param ip адрес сетевого подключения
 			 */
 			explicit Source(unique_ptr <addr_t> ip) noexcept :
-			 iface{""}, ip(std::move(ip)), mac(make_unique <addr_mac_t> ()) {}
+			 iface{""}, ip(std::move(ip)),
+			 mac(make_unique <addr_mac_t> ()) {}
 		} src_t;
 		/**
 		 * @brief Структура атрибутов подключения
@@ -247,7 +251,7 @@ namespace awh {
 		 * @brief Структура IP-адреса подключения
 		 *
 		 */
-		typedef struct AttributesNet : public attr_t {
+		typedef struct Attributes_Network : public attr_t {
 			// Порт хоста
 			uint16_t port;
 			// IP-адрес хоста
@@ -256,21 +260,21 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit AttributesNet() noexcept :
+			explicit Attributes_Network() noexcept :
 			 port(0), ip(make_unique <addr_net_ipv4_t> ()) {}
 		} attr_net_t;
 		/**
 		 * @brief Структура UDS-адреса подключения
 		 *
 		 */
-		typedef struct AttributesUDS : public attr_t {
+		typedef struct Attributes_Unix_Domain_Socket : public attr_t {
 			// Путь к сокету
 			unique_ptr <addr_t> path;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit AttributesUDS() noexcept :
+			explicit Attributes_Unix_Domain_Socket() noexcept :
 			 path(make_unique <addr_fs_t> ()) {}
 		} attr_uds_t;
 		/**
@@ -510,7 +514,7 @@ namespace awh {
 				 * @brief Структура метаданных сообщения SCTP
 				 *
 				 */
-				typedef struct MessageInfo {
+				typedef struct Message_Info {
 					ppid_t ppid;                  // Идентификатор полезной нагрузки
 					uint16_t num;                 // Номер потока
 					uint32_t ttl;                 // Время жизни (в миллисекундах)
@@ -520,15 +524,15 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit MessageInfo() noexcept :
+					explicit Message_Info() noexcept :
 					 ppid(ppid_t::DTLS),
 					 num(0), ttl(0), ctx(0) {}
 				} __attribute__((packed)) minfo_t;
 				/**
-				 * @brief Структура параметров рукопожатия SCTP
+				 * @brief Структура инициализации рукопожатия SCTP
 				 *
 				 */
-				typedef struct InitMessage {
+				typedef struct Initialization_Message {
 					// Максимальное время инициализации SCTP
 					uint16_t timeout;
 					// Максимальное количество попыток подключения
@@ -541,7 +545,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit InitMessage() noexcept :
+					explicit Initialization_Message() noexcept :
 					 timeout(0), attempts(4),
 					 ostreams(5), istreams(5) {}
 				} __attribute__((packed)) initmsg_t;
@@ -563,7 +567,7 @@ namespace awh {
 					 *
 					 */
 					explicit Status() noexcept :
-					id(0),
+					 id(0),
 					 ratewind(0), penddata(0),
 					 ostreams(0), istreams(0),
 					 unackdata(0), fragpoint(0),
@@ -608,25 +612,25 @@ namespace awh {
 				 * @brief Структура адаптационного указания SCTP
 				 *
 				 */
-				typedef struct EventAdaptation : public event_t {
+				typedef struct Event_Adaptation : public event_t {
 					// Адаптационное указание
 					uint32_t indication;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventAdaptation() noexcept : indication(0) {}
+					explicit Event_Adaptation() noexcept : indication(0) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventAdaptation() = default;
+					virtual ~Event_Adaptation() = default;
 				} event_adaptation_t;
 				/**
 				 * @brief Структура изменения ассоциации события SCTP
 				 *
 				 */
-				typedef struct EventAssocChange : public event_t {
+				typedef struct Event_Association_Change : public event_t {
 					error_t error;              // Ошибка события
 					uint16_t ostreams;          // Максимальное количество исходящих потоков
 					uint16_t istreams;          // Максимальное количество входящих потоков
@@ -636,20 +640,20 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventAssocChange() noexcept :
+					explicit Event_Association_Change() noexcept :
 					 ostreams(0), istreams(0),
 					 state(assoc_state_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventAssocChange() = default;
+					virtual ~Event_Association_Change() = default;
 				} event_assoc_change_t;
 				/**
 				 * @brief Структура сброса ассоциации SCTP
 				 *
 				 */
-				typedef struct EventAssocReset : public event_t {
+				typedef struct Event_Association_Reset : public event_t {
 					// Последний TSN (Transmission Sequence Number), подтверждённый вами (вы получили его от пира)
 					uint32_t localTSN;
 					// Последний TSN (Transmission Sequence Number), подтверждённый пиром (он получил его от вас)
@@ -660,37 +664,37 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventAssocReset() noexcept :
+					explicit Event_Association_Reset() noexcept :
 					 localTSN(0), remoteTSN(0) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventAssocReset() = default;
+					virtual ~Event_Association_Reset() = default;
 				} event_assoc_reset_t;
 				/**
 				 * @brief Структура ошибки удалённого узла SCTP
 				 *
 				 */
-				typedef struct EventRemoteError : public event_t {
+				typedef struct Event_Remote_Error : public event_t {
 					error_t error;         // Ошибка события
 					vector <uint8_t> data; // Дополнительная информация события
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventRemoteError() noexcept = default;
+					explicit Event_Remote_Error() noexcept = default;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventRemoteError() = default;
+					virtual ~Event_Remote_Error() = default;
 				} event_remote_error_t;
 				/**
 				 * @brief Структура изменения адреса однорангового узла SCTP
 				 *
 				 */
-				typedef struct EventAddrChange : public event_t {
+				typedef struct Event_Address_Change : public event_t {
 					error_t error;            // Ошибка события
 					paddr_state_t state;      // Состояние события
 					unique_ptr <addr_t> addr; // Адрес однорангового узла
@@ -698,19 +702,19 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventAddrChange() noexcept :
+					explicit Event_Address_Change() noexcept :
 					 state(paddr_state_t::NONE), addr(nullptr) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventAddrChange() = default;
+					virtual ~Event_Address_Change() = default;
 				} event_addr_change_t;
 				/**
 				 * @brief Структура частичной доставки SCTP
 				 *
 				 */
-				typedef struct PartialDeliveryEvent : public event_t {
+				typedef struct Partial_Delivery_Event : public event_t {
 					uint16_t stream;           // Номер потока
 					uint16_t sequence;         // Последовательный номер сообщения
 					pdapi_indics_t indication; // Индикатор частичной доставки
@@ -718,39 +722,39 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit PartialDeliveryEvent() noexcept :
+					explicit Partial_Delivery_Event() noexcept :
 					 stream(0), sequence(0),
 					 indication(pdapi_indics_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~PartialDeliveryEvent() = default;
+					virtual ~Partial_Delivery_Event() = default;
 				} event_pdapi_t;
 				/**
 				 * @brief Структура аутентификации SCTP
 				 *
 				 */
-				typedef struct EventAuth : public event_t {
+				typedef struct Event_Authentication : public event_t {
 					uint16_t key;             // Номер ключа
 					auth_indics_t indication; // Индикатор аутентификации
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventAuth() noexcept :
+					explicit Event_Authentication() noexcept :
 					 key(0), indication(auth_indics_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventAuth() = default;
+					virtual ~Event_Authentication() = default;
 				} event_auth_t;
 				/**
 				 * @brief Структура ошибки отправки SCTP
 				 *
 				 */
-				typedef struct EventSendFailed : public event_t {
+				typedef struct Event_Send_Failed : public event_t {
 					error_t error;         // Ошибка события
 					send_failed_t status;  // Статус отправки сообщения
 					vector <uint8_t> data; // Дополнительная информация события
@@ -758,36 +762,36 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventSendFailed() noexcept : status(send_failed_t::NONE) {}
+					explicit Event_Send_Failed() noexcept : status(send_failed_t::NONE) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventSendFailed() = default;
+					virtual ~Event_Send_Failed() = default;
 				} event_send_failed_t;
 				/**
 				 * @brief Структура сброса потоков SCTP
 				 *
 				 */
-				typedef struct EventStreamReset : public event_t {
+				typedef struct Event_Stream_Reset : public event_t {
 					vector <uint16_t> streams;            // Номера сброшенных потоков
 					unordered_set <stream_reset_t> flags; // Типы сброса потоков
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventStreamReset() noexcept {}
+					explicit Event_Stream_Reset() noexcept {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventStreamReset() = default;
+					virtual ~Event_Stream_Reset() = default;
 				} event_stream_reset_t;
 				/**
 				 * @brief Структура изменения потоков SCTP
 				 *
 				 */
-				typedef struct EventStreamChange : public event_t {
+				typedef struct Event_Stream_Change : public event_t {
 					// Максимальное количество исходящих потоков
 					uint16_t ostreams;
 					// Максимальное количество входящих потоков
@@ -798,13 +802,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit EventStreamChange() noexcept :
+					explicit Event_Stream_Change() noexcept :
 					 ostreams(0), istreams(0) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~EventStreamChange() = default;
+					virtual ~Event_Stream_Change() = default;
 				} event_stream_change_t;
 				/**
 				 * @brief пространство имён работы с обратными вызовами
