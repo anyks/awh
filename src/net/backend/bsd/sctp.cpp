@@ -44,7 +44,7 @@ using namespace std;
  * @param status объект для извлечения статуса инициализации SCTP сокета
  * @return       результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::status(const net::socket_t sock, net::sctp::status_t & status) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t sock, net::sctp::status_t & status) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Переменная для хранения протокола сокета
@@ -180,7 +180,7 @@ bool awh::eth::StreamControlTransmissionProtocol::status(const net::socket_t soc
  * @param initmsg параметры инициализации SCTP сокета
  * @return        результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Переменная для хранения протокола сокета
@@ -249,7 +249,7 @@ bool awh::eth::StreamControlTransmissionProtocol::initMessages(const net::socket
  * @param events список событий SCTP для активации
  * @return       результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Переменная для хранения протокола сокета
@@ -402,7 +402,7 @@ bool awh::eth::StreamControlTransmissionProtocol::eventsSubscribe(const net::soc
  * @param types список поддерживаемых алгоритмов аутентификации
  * @return      результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если количество поддерживаемых алгоритмов аутентификации передано
@@ -465,7 +465,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(
  * @param key  ключ аутентификации
  * @return     результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если ключ аутентификации передан
@@ -513,7 +513,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::soc
  * @param num  номер ключа аутентификации
  * @return     результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект идентификатора ключа аутентификации
@@ -575,7 +575,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateKey(const net::soc
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если количество чанков аутентификации передано
@@ -701,7 +701,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Объект чанков аутентификации SCTP сокета
@@ -855,7 +855,7 @@ bool awh::eth::StreamControlTransmissionProtocol::authenticateChunks(const net::
  * @param ctx  контекст установки таймаута
  * @return     значение таймаута в миллисекундах
  */
-uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx) const noexcept {
+uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx) const noexcept {
 	// Результат работы функции
 	uint32_t result = 0;
 	/**
@@ -980,7 +980,7 @@ uint32_t awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_
  * @param ctx     контекст установки таймаута
  * @return        результат работы функции
  */
-bool awh::eth::StreamControlTransmissionProtocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**

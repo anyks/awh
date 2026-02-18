@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief Класс управления протоколом передачи с управлением потоком
 		 *
 		 */
-		typedef class __AWH_SHARED_EXPORT__ StreamControlTransmissionProtocol  {
+		typedef class __AWH_SHARED_EXPORT__ Stream_Control_Transmission_Protocol  {
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -150,12 +150,12 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
 				 */
-				StreamControlTransmissionProtocol(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+				Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~StreamControlTransmissionProtocol() noexcept {}
+				~Stream_Control_Transmission_Protocol() noexcept {}
 		} sctp_t;
 	};
 };

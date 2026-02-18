@@ -6913,7 +6913,7 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
  *
  * @param log объект работы с логами
  */
-void awh::Framework::setLogger(const Log * log) noexcept {
+void awh::Framework::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
 	this->_log = log;
 	// Выполняем установку логирования в nwt модуль

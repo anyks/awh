@@ -57,7 +57,7 @@ namespace awh {
 	 * @brief Класс для работы с сетевыми очередями
 	 *
 	 */
-	typedef class __AWH_NETWORK_QUEUE_CACHELINE_ALIGN__ __AWH_SHARED_EXPORT__ NetworkQueue {
+	typedef class __AWH_NETWORK_QUEUE_CACHELINE_ALIGN__ __AWH_SHARED_EXPORT__ Network_Queue {
 		public:
 			/**
 			 * @brief Типы сетевых очередей
@@ -186,12 +186,12 @@ namespace awh {
 			 * @param fmk объект фреймворка для доступа к его функциям
 			 * @param log объект для работы с логами
 			 */
-			NetworkQueue(const fmk_t * fmk, const log_t * log) noexcept;
+			Network_Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			 /**
 			  * @brief Деструктор сетевой очереди
 			  *
 			  */
-			~NetworkQueue() noexcept = default;
+			~Network_Queue() noexcept = default;
 	} net_queue_t;
 };
 

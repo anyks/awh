@@ -39,7 +39,7 @@ namespace awh {
 	 * @brief Класс партнёрских сокетов
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ FDS {
+	typedef class __AWH_SHARED_EXPORT__ Files_Descriptors {
 		private:
 			// Объект работы с логами
 			const log_t * _log;
@@ -71,12 +71,12 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			explicit FDS(const log_t * log) noexcept : _log(log) {}
+			explicit Files_Descriptors(const log_t * log) noexcept : _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~FDS() noexcept {}
+			~Files_Descriptors() noexcept {}
 	} fds_t;
 };
 

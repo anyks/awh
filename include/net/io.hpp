@@ -42,7 +42,7 @@ namespace awh {
 			 * @brief Класс управления протоколом передачи с управлением потоком
 			 *
 			 */
-			typedef class __AWH_SHARED_EXPORT__ StreamControlTransmissionProtocol {
+			typedef class __AWH_SHARED_EXPORT__ Stream_Control_Transmission_Protocol {
 				private:
 					// Объект работы с сетью
 					eth_t _eth;
@@ -182,12 +182,12 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект работы с логами
 					 */
-					explicit StreamControlTransmissionProtocol(const fmk_t * fmk, const log_t * log) noexcept : _eth(fmk, log), _fmk(fmk), _log(log) {}
+					explicit Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept : _eth(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~StreamControlTransmissionProtocol() noexcept {}
+					virtual ~Stream_Control_Transmission_Protocol() noexcept {}
 			} sctp_t;
 		#endif
 		/**
@@ -200,7 +200,7 @@ namespace awh {
 				 * @brief Структура управления списками контроля доступа
 				 *
 				 */
-				typedef class __AWH_SHARED_EXPORT__ ControlList {
+				typedef class __AWH_SHARED_EXPORT__ Control_List {
 					private:
 						// Тип списка контрольного списка
 						event::control_list_t _type;
@@ -246,13 +246,13 @@ namespace awh {
 						 *
 						 * @param type тип списка контрольного списка
 						 */
-						explicit ControlList(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
 						_type(type), _fmk(fmk), _log(log) {}
 						/**
 						 * @brief Деструктор
 						 *
 						 */
-						virtual ~ControlList() noexcept {}
+						virtual ~Control_List() noexcept {}
 				} control_list_t;
 			public:
 				// Объект управления белым списком

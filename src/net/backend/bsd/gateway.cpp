@@ -1043,13 +1043,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							// Если префикс больше либо равен 8
 							if(prefix >= 8){
 								// Устанавливаем байт маски подсети
-								mask.sin6_addr.s6_addr[i] = 0xff;
+								mask.sin6_addr.s6_addr[i] = 0xFF;
 								// Уменьшаем префикс на 8
 								prefix -= 8;
 							// Если префикс меньше 8, но больше нуля
 							} else if(prefix > 0) {
 								// Устанавливаем байт маски подсети
-								mask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xff << (8 - prefix));
+								mask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - prefix));
 								// Обнуляем префикс
 								prefix = 0;
 							// Зануляем байт маски подсети
@@ -1058,7 +1058,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Если префикс сети не установлен
 					} else {
 						// Устанавливаем маску соответствующую префиксу /128
-						::memset(&mask.sin6_addr, 0xff, 16);
+						::memset(&mask.sin6_addr, 0xFF, 16);
 						// Устанавливаем флаг хостового маршрута
 						rtm->rtm_flags |= RTF_HOST;
 					}
@@ -1547,13 +1547,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Если префикс больше либо равен 8
 							if(prefix >= 8){
 								// Устанавливаем байт маски подсети
-								netmsk.s6_addr[i] = 0xff;
+								netmsk.s6_addr[i] = 0xFF;
 								// Уменьшаем префикс на 8
 								prefix -= 8;
 							// Если префикс меньше 8, но больше нуля
 							} else if(prefix > 0) {
 								// Устанавливаем байт маски подсети
-								netmsk.s6_addr[i] = static_cast <uint8_t> (0xff << (8 - prefix));
+								netmsk.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - prefix));
 								// Обнуляем префикс
 								prefix = 0;
 							// Зануляем байт маски подсети

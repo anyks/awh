@@ -41,7 +41,7 @@ namespace awh {
 		 * @brief Класс для работы с сетевыми адресами
 		 *
 		 */
-		typedef class __AWH_SHARED_EXPORT__ NetAddress {
+		typedef class __AWH_SHARED_EXPORT__ Network_Address {
 			private:
 				// Объект работы с сетевым интерфейсом
 				iface_t _iface;
@@ -110,12 +110,12 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
 				 */
-				explicit NetAddress(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Network_Address(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~NetAddress() noexcept;
+				~Network_Address() noexcept;
 		} addr_t;
 	};
 };

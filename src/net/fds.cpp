@@ -66,7 +66,7 @@ using namespace std;
  * @param actual  текущее значение установленных файловых дескрипторов
  * @param desired желаемое значение для установки файловых дескрипторов
  */
-void awh::FDS::help(const uint32_t actual, const uint32_t desired) const noexcept {
+void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired) const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -287,7 +287,7 @@ void awh::FDS::help(const uint32_t actual, const uint32_t desired) const noexcep
  * @param limit желаемое количество файловых дескрипторов
  * @return      результат установки
  */
-bool awh::FDS::limit(const uint32_t limit) const noexcept {
+bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -434,7 +434,7 @@ bool awh::FDS::limit(const uint32_t limit) const noexcept {
  *
  * @return количество файловых дескрипторов установленных в файловой системе
  */
-std::pair <uint32_t, uint32_t> awh::FDS::limit() const noexcept {
+std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 	// Результат работы функции
 	std::pair <uint32_t, uint32_t> result = {0, 0};
 	/**

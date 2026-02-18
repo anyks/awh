@@ -40,7 +40,7 @@ using namespace std;
  *
  * @return результат проверки
  */
-awh::RegExp::Expression::operator bool() const noexcept {
+awh::Regular_Expressions::Expression::operator bool() const noexcept {
 	// Выводим результ проверки инициализации
 	return this->_mode;
 }
@@ -50,7 +50,7 @@ awh::RegExp::Expression::operator bool() const noexcept {
  * @param mode флаг инициализации для установки
  * @return     текущий объект регулярного выражения
  */
-awh::RegExp::Expression & awh::RegExp::Expression::operator = (const bool mode) noexcept {
+awh::Regular_Expressions::Expression & awh::Regular_Expressions::Expression::operator = (const bool mode) noexcept {
 	// Выполняем установку флага инициализации
 	this->_mode = mode;
 	// Выводим текущее значение объекта
@@ -60,12 +60,12 @@ awh::RegExp::Expression & awh::RegExp::Expression::operator = (const bool mode) 
  * @brief Конструктор
  *
  */
-awh::RegExp::Expression::Expression() noexcept : _mode(false) {}
+awh::Regular_Expressions::Expression::Expression() noexcept : _mode(false) {}
 /**
  * @brief Деструктор
  *
  */
-awh::RegExp::Expression::~Expression() noexcept {
+awh::Regular_Expressions::Expression::~Expression() noexcept {
 	// Если уже модуль проинициализированны
 	if(this->_mode){
 		// Запрещаем повторное удаление регулярного выражения
@@ -79,7 +79,7 @@ awh::RegExp::Expression::~Expression() noexcept {
  *
  * @return текст ошибки регулярного выражения
  */
-const string & awh::RegExp::error() const noexcept {
+const string & awh::Regular_Expressions::error() const noexcept {
 	// Выполняем извлечение текста ошибки регулярного выражения
 	return this->_error;
 }
@@ -90,7 +90,7 @@ const string & awh::RegExp::error() const noexcept {
  * @param exp  объект регулярного выражения
  * @return     результат проверки регулярного выражения
  */
-bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
+bool awh::Regular_Expressions::test(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
 	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем проверку регулярного выражения
@@ -106,7 +106,7 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
  * @param exp  объект регулярного выражения
  * @return     результат проверки регулярного выражения
  */
-bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) const noexcept {
+bool awh::Regular_Expressions::test(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Выполняем блокировку потока
@@ -184,7 +184,7 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const noexcept {
+vector <string> awh::Regular_Expressions::exec(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
 	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем запуск регулярного выражения
@@ -200,7 +200,7 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <string> awh::RegExp::exec(const char * text, const size_t size, const exp_t & exp) const noexcept {
+vector <string> awh::Regular_Expressions::exec(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	vector <string> result;
 	// Выполняем блокировку потока
@@ -325,7 +325,7 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <std::pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
+vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
 	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем выполнение регулярного выражения
@@ -341,7 +341,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const string & text, cons
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_t size, const exp_t & exp) const noexcept {
+vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	vector <std::pair <size_t, size_t>> result;
 	// Выполняем блокировку потока
@@ -468,7 +468,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
  * @param options список опций для сборки регулярного выражения
  * @return        результат собранного регулярного выражения
  */
-awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <option_t> & options) const noexcept {
+awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(const string & pattern, const vector <option_t> & options) const noexcept {
 	// Результат работы функции
 	exp_t result = nullptr;
 	// Если регулярное выражение передано
@@ -657,7 +657,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
  *
  * @param log объект работы с логами
  */
-void awh::RegExp::setLogger(const log_t * log) noexcept {
+void awh::Regular_Expressions::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
 	this->_log = log;
 }

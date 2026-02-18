@@ -42,7 +42,7 @@ namespace awh {
 	/**
 	 * Класс пула потоков
 	 */
-	typedef class ThreadPool {
+	typedef class Threadpool {
 		private:
 			/**
 			 * Тип очереди задач
@@ -96,7 +96,7 @@ namespace awh {
 						// Выполняем блокировку уникальным мютексом
 						unique_lock <std::mutex> lock(this->_locker);
 						// Если это не остановка приложения и список задач пустой, ожидаем добавления нового задания
-						this->_cv.wait_for(lock, 100ms, std::bind(&ThreadPool::check, this));
+						this->_cv.wait_for(lock, 100ms, std::bind(&Threadpool::check, this));
 						// Если это остановка приложения и список задач пустой, выходим
 						if(this->_stop.load(std::memory_order_acquire) && this->_tasks.empty())
 							// Выходим из функции
@@ -199,7 +199,7 @@ namespace awh {
 					// Добавляем в список воркеров, новую задачу
 					for(uint16_t i = 0; i < this->_threads; ++i)
 						// Добавляем новую задачу
-						this->_workers.emplace_back(std::bind(&ThreadPool::work, this));
+						this->_workers.emplace_back(std::bind(&Threadpool::work, this));
 				}
 			}
 		public:
@@ -220,7 +220,7 @@ namespace awh {
 			 *
 			 * @param count количество потоков
 			 */
-			explicit ThreadPool(const uint16_t count = 0) noexcept : _threads(0), _stop(false), _wait(false) {
+			explicit Threadpool(const uint16_t count = 0) noexcept : _threads(0), _stop(false), _wait(false) {
 				// Ели количество потоков передано
 				if(count > 0)
 					// Устанавливаем количество потоков
@@ -232,7 +232,7 @@ namespace awh {
 			 * @brief Деструктор
 			 *
 			 */
-			~ThreadPool() noexcept {
+			~Threadpool() noexcept {
 				// Выполняем ожидание завершения работы пула потоков
 				this->stop();
 			}

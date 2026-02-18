@@ -58,7 +58,7 @@ using namespace placeholders;
  * @param payload объект полезной нагрузки для перемещения
  * @return        текущий объект полезной нагрузки
  */
-awh::Log::Payload & awh::Log::Payload::operator = (payload_t && payload) noexcept {
+awh::Logging::Payload & awh::Logging::Payload::operator = (payload_t && payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
@@ -72,7 +72,7 @@ awh::Log::Payload & awh::Log::Payload::operator = (payload_t && payload) noexcep
  * @param payload объект полезной нагрузки для копирования
  * @return        текущий объект полезной нагрузки
  */
-awh::Log::Payload & awh::Log::Payload::operator = (const payload_t & payload) noexcept {
+awh::Logging::Payload & awh::Logging::Payload::operator = (const payload_t & payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем копирование текста
@@ -86,7 +86,7 @@ awh::Log::Payload & awh::Log::Payload::operator = (const payload_t & payload) no
  * @param payload объект полезной нагрузки для сравнения
  * @return        результат сравнения
  */
-bool awh::Log::Payload::operator == (const payload_t & payload) noexcept {
+bool awh::Logging::Payload::operator == (const payload_t & payload) noexcept {
 	// Выполняем проверку полезной нагрузки
 	return (
 		(this->flag == payload.flag) &&
@@ -98,7 +98,7 @@ bool awh::Log::Payload::operator == (const payload_t & payload) noexcept {
  *
  * @param payload объект полезной нагрузки для перемещения
  */
-awh::Log::Payload::Payload(payload_t && payload) noexcept {
+awh::Logging::Payload::Payload(payload_t && payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
@@ -109,7 +109,7 @@ awh::Log::Payload::Payload(payload_t && payload) noexcept {
  *
  * @param payload объект полезной нагрузки для копирования
  */
-awh::Log::Payload::Payload(const payload_t & payload) noexcept {
+awh::Logging::Payload::Payload(const payload_t & payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем копирование текста
@@ -119,12 +119,12 @@ awh::Log::Payload::Payload(const payload_t & payload) noexcept {
  * @brief Конструктор
  *
  */
-awh::Log::Payload::Payload() noexcept : flag(flag_t::NONE), text{""} {}
+awh::Logging::Payload::Payload() noexcept : flag(flag_t::NONE), text{""} {}
 /**
  * @brief Метод выполнения ротации логов
  *
  */
-void awh::Log::rotate() const noexcept {
+void awh::Logging::rotate() const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -181,7 +181,7 @@ void awh::Log::rotate() const noexcept {
 							// Выполняем формирование текста ошибки
 							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 							// Выводим текст полученной ошибки
-							::fprintf(stderr, "ERROR! Log rotate: %s\n\n", this->_fmk->convert(message).c_str());
+							::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", this->_fmk->convert(message).c_str());
 						}
 					}
 				/**
@@ -209,7 +209,7 @@ void awh::Log::rotate() const noexcept {
 								// Закрываем сжатый файл
 								::gzclose(gz);
 							// Если произошла ошибка
-							} else ::fprintf(stderr, "ERROR! Log rotate: %s\n\n", ::strerror(errno));
+							} else ::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", ::strerror(errno));
 						}
 						// Закрываем файл
 						file.close();
@@ -237,7 +237,7 @@ void awh::Log::rotate() const noexcept {
  * @param text текст для очистки
  * @return     ощиченный текста
  */
-string & awh::Log::cleaner(string & text) const noexcept {
+string & awh::Logging::cleaner(string & text) const noexcept {
 	// Позиция найденного элемента
 	size_t pos = 0;
 	// Значение текущего символа
@@ -273,7 +273,7 @@ string & awh::Log::cleaner(string & text) const noexcept {
  *
  * @param payload объект полезной нагрузки
  */
-void awh::Log::receiving(const payload_t & payload) const noexcept {
+void awh::Logging::receiving(const payload_t & payload) const noexcept {
 	// Флаг конца строки
 	bool isEnd = false;
 	// Выполняем извлечение даты
@@ -449,7 +449,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
  * @param filename адрес где находится файл
  * @return         параметры компонента (адрес, название файла без расширения)
  */
-std::pair <string, string> awh::Log::components(const string & filename) const noexcept {
+std::pair <string, string> awh::Logging::components(const string & filename) const noexcept {
 	// Результат работы функции
 	std::pair <string, string> result;
 	// Если адрес передан
@@ -490,7 +490,7 @@ std::pair <string, string> awh::Log::components(const string & filename) const n
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  */
-void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
+void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept {
 	// Если формат передан
 	if(!format.empty()){
 		// Если уровень логирования соответствует
@@ -641,7 +641,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  */
-void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
+void awh::Logging::print(const wstring & format, flag_t flag, ...) const noexcept {
 	// Если формат передан
 	if(!format.empty()){
 		// Если уровень логирования соответствует
@@ -793,7 +793,7 @@ void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
-void awh::Log::print(const string & format, flag_t flag, const vector <string> & args) const noexcept {
+void awh::Logging::print(const string & format, flag_t flag, const vector <string> & args) const noexcept {
 	// Если формат передан
 	if(!format.empty() && !args.empty()){
 		// Если уровень логирования соответствует
@@ -890,7 +890,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
-void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept {
+void awh::Logging::print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept {
 	// Если формат передан
 	if(!format.empty() && !args.empty()){
 		// Если уровень логирования соответствует
@@ -985,7 +985,7 @@ void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring>
  *
  * @return список режимов вывода логов
  */
-const std::unordered_set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
+const std::unordered_set <awh::Logging::mode_t> & awh::Logging::mode() const noexcept {
 	// Выводим список режимов вывода логов
 	return this->_mode;
 }
@@ -994,7 +994,7 @@ const std::unordered_set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
  *
  * @param mode список режимов вывода логов
  */
-void awh::Log::mode(const std::unordered_set <mode_t> & mode) noexcept {
+void awh::Logging::mode(const std::unordered_set <mode_t> & mode) noexcept {
 	// Выполняем установку списка режимов вывода логов
 	this->_mode = mode;
 }
@@ -1003,7 +1003,7 @@ void awh::Log::mode(const std::unordered_set <mode_t> & mode) noexcept {
  *
  * @return формат лога для извлечения
  */
-const string & awh::Log::format() const noexcept {
+const string & awh::Logging::format() const noexcept {
 	// Выводим установленный формат
 	return this->_format;
 }
@@ -1012,7 +1012,7 @@ const string & awh::Log::format() const noexcept {
  *
  * @param format формат даты и времени для вывода лога
  */
-void awh::Log::format(const string & format) noexcept {
+void awh::Logging::format(const string & format) noexcept {
 	// Устанавливаем формат даты и времени для вывода лога
 	this->_format = format;
 }
@@ -1021,7 +1021,7 @@ void awh::Log::format(const string & format) noexcept {
  *
  * @param mode флаг асинхронного режима работы
  */
-void awh::Log::async(const bool mode) noexcept {
+void awh::Logging::async(const bool mode) noexcept {
 	// Устанавливаем флаг асинхронного режима работы
 	this->_async = mode;
 }
@@ -1030,7 +1030,7 @@ void awh::Log::async(const bool mode) noexcept {
  *
  * @param name название сервиса для вывода лога
  */
-void awh::Log::name(const string & name) noexcept {
+void awh::Logging::name(const string & name) noexcept {
 	// Устанавливаем название сервиса для вывода лога
 	this->_name = name;
 }
@@ -1039,7 +1039,7 @@ void awh::Log::name(const string & name) noexcept {
  *
  * @param size максимальный размер файла логов
  */
-void awh::Log::maxSize(const float size) noexcept {
+void awh::Logging::maxSize(const float size) noexcept {
 	// Устанавливаем максимальный размер файла логов
 	this->_maxSize = size;
 }
@@ -1048,7 +1048,7 @@ void awh::Log::maxSize(const float size) noexcept {
  *
  * @param size размер текста для формирования разделителя
  */
-void awh::Log::sepSize(const size_t size) noexcept {
+void awh::Logging::sepSize(const size_t size) noexcept {
 	// Устанавливаем размер текста для формирования разделителя
 	this->_sepSize = size;
 }
@@ -1057,7 +1057,7 @@ void awh::Log::sepSize(const size_t size) noexcept {
  *
  * @param level уровень логирования для установки
  */
-void awh::Log::level(const level_t level) noexcept {
+void awh::Logging::level(const level_t level) noexcept {
 	// Выполняем установку уровень логирования
 	this->_level = level;
 }
@@ -1066,7 +1066,7 @@ void awh::Log::level(const level_t level) noexcept {
  *
  * @param sep разделитель для установки
  */
-void awh::Log::separator(const separator_t sep) noexcept {
+void awh::Logging::separator(const separator_t sep) noexcept {
 	// Устанавливаем разделитель сообщений логирования
 	this->_sep = sep;
 }
@@ -1075,7 +1075,7 @@ void awh::Log::separator(const separator_t sep) noexcept {
  *
  * @param filename адрес файла для сохранения логов
  */
-void awh::Log::filename(const string & filename) noexcept {
+void awh::Logging::filename(const string & filename) noexcept {
 	// Устанавливаем адрес файла для сохранения логов
 	this->_filename = filename;
 }
@@ -1084,7 +1084,7 @@ void awh::Log::filename(const string & filename) noexcept {
  *
  * @param callback функция обратного вызова
  */
-void awh::Log::subscribe(function <void (const flag_t, const string &)> callback) noexcept {
+void awh::Logging::subscribe(function <void (const flag_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию подписки на получение лога
 	this->_fn = callback;
 }
@@ -1094,7 +1094,7 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  * @param fmk      объект фреймворка
  * @param filename адрес файла для сохранения логов
  */
-awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
+awh::Logging::Logging(const fmk_t * fmk, const string & filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),
  _level(level_t::ALL), _sep(separator_t::ALWAYS), _chrono(fmk, this),
  _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
@@ -1108,7 +1108,7 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  * @brief Деструктор
  *
  */
-awh::Log::~Log() noexcept {
+awh::Logging::~Logging() noexcept {
 	// Если объект работы с дочерним потоком создан, удаляем
 	if(static_cast <bool> (this->_screen))
 		// Останавливаем работу скрина

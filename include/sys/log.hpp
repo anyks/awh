@@ -60,7 +60,7 @@ namespace awh {
 	 * @brief Класс работы с логами
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ Log {
+	typedef class __AWH_SHARED_EXPORT__ Logging {
 		public:
 			/**
 			 * @brief Флаги логирования
@@ -593,12 +593,12 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			explicit Log(const fmk_t * fmk, const string & filename = "") noexcept;
+			explicit Logging(const fmk_t * fmk, const string & filename = "") noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Log() noexcept;
+			~Logging() noexcept;
 	} log_t;
 };
 

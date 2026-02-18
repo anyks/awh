@@ -33,7 +33,7 @@ using namespace std;
  * @param url параметры падреса
  * @return    параметры URL-запроса
  */
-awh::NWT::URL & awh::NWT::URL::operator = (url_t && url) noexcept {
+awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noexcept {
 	// Выполняем копирование тип URL-адреса
 	this->type = url.type;
 	// Выполняем копирование порта URL-адреса
@@ -65,7 +65,7 @@ awh::NWT::URL & awh::NWT::URL::operator = (url_t && url) noexcept {
  * @param url параметры падреса
  * @return    параметры URL-запроса
  */
-awh::NWT::URL & awh::NWT::URL::operator = (const url_t & url) noexcept {
+awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url) noexcept {
 	// Выполняем копирование тип URL-адреса
 	this->type = url.type;
 	// Выполняем копирование порта URL-адреса
@@ -97,7 +97,7 @@ awh::NWT::URL & awh::NWT::URL::operator = (const url_t & url) noexcept {
  * @param url параметры падреса
  * @return    результат сравнения
  */
-bool awh::NWT::URL::operator == (const url_t & url) noexcept {
+bool awh::Network_Types::URL::operator == (const url_t & url) noexcept {
 	// Выполняем сравнение параметров
 	return (
 		(this->type == url.type) &&
@@ -118,7 +118,7 @@ bool awh::NWT::URL::operator == (const url_t & url) noexcept {
  *
  * @param uri параметры падреса
  */
-awh::NWT::URL::URL(url_t && url) noexcept {
+awh::Network_Types::URL::URL(url_t && url) noexcept {
 	// Выполняем копирование тип URL-адреса
 	this->type = url.type;
 	// Выполняем копирование порта URL-адреса
@@ -147,7 +147,7 @@ awh::NWT::URL::URL(url_t && url) noexcept {
  *
  * @param url параметры падреса
  */
-awh::NWT::URL::URL(const url_t & url) noexcept {
+awh::Network_Types::URL::URL(const url_t & url) noexcept {
 	// Выполняем копирование тип URL-адреса
 	this->type = url.type;
 	// Выполняем копирование порта URL-адреса
@@ -175,7 +175,7 @@ awh::NWT::URL::URL(const url_t & url) noexcept {
  * @brief Конструктор
  *
  */
-awh::NWT::URL::URL() noexcept :
+awh::Network_Types::URL::URL() noexcept :
  type(types_t::NONE), port(0), uri{""},
  host{""}, path{""}, user{""}, pass{""},
  anchor{""}, domain{""}, params{""}, schema{""} {}
@@ -183,7 +183,7 @@ awh::NWT::URL::URL() noexcept :
  * @brief Метод инициализации
  *
  */
-void awh::NWT::init() noexcept {
+void awh::Network_Types::init() noexcept {
 	// Создаем список национальных доменов
 	this->_national.emplace("ac");
 	this->_national.emplace("ad");
@@ -543,7 +543,7 @@ void awh::NWT::init() noexcept {
  *
  * @param zone пользовательская зона
  */
-void awh::NWT::zone(const string & zone) noexcept {
+void awh::Network_Types::zone(const string & zone) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -593,7 +593,7 @@ void awh::NWT::zone(const string & zone) noexcept {
  * @brief Метод извлечения списка пользовательских зон интернета
  *
  */
-const std::unordered_set <string> & awh::NWT::zones() const noexcept {
+const std::unordered_set <string> & awh::Network_Types::zones() const noexcept {
 	// Выводим список пользовательских зон интернета
 	return this->_user;
 }
@@ -602,7 +602,7 @@ const std::unordered_set <string> & awh::NWT::zones() const noexcept {
  *
  * @param zones список доменных зон интернета
  */
-void awh::NWT::zones(const std::unordered_set <string> & zones) noexcept {
+void awh::Network_Types::zones(const std::unordered_set <string> & zones) noexcept {
 	// Если список зон не пустой
 	if(!zones.empty())
 		// Выводим список пользовательских зон
@@ -612,7 +612,7 @@ void awh::NWT::zones(const std::unordered_set <string> & zones) noexcept {
  * @brief Метод очистки результатов парсинга
  *
  */
-void awh::NWT::clear() noexcept {
+void awh::Network_Types::clear() noexcept {
 	// Очищаем список пользовательских зон
 	this->_user.clear();
 }
@@ -622,7 +622,7 @@ void awh::NWT::clear() noexcept {
  * @param text текст для парсинга
  * @return     параметры полученные в результате парсинга
  */
-awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
+awh::Network_Types::url_t awh::Network_Types::parse(const string & text) noexcept {
 	// Результат работы функции
 	url_t result;
 	// Если текст передан
@@ -828,7 +828,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
  *
  * @param letters список букв алфавита
  */
-void awh::NWT::letters(const string & letters) noexcept {
+void awh::Network_Types::letters(const string & letters) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -910,7 +910,7 @@ void awh::NWT::letters(const string & letters) noexcept {
  *
  * @param log объект работы с логами
  */
-void awh::NWT::setLogger(const log_t * log) noexcept {
+void awh::Network_Types::setLogger(const log_t * log) noexcept {
 	// Устанавливаем объект логера
 	this->_log = log;
 	// Устанавливаем объект логера для работы с регулярными выражениями
@@ -920,7 +920,7 @@ void awh::NWT::setLogger(const log_t * log) noexcept {
  * @brief Конструктор
  *
  */
-awh::NWT::NWT() noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _log(nullptr) {
+awh::Network_Types::Network_Types() noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _log(nullptr) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их
@@ -931,7 +931,7 @@ awh::NWT::NWT() noexcept : _letters("абвгдеёжзийклмнопрсту�
  *
  * @param log объект для работы с логами
  */
-awh::NWT::NWT(const log_t * log) noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _regexp(log), _log(log) {
+awh::Network_Types::Network_Types(const log_t * log) noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _regexp(log), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их
@@ -943,7 +943,7 @@ awh::NWT::NWT(const log_t * log) noexcept : _letters("абвгдеёжзийкл
  * @param letters список букв алфавита
  * @param log     объект для работы с логами
  */
-awh::NWT::NWT(const string & letters, const log_t * log) noexcept : _letters{letters}, _regexp(log), _log(log) {
+awh::Network_Types::Network_Types(const string & letters, const log_t * log) noexcept : _letters{letters}, _regexp(log), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их

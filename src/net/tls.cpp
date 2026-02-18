@@ -248,7 +248,7 @@ namespace {
 	 * @brief Структура обратных вызовов контроля передачи данных
 	 *
 	 */
-	typedef struct CallbackTransfer : public callback_t {
+	typedef struct Callback_Transfer : public callback_t {
 		// Функция обратного вызова чтения данных
 		tls_t::read_callback_t read;
 		// Функция обратного вызова записи данных
@@ -257,7 +257,7 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit CallbackTransfer() noexcept :
+		explicit Callback_Transfer() noexcept :
 		 read(nullptr), write(nullptr) {}
 	} callback_transfer_t;
 
@@ -323,7 +323,7 @@ namespace {
 	 * @brief Структура шаблона контекста безопасности
 	 *
 	 */
-	typedef struct ContexTemplateSecurity : public member_t {
+	typedef struct Contex_Template_Security : public member_t {
 		SSL_CTX * ctx;                      // Объект SSL контекста
 		X509_CRL * crl;                     // Объект CRL-файла сертификата
 		string host;                        // Объект хоста сервера
@@ -334,13 +334,14 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit ContexTemplateSecurity() noexcept :
-		 member_t(layer_t::CTS), host{""}, ctx(nullptr), crl(nullptr) {}
+		explicit Contex_Template_Security() noexcept :
+		 member_t(layer_t::CTS),
+		 host{""}, ctx(nullptr), crl(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
-		~ContexTemplateSecurity() noexcept {
+		~Contex_Template_Security() noexcept {
 			// Если CRL-файл сертификата уже создан
 			if(this->crl != nullptr)
 				// Выполняем освобождение памяти
@@ -356,7 +357,7 @@ namespace {
 	 * @brief Структура транспортного уровня передачи
 	 *
 	 */
-	typedef struct ContentTransferLayer : public member_t {
+	typedef struct Content_Transfer_Layer : public member_t {
 		SSL * ssl;                          // Объект SSL
 		SSL_CTX * ctx;                      // Объект шаблона контекста SSL
 		X509_CRL ** crl;                    // Объект CRL-файла сертификата
@@ -370,14 +371,14 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit ContentTransferLayer() noexcept :
+		explicit Content_Transfer_Layer() noexcept :
 		 member_t(layer_t::CTL),
 		 ssl(nullptr), ctx(nullptr), crl(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
-		~ContentTransferLayer() noexcept {
+		~Content_Transfer_Layer() noexcept {
 			// Если объект SSL существует
 			if(this->ssl != nullptr)
 				// Удаляем объект SSL
@@ -430,7 +431,7 @@ namespace {
 	 * @brief Структура охранника участника обмена защищёнными данными
 	 *
 	 */
-	class GuardTransportLayerSecurity {
+	class Guard_Transport_Layer_Security {
 		private:
 			// Объект участника обмена защищёнными данными
 			::member_t * _member;
@@ -440,31 +441,31 @@ namespace {
 			 *
 			 * @return результат проверки
 			 */
-			bool isGarbage() const noexcept;
+			bool garbage() const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param member объект участника обмена защищёнными данными
 			 */
-			explicit GuardTransportLayerSecurity(::member_t * member) noexcept;
+			explicit Guard_Transport_Layer_Security(::member_t * member) noexcept;
 		public:
 			/**
 			 * @brief Запрещаем копирование объекта
 			 *
 			 */
-			GuardTransportLayerSecurity(const GuardTransportLayerSecurity &) = delete;
+			Guard_Transport_Layer_Security(const Guard_Transport_Layer_Security &) = delete;
 			/**
 			 * @brief Запрещаем присваивание объекта
 			 *
 			 */
-			GuardTransportLayerSecurity & operator = (const GuardTransportLayerSecurity &) = delete;
+			Guard_Transport_Layer_Security & operator = (const Guard_Transport_Layer_Security &) = delete;
 		public:
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~GuardTransportLayerSecurity() noexcept;
+			~Guard_Transport_Layer_Security() noexcept;
 	};
 
 	/**
@@ -472,7 +473,7 @@ namespace {
 	 *
 	 * @return результат проверки
 	 */
-	bool GuardTransportLayerSecurity::isGarbage() const noexcept {
+	bool Guard_Transport_Layer_Security::garbage() const noexcept {
 		// Проверяем статус участника обмена
 		return (
 			(this->_member->state & ::state::GARBAGE_MODE) &&
@@ -484,7 +485,7 @@ namespace {
 	 *
 	 * @param member объект участника обмена защищёнными данными
 	 */
-	GuardTransportLayerSecurity::GuardTransportLayerSecurity(::member_t * member) noexcept : _member(member) {
+	Guard_Transport_Layer_Security::Guard_Transport_Layer_Security(::member_t * member) noexcept : _member(member) {
 		// Увеличиваем счётчик ссылок участника обмена
 		this->_member->refs.fetch_add(1, std::memory_order_relaxed);
 	}
@@ -492,7 +493,7 @@ namespace {
 	 * @brief Деструктор
 	 *
 	 */
-	GuardTransportLayerSecurity::~GuardTransportLayerSecurity() noexcept {
+	Guard_Transport_Layer_Security::~Guard_Transport_Layer_Security() noexcept {
 		// Уменьшаем счётчик ссылок участника обмена
 		this->_member->refs.fetch_sub(1, std::memory_order_release);
 		// Если счётчик ссылок участника обмена равен нулю и статус участника обмена установлен как мусорный
@@ -511,7 +512,7 @@ namespace local {
 	 * @brief Создаём новый тип данных принадлежащий локальному защитнику
 	 *
 	 */
-	using guard_t = GuardTransportLayerSecurity;
+	using guard_t = Guard_Transport_Layer_Security;
 };
 
 /**
@@ -2229,7 +2230,7 @@ namespace verify {
  *
  * @return версия протокола TLS
  */
-string awh::TransportLayerSecurity::version() const noexcept {
+string awh::Transport_Layer_Security::version() const noexcept {
 	// Возвращаем версию OpenSSL
 	return ::OpenSSL_version(OPENSSL_VERSION);
 }
@@ -2239,7 +2240,7 @@ string awh::TransportLayerSecurity::version() const noexcept {
  * @param id идентификатор события
  * @return   общая информация о TLS соединении
  */
-string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::info(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2476,7 +2477,7 @@ string awh::TransportLayerSecurity::info(const id_t id) const noexcept {
  * @param id идентификатор события
  * @return   информация о одноразовом узле TLS
  */
-string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2563,7 +2564,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
 					// Если всё хорошо, формируем версию OpenSSL
 					} else result.append(this->_fmk->format("Using %s\n\n", ::OpenSSL_version(OPENSSL_VERSION)));
 					// Если версия OpenSSL ниже версии 1.1.1b
-					if(OPENSSL_VERSION_NUMBER < 0x1010102fL){
+					if(OPENSSL_VERSION_NUMBER < 0x1010102FL){
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
@@ -2953,7 +2954,7 @@ string awh::TransportLayerSecurity::peerInfo(const id_t id) const noexcept {
  * @param id идентификатор события
  * @return   информация о шифре
  */
-string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::cipherInfo(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3032,7 +3033,7 @@ string awh::TransportLayerSecurity::cipherInfo(const id_t id) const noexcept {
  * @param id идентификатор события
  * @return   информация о сертификате
  */
-string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -3161,7 +3162,7 @@ string awh::TransportLayerSecurity::certificateInfo(const id_t id) const noexcep
  * @param id идентификатор события
  * @return   информация о списке отзыва сертификатов
  */
-string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -3379,7 +3380,7 @@ string awh::TransportLayerSecurity::certificateRevocationListInfo(const id_t id)
  * @param id идентификатор события
  * @return   активный протокол
  */
-string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::certificateExtract(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -3503,7 +3504,7 @@ string awh::TransportLayerSecurity::certificateExtract(const id_t id) const noex
  * @param id идентификатор события
  * @return   результат проверки валидности сертификата
  */
-bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexcept {
+bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3770,7 +3771,7 @@ bool awh::TransportLayerSecurity::validateCertificate(const id_t id) const noexc
  * @param id   идентификатор события
  * @param mode режим проверки хоста сервера
  */
-void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mode) noexcept {
+void awh::Transport_Layer_Security::validateHostname(const id_t id, const bool mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3884,7 +3885,7 @@ void awh::TransportLayerSecurity::validateHostname(const id_t id, const bool mod
  * @param id идентификатор события
  * @return   режим работы TLS
  */
-awh::TransportLayerSecurity::mode_t awh::TransportLayerSecurity::mode(const id_t id) const noexcept {
+awh::Transport_Layer_Security::mode_t awh::Transport_Layer_Security::mode(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3950,7 +3951,7 @@ awh::TransportLayerSecurity::mode_t awh::TransportLayerSecurity::mode(const id_t
  * @param id   идентификатор события
  * @param mode режим работы TLS
  */
-void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcept {
+void awh::Transport_Layer_Security::mode(const id_t id, const mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4050,7 +4051,7 @@ void awh::TransportLayerSecurity::mode(const id_t id, const mode_t mode) noexcep
  * @param id идентификатор события
  * @return   имя хоста сервера
  */
-string awh::TransportLayerSecurity::hostname(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::hostname(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4098,7 +4099,7 @@ string awh::TransportLayerSecurity::hostname(const id_t id) const noexcept {
  * @param id       идентификатор события
  * @param hostname имя хоста сервера
  */
-void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostname) noexcept {
+void awh::Transport_Layer_Security::hostname(const id_t id, const string & hostname) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4225,7 +4226,7 @@ void awh::TransportLayerSecurity::hostname(const id_t id, const string & hostnam
  * @param port порт отдалённого узла
  * @return     результат выполнения установки
  */
-bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const uint16_t port) noexcept {
+bool awh::Transport_Layer_Security::peer(const id_t id, const string & ip, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4397,7 +4398,7 @@ bool awh::TransportLayerSecurity::peer(const id_t id, const string & ip, const u
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   результат выполнения удаления
  */
-bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
+bool awh::Transport_Layer_Security::destroy(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -4485,7 +4486,7 @@ bool awh::TransportLayerSecurity::destroy(const id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения завершения
  */
-bool awh::TransportLayerSecurity::shutdown(const id_t id) noexcept {
+bool awh::Transport_Layer_Security::shutdown(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -4566,7 +4567,7 @@ bool awh::TransportLayerSecurity::shutdown(const id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения рукопожатия
  */
-bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
+bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -4801,7 +4802,7 @@ bool awh::TransportLayerSecurity::handshake(const id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения повторной передачи
  */
-bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
+bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -4911,7 +4912,7 @@ bool awh::TransportLayerSecurity::retransmit(const id_t id) noexcept {
  * @param id идентификатор шаблона контекста безопасности
  * @return   идентификатор транспортного уровня
  */
-awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const id_t id) noexcept {
+awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(const id_t id) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**
@@ -5326,7 +5327,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::transport(const i
  * @param proto тип протокола события
  * @return      идентификатор шаблона контекста безопасности
  */
-awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::context(const event::node_t node, const event::protocol_t proto) noexcept {
+awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const event::node_t node, const event::protocol_t proto) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**
@@ -6097,7 +6098,7 @@ awh::TransportLayerSecurity::id_t awh::TransportLayerSecurity::context(const eve
  * @param size   размер буфера данных для шифрования
  * @return       результат выполнения шифрования
  */
-bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
+bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -6320,7 +6321,7 @@ bool awh::TransportLayerSecurity::encrypt(const id_t id, const void * buffer, co
  * @param size   размер буфера данных для расшифровки
  * @return       результат выполнения расшифровки
  */
-bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
+bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -6523,7 +6524,7 @@ bool awh::TransportLayerSecurity::decrypt(const id_t id, const void * buffer, co
  * @param id   идентификатор события
  * @param mode режим безопасности потоков
  */
-void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_t mode) noexcept {
+void awh::Transport_Layer_Security::threadSafety(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6575,7 +6576,7 @@ void awh::TransportLayerSecurity::threadSafety(const id_t id, const event::mode_
  * @param id      идентификатор события
  * @param ciphers список алгоритмов шифрования для установки
  */
-void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> & ciphers) noexcept {
+void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <string> & ciphers) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6706,7 +6707,7 @@ void awh::TransportLayerSecurity::ciphers(const id_t id, const vector <string> &
  * @param id идентификатор события
  * @return   метод активного протокола
  */
-uint8_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
+uint8_t awh::Transport_Layer_Security::alpn(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6754,7 +6755,7 @@ uint8_t awh::TransportLayerSecurity::alpn(const id_t id) const noexcept {
  * @param id   идентификатор события
  * @param alpn список поддерживаемых ALPN-протоколов
  */
-void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
+void awh::Transport_Layer_Security::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6867,7 +6868,7 @@ void awh::TransportLayerSecurity::alpn(const id_t id, const vector <alpn_t> & al
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename адрес файла сертификата доверенных центров сертификации
  */
-void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noexcept {
+void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7100,7 +7101,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & filename) noe
  * @param dir  адрес директории с сертификатами доверенных центров сертификации
  * @param file адрес файла сертификата доверенного центра сертификации
  */
-void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const string & file) noexcept {
+void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const string & file) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7394,7 +7395,7 @@ void awh::TransportLayerSecurity::ca(const id_t id, const string & dir, const st
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename адрес файла списка отзыва сертификатов
  */
-void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const string & filename) noexcept {
+void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, const string & filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7660,7 +7661,7 @@ void awh::TransportLayerSecurity::certificateRevocationList(const id_t id, const
  * @param filename адрес файла приватного ключа клиента
  * @param type     тип файла приватного ключа клиента
  */
-void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filename, const type_t type) noexcept {
+void awh::Transport_Layer_Security::privateKey(const id_t id, const string & filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7924,7 +7925,7 @@ void awh::TransportLayerSecurity::privateKey(const id_t id, const string & filen
  * @param filename адрес файла клиентского сертификата
  * @param type     тип файла приватного ключа клиента
  */
-void awh::TransportLayerSecurity::certificate(const id_t id, const string & filename, const type_t type) noexcept {
+void awh::Transport_Layer_Security::certificate(const id_t id, const string & filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8282,7 +8283,7 @@ void awh::TransportLayerSecurity::certificate(const id_t id, const string & file
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::TransportLayerSecurity::on(const id_t id, read_callback_t callback) noexcept {
+bool awh::Transport_Layer_Security::on(const id_t id, read_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -8331,7 +8332,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, read_callback_t callback) no
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::TransportLayerSecurity::on(const id_t id, write_callback_t callback) noexcept {
+bool awh::Transport_Layer_Security::on(const id_t id, write_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -8380,7 +8381,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, write_callback_t callback) n
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) noexcept {
+bool awh::Transport_Layer_Security::on(const id_t id, error_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -8445,7 +8446,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, error_callback_t callback) n
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::TransportLayerSecurity::on(const id_t id, state_callback_t callback) noexcept {
+bool awh::Transport_Layer_Security::on(const id_t id, state_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -8509,7 +8510,7 @@ bool awh::TransportLayerSecurity::on(const id_t id, state_callback_t callback) n
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log_t * log) noexcept : _addr(fmk, log), _fmk(fmk), _log(log) {
+awh::Transport_Layer_Security::Transport_Layer_Security(const fmk_t * fmk, const log_t * log) noexcept : _addr(fmk, log), _fmk(fmk), _log(log) {
 	// Увеличиваем счётчик инициализации библиотеки OpenSSL
 	::__awh_ssl_init_count__++;
 	// Если библиотека OpenSSL ещё не инициализирована
@@ -8684,7 +8685,7 @@ awh::TransportLayerSecurity::TransportLayerSecurity(const fmk_t * fmk, const log
  * @brief Деструктор
  *
  */
-awh::TransportLayerSecurity::~TransportLayerSecurity() noexcept {
+awh::Transport_Layer_Security::~Transport_Layer_Security() noexcept {
 	// Уменьшаем счётчик инициализации библиотеки OpenSSL
 	::__awh_ssl_init_count__--;
 	// Если счётчик инициализации библиотеки OpenSSL равен нулю

@@ -36,7 +36,7 @@ namespace awh {
 	 * @brief Прототип класса работы с логами
 	 *
 	 */
-	class Log;
+	class Logging;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -45,7 +45,7 @@ namespace awh {
 	 * @brief Структура списка параметров URL
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ NWT {
+	typedef class __AWH_SHARED_EXPORT__ Network_Types {
 		public:
 			/**
 			 * @brief Типы URL-адреса
@@ -147,7 +147,7 @@ namespace awh {
 			std::unordered_set <string> _national;
 		private:
 			// Объект логера
-			const Log * _log;
+			const Logging * _log;
 		private:
 			/**
 			 * @brief Метод инициализации
@@ -199,31 +199,31 @@ namespace awh {
 			 *
 			 * @param log объект работы с логами
 			 */
-			void setLogger(const Log * log) noexcept;
+			void setLogger(const Logging * log) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit NWT() noexcept;
+			explicit Network_Types() noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
 			 */
-			explicit NWT(const Log * log) noexcept;
+			explicit Network_Types(const Logging * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param letters список букв алфавита
 			 * @param log     объект для работы с логами
 			 */
-			explicit NWT(const string & letters, const Log * log) noexcept;
+			explicit Network_Types(const string & letters, const Logging * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~NWT() noexcept {}
+			~Network_Types() noexcept {}
 	} nwt_t;
 };
 

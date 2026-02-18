@@ -45,7 +45,7 @@ namespace awh {
 	 * @brief Класс для работы с сетевыми адресами
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ NetworkAddress {
+	typedef class __AWH_SHARED_EXPORT__ Network_Address {
 		public:
 			/**
 			 * @brief Режим дислокации IP-адреса
@@ -118,10 +118,10 @@ namespace awh {
 			 *
 			 */
 			typedef struct LocalNet {
-				bool reserved;                          // Адрес является зарезервированным
-				uint8_t prefix;                         // Префикс сети
-				std::unique_ptr <NetworkAddress> end;   // Конечный диапазон адреса
-				std::unique_ptr <NetworkAddress> begin; // Начальный IP-адрес
+				bool reserved;                           // Адрес является зарезервированным
+				uint8_t prefix;                          // Префикс сети
+				std::unique_ptr <Network_Address> end;   // Конечный диапазон адреса
+				std::unique_ptr <Network_Address> begin; // Начальный IP-адрес
 				/**
 				 * @brief Конструктор
 				 *
@@ -130,8 +130,8 @@ namespace awh {
 				 */
 				LocalNet(const fmk_t * fmk, const log_t * log) noexcept :
 				 reserved(false), prefix(0),
-				 end(std::make_unique <NetworkAddress> (fmk, log)),
-				 begin(std::make_unique <NetworkAddress> (fmk, log)) {}
+				 end(std::make_unique <Network_Address> (fmk, log)),
+				 begin(std::make_unique <Network_Address> (fmk, log)) {}
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -328,7 +328,7 @@ namespace awh {
 			 * @param mask  маска сети для перевода
 			 * @return      результат првоерки
 			 */
-			bool range(const NetworkAddress & begin, const NetworkAddress & end, const string & mask) const noexcept;
+			bool range(const Network_Address & begin, const Network_Address & end, const string & mask) const noexcept;
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
 			 *
@@ -338,7 +338,7 @@ namespace awh {
 			 * @param type  тип адреса аппаратного или интернет подключения
 			 * @return      результат првоерки
 			 */
-			bool range(const NetworkAddress & begin, const NetworkAddress & end, const string & mask, const type_t type) const noexcept;
+			bool range(const Network_Address & begin, const Network_Address & end, const string & mask, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
@@ -348,7 +348,7 @@ namespace awh {
 			 * @param prefix префикс адреса для преобразования
 			 * @return       результат првоерки
 			 */
-			bool range(const NetworkAddress & begin, const NetworkAddress & end, const uint8_t prefix) const noexcept;
+			bool range(const Network_Address & begin, const Network_Address & end, const uint8_t prefix) const noexcept;
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
 			 *
@@ -358,7 +358,7 @@ namespace awh {
 			 * @param type   тип адреса аппаратного или интернет подключения
 			 * @return       результат првоерки
 			 */
-			bool range(const NetworkAddress & begin, const NetworkAddress & end, const uint8_t prefix, const type_t type) const noexcept;
+			bool range(const Network_Address & begin, const Network_Address & end, const uint8_t prefix, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
@@ -516,42 +516,42 @@ namespace awh {
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator < (const NetworkAddress & addr) const noexcept;
+			bool operator < (const Network_Address & addr) const noexcept;
 			/**
 			 * @brief Оператор [>] сравнения IP-адреса
 			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator > (const NetworkAddress & addr) const noexcept;
+			bool operator > (const Network_Address & addr) const noexcept;
 			/**
 			 * @brief Оператор [<=] сравнения IP-адреса
 			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator <= (const NetworkAddress & addr) const noexcept;
+			bool operator <= (const Network_Address & addr) const noexcept;
 			/**
 			 * @brief Оператор [>=] сравнения IP-адреса
 			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator >= (const NetworkAddress & addr) const noexcept;
+			bool operator >= (const Network_Address & addr) const noexcept;
 			/**
 			 * @brief Оператор [!=] сравнения IP-адреса
 			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator != (const NetworkAddress & addr) const noexcept;
+			bool operator != (const Network_Address & addr) const noexcept;
 			/**
 			 * @brief Оператор [==] сравнения IP-адреса
 			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator == (const NetworkAddress & addr) const noexcept;
+			bool operator == (const Network_Address & addr) const noexcept;
 		public:
 			/**
 			 * @brief Оператор [=] присвоения IP-адреса
@@ -559,42 +559,42 @@ namespace awh {
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			NetworkAddress & operator = (const NetworkAddress & addr) noexcept;
+			Network_Address & operator = (const Network_Address & addr) noexcept;
 			/**
 			 * @brief Оператор [=] присвоения IP-адреса
 			 *
 			 * @param ip адрес для присвоения
 			 * @return   текущий объект
 			 */
-			NetworkAddress & operator = (const string & ip) noexcept;
+			Network_Address & operator = (const string & ip) noexcept;
 			/**
 			 * @brief Оператор [=] установки типа IP-адреса
 			 *
 			 * @param type тип IP-адреса для установки
 			 * @return     текущий объект
 			 */
-			NetworkAddress & operator = (const type_t type) noexcept;
+			Network_Address & operator = (const type_t type) noexcept;
 			/**
 			 * @brief Оператор [=] присвоения IP-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			NetworkAddress & operator = (const uint32_t addr) noexcept;
+			Network_Address & operator = (const uint32_t addr) noexcept;
 			/**
 			 * @brief Оператор [=] присвоения MAC-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			NetworkAddress & operator = (const std::array <uint8_t, 6> & addr) noexcept;
+			Network_Address & operator = (const std::array <uint8_t, 6> & addr) noexcept;
 			/**
 			 * @brief Оператор [=] присвоения IP-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			NetworkAddress & operator = (const std::array <uint8_t, 16> & addr) noexcept;
+			Network_Address & operator = (const std::array <uint8_t, 16> & addr) noexcept;
 		public:
 			/**
 			 * @brief конструктор
@@ -602,13 +602,13 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			explicit NetworkAddress(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Network_Address(const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief деструктор
 			 *
 			 */
-			~NetworkAddress() noexcept {}
+			~Network_Address() noexcept {}
 	} net_addr_t;
 	/**
 	 * @brief Оператор [>>] чтения из потока IP-адреса

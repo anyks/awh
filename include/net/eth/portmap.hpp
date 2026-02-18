@@ -42,7 +42,7 @@ namespace awh {
 		 * @brief Класс для работы с пробросом портов
 		 *
 		 */
-		typedef class __AWH_SHARED_EXPORT__ PortMapping {
+		typedef class __AWH_SHARED_EXPORT__ Port_Mapping {
 			public:
 				/**
 				 * @brief Типы протоколов сокетов
@@ -127,12 +127,12 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
 				 */
-				explicit PortMapping(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Port_Mapping(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~PortMapping() noexcept;
+				~Port_Mapping() noexcept;
 		} portmap_t;
 	};
 };

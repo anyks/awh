@@ -1947,20 +1947,20 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
 							// Если префикс больше либо равен 8
 							if(mask >= 8){
 								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xff;
+								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
 								// Уменьшаем префикс на 8
 								mask -= 8;
 							// Если префикс меньше 8, но больше нуля
 							} else if(mask > 0) {
 								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xff << (8 - mask));
+								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
 								// Обнуляем префикс
 								mask = 0;
 							// Зануляем байт маски подсети
 							} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
 						}
 					// Устанавливаем маску соответствующую префиксу /128
-					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xff, 16);
+					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
 					/**
 					 * Устанавливаем бесконечное время жизни адреса
 					 */
@@ -2280,20 +2280,20 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
 							// Если префикс больше либо равен 8
 							if(mask >= 8){
 								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xff;
+								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
 								// Уменьшаем префикс на 8
 								mask -= 8;
 							// Если префикс меньше 8, но больше нуля
 							} else if(mask > 0) {
 								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xff << (8 - mask));
+								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
 								// Обнуляем префикс
 								mask = 0;
 							// Зануляем байт маски подсети
 							} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
 						}
 					// Устанавливаем маску соответствующую префиксу /128
-					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xff, 16);
+					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
 					/**
 					 * Устанавливаем бесконечное время жизни адреса
 					 */

@@ -44,7 +44,7 @@ namespace awh {
 	 * @brief Прототип класса работы с логами
 	 *
 	 */
-	class Log;
+	class Logging;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -119,7 +119,7 @@ namespace awh {
 			std::locale _locale;
 		private:
 			// Объект работы с логами
-			const Log * _log;
+			const Logging * _log;
 		public:
 			/**
 			 * @brief Шаблон метода поиска в контейнере map указанного значения
@@ -881,7 +881,7 @@ namespace awh {
 			 *
 			 * @param log объект работы с логами
 			 */
-			void setLogger(const Log * log) noexcept;
+			void setLogger(const Logging * log) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

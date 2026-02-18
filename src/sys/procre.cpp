@@ -142,7 +142,7 @@ using namespace std;
  * @param pid идентификатор процесса
  * @return    название приложения которому принадлежит процесс
  */
-string awh::ProcessResolver::name(const pid_t pid) const noexcept {
+string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**

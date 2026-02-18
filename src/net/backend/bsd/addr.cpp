@@ -121,7 +121,7 @@ namespace {
  *
  * @param source объект источника сетевых адресов
  */
-void awh::eth::NetAddress::fillSource(net::src_t & source) const noexcept {
+void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -291,7 +291,7 @@ void awh::eth::NetAddress::fillSource(net::src_t & source) const noexcept {
  * @param node   тип узла события
  * @param source объект источника сетевых адресов
  */
-void awh::eth::NetAddress::fillSource(const event::node_t node, net::src_t & source) const noexcept {
+void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t & source) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -832,7 +832,7 @@ void awh::eth::NetAddress::fillSource(const event::node_t node, net::src_t & sou
  * @param net    сетевой адрес подсети в хостовом порядке
  * @param source объект источника сетевых адресов
  */
-void awh::eth::NetAddress::fillSource(const unique_ptr <net::addr_t> & net, net::src_t & source) const noexcept {
+void awh::eth::Network_Address::fillSource(const unique_ptr <net::addr_t> & net, net::src_t & source) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1039,7 +1039,7 @@ void awh::eth::NetAddress::fillSource(const unique_ptr <net::addr_t> & net, net:
  * @param prefix префикс подсети
  * @return       результат проверки
  */
-bool awh::eth::NetAddress::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept {
+bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1081,7 +1081,7 @@ bool awh::eth::NetAddress::isInSubnet(const uint32_t ip, const uint32_t net, con
  * @param length Длина префикса в битах
  * @return       Результат сравнения
  */
-bool awh::eth::NetAddress::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) const noexcept {
+bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1138,7 +1138,7 @@ bool awh::eth::NetAddress::ipv6PrefixEqual(const uint8_t * first, const uint8_t 
  * @param length    длина данных транспортного уровня
  * @return          вычисленная контрольная сумма
  */
-uint16_t awh::eth::NetAddress::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept {
+uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Проверяем корректность входных данных
@@ -1323,10 +1323,10 @@ uint16_t awh::eth::NetAddress::checksum(const event::family_t family, const even
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  */
-awh::eth::NetAddress::NetAddress(const fmk_t * fmk, const log_t * log) noexcept :
+awh::eth::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
  _iface(fmk, log), _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *
  */
-awh::eth::NetAddress::~NetAddress() noexcept {}
+awh::eth::Network_Address::~Network_Address() noexcept {}

@@ -39,7 +39,7 @@ namespace awh {
 	 * @brief Прототип класса работы с логами
 	 *
 	 */
-	class Log;
+	class Logging;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -415,10 +415,10 @@ namespace awh {
 			// Список скомпилированных регулярных выражений
 			std::unordered_map <format_t, std::any> _expressions;
 		private:
-			// Объект логера
-			const Log * _log;
 			// Объект фреймворка
 			const fmk_t * _fmk;
+			// Объект логера
+			const Logging * _log;
 		public:
 			/**
 			 * @brief Метод очистки всех локальных данных
@@ -935,7 +935,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			explicit Chrono(const fmk_t * fmk, const Log * log) noexcept;
+			explicit Chrono(const fmk_t * fmk, const Logging * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

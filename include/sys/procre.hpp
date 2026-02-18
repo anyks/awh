@@ -39,7 +39,7 @@ namespace awh {
 	 * @brief Класс работы с резольвером процессов
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ ProcessResolver {
+	typedef class __AWH_SHARED_EXPORT__ Process_Resolver {
 		private:
 			// Объект работы с логами
 			const log_t * _log;
@@ -57,12 +57,12 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			explicit ProcessResolver(const log_t * log) noexcept : _log(log) {}
+			explicit Process_Resolver(const log_t * log) noexcept : _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~ProcessResolver() noexcept {}
+			~Process_Resolver() noexcept {}
 	} procre_t;
 };
 

@@ -36,7 +36,7 @@ namespace awh {
 	 * @brief Структура транспортного уровня безопасности
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ TransportLayerSecurity {
+	typedef class __AWH_SHARED_EXPORT__ Transport_Layer_Security {
 		public:
 			/**
 			 * @brief Типы событий TLS
@@ -433,12 +433,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			explicit TransportLayerSecurity(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Transport_Layer_Security(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~TransportLayerSecurity() noexcept;
+			~Transport_Layer_Security() noexcept;
 	} tls_t;
 };
 

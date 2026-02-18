@@ -84,7 +84,7 @@
 	 * Размер кратен MSS → минимум «хвостовых» мелких сегментов
 	 * Достаточно большой для плавности, достаточно маленький для точности ограничения
 	 */
-	#define AWH_MTU_TCP_IPV4_PAYLOAD_SIZE 0x5a0
+	#define AWH_MTU_TCP_IPV4_PAYLOAD_SIZE 0x5A0
 #endif
 
 /**
@@ -99,7 +99,7 @@
 	 * Кратно эффективному MSS для IPv6 (~1420-1440)
 	 * Аналогично IPv4 — баланс плавности и точности
 	 */
-	#define AWH_MTU_TCP_IPV6_PAYLOAD_SIZE 0x58c
+	#define AWH_MTU_TCP_IPV6_PAYLOAD_SIZE 0x58C
 #endif
 
 /**
@@ -1527,7 +1527,7 @@ namespace {
 	 * @brief Структура охранника узла события
 	 *
 	 */
-	class GuardTransportLayerNode {
+	class Guard_Transport_Layer_Node {
 		private:
 			// Объект узла события
 			::io::node_t * _node;
@@ -1537,31 +1537,31 @@ namespace {
 			 *
 			 * @return результат проверки
 			 */
-			bool isGarbage() const noexcept;
+			bool garbage() const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param node объект узла события
 			 */
-			explicit GuardTransportLayerNode(::io::node_t * node) noexcept;
+			explicit Guard_Transport_Layer_Node(::io::node_t * node) noexcept;
 		public:
 			/**
 			 * @brief Запрещаем копирование объекта
 			 *
 			 */
-			GuardTransportLayerNode(const GuardTransportLayerNode &) = delete;
+			Guard_Transport_Layer_Node(const Guard_Transport_Layer_Node &) = delete;
 			/**
 			 * @brief Запрещаем присваивание объекта
 			 *
 			 */
-			GuardTransportLayerNode & operator = (const GuardTransportLayerNode &) = delete;
+			Guard_Transport_Layer_Node & operator = (const Guard_Transport_Layer_Node &) = delete;
 		public:
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~GuardTransportLayerNode() noexcept;
+			~Guard_Transport_Layer_Node() noexcept;
 	};
 
 	/**
@@ -1569,7 +1569,7 @@ namespace {
 	 *
 	 * @return результат проверки
 	 */
-	bool GuardTransportLayerNode::isGarbage() const noexcept {
+	bool Guard_Transport_Layer_Node::garbage() const noexcept {
 		// Проверяем статус узла события
 		return (
 			(this->_node->refs == 1) &&
@@ -1581,7 +1581,7 @@ namespace {
 	 *
 	 * @param node объект узла события
 	 */
-	GuardTransportLayerNode::GuardTransportLayerNode(::io::node_t * node) noexcept : _node(node) {
+	Guard_Transport_Layer_Node::Guard_Transport_Layer_Node(::io::node_t * node) noexcept : _node(node) {
 		// Увеличиваем счётчик ссылок узла
 		this->_node->refs.fetch_add(1, std::memory_order_relaxed);
 	}
@@ -1589,7 +1589,7 @@ namespace {
 	 * @brief Деструктор
 	 *
 	 */
-	GuardTransportLayerNode::~GuardTransportLayerNode() noexcept {
+	Guard_Transport_Layer_Node::~Guard_Transport_Layer_Node() noexcept {
 		// Уменьшаем счётчик ссылок узла
 		this->_node->refs.fetch_sub(1, std::memory_order_release);
 		// Если счётчик ссылок узла равен нулю и статус узла установлен как мусорный
@@ -1902,7 +1902,7 @@ namespace local {
 	 * @brief Создаём новый тип данных принадлежащий локальному защитнику
 	 *
 	 */
-	using guard_t = GuardTransportLayerNode;
+	using guard_t = Guard_Transport_Layer_Node;
 };
 
 /**
@@ -18909,7 +18909,7 @@ namespace io {
 										// Создаём таймаут на переподключение
 										::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, log);
 										// Выводим результат выполнения функции
-										return !guard.isGarbage();
+										return !guard.garbage();
 									}
 								}
 								// Удаляем все установленные активные таймауты
@@ -19077,7 +19077,7 @@ namespace io {
 						user->events.pop();
 					}
 					// Формируем результат выполнения функции
-					result = !guard.isGarbage();
+					result = !guard.garbage();
 				}
 			}
 		/**
@@ -19234,7 +19234,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
@@ -19269,7 +19269,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
@@ -19302,7 +19302,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -19335,7 +19335,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -19368,7 +19368,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
@@ -19401,7 +19401,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -19434,7 +19434,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
@@ -19467,7 +19467,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -19500,7 +19500,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -19533,7 +19533,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -19566,7 +19566,7 @@ namespace io {
 						#endif
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 			}
 		/**
@@ -20427,7 +20427,7 @@ namespace io {
 						}
 					}
 					// Формируем положительный результат
-					return !guard.isGarbage();
+					return !guard.garbage();
 				}
 			}
 		/**
@@ -21103,7 +21103,7 @@ namespace io {
 								}
 							#endif
 							// Если узел не помечен как мусорный
-							if(!guard.isGarbage()){
+							if(!guard.garbage()){
 								// Устанавливаем статус события в состояние успешного подключения
 								peer->state.status = event::status_t::SUCCESS;
 								// Устанавливаем таймаут на чтение данных для нового подключения
@@ -21126,7 +21126,7 @@ namespace io {
 									else eth->socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								}
 								// Выводим положительный результат
-								return !guard.isGarbage();
+								return !guard.garbage();
 							}
 						}
 					}
@@ -22730,7 +22730,7 @@ namespace io {
 						// Вызываем функцию обратного вызова для вывода полученных данных
 						origin->callbacks.read(origin->id, reinterpret_cast <const uint8_t *> (buffer), static_cast <size_t> (size));
 					// Если узел не помечен как мусорный
-					if(!guard.isGarbage()){
+					if(!guard.garbage()){
 						// Устанавливаем статус события в состояние успешного подключения
 						origin->state.status = event::status_t::SUCCESS;
 						// Устанавливаем таймаут на чтение данных для нового подключения
@@ -22747,7 +22747,7 @@ namespace io {
 							else eth->socket.timeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
 						}
 						// Выводим положительный результат
-						return !guard.isGarbage();
+						return !guard.garbage();
 					}
 				}
 			}
@@ -24017,7 +24017,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @return   информационные метаданные SCTP сообщения
 	 */
-	awh::net::sctp::minfo_t awh::engine::StreamControlTransmissionProtocol::messageInfo(const event::id_t id) const noexcept {
+	awh::net::sctp::minfo_t awh::engine::Stream_Control_Transmission_Protocol::messageInfo(const event::id_t id) const noexcept {
 		// Резузльтат работы функции
 		net::sctp::minfo_t result;
 		/**
@@ -24089,7 +24089,7 @@ namespace sctp {
 	 * @param id   идентификатор события
 	 * @param info информационные метаданные SCTP сообщения
 	 */
-	void awh::engine::StreamControlTransmissionProtocol::messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -24355,7 +24355,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @return   параметры статуса инициализации SCTP
 	 */
-	awh::net::sctp::status_t awh::engine::StreamControlTransmissionProtocol::status(const event::id_t id) const noexcept {
+	awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
 		// Результат работы функции
 		net::sctp::status_t result;
 		/**
@@ -24559,7 +24559,7 @@ namespace sctp {
 	 * @param id      идентификатор события
 	 * @param initmsg параметры инициализации SCTP события
 	 */
-	void awh::engine::StreamControlTransmissionProtocol::initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -24739,7 +24739,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @return   список событий SCTP на которые выполнена подписка
 	 */
-	const awh::net::sctp::event_types_t & awh::engine::StreamControlTransmissionProtocol::eventsSubscribed(const event::id_t id) const noexcept {
+	const awh::net::sctp::event_types_t & awh::engine::Stream_Control_Transmission_Protocol::eventsSubscribed(const event::id_t id) const noexcept {
 		// Результат работы функции
 		static net::sctp::event_types_t result;
 		/**
@@ -24797,7 +24797,7 @@ namespace sctp {
 	 * @param id     идентификатор события
 	 * @param events список событий SCTP для подписки
 	 */
-	void awh::engine::StreamControlTransmissionProtocol::eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -24916,7 +24916,7 @@ namespace sctp {
 	 * @param type тип таймаута
 	 * @return     значение таймаута в миллисекундах
 	 */
-	uint32_t awh::engine::StreamControlTransmissionProtocol::timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
+	uint32_t awh::engine::Stream_Control_Transmission_Protocol::timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -25105,7 +25105,7 @@ namespace sctp {
 	 * @param timeout значение таймаута в миллисекундах
 	 * @return        результат работы функции
 	 */
-	bool awh::engine::StreamControlTransmissionProtocol::timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -25294,7 +25294,7 @@ namespace sctp {
 	 * @param key ключ аутентификации
 	 * @return    результат работы функции
 	 */
-	bool awh::engine::StreamControlTransmissionProtocol::authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -25416,7 +25416,7 @@ namespace sctp {
 	 * @param num  номер ключа аутентификации
 	 * @return     результат работы функции
 	 */
-	bool awh::engine::StreamControlTransmissionProtocol::authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -25559,7 +25559,7 @@ namespace sctp {
 	 * @param chunks список чанков подлежащих аутентификации
 	 * @return       результат работы функции
 	 */
-	bool awh::engine::StreamControlTransmissionProtocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -25683,7 +25683,7 @@ namespace sctp {
 	 * @param chunks список чанков подлежащих аутентификации
 	 * @return       результат работы функции
 	 */
-	bool awh::engine::StreamControlTransmissionProtocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -25846,7 +25846,7 @@ namespace sctp {
 	 * @param types список поддерживаемых алгоритмов аутентификации
 	 * @return      результат работы функции
 	 */
-	bool awh::engine::StreamControlTransmissionProtocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -26006,7 +26006,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::StreamControlTransmissionProtocol::on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26079,7 +26079,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::StreamControlTransmissionProtocol::on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26154,7 +26154,7 @@ namespace sctp {
  * @param id идентификатор события
  * @return   результат выполнения очистки
  */
-bool awh::engine::IO::ControlList::clear(const event::id_t id) noexcept {
+bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -26263,7 +26263,7 @@ bool awh::engine::IO::ControlList::clear(const event::id_t id) noexcept {
  * @param value значение адреса события
  * @return      результат выполнения установки
  */
-bool awh::engine::IO::ControlList::add(const event::id_t id, const string & value) noexcept {
+bool awh::engine::IO::Control_List::add(const event::id_t id, const string & value) noexcept {
 	// Если адрес для удаления передан
 	if(!value.empty()){
 		/**
@@ -26547,7 +26547,7 @@ bool awh::engine::IO::ControlList::add(const event::id_t id, const string & valu
  * @param value адрес для удаления из белого списка
  * @return      результат выполнения удаления
  */
-bool awh::engine::IO::ControlList::remove(const event::id_t id, const string & value) noexcept {
+bool awh::engine::IO::Control_List::remove(const event::id_t id, const string & value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес для удаления передан
@@ -26708,7 +26708,7 @@ bool awh::engine::IO::ControlList::remove(const event::id_t id, const string & v
  * @param id идентификатор события
  * @return   белый список события
  */
-const std::unordered_map <string, event::address_t> & awh::engine::IO::ControlList::get(const event::id_t id) const noexcept {
+const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
 	// Результат работы функции
 	static const std::unordered_map <string, event::address_t> result;
 	/**

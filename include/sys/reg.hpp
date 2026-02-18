@@ -40,7 +40,7 @@ namespace awh {
 	 * @brief Прототип класса работы с логами
 	 *
 	 */
-	class Log;
+	class Logging;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -49,7 +49,7 @@ namespace awh {
 	 * @brief Класс объекта регулярных выражения
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ RegExp {
+	typedef class __AWH_SHARED_EXPORT__ Regular_Expressions {
 		private:
 			/**
 			 * @brief структура рабочих мютексов
@@ -136,7 +136,7 @@ namespace awh {
 			mutable std::map <std::pair <int32_t, string>, exp_weak_t> _cache;
 		private:
 			// Объект логирования
-			const Log * _log;
+			const Logging * _log;
 		public:
 			/**
 			 * @brief Метод извлечения текста ошибки регулярного выражения
@@ -213,24 +213,24 @@ namespace awh {
 			 *
 			 * @param log объект работы с логами
 			 */
-			void setLogger(const Log * log) noexcept;
+			void setLogger(const Logging * log) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit RegExp() noexcept : _error{""}, _log(nullptr) {}
+			explicit Regular_Expressions() noexcept : _error{""}, _log(nullptr) {}
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param log объект работы с логами
 			 */
-			explicit RegExp(const Log * log) noexcept : _error{""}, _log(log) {}
+			explicit Regular_Expressions(const Logging * log) noexcept : _error{""}, _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~RegExp() noexcept {}
+			~Regular_Expressions() noexcept {}
 	} regexp_t;
 };
 

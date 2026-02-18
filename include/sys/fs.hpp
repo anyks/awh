@@ -42,7 +42,7 @@ namespace awh {
 	 * @brief Класс модуля работы с файловой системой
 	 *
 	 */
-	typedef class __AWH_SHARED_EXPORT__ FileSystem {
+	typedef class __AWH_SHARED_EXPORT__ Filesystem {
 		public:
 			/**
 			 * @brief Типы смещений в файле
@@ -363,12 +363,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			explicit FileSystem(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Filesystem(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~FileSystem() noexcept {}
+			~Filesystem() noexcept {}
 	} fs_t;
 };
 
