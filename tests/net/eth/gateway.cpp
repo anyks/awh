@@ -49,8 +49,10 @@ TEST_F(EthFixture, GatewayGetTest){
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.destination.get())->address, awh::net_addr_t::endian_t::LITTLE);
 	// Выводим адрес назначения
 	std::cout << "Destination: " << static_cast <std::string> (* this->_addr.get()) << "/" << static_cast <uint32_t> (route.prefix) << std::endl;
-	// Удаляем маршрут по указанному адресу
-	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	// Если пользователь является привилигированным
+	if(::getuid() == 0)
+		// Удаляем маршрут по указанному адресу
+		ASSERT_TRUE(this->_eth->gateway.remove(route));
 	/**
 	 * sudo route add default 192.168.7.1
 	 * sudo route delete default 0.0.0.0
@@ -63,24 +65,32 @@ TEST_F(EthFixture, GatewayGetTest){
 	// route.ifname = "en0";
 	// Сбрасываем адрес назначения
 	// awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
-	// Добавляем маршрут с новым шлюзом
-	ASSERT_TRUE(this->_eth->gateway.add(route));
+	// Если пользователь является привилигированным
+	if(::getuid() == 0)
+		// Добавляем маршрут с новым шлюзом
+		ASSERT_TRUE(this->_eth->gateway.add(route));
 	// Сбрасываем имя сетевого интерфейса
 	// route.ifname = "";
-	// Если получаем маршрут для указанного адреса
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	// Если пользователь является привилигированным
+	if(::getuid() == 0)
+		// Если получаем маршрут для указанного адреса
+		ASSERT_TRUE(this->_eth->gateway.get(route));
 	// Выводим информацию о маршруте
 	std::cout << " Interface: " << route.ifname << std::endl;
 	// Устанавливаем полученный IP-адрес
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
 	// Выводим адрес шлюза по умолчанию
 	std::cout << "Default Gateway: " << static_cast <std::string> (* this->_addr.get()) << std::endl;
-	// Удаляем маршрут по указанному адресу
-	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	// Если пользователь является привилигированным
+	if(::getuid() == 0)
+		// Удаляем маршрут по указанному адресу
+		ASSERT_TRUE(this->_eth->gateway.remove(route));
 	// Выполняем парсинг адреса нового шлюза
 	(* this->_addr.get()) = gateway;
 	// Устанавливаем адрес шлюза в маршрут
 	awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_addr->v4(awh::net_addr_t::endian_t::LITTLE);
-	// Добавляем маршрут с новым шлюзом
-	ASSERT_TRUE(this->_eth->gateway.add(route));
+	// Если пользователь является привилигированным
+	if(::getuid() == 0)
+		// Добавляем маршрут с новым шлюзом
+		ASSERT_TRUE(this->_eth->gateway.add(route));
 }
