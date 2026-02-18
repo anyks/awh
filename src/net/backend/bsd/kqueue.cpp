@@ -27282,127 +27282,84 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Если файловый дескриптор туннеля существует
 						if((result = (tunnel->fd != net::invalid_socket_t))){
 							/**
-							 * Определяем тип сокета
+							 * Определяем семейство события
 							 */
-							switch(static_cast <uint8_t> (tunnel->state.type)){
-								// Если событие принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM):
-								// Если событие принадлежит к типу DATAGRAM
-								case static_cast <uint8_t> (event::type_t::DATAGRAM):
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									/**
-									 * Определяем семейство события
-									 */
-									switch(static_cast <uint8_t> (tunnel->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4): {
-											// Устанавливаем размер структуры для целевой машины
-											tunnel->endpoint.size = sizeof(struct sockaddr_in);
-											// Очищаем всю структуру для клиента
-											::memset(&::trust_cast <struct sockaddr_in> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
-											// Очищаем всю структуру для сервера
-											::memset(&::trust_cast <struct sockaddr_in> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
-											// Устанавливаем семейство IP-адресов у клиента
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_family = AF_INET;
-											// Устанавливаем семейство IP-адресов у сервера
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_family = AF_INET;
-											// Устанавливаем длину структуры у клиента
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_len = tunnel->endpoint.size;
-											// Устанавливаем длину структуры у сервера
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_len = tunnel->endpoint.size;
-											// Устанавливаем произвольный порт для локального подключения целевой машины
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_port = htons(0);
-											// Устанавливаем порт для локального подключения целевой машины
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_port = htons(0);
-											// Устанавливаем адрес для удаленного подключения целевой машины
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address;
-											// Устанавливаем адрес для локального подключения
-											::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
-											// Если адрес для удаленного подключения установлен
-											if(awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address > 0)
-												// Устанавливаем адрес IPv4 для клиента
-												this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->target, 32);
-											// Устанавливаем адрес IPv4 для сервера
-											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->source, 32);
-										} break;
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Устанавливаем размер структуры для целевой машины
-											tunnel->endpoint.size = sizeof(struct sockaddr_in6);
-											// Очищаем всю структуру для клиента
-											::memset(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
-											// Очищаем всю структуру для сервера
-											::memset(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
-											// Устанавливаем семейство IP-адресов у клиента
-											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_family = AF_INET6;
-											// Устанавливаем семейство IP-адресов у сервера
-											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_family = AF_INET6;
-											// Устанавливаем длину структуры у клиента
-											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_len = tunnel->endpoint.size;
-											// Устанавливаем длину структуры у сервера
-											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_len = tunnel->endpoint.size;
-											// Устанавливаем произвольный порт для локального подключения целевой машины
-											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_port = htons(0);
-											// Устанавливаем порт для локального подключения целевой машины
-											::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_port = htons(0);
-											// Устанавливаем адрес для удаленного подключения целевой машины
-											::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
-											// Устанавливаем адрес IPv6 для клиента
-											::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
-											// Если адрес для удаленного подключения установлен
-											if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], (uint8_t[16]){0}, 16) != 0)
-												// Устанавливаем адрес IPv6 для клиента
-												this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->target, 128);
-											// Устанавливаем адрес IPv6 для сервера
-											else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->source, 128);
-										} break;
-									}
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Устанавливаем событие на чтение и активируем его
-									EV_SET(&event, tunnel->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, tunnel);
-									// Добавляем новое событие в список изменений
-									::events::add(std::move(event));
-									// Устанавливаем флаг разрешающий выполнять чтение из сокета
-									tunnel->actions |= ::action::READ;
-									// Устанавливаем флаг разрешающий выполнять запись в сокет
-									tunnel->actions |= ::action::WRITE;
-									// Устанавливаем флаг разрешающий закрытие сокета
-									tunnel->actions |= ::action::CLOSE;
+							switch(static_cast <uint8_t> (tunnel->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Устанавливаем размер структуры для целевой машины
+									tunnel->endpoint.size = sizeof(struct sockaddr_in);
+									// Очищаем всю структуру для клиента
+									::memset(&::trust_cast <struct sockaddr_in> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
+									// Очищаем всю структуру для сервера
+									::memset(&::trust_cast <struct sockaddr_in> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
+									// Устанавливаем семейство IP-адресов у клиента
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_family = AF_INET;
+									// Устанавливаем семейство IP-адресов у сервера
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_family = AF_INET;
+									// Устанавливаем длину структуры у клиента
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_len = tunnel->endpoint.size;
+									// Устанавливаем длину структуры у сервера
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_len = tunnel->endpoint.size;
+									// Устанавливаем произвольный порт для локального подключения целевой машины
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_port = htons(0);
+									// Устанавливаем порт для локального подключения целевой машины
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_port = htons(0);
+									// Устанавливаем адрес для удаленного подключения целевой машины
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address;
+									// Устанавливаем адрес для локального подключения
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
+									// Если адрес для удаленного подключения установлен
+									if(awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address > 0)
+										// Устанавливаем адрес IPv4 для клиента
+										this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->target, 32);
+									// Устанавливаем адрес IPv4 для сервера
+									else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->source, 32);
 								} break;
-								// Для других типов сокетов
-								default: {
-									// Формируем отрицательный результат
-									result = false;
-									// Если установлена функция обратного вызова
-									if(tunnel->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Event type does not match";
-									// Если установлена функция обратного вызова
-									if(tunnel->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::ALREADY_EXISTS, error);
-									// Если функция обратного вызова вывода ошибки не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-										#endif
-									}
-								}
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Устанавливаем размер структуры для целевой машины
+									tunnel->endpoint.size = sizeof(struct sockaddr_in6);
+									// Очищаем всю структуру для клиента
+									::memset(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
+									// Очищаем всю структуру для сервера
+									::memset(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
+									// Устанавливаем семейство IP-адресов у клиента
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_family = AF_INET6;
+									// Устанавливаем семейство IP-адресов у сервера
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_family = AF_INET6;
+									// Устанавливаем длину структуры у клиента
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_len = tunnel->endpoint.size;
+									// Устанавливаем длину структуры у сервера
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_len = tunnel->endpoint.size;
+									// Устанавливаем произвольный порт для локального подключения целевой машины
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_port = htons(0);
+									// Устанавливаем порт для локального подключения целевой машины
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_port = htons(0);
+									// Устанавливаем адрес для удаленного подключения целевой машины
+									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
+									// Устанавливаем адрес IPv6 для клиента
+									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
+									// Если адрес для удаленного подключения установлен
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], (uint8_t[16]){0}, 16) != 0)
+										// Устанавливаем адрес IPv6 для клиента
+										this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->target, 128);
+									// Устанавливаем адрес IPv6 для сервера
+									else this->_eth.iface.setAddress(tunnel->iface, tunnel->source, tunnel->source, 128);
+								} break;
 							}
+							// Создаём объект события для Kqueue
+							struct kevent event{};
+							// Устанавливаем событие на чтение и активируем его
+							EV_SET(&event, tunnel->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, tunnel);
+							// Добавляем новое событие в список изменений
+							::events::add(std::move(event));
+							// Устанавливаем флаг разрешающий выполнять чтение из сокета
+							tunnel->actions |= ::action::READ;
+							// Устанавливаем флаг разрешающий выполнять запись в сокет
+							tunnel->actions |= ::action::WRITE;
+							// Устанавливаем флаг разрешающий закрытие сокета
+							tunnel->actions |= ::action::CLOSE;
 						// Если файловый дескриптор межпроцессного взаимодействия не существует
 						} else {
 							// Если установлена функция обратного вызова
