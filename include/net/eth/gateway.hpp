@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2026
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_GATEWAY__
 #define __AWH_GATEWAY__
 

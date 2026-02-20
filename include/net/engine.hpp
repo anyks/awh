@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2025
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_ENGINE__
 #define __AWH_ENGINE__
 
@@ -38,7 +41,7 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * @brief Тип сетевого асинхронного движка
+	 * @brief Базовый класс асинхронного сетевого движка
 	 *
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Engine {
@@ -430,45 +433,45 @@ namespace awh {
 			virtual bool isAlive(const event::id_t id) const noexcept = 0;
 		public:
 			/**
-			 * @brief Метод очистки основного движка фреймворка
+			 * @brief Метод очистки сетевого движка
 			 *
 			 */
 			virtual void clear() noexcept = 0;
 		public:
 			/**
-			 * @brief Метод принудительного срабатывания события
+			 * @brief Метод принудительного пинка базе событий
 			 *
 			 * @return результат выполнения операции
 			 */
 			virtual bool kick() noexcept = 0;
 			/**
-			 * @brief Метод инициализации основного движка фреймворка
+			 * @brief Метод инициализации сетевого движка
 			 *
 			 * @return результат выполнения инициализации
 			 */
 			virtual bool initialize() noexcept = 0;
 			/**
-			 * @brief Метод реинициализации основного движка фреймворка
+			 * @brief Метод реинициализации сетевого движка
 			 *
 			 * @return результат выполнения реинициализации
 			 */
 			virtual bool reinitialize() noexcept = 0;
 			/**
-			 * @brief Метод деинициализации основного движка фреймворка
+			 * @brief Метод деинициализации сетевого движка
 			 *
 			 * @return результат выполнения деинициализации
 			 */
 			virtual bool deinitialize() noexcept = 0;
 		public:
 			/**
-			 * @brief Метод проверки состояния инициализации основного движка фреймворка
+			 * @brief Метод проверки состояния инициализации сетевого движка
 			 *
 			 * @return состояние инициализации
 			 */
 			virtual bool isInitialized() const noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения количества событий в основном движке фреймворка
+			 * @brief Метод получения количества событий в сетевом движке
 			 *
 			 * @return количество событий
 			 */

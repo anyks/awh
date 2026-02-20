@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2025
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_NWT__
 #define __AWH_NWT__
 

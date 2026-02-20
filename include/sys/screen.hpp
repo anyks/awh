@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2025
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_SCREEN__
 #define __AWH_SCREEN__
 

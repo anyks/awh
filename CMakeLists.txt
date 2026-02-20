@@ -476,6 +476,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 

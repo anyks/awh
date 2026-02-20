@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2025
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_ETHERNET__
 #define __AWH_ETHERNET__
 

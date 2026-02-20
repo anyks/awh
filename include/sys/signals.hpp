@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2026
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_SIGNALS__
 #define __AWH_SIGNALS__
 

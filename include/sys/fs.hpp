@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2026
  */
 
+/**
+ * Экранируем повторную инициализацию модуля
+ */
 #ifndef __AWH_FS__
 #define __AWH_FS__
 

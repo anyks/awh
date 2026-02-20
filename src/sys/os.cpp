@@ -493,7 +493,7 @@ bool awh::Operating_System::isAdmin() const noexcept {
 /**
  * @brief Метод определения операционной системы
  *
- * @return название операционной системы
+ * @return семейство операционных систем
  */
 awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	/**
@@ -564,6 +564,56 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	#else
 		// Выводим флаг операционной системы
 		return family_t::NONE;
+	#endif
+}
+/**
+ * @brief Метод определение архитектуры процессора
+ *
+ * @return архитектура процессора
+ */
+awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcept {
+	/**
+	 * Если процессор принадлежит к x86_64
+	 */
+	#if __x86_64__ || _M_X64
+		// Выводим определённую архитектуру процессора
+		return cpu_t::AMD64;
+	/**
+	 * Если процессор принадлежит к ARM64
+	 */
+	#elif __aarch64__ || _M_ARM64
+		// Выводим определённую архитектуру процессора
+		return cpu_t::ARM64;
+	/**
+	 * Если процессор принадлежит к ARM
+	 */
+	#elif __arm__ || _M_ARM
+		// Выводим определённую архитектуру процессора
+		return cpu_t::ARM;
+	/**
+	 * Если процессор принадлежит к x86
+	 */
+	#elif __i386__ || _M_IX86
+		// Выводим определённую архитектуру процессора
+		return cpu_t::X86;
+	/**
+	 * Если процессор принадлежит к PowerPC
+	 */
+	#elif __powerpc__ || __ppc__
+		// Выводим определённую архитектуру процессора
+		return cpu_t::PPC;
+	/**
+	 * Если процессор принадлежит к MIPS
+	 */
+	#elif __mips__
+		// Выводим определённую архитектуру процессора
+		return cpu_t::MIPS;
+	/**
+	 * Для остальных типов процессоров
+	 */
+	#else
+		// Выводим определённую архитектуру процессора
+		return cpu_t::UNKNOWN;
 	#endif
 }
 /**

@@ -1,0 +1,261 @@
+/**
+ * @file: unit.hpp
+ * @date: 2026-02-20
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_UNIT__
+#define __AWH_UNIT__
+
+/**
+ * Стандартные модули
+ */
+#include <type_traits>
+
+/**
+ * Наши модули
+ */
+#include "../net/io.hpp"
+#include "../sys/signals.hpp"
+#include "../sys/callback.hpp"
+
+/**
+ * @brief Основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * @brief Пространство имён узал источника
+	 *
+	 */
+	namespace unit {
+		/**
+		 * Подписываемся на стандартное пространство имён
+		 */
+		using namespace std;
+		/**
+		 * @brief Класс базового узла источника
+		 *
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Unit {
+			private:
+				// Таймаут опроса базы событий
+				int32_t _timeout;
+			private:
+				// Флаг активации перехвата сигналов
+				event::mode_t _intercep;
+			protected:
+				// Статус работы узла источника
+				event::status_t _status;
+			private:
+				// Объект работы с сигналами
+				signals_t _signals;
+			protected:
+				// Хранилище функций обратного вызова
+				callback_t _callback;
+			protected:
+				// Объект асинхронного сетевого движка
+				engine::io_t * _io;
+			protected:
+				// Объект фреймворка
+				const fmk_t * _fmk;
+				// Объект работы с логами
+				const log_t * _log;
+			private:
+				/**
+				 * @brief Метод вывода полученного сигнала
+				 *
+				 * @param sig идентификатор сигнала
+				 */
+				void signal(const int32_t sig) const noexcept;
+			public:
+				/**
+				 * @brief Метод принудительного пинка базе событий
+				 *
+				 * @return результат выполнения операции
+				 */
+				bool kick() noexcept;
+			public:
+				/**
+				 * @brief Метод определения мастер-процесса
+				 *
+				 * @return результат проверки
+				 */
+				bool master() const noexcept;
+			public:
+				/**
+				 * @brief Метод проверки на запуск работы
+				 *
+				 * @return результат проверки
+				 */
+				bool working() const noexcept;
+			public:
+				/**
+				 * @brief Метод очистки базы событий
+				 *
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * @brief Метод реинициализации базы событий
+				 *
+				 */
+				void reinit() noexcept;
+			public:
+				/**
+				 * @brief Метод получения количества событий в базе событий
+				 *
+				 * @return количество событий
+				 */
+				size_t events() const noexcept;
+			public:
+				/**
+				 * @brief Метод остановки клиента
+				 *
+				 */
+				virtual void stop() noexcept;
+				/**
+				 * @brief Метод запуска клиента
+				 *
+				 */
+				virtual void start() noexcept;
+			public:
+				/**
+				 * @brief Метод установки времени блокировки базы событий в ожидании событий
+				 *
+				 * @param timeout время ожидания событий в миллисекундах
+				 */
+				void rate(const int32_t timeout = -1) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				virtual void callback(const callback_t & callback) noexcept;
+			public:
+				/**
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
+				 */
+				template <typename T, class... Args>
+				/**
+				 * @brief Метод подключения финкции обратного вызова
+				 *
+				 * @param name  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
+				 */
+				auto on(const char * name, Args... args) noexcept -> uint32_t {
+					// Если мы получили название функции обратного вызова
+					if(name != nullptr)
+						// Выполняем установку функции обратного вызова
+						return this->_callback.on <T> (name, args...);
+					// Выводим результат по умолчанию
+					return 0;
+				}
+				/**
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
+				 */
+				template <typename T, class... Args>
+				/**
+				 * @brief Метод подключения финкции обратного вызова
+				 *
+				 * @param name  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
+				 */
+				auto on(const string & name, Args... args) noexcept -> uint32_t {
+					// Если мы получили название функции обратного вызова
+					if(!name.empty())
+						// Выполняем установку функции обратного вызова
+						return this->_callback.on <T> (name, args...);
+					// Выводим результат по умолчанию
+					return 0;
+				}
+				/**
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
+				 */
+				template <typename T, class... Args>
+				/**
+				 * @brief Метод подключения финкции обратного вызова
+				 *
+				 * @param fid  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
+				 */
+				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
+					// Если мы получили название функции обратного вызова
+					if(fid > 0)
+						// Выполняем установку функции обратного вызова
+						return this->_callback.on <T> (fid, args...);
+					// Выводим результат по умолчанию
+					return 0;
+				}
+				/**
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam A    тип идентификатора функции
+				 * @tparam B    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
+				 */
+				template <typename A, typename B, class... Args>
+				/**
+				 * @brief Метод подключения финкции обратного вызова
+				 *
+				 * @param fid  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
+				 */
+				auto on(const A fid, Args... args) noexcept -> uint32_t {
+					// Если мы получили на вход число
+					if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+						// Выполняем установку функции обратного вызова
+						return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
+					// Выводим результат по умолчанию
+					return 0;
+				}
+			public:
+				/**
+				 * @brief Метод активации/деактивации перехвата сигналов
+				 *
+				 * @param mode флаг активации
+				 */
+				void interception(const event::mode_t mode) noexcept;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~Unit() noexcept;
+		} unit_t;
+	};
+};
+
+#endif // __AWH_UNIT__

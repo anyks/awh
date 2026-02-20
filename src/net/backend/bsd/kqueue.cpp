@@ -47842,7 +47842,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 	return false;
 }
 /**
- * @brief Метод очистки основного движка фреймворка
+ * @brief Метод очистки сетевого движка
  *
  */
 void awh::engine::IO::clear() noexcept {
@@ -48250,7 +48250,7 @@ void awh::engine::IO::clear() noexcept {
 	}
 }
 /**
- * @brief Метод принудительного срабатывания события
+ * @brief Метод принудительного пинка базе событий
  *
  * @return результат выполнения операции
  */
@@ -48284,7 +48284,7 @@ bool awh::engine::IO::kick() noexcept {
 	return result;
 }
 /**
- * @brief Метод инициализации основного движка фреймворка
+ * @brief Метод инициализации сетевого движка
  *
  * @return результат выполнения инициализации
  */
@@ -48338,7 +48338,7 @@ bool awh::engine::IO::initialize() noexcept {
 	return result;
 }
 /**
- * @brief Метод реинициализации основного движка фреймворка
+ * @brief Метод реинициализации сетевого движка
  *
  * @return результат выполнения реинициализации
  */
@@ -48863,7 +48863,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 	return result;
 }
 /**
- * @brief Метод деинициализации основного движка фреймворка
+ * @brief Метод деинициализации сетевого движка
  *
  * @return результат выполнения деинициализации
  */
@@ -49090,7 +49090,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки состояния инициализации основного движка фреймворка
+ * @brief Метод проверки состояния инициализации сетевого движка
  *
  * @return состояние инициализации
  */
@@ -49099,12 +49099,12 @@ bool awh::engine::IO::isInitialized() const noexcept {
 	return (::__awh_kq__ != net::invalid_socket_t);
 }
 /**
- * @brief Метод получения количества событий в основном движке фреймворка
+ * @brief Метод получения количества событий в сетевом движке
  *
  * @return количество событий
  */
 size_t awh::engine::IO::eventsCount() const noexcept {
-	// Выводим количество событий в основном движке фреймворка
+	// Выводим количество событий в сетевом движке
 	return ::__awh_nodes__.size();
 }
 /**
@@ -50455,6 +50455,6 @@ awh::engine::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::engine::IO::~IO() noexcept {
-	// Выполняем деинициализацию основного движка фреймворка
+	// Выполняем деинициализацию сетевого движка
 	this->deinitialize();
 }
