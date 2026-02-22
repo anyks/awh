@@ -819,25 +819,45 @@ void awh::unit::Cluster::status(const event::id_t eid, const event::status_t sta
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если процесс является дочерним
 			if(!this->master()){
-				// Выполняем поиск процесса по идентификатору
-				auto i = this->_workers.find(::getpid());
-				// Если указанный процесс найден
-				if(i != this->_workers.end()){
-					// Если уничтоженное событие соответствует событию процесса
-					if(i->second->eid == eid){
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("exit"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, SIGSTOP);
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("events"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
-						// Удаляем завершившийся процесс из списка активных воркеров
-						this->_workers.erase(i);
-						// Завершаем работу процесса
-						::exit(EXIT_SUCCESS);
+				// Если родительский процесс живой
+				if(this->_pid == ::getppid()){
+					// Выполняем поиск процесса по идентификатору
+					auto i = this->_workers.find(::getpid());
+					// Если указанный процесс найден
+					if(i != this->_workers.end()){
+						// Если уничтоженное событие соответствует событию процесса
+						if(i->second->eid == eid){
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("exit"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, SIGSTOP);
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("events"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
+							// Удаляем завершившийся процесс из списка активных воркеров
+							this->_workers.erase(i);
+							// Завершаем работу процесса
+							::exit(EXIT_SUCCESS);
+						}
 					}
+				// Если родительский процесс умер
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Процесс превратился в зомби, самоликвидируем его
+						this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+					#endif
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				}
 			}
 		} break;
@@ -945,8 +965,31 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 			if(i != this->_accord.end())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("available", i->second, status, size);
-		// Если процесс является дочерним то выполняем функцию обратного вызова с идентификатором родительского процесса
-		} else this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("available", this->_pid, status, size);
+		// Если процесс является дочерним
+		} else {
+			// Если родительский процесс живой
+			if(this->_pid == ::getppid())
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("available", this->_pid, status, size);
+			// Если родительский процесс умер
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (status), size), log_t::flag_t::CRITICAL, ::getpid());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Процесс превратился в зомби, самоликвидируем его
+					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
+		}
 	}
 }
 /**
