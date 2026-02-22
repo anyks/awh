@@ -477,6 +477,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
@@ -543,6 +544,11 @@ option(CMAKE_BUILD_SAMPLES "Build unit samples" OFF)
 if (${CMAKE_BUILD_SAMPLES})
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/samples)
+
+    # Устанавливаем имя приложения работы с юнитом кластера
+    SET(UNIT_APP_CLUSTER_NAME unit-cluster)
+    # Указываем что нужно собрать приложение работы с юнитом кластера
+    option(CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE "Build IP app sample" ON)
 
     # Устанавливаем имя приложения работы с IP-адресами
     SET(IP_APP_NET_NAME net-ip)
@@ -791,6 +797,18 @@ endif()
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
+    # Если нужно собрать семплы для работы с юнитом кластера
+    if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT CLUSTER: Yes\n")
+        # Выполняем создание приложения работы с юнитом кластера
+        add_sample(${UNIT_APP_CLUSTER_NAME} sample/units/cluster.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом кластера
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT CLUSTER: No\n")
+    endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
@@ -1160,7 +1178,18 @@ if (CMAKE_SHARED_BUILD_LIB)
 
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
-        # Если нужно собрать семплы для работы с ОС
+        # Если нужно собрать семплы для работы с юнитом кластера
+        if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом кластера
+            target_link_libraries(
+                ${UNIT_APP_CLUSTER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+    
+        # Если нужно собрать семплы для работы с IP-адресами
         if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
             # Выполняем сборку приложения работы с IP-адресами
             target_link_libraries(
@@ -1653,7 +1682,19 @@ if (CMAKE_SHARED_BUILD_LIB)
 else (CMAKE_SHARED_BUILD_LIB)
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
-        # Если нужно собрать семплы для работы с ОС
+        # Если нужно собрать семплы для работы с юнитом кластера
+        if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом кластера
+            target_link_libraries(
+                ${UNIT_APP_CLUSTER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+    
+        # Если нужно собрать семплы для работы с IP-адресами
         if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
             # Выполняем сборку приложения работы с IP-адресами
             target_link_libraries(
@@ -2201,9 +2242,22 @@ endif (CMAKE_SHARED_BUILD_LIB)
 if (${CMAKE_BUILD_SAMPLES})
     # Активация формирования дампа ядра в реже отладки под MacOS X
     if (CMAKE_BUILD_TYPE MATCHES Debug)
+        # Если сборка производится под операционную систему MacOS X
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+            # Указываем путь к файлу с правами для разрешения формирования дампа ядра на MacOS X
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
-            # Если нужно собрать семплы для работы с ОС
+            
+            # Если нужно собрать семплы для работы с юнитом кластера
+            if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом кластера
+                add_custom_command(TARGET "${UNIT_APP_CLUSTER_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_CLUSTER_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${UNIT_APP_CLUSTER_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+            
+            # Если нужно собрать семплы для работы с IP-адресами
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем сборку приложения работы с IP-адресами
                 add_custom_command(TARGET "${IP_APP_NET_NAME}" POST_BUILD
@@ -2567,7 +2621,13 @@ if (${CMAKE_BUILD_SAMPLES})
             FetchContent_MakeAvailable(PVS_CMakeModule)
             include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
 
-            # Если нужно собрать семплы для работы с ОС
+            # Если нужно собрать семплы для работы с юнитом кластера
+            if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом кластера
+                pvs_studio_add_target(TARGET ${UNIT_APP_CLUSTER_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_CLUSTER_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с IP-адресами
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем анализ приложения работы с IP-адресами
                 pvs_studio_add_target(TARGET ${IP_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -2852,7 +2912,13 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
-    # Если нужно собрать семплы для работы с ОС
+    # Если нужно собрать семплы для работы с юнитом кластера
+    if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом кластера
+        install(TARGETS ${UNIT_APP_CLUSTER_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с IP-адресами
     if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
         # Устанавливаем приложение работы с IP-адресами
         install(TARGETS ${IP_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

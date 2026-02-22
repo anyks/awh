@@ -1593,8 +1593,7 @@ namespace {
 		// Уменьшаем счётчик ссылок узла
 		this->_node->refs.fetch_sub(1, std::memory_order_release);
 		// Если счётчик ссылок узла равен нулю и статус узла установлен как мусорный
-		if((this->_node->refs == 0) &&
-		   (this->_node->state.status == event::status_t::GARBAGE)){
+		if((this->_node->refs == 0) && (this->_node->state.status == event::status_t::GARBAGE)){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -1662,6 +1661,13 @@ namespace {
 				case static_cast <uint8_t> (event::node_t::IPC): {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(ipc->transfer.fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(ipc->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						ipc->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -1728,6 +1734,13 @@ namespace {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем текущее значение объекта туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (this->_node);
+					// Если дескриптор сокета инициализирован
+					if(tunnel->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(tunnel->fd);
+						// Сбрасываем значение дескриптора сокета
+						tunnel->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(tunnel->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -2516,7 +2529,8 @@ namespace events {
 					// Получаем текущее значение объекта таймера
 					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
 					// Если статусы события изменились
-					if(timer->state.status != timer->state.stash){
+					if((timer->state.status != timer->state.stash) &&
+					   (timer->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2530,7 +2544,8 @@ namespace events {
 					// Получаем текущее значение объекта директории
 					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 					// Если статусы события изменились
-					if(dir->state.status != dir->state.stash){
+					if((dir->state.status != dir->state.stash) &&
+					   (dir->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2554,7 +2569,8 @@ namespace events {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если статусы события изменились
-					if(fs->state.status != fs->state.stash){
+					if((fs->state.status != fs->state.stash) &&
+					   (fs->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2578,7 +2594,8 @@ namespace events {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если статусы события изменились
-					if(ipc->state.status != ipc->state.stash){
+					if((ipc->state.status != ipc->state.stash) &&
+					   (ipc->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2602,7 +2619,8 @@ namespace events {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если статусы события изменились
-					if(peer->state.status != peer->state.stash){
+					if((peer->state.status != peer->state.stash) &&
+					   (peer->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2626,7 +2644,8 @@ namespace events {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Если статусы события изменились
-					if(origin->state.status != origin->state.stash){
+					if((origin->state.status != origin->state.stash) &&
+					   (origin->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2650,7 +2669,8 @@ namespace events {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
 					// Если статусы события изменились
-					if(tunnel->state.status != tunnel->state.stash){
+					if((tunnel->state.status != tunnel->state.stash) &&
+					   (tunnel->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2664,7 +2684,8 @@ namespace events {
 					// Получаем объект посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
 					// Если статусы события изменились
-					if(mediator->state.status != mediator->state.stash){
+					if((mediator->state.status != mediator->state.stash) &&
+					   (mediator->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(mediator->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2678,7 +2699,8 @@ namespace events {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если статусы события изменились
-					if(client->state.status != client->state.stash){
+					if((client->state.status != client->state.stash) &&
+					   (client->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -2702,7 +2724,8 @@ namespace events {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если статусы события изменились
-					if(server->state.status != server->state.stash){
+					if((server->state.status != server->state.stash) &&
+					   (server->state.status != event::status_t::DESTROYED)){
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -18724,10 +18747,15 @@ namespace io {
 						ipc->transfer.queue.clear();
 						// Если дескриптор сокета инициализирован
 						if(ipc->transfer.fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(ipc->transfer.fd);
-							// Сбрасываем значение дескриптора сокета
-							ipc->transfer.fd = net::invalid_socket_t;
+							// Если в сокете нет ошибок
+							if(eth->socket.error(ipc->transfer.fd) == 0){
+								// Создаём объект события для Kqueue
+								struct kevent event{};
+								// Деактивируем событие на чтение данных из сокета
+								EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+								// Добавляем новое событие в список изменений
+								::events::add(std::move(event));
+							}
 						}
 						// Если событие закрытия разрешено
 						if(ipc->transfer.actions & ::action::CLOSE){
@@ -18832,10 +18860,15 @@ namespace io {
 						#endif
 						// Если дескриптор сокета инициализирован
 						if(tunnel->fd != net::invalid_socket_t){
-							// Закрываем дескриптор сокета
-							::close(tunnel->fd);
-							// Сбрасываем значение дескриптора сокета
-							tunnel->fd = net::invalid_socket_t;
+							// Если в сокете нет ошибок
+							if(eth->socket.error(tunnel->fd) == 0){
+								// Создаём объект события для Kqueue
+								struct kevent event{};
+								// Деактивируем событие на чтение данных из сокета
+								EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+								// Добавляем новое событие в список изменений
+								::events::add(std::move(event));
+							}
 						}
 					} break;
 					// Если узел является посредником
@@ -49487,19 +49520,22 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
+				// Если ошибка не была вызвана прерыванием системного вызова
+				if(!(result = (errno == EINTR))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
 			// Если есть события для обработки
 			} else if(events > 0) {
 				// Выполняем перебор всех полученных событий
@@ -50455,6 +50491,166 @@ awh::engine::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::engine::IO::~IO() noexcept {
-	// Выполняем деинициализацию сетевого движка
-	this->deinitialize();
+	// Если Kqueue инициализирован
+	if(::__awh_kq__ != net::invalid_socket_t){
+		// Выполняем закрытие Kqueue
+		::close(::__awh_kq__);
+		// Очищаем временный список подготовленных событий
+		::local::change.clear();
+	}
+	// Если список активных сессий одноранговых узлов-источников не пуст
+	if(!::__awh_origin_sessions__.empty())
+		// Очищаем список активных сессий одноранговых узлов-источников
+		::__awh_origin_sessions__.clear();
+	// Если после деинициализации остались активные узлы
+	if(!::__awh_nodes__.empty()){
+		// Выполняем перебор всех активных узлов
+		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является пользовательским событием
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL):
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				break;
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					::io::dir_t * dir = awh_cast <::io::dir_t *> (i->second.get());
+					// Если каталог открыт
+					if(dir->handle != nullptr)
+						// Закрываем каталог
+						::closedir(dir->handle);
+					// Если дескриптор сокета инициализирован
+					if(dir->fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(dir->fd);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(fs->fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(fs->fd);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(ipc->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(ipc->transfer.fd);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(peer->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(peer->transfer.fd);
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					/**
+					 * Для операционной системы FreeBSD
+					 */
+					#if __FreeBSD__
+						// Если имя сетевого интерфейса туннеля установлена
+						if(!tunnel->iface.empty())
+							// Удаляем сетевой интерфейс туннеля
+							this->_eth.iface.destroy(tunnel->iface);
+					#endif
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(client->transfer.fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(client->transfer.fd);
+					// Если событие является UNIX-доменным
+					if(client->state.family == event::family_t::UDS){
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (client->state.type)){
+							/**
+							 * Для операционной системы MacOS X, NetBSD, OpenBSD
+							 */
+							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+								// Если событие принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET):
+							#endif
+							// Если событие принадлежит к типу DATAGRAM
+							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+								// Извлекаем файл сокета клиента
+								const string & address = ::fs::unixSocketAddress(
+									::trust_cast <struct sockaddr_un> (client->endpoint.client),
+									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+								);
+								// Если адрес получен
+								if(!address.empty())
+									// Удаляем файл сокета клиента
+									::unlink(address.c_str());
+							} break;
+						}
+					}
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Если дескриптор сокета инициализирован
+					if(server->fd != net::invalid_socket_t)
+						// Закрываем дескриптор сокета
+						::close(server->fd);
+					// Если событие является UNIX-доменным датаграммным сокетом
+					if(server->state.family == event::family_t::UDS){
+						// Извлекаем файл сокета клиента
+						const string & address = ::fs::unixSocketAddress(
+							::trust_cast <struct sockaddr_un> (server->endpoint.server),
+							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+						);
+						// Если адрес получен
+						if(!address.empty())
+							// Удаляем файл сокета клиента
+							::unlink(address.c_str());
+					}
+					// Производим удаление узла
+					i = ::__awh_nodes__.erase(i);
+				} break;
+				// Для других типов узлов, производим удаление узла
+				default: i = ::__awh_nodes__.erase(i);
+			}
+		}
+	}
 }

@@ -189,11 +189,6 @@ using namespace placeholders;
  */
 namespace {
 	/**
-	 * @brief Идентификатор основного процесса
-	 *
-	 */
-	pid_t __awh_pid__ = 0;
-	/**
 	 * @brief Идентификатор юнита который запустил работу цикла событий
 	 *
 	 */
@@ -222,7 +217,7 @@ namespace {
  */
 void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 	// Если процесс является дочерним
-	if(::__awh_pid__ != ::getpid()){
+	if(this->_pid != ::getpid()){
 		/**
 		 * Определяем тип сигнала
 		 */
@@ -288,7 +283,7 @@ bool awh::unit::Unit::kick() noexcept {
  */
 bool awh::unit::Unit::master() const noexcept {
 	// Выводим результат проверки
-	return (::__awh_pid__ == ::getpid());
+	return (this->_pid == ::getpid());
 }
 /**
  * @brief Метод проверки на запуск работы
@@ -513,13 +508,12 @@ void awh::unit::Unit::interception(const event::mode_t mode) noexcept {
  * @param log объект для работы с логами
  */
 awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
- _timeout(-1), _intercep(event::mode_t::DISABLED),
+ _pid(::getpid()), _timeout(-1),
+ _intercep(event::mode_t::DISABLED),
  _status(event::status_t::NONE), _signals(fmk, log),
  _callback(fmk, log), _io(nullptr), _fmk(fmk), _log(log) {
 	// Если база событий не инициализированна
 	if(::__awh_event_base__ == nullptr){
-		// Активируем идентификатор родительского прцоесса
-		::__awh_pid__ = ::getpid();
 		// Выполняем создание базы событий
 		::__awh_event_base__ = make_unique <engine::io_t> (fmk, log);
 		// Инициализируем базу событий, если база событий не инициализированна

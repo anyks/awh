@@ -49,6 +49,9 @@ namespace awh {
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Unit {
+			protected:
+				// Идентификатор процесса
+				pid_t _pid;
 			private:
 				// Таймаут опроса базы событий
 				int32_t _timeout;
