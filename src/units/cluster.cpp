@@ -593,6 +593,15 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			if(this->_count > 0)
 				// Выполняем создание дочерних процессов
 				this->create();
+			// Если количество создаваемых процессов не установлено
+			else {
+				// Выводим информацию о запущенном сервере на PIPE
+				this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("events"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
+			}
 		} break;
 		// Если работа кластера подлежит уничтожение
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
