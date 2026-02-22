@@ -1,0 +1,128 @@
+/**
+ * @file: notifier.hpp
+ * @date: 2026-02-22
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_NOTIFIER__
+#define __AWH_NOTIFIER__
+
+/**
+ * Наши модули
+ */
+#include "unit.hpp"
+
+/**
+ * @brief Основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * @brief Пространство имён узла источника
+	 *
+	 */
+	namespace unit {
+		/**
+		 * Подписываемся на стандартное пространство имён
+		 */
+		using namespace std;
+		/**
+		 * @brief Класс узла уведомителя
+		 *
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Notifier : public unit_t {
+			private:
+				/**
+				 * @brief Метод обработки событий записи сообщений кластера
+				 *
+				 * @param eid  идентификатор события
+				 * @param size размер сообщения
+				 */
+				void write(const event::id_t eid, const size_t size) noexcept;
+				/**
+				 * @brief Метод обработки событий чтения сообщений кластера
+				 *
+				 * @param eid  идентификатор события
+				 * @param data данные сообщения
+				 * @param size размер сообщения
+				 */
+				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки событий кластера
+				 *
+				 * @param eid    идентификатор события
+				 * @param status статус события
+				 */
+				void status(const event::id_t eid, const event::status_t status) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки исключений событий кластера
+				 *
+				 * @param eid идентификатор события
+				 * @param error тип ошибки
+				 * @param message сообщение об ошибке
+				 */
+				void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки событий доступного размера очереди события кластера
+				 *
+				 * @param eid    идентификатор события
+				 * @param status статус события
+				 * @param size   доступный размер очереди в байтах
+				 */
+				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод создания события уведомителя
+				 *
+				 * @return идентификатор события уведомителя
+				 */
+				event::id_t create() noexcept;
+			public:
+				/**
+				 * @brief Метод уничтожения события уведомителя
+				 *
+				 * @param eid идентификатор события уведомителя
+				 */
+				void destroy(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод триггера события уведомителя
+				 *
+				 * @param eid    идентификатор события уведомителя
+				 * @param buffer указатель на буфер данных
+				 * @param size   размер буфера данных
+				 * @return       количество обработанных событий
+				 */
+				size_t trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Notifier(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Notifier() noexcept;
+		} notifier_t;
+	};
+};
+
+#endif // __AWH_NOTIFIER__

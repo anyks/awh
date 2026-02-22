@@ -213,8 +213,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _fmk(fmk), _log(log) {}
+awh::unit::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**
  * @brief Деструктор
  *

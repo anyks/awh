@@ -1585,8 +1585,8 @@ bool awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t actio
  * @param log объект для работы с логами
  */
 awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _name{AWH_SHORT_NAME}, _rebirth(false),
- _count(0), _type(event::type_t::SEQPACKET), _fmk(fmk), _log(log) {
+ unit_t(fmk, log), _name{AWH_SHORT_NAME},
+ _rebirth(false), _count(0), _type(event::type_t::SEQPACKET) {
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */

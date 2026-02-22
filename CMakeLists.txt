@@ -479,6 +479,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/notifier.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
@@ -555,6 +556,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(UNIT_APP_CLUSTER_NAME unit-cluster)
     # Указываем что нужно собрать приложение работы с юнитом кластера
     option(CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE "Build Unit Cluster app sample" ON)
+
+    # Устанавливаем имя приложения работы с юнитом уведомителя
+    SET(UNIT_APP_NOTIFIER_NAME unit-notifier)
+    # Указываем что нужно собрать приложение работы с юнитом уведомителя
+    option(CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE "Build Unit Notifier app sample" ON)
 
     # Устанавливаем имя приложения работы с IP-адресами
     SET(IP_APP_NET_NAME net-ip)
@@ -826,6 +832,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Cluster: No\n")
     endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом уведомителя
+    if (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT Notifier: Yes\n")
+        # Выполняем создание приложения работы с юнитом уведомителя
+        add_sample(${UNIT_APP_NOTIFIER_NAME} sample/units/notifier.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом уведомителя
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT Notifier: No\n")
+    endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -1217,6 +1235,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом уведомителя
+        if (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом уведомителя
+            target_link_libraries(
+                ${UNIT_APP_NOTIFIER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
     
         # Если нужно собрать семплы для работы с IP-адресами
         if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
@@ -1734,6 +1763,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом уведомителя
+        if (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом уведомителя
+            target_link_libraries(
+                ${UNIT_APP_NOTIFIER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
     
         # Если нужно собрать семплы для работы с IP-адресами
         if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
@@ -2307,6 +2348,16 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с юнитом уведомителя
+            if (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом уведомителя
+                add_custom_command(TARGET "${UNIT_APP_NOTIFIER_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_NOTIFIER_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${UNIT_APP_NOTIFIER_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
             
             # Если нужно собрать семплы для работы с IP-адресами
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
@@ -2684,6 +2735,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${UNIT_APP_CLUSTER_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_CLUSTER_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом уведомителя
+            if (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом уведомителя
+                pvs_studio_add_target(TARGET ${UNIT_APP_NOTIFIER_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_NOTIFIER_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с IP-адресами
             if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
                 # Выполняем анализ приложения работы с IP-адресами
@@ -2980,6 +3037,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с юнитом кластера
         install(TARGETS ${UNIT_APP_CLUSTER_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом уведомителя
+    if (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом уведомителя
+        install(TARGETS ${UNIT_APP_NOTIFIER_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с IP-адресами
     if (${CMAKE_BUILD_IP_NET_APP_SAMPLE})

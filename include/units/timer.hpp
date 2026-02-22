@@ -51,11 +51,6 @@ namespace awh {
 				// Список идентификаторов событий таймеров
 				unordered_set <event::id_t> _timers;
 			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
-			private:
 				/**
 				 * @brief Метод обновления статуса таймера
 				 *

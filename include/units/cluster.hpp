@@ -109,11 +109,6 @@ namespace awh {
 				// Список активных воркеров
 				unordered_map <pid_t, unique_ptr <worker_t>> _workers;
 			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
-			private:
 				/**
 				 * @brief Метод создания дочерних процессов при запуске кластера
 				 *
