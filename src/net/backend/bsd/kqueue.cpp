@@ -18747,14 +18747,23 @@ namespace io {
 						ipc->transfer.queue.clear();
 						// Если дескриптор сокета инициализирован
 						if(ipc->transfer.fd != net::invalid_socket_t){
-							// Если в сокете нет ошибок
-							if(eth->socket.error(ipc->transfer.fd) == 0){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Деактивируем событие на чтение данных из сокета
-								EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-								// Добавляем новое событие в список изменений
-								::events::add(std::move(event));
+							// Если процесс является основным процессом
+							if(::__awh_pid__ == ::getpid()){
+								// Если в сокете нет ошибок
+								if(eth->socket.error(ipc->transfer.fd) == 0){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									// Добавляем новое событие в список изменений
+									::events::add(std::move(event));
+								}
+							// Если процесс является дочерним процессом
+							} else {
+								// Закрываем дескриптор сокета
+								::close(ipc->transfer.fd);
+								// Сбрасываем значение дескриптора сокета
+								ipc->transfer.fd = net::invalid_socket_t;
 							}
 						}
 						// Если событие закрытия разрешено
@@ -18860,14 +18869,23 @@ namespace io {
 						#endif
 						// Если дескриптор сокета инициализирован
 						if(tunnel->fd != net::invalid_socket_t){
-							// Если в сокете нет ошибок
-							if(eth->socket.error(tunnel->fd) == 0){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Деактивируем событие на чтение данных из сокета
-								EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-								// Добавляем новое событие в список изменений
-								::events::add(std::move(event));
+							// Если процесс является основным процессом
+							if(::__awh_pid__ == ::getpid()){
+								// Если в сокете нет ошибок
+								if(eth->socket.error(tunnel->fd) == 0){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									// Добавляем новое событие в список изменений
+									::events::add(std::move(event));
+								}
+							// Если процесс является дочерним процессом
+							} else {
+								// Закрываем дескриптор сокета
+								::close(tunnel->fd);
+								// Сбрасываем значение дескриптора сокета
+								tunnel->fd = net::invalid_socket_t;
 							}
 						}
 					} break;

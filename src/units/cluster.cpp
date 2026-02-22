@@ -140,23 +140,14 @@ void awh::unit::Cluster::create() noexcept {
 							// Уничтожаем событие родительского процесса
 							this->_io->destroy(events[0]);
 							// Если список соответствия не пустой
-							if(!this->_accord.empty())
-								// Очищаем список соответствий
-								this->_accord.clear();
-							// Если список активных воркеров не пустой
-							if(!this->_workers.empty()){
-								// Переходим по всему списку активных воркеров
-								for(auto & [pid, worker] : this->_workers){
-									// Запрещаем анализ остановленного процесса
-									worker->pid = 0;
-									// Устанавливаем функцию обратного вызова на событие изменения статуса
-									this->_io->on(worker->eid, static_cast <event::callback::status_t> (nullptr));
-									// Уничтожаем событие родительского процесса
-									this->_io->destroy(worker->eid);
-								}
-								// Уничтожаем события всех активных воркеров
-								this->_workers.clear();
+							if(!this->_accord.empty()){
+								// Переходим по всему списку соответствий
+								for(auto & [eid, pid] : this->_accord)
+									// Уничтожаем событие других дочерних процессов
+									this->_io->destroy(eid);
 							}
+							// Уничтожаем события всех активных воркеров
+							this->_workers.clear();
 							// Устананавливаем опции события
 							if(!this->_io->options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 								/**
@@ -406,23 +397,14 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						// Уничтожаем событие родительского процесса
 						this->_io->destroy(events[0]);
 						// Если список соответствия не пустой
-						if(!this->_accord.empty())
-							// Очищаем список соответствий
-							this->_accord.clear();
-						// Если список активных воркеров не пустой
-						if(!this->_workers.empty()){
-							// Переходим по всему списку активных воркеров
-							for(auto & [pid, worker] : this->_workers){
-								// Запрещаем анализ остановленного процесса
-								worker->pid = 0;
-								// Устанавливаем функцию обратного вызова на событие изменения статуса
-								this->_io->on(worker->eid, static_cast <event::callback::status_t> (nullptr));
-								// Уничтожаем событие родительского процесса
-								this->_io->destroy(worker->eid);
-							}
-							// Уничтожаем события всех активных воркеров
-							this->_workers.clear();
+						if(!this->_accord.empty()){
+							// Переходим по всему списку соответствий
+							for(auto & [eid, pid] : this->_accord)
+								// Уничтожаем событие других дочерних процессов
+								this->_io->destroy(eid);
 						}
+						// Уничтожаем события всех активных воркеров
+						this->_workers.clear();
 						// Устананавливаем опции события
 						if(!this->_io->options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 							/**
@@ -837,16 +819,26 @@ void awh::unit::Cluster::status(const event::id_t eid, const event::status_t sta
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если процесс является дочерним
 			if(!this->master()){
-				// Удаляем завершившийся процесс из списка активных воркеров
-				this->_workers.erase(::getpid());
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("exit"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const int32_t)> ("exit", ::getpid(), SIGSTOP);
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("events"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const event_t)> ("events", ::getpid(), event_t::STOP);
+				// Выполняем поиск процесса по идентификатору
+				auto i = this->_workers.find(::getpid());
+				// Если указанный процесс найден
+				if(i != this->_workers.end()){
+					// Если уничтоженное событие соответствует событию процесса
+					if(i->second->eid == eid){
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("exit"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, SIGSTOP);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("events"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
+						// Удаляем завершившийся процесс из списка активных воркеров
+						this->_workers.erase(i);
+						// Завершаем работу процесса
+						::exit(EXIT_SUCCESS);
+					}
+				}
 			}
 		} break;
 		// Если мы получили любой другой статус
@@ -958,46 +950,6 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 	}
 }
 /**
- * @brief Метод очистки всех выделенных ресурсов
- *
- */
-void awh::unit::Cluster::clear() noexcept {
-	// Если процесс является родительским
-	if(this->master()){
-		// Если список активных воркеров не пустой
-		if(!this->_workers.empty()){
-			// Переходим по всему списку активных воркеров
-			for(auto & [pid, worker] : this->_workers){
-				// Запрещаем анализ остановленного процесса
-				worker->pid = 0;
-				// Устанавливаем функцию обратного вызова на событие изменения статуса
-				this->_io->on(worker->eid, static_cast <event::callback::status_t> (nullptr));
-				// Уничтожаем событие процесса
-				this->_io->destroy(worker->eid);
-				// Убиваем дочерний процесс
-				::kill(pid, SIGTERM); // SIGKILL
-			}
-			// Очищаем список активных воркеров
-			this->_workers.clear();
-		}
-	// Если процесс является дочерним то выводим сообщение об ошибке
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Only master process can clear cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Only master process can clear cluster", log_t::flag_t::WARNING);
-		#endif
-	}
-}
-/**
  * @brief Метод остановки кластера
  *
  */
@@ -1105,6 +1057,49 @@ void awh::unit::Cluster::start() noexcept {
 	#endif
 }
 /**
+ * @brief Метод очистки всех выделенных ресурсов
+ *
+ * @param shutdown тип завершения работы кластера
+ */
+void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
+	// Если процесс является родительским
+	if(this->master()){
+		// Если список активных воркеров не пустой
+		if(!this->_workers.empty()){
+			// Переходим по всему списку активных воркеров
+			for(auto & [pid, worker] : this->_workers){
+				// Запрещаем анализ остановленного процесса
+				worker->pid = 0;
+				// Устанавливаем функцию обратного вызова на событие изменения статуса
+				this->_io->on(worker->eid, static_cast <event::callback::status_t> (nullptr));
+				// Уничтожаем событие процесса
+				this->_io->destroy(worker->eid);
+				// Если требуется принудительное завершение работы процесса
+				if(shutdown == shutdown_t::FORCEFUL)
+					// Убиваем дочерний процесс
+					::kill(pid, SIGKILL);
+			}
+			// Очищаем список активных воркеров
+			this->_workers.clear();
+		}
+	// Если процесс является дочерним то выводим сообщение об ошибке
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Only master process can clear cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Only master process can clear cluster", log_t::flag_t::WARNING);
+		#endif
+	}
+}
+/**
  * @brief Метод размещения нового дочернего процесса
  *
  */
@@ -1157,9 +1152,10 @@ void awh::unit::Cluster::emplace() noexcept {
 /**
  * @brief Метод удаления активного процесса
  *
- * @param pid идентификатор процесса
+ * @param pid       идентификатор процесса
+ * @param shutdown тип завершения работы кластера
  */
-void awh::unit::Cluster::erase(const pid_t pid) noexcept {
+void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
 		// Если список активных воркеров не пустой
@@ -1174,8 +1170,10 @@ void awh::unit::Cluster::erase(const pid_t pid) noexcept {
 				this->_io->on(i->second->eid, static_cast <event::callback::status_t> (nullptr));
 				// Уничтожаем событие процесса
 				this->_io->destroy(i->second->eid);
-				// Убиваем дочерний процесс
-				::kill(i->first, SIGTERM); // SIGKILL
+				// Если требуется принудительное завершение работы процесса
+				if(shutdown == shutdown_t::FORCEFUL)
+					// Убиваем дочерний процесс
+					::kill(i->first, SIGKILL);
 				// Удаляем процесс из списка активных воркеров
 				this->_workers.erase(i);
 			}
@@ -1571,6 +1569,8 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::unit::Cluster::~Cluster() noexcept {
-	// Выполняем очистку всех выделенных ресурсов
-	this->clear();
+	// Если процесс является родительским
+	if(this->master())
+		// Выполняем очистку всех выделенных ресурсов
+		this->clear(shutdown_t::FORCEFUL);
 }

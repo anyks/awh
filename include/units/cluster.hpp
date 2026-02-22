@@ -66,6 +66,14 @@ namespace awh {
 					MASTER   = 0x02, // Воркер является мастером
 					CHILDREN = 0x01  // Воркер является ребёнком
 				};
+				/**
+				 * Тип завершения работы кластера
+				 */
+				enum class shutdown_t : uint8_t {
+					NONE     = 0x00, // Тип завершения работы кластера не определён
+					GRACEFUL = 0x01, // Тип завершения работы кластера - плавное завершение
+					FORCEFUL = 0x02  // Тип завершения работы кластера - принудительное завершение
+				};
 			private:
 				/**
 				 * @brief Структура воркера
@@ -186,12 +194,6 @@ namespace awh {
 				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 			public:
 				/**
-				 * @brief Метод очистки всех выделенных ресурсов
-				 *
-				 */
-				void clear() noexcept;
-			public:
-				/**
 				 * @brief Метод остановки кластера
 				 *
 				 */
@@ -203,6 +205,13 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
+				 * @brief Метод очистки всех выделенных ресурсов
+				 *
+				 * @param shutdown тип завершения работы кластера
+				 */
+				void clear(const shutdown_t shutdown) noexcept;
+			public:
+				/**
 				 * @brief Метод размещения нового дочернего процесса
 				 *
 				 */
@@ -210,9 +219,10 @@ namespace awh {
 				/**
 				 * @brief Метод удаления активного процесса
 				 *
-				 * @param pid идентификатор процесса
+				 * @param pid      идентификатор процесса
+				 * @param shutdown тип завершения работы кластера
 				 */
-				void erase(const pid_t pid) noexcept;
+				void erase(const pid_t pid, const shutdown_t shutdown) noexcept;
 			public:
 				/**
 				 * @brief Метод установки флага автоматического возрождения процессов
