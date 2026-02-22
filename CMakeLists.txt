@@ -806,25 +806,25 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample UNIT TIMER: Yes\n")
+        message(STATUS "Build sample UNIT Timer: Yes\n")
         # Выполняем создание приложения работы с юнитом таймера
         add_sample(${UNIT_APP_TIMER_NAME} sample/units/timer.cpp units)
     # Если не нужно собирать семплы для работы с юнитом таймера
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample UNIT TIMER: No\n")
+        message(STATUS "Build sample UNIT Timer: No\n")
     endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом кластера
     if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample UNIT CLUSTER: Yes\n")
+        message(STATUS "Build sample UNIT Cluster: Yes\n")
         # Выполняем создание приложения работы с юнитом кластера
         add_sample(${UNIT_APP_CLUSTER_NAME} sample/units/cluster.cpp units)
     # Если не нужно собирать семплы для работы с юнитом кластера
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample UNIT CLUSTER: No\n")
+        message(STATUS "Build sample UNIT Cluster: No\n")
     endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
@@ -842,13 +842,13 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с файловой системой
     if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample FILESYSTEM: Yes\n")
+        message(STATUS "Build sample Filesystem: Yes\n")
         # Выполняем создание приложения работы с файловой системой
         add_sample(${FILESYSTEM_APP_SYS_NAME} sample/sys/fs.cpp sys)
     # Если не нужно собирать семплы для работы с файловой системой
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample FILESYSTEM: No\n")
+        message(STATUS "Build sample Filesystem: No\n")
     endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с резольвером процессов
@@ -866,25 +866,25 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
     if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample CRYPTO: Yes\n")
+        message(STATUS "Build sample Crypto: Yes\n")
         # Выполняем создание приложения работы с шифрованием и хэшированием
         add_sample(${CRYPTO_APP_SYS_NAME} sample/sys/crypto.cpp sys)
     # Если не нужно собирать семплы для работы с шифрованием и хэшированием
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample CRYPTO: No\n")
+        message(STATUS "Build sample Crypto: No\n")
     endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample COMPRESSOR: Yes\n")
+        message(STATUS "Build sample Compressor: Yes\n")
         # Выполняем создание приложения работы с компрессией данных
         add_sample(${COMPRESSOR_APP_SYS_NAME} sample/sys/compressor.cpp sys)
     # Если не нужно собирать семплы для работы с компрессией данных
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample COMPRESSOR: No\n")
+        message(STATUS "Build sample Compressor: No\n")
     endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами
@@ -938,13 +938,13 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с пользовательскими событиями
     if (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample USER EVENTS: Yes\n")
+        message(STATUS "Build sample USER Events: Yes\n")
         # Выполняем создание приложения работы с пользовательскими событиями
         add_sample(${EVENTS_APP_IO_NAME} sample/io/events.cpp io)
     # Если не нужно собирать семплы для работы с пользовательскими событиями
     else()
         # Выводим сообщение о сборке семпла
-        message(STATUS "Build sample USER EVENTS: No\n")
+        message(STATUS "Build sample USER Events: No\n")
     endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
     
     # Если нужно собрать семплы для работы с межпроцессорным взаимодействием
