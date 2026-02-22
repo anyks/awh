@@ -42,12 +42,12 @@ int32_t main(int32_t argc, char * argv[]){
 	cluster.on <void (const event::status_t)> ("status", [&cluster, &log](const event::status_t status) noexcept -> void {
 		// Выводим статус работы кластера
 		log.print("Cluster status: %s", log_t::flag_t::INFO, (status == event::status_t::LAUNCHED) ? "launched" : "destroyed");
-		/*
+		/**
 		// Если статус работы кластера - запущен
 		if(status == event::status_t::LAUNCHED)
 			// Выполняем остановку кластера
 			cluster.stop();
-		*/
+		 */
 	}, placeholders::_1);
 	// Устанавливаем функцию обратного вызова на события работы кластера
 	cluster.on <void (const pid_t, const unit::cluster_t::event_t)> ("events", [&cluster, &log](const pid_t pid, const unit::cluster_t::event_t event) noexcept -> void {
@@ -101,13 +101,13 @@ int32_t main(int32_t argc, char * argv[]){
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Выводим событие получения сообщения
 		log.print("Cluster process [%u] has received message: %zu bytes, from PID=%u, message: %s", log_t::flag_t::INFO, ::getpid(), size, pid, message.c_str());
-		/*
+		/**
 		// Если процесс является мастер-процессом
 		if(cluster.master())
 			// Удаляем процесс приславший сообщение из кластера
 			cluster.erase(pid, unit::cluster_t::shutdown_t::FORCEFUL);
 			// cluster.erase(pid, unit::cluster_t::shutdown_t::GRACEFUL);
-		*/
+		 */
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
 	cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", [&cluster, &log](const pid_t pid, const event::status_t status, const size_t size) noexcept -> void {
