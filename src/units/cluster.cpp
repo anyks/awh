@@ -21,7 +21,7 @@
 #include <csignal>
 
 /**
- * Для операционной системы не являющейся MS Windows
+ * Для операционных систем, отличных от MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -59,7 +59,7 @@ using namespace placeholders;
 		 */
 		struct sigaction __awh_action__{0};
 		/**
-		 * @brief Объект кластера для работы статических функций
+		 * @brief Объект кластера для работы статических методов
 		 *
 		 */
 		static awh::unit::cluster_t * __awh_cluster__ = nullptr;
@@ -76,7 +76,7 @@ void awh::unit::Cluster::create() noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы не являющейся MS Windows
+		 * Для операционных систем, отличных от MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Индекс инициализированного процесса
@@ -148,7 +148,7 @@ void awh::unit::Cluster::create() noexcept {
 							}
 							// Уничтожаем события всех активных воркеров
 							this->_workers.clear();
-							// Устананавливаем опции события
+							// Устанавливаем опции события
 							if(!this->_io->options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 								/**
 								 * Если включён режим отладки
@@ -240,7 +240,7 @@ void awh::unit::Cluster::create() noexcept {
 					default: {
 						// Уничтожаем событие дочернего процесса
 						this->_io->destroy(events[1]);
-						// Устананавливаем опции события
+						// Устанавливаем опции события
 						if(!this->_io->options(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 							/**
 							 * Если включён режим отладки
@@ -339,7 +339,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы не являющейся MS Windows
+		 * Для операционных систем, отличных от MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Создаём новый вокрер дочернего процесса
@@ -405,7 +405,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						}
 						// Уничтожаем события всех активных воркеров
 						this->_workers.clear();
-						// Устананавливаем опции события
+						// Устанавливаем опции события
 						if(!this->_io->options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 							/**
 							 * Если включён режим отладки
@@ -497,7 +497,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 				default: {
 					// Уничтожаем событие дочернего процесса
 					this->_io->destroy(events[1]);
-					// Устананавливаем опции события
+					// Устанавливаем опции события
 					if(!this->_io->options(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 						/**
 						 * Если включён режим отладки
@@ -635,7 +635,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
  */
 void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unused]] const int32_t status) noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем поиск завершившегося процесса
@@ -646,9 +646,9 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 			this->_io->destroy(i->second->eid);
 			// Если завершившийся процесс требуется анализировать дальше
 			if(i->second->pid == pid){
-				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+				// Выводим сообщение об ошибке, о невозможности отправить сообщение
 				this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
-				// Если статус сигнала, ручной остановкой процесса
+				// Если статус сигнала — ручная остановка процесса
 				if(status == SIGINT){
 					// Если список активных воркеров не пустой
 					if(!this->_workers.empty()){
@@ -709,7 +709,7 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
  */
 void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Идентификатор упавшего процесса
@@ -1023,13 +1023,13 @@ void awh::unit::Cluster::stop() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Only master process can stopped cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Only master process can stopped cluster", log_t::flag_t::WARNING);
+				this->_log->print("Only the master process can stop the cluster", log_t::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -1057,7 +1057,7 @@ void awh::unit::Cluster::stop() noexcept {
  */
 void awh::unit::Cluster::start() noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -1080,13 +1080,13 @@ void awh::unit::Cluster::start() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Only master process can start cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Only master process can start cluster", log_t::flag_t::WARNING);
+				this->_log->print("Only the master process can start the cluster", log_t::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -1141,13 +1141,13 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Only master process can clear cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Only the master process can clear the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Only master process can clear cluster", log_t::flag_t::WARNING);
+			this->_log->print("Only the master process can clear the cluster", log_t::flag_t::WARNING);
 		#endif
 	}
 }
@@ -1157,7 +1157,7 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
  */
 void awh::unit::Cluster::emplace() noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -1173,13 +1173,13 @@ void awh::unit::Cluster::emplace() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Only master processes can be created child processes", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Only the master process can create child processes", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Only master processes can be created child processes", log_t::flag_t::WARNING);
+				this->_log->print("Only the master process can create child processes", log_t::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -1237,13 +1237,13 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Only master processes can be removed child processes", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::WARNING);
+			this->_log->debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Only master processes can be removed child processes", log_t::flag_t::WARNING);
+			this->_log->print("Only the master process can remove child processes", log_t::flag_t::WARNING);
 		#endif
 	}
 }
@@ -1333,7 +1333,7 @@ void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
  */
 size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является дочерним
@@ -1411,7 +1411,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
  */
 size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -1446,13 +1446,13 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке запуска события
+			// Выводим сообщение об ошибке
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, std::make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке запуска события
+			// Выводим сообщение об ошибке
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
@@ -1468,7 +1468,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
  */
 size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -1508,13 +1508,13 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке запуска события
+			// Выводим сообщение об ошибке
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке запуска события
+			// Выводим сообщение об ошибке
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
@@ -1588,10 +1588,10 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _name{AWH_SHORT_NAME}, _rebirth(false),
  _count(0), _type(event::type_t::SEQPACKET), _fmk(fmk), _log(log) {
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Если кластер уже создан бал ранее
+		// Если кластер уже был создан ранее
 		if(::__awh_cluster__ != nullptr)
 			// Выполняем генерацию исключения
 			throw std::logic_error("A cluster cannot exist twice");
@@ -1599,7 +1599,7 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 		else {
 			// Выполняем установку объекта кластера
 			::__awh_cluster__ = this;
-			// Устанавливаем функцию перехвадчика событий
+			// Устанавливаем функцию перехватчика событий
 			::__awh_action__.sa_sigaction = &cluster_t::child;
 			// Устанавливаем флаги перехвата сигналов
 			::__awh_action__.sa_flags = (SA_RESTART | SA_SIGINFO);
