@@ -34,6 +34,7 @@
 *.out
 *.app
 
+.cache/
 /bin
 /build
 /third_party
