@@ -1111,7 +1111,7 @@ namespace awh {
 					// Если функция обратного вызова найдена
 					if(i != this->_callbacks.end()){
 						// Выполняем извлечение функции обратного вызова
-						auto * callback = dynamic_cast <const BasicFunction <T> *>(i->second.get());
+						auto * callback = awh_cast <const BasicFunction <T> *>(i->second.get());
 						// Если функция обратного вызова не содержит данных
 						if((callback == nullptr) || (callback->fn == nullptr))
 							// Выводим пустое значение
@@ -1523,7 +1523,7 @@ namespace awh {
 						else return Result{};
 					}
 					// Выполняем извлечение функции обратного вызова
-					auto * callback = dynamic_cast <const BasicFunction <Signature> *> (i->second.get());
+					auto * callback = awh_cast <const BasicFunction <Signature> *> (i->second.get());
 					// Если функция обратного вызова не содержит данных
 					if((callback == nullptr) || (callback->fn == nullptr)){
 						// Если результат функции обратного вызова не возвращается
@@ -1565,13 +1565,13 @@ namespace awh {
 					// Если результат функции обратного вызова не возвращается
 					if constexpr (is_void_v <Result>){
 						// Выполняем извлечение функции обратного вызова
-						auto * callback = dynamic_cast <const BasicFunction <void ()> *> (this->_callbacks.find(id)->second.get());
+						auto * callback = awh_cast <const BasicFunction <void ()> *> (this->_callbacks.find(id)->second.get());
 						// Выполняем функцию обратного вызова
 						callback->fn();
 					// Если требуется вывод результата работы функции
 					} else {
 						// Выполняем извлечение функции обратного вызова
-						auto * callback = dynamic_cast <const BasicFunction <Result ()> *> (this->_callbacks.find(id)->second.get());
+						auto * callback = awh_cast <const BasicFunction <Result ()> *> (this->_callbacks.find(id)->second.get());
 						// Выполняем функцию обратного вызова с возвратом результата
 						return callback->fn();
 					}
@@ -1588,7 +1588,7 @@ namespace awh {
 				// Выполняем перебор всех функций обратного вызова в контейнере
 				for(const auto & [id, cb] : this->_callbacks){
 					// Если мы извлекли функцию обратного вызова
-					if(auto * callback = dynamic_cast <const BasicFunction <void ()> *>(cb.get())){
+					if(auto * callback = awh_cast <const BasicFunction <void ()> *>(cb.get())){
 						// Если функция обратного вызова установлена
 						if(callback->fn != nullptr){
 							// Если системная функция обратного вызова установлена

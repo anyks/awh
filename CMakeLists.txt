@@ -477,6 +477,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
@@ -545,10 +546,15 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/samples)
 
+    # Устанавливаем имя приложения работы с юнитом таймера
+    SET(UNIT_APP_TIMER_NAME unit-timer)
+    # Указываем что нужно собрать приложение работы с юнитом таймера
+    option(CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE "Build Unit Timer app sample" ON)
+
     # Устанавливаем имя приложения работы с юнитом кластера
     SET(UNIT_APP_CLUSTER_NAME unit-cluster)
     # Указываем что нужно собрать приложение работы с юнитом кластера
-    option(CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE "Build IP app sample" ON)
+    option(CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE "Build Unit Cluster app sample" ON)
 
     # Устанавливаем имя приложения работы с IP-адресами
     SET(IP_APP_NET_NAME net-ip)
@@ -797,6 +803,18 @@ endif()
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
+    # Если нужно собрать семплы для работы с юнитом таймера
+    if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT TIMER: Yes\n")
+        # Выполняем создание приложения работы с юнитом таймера
+        add_sample(${UNIT_APP_TIMER_NAME} sample/units/timer.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом таймера
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT TIMER: No\n")
+    endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+
     # Если нужно собрать семплы для работы с юнитом кластера
     if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
@@ -1178,6 +1196,17 @@ if (CMAKE_SHARED_BUILD_LIB)
 
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
+        # Если нужно собрать семплы для работы с юнитом таймера
+        if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом таймера
+            target_link_libraries(
+                ${UNIT_APP_TIMER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+    
         # Если нужно собрать семплы для работы с юнитом кластера
         if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
             # Выполняем сборку приложения работы с юнитом кластера
@@ -1682,6 +1711,18 @@ if (CMAKE_SHARED_BUILD_LIB)
 else (CMAKE_SHARED_BUILD_LIB)
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
+        # Если нужно собрать семплы для работы с юнитом таймера
+        if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом таймера
+            target_link_libraries(
+                ${UNIT_APP_TIMER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с юнитом кластера
         if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
             # Выполняем сборку приложения работы с юнитом кластера
@@ -2247,6 +2288,16 @@ if (${CMAKE_BUILD_SAMPLES})
             # Указываем путь к файлу с правами для разрешения формирования дампа ядра на MacOS X
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
             
+            # Если нужно собрать семплы для работы с юнитом таймера
+            if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом таймера
+                add_custom_command(TARGET "${UNIT_APP_TIMER_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_TIMER_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${UNIT_APP_TIMER_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом кластера
             if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
                 # Выполняем сборку приложения работы с юнитом кластера
@@ -2621,6 +2672,12 @@ if (${CMAKE_BUILD_SAMPLES})
             FetchContent_MakeAvailable(PVS_CMakeModule)
             include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
 
+            # Если нужно собрать семплы для работы с юнитом таймера
+            if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом таймера
+                pvs_studio_add_target(TARGET ${UNIT_APP_TIMER_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_TIMER_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом кластера
             if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом кластера
@@ -2912,6 +2969,12 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
+    # Если нужно собрать семплы для работы с юнитом таймера
+    if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом таймера
+        install(TARGETS ${UNIT_APP_TIMER_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
+
     # Если нужно собрать семплы для работы с юнитом кластера
     if (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
         # Устанавливаем приложение работы с юнитом кластера

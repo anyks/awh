@@ -28,8 +28,6 @@
  * Наши модули
  */
 #include "unit.hpp"
-#include "../sys/crypto.hpp"
-#include "../sys/compressor.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -37,7 +35,7 @@
  */
 namespace awh {
 	/**
-	 * @brief Пространство имён узал источника
+	 * @brief Пространство имён узла источника
 	 *
 	 */
 	namespace unit {
@@ -46,7 +44,7 @@ namespace awh {
 		 */
 		using namespace std;
 		/**
-		 * @brief Класс базового узла источника
+		 * @brief Класс узла кластера
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Cluster : public unit_t {
