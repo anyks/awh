@@ -148,7 +148,6 @@
  * Подключаем заголовочный файл асинхронного движка ввода-вывода
  */
 #include <net/io.hpp>
-#include <net/addr.hpp>
 #include <net/queue.hpp>
 
 /**
@@ -1014,18 +1013,14 @@ namespace io {
 		net::socket_t fd;
 		// Структура статистики файла
 		struct stat info;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект работы с логами
 		 */
-		explicit Filename(const fmk_t * fmk, const log_t * log) noexcept :
+		explicit Filename() noexcept :
 		 size(::getpagesize()), mtime(0),
-		 offset(0), actions(::action::NONE), dest(0),
-		 fd(net::invalid_socket_t), addr(fmk, log) {}
+		 offset(0), actions(::action::NONE),
+		 dest(0), fd(net::invalid_socket_t) {}
 	} file_t;
 
 	/**
@@ -1041,19 +1036,16 @@ namespace io {
 		net::socket_t fd;
 		// Структура статистики файла
 		struct stat info;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Множество уже прочитанных записей каталога
 		unordered_map <string, event::vnode_t> entries;
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект работы с логами
 		 */
-		explicit Dirname(const fmk_t * fmk, const log_t * log) noexcept :
-		 handle(nullptr), actions(::action::NONE),
-		 fd(net::invalid_socket_t), addr(fmk, log) {}
+		explicit Dirname() noexcept :
+		 handle(nullptr),
+		 actions(::action::NONE),
+		 fd(net::invalid_socket_t) {}
 	} dir_t;
 
 	/**
@@ -1071,8 +1063,7 @@ namespace io {
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept :
-		 transfer(fmk, log) {}
+		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept : transfer(fmk, log) {}
 	} ipc_t;
 
 	/**
@@ -1086,8 +1077,6 @@ namespace io {
 		uint16_t actions;
 		// Название сетевого интерфейса
 		string iface;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Очередь отправки данных
 		net_queue_t queue;
 		// Объект параметров конечной точки
@@ -1107,8 +1096,7 @@ namespace io {
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE), iface{""},
-		 addr(fmk, log), queue(fmk, log),
-		 source(nullptr), target(nullptr) {}
+		 queue(fmk, log), source(nullptr), target(nullptr) {}
 	} tun_t;
 
 	/**
@@ -1118,8 +1106,6 @@ namespace io {
 	typedef struct Mediator : public node_t {
 		// Идентификатор события принимающей стороны
 		event::id_t dest;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Обратные вызовы события
 		mediator_callbacks_t callbacks;
 		// Адрес хоста посредника
@@ -1127,11 +1113,8 @@ namespace io {
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект работы с логами
 		 */
-		explicit Mediator(const fmk_t * fmk, const log_t * log) noexcept :
-		 dest(0), addr(fmk, log), host(nullptr) {}
+		explicit Mediator() noexcept : dest(0), host(nullptr) {}
 	} mediator_t;
 
 	/**
@@ -1166,8 +1149,6 @@ namespace io {
 	typedef struct Peer : public remote_t {
 		// Флаги активированных событий
 		uint8_t activity;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Пропускная способность события подключённого клиента
@@ -1182,8 +1163,7 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Peer(uint16_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 activity(::activity::NONE), addr(fmk, log),
-		 transfer(fmk, log), peers(num) {}
+		 activity(::activity::NONE), transfer(fmk, log), peers(num) {}
 	} peer_t;
 
 	/**
@@ -1193,8 +1173,6 @@ namespace io {
 	typedef struct Origin : public remote_t {
 		// Объект пропускной способности записи
 		wrate_t wrate;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Объект параметров конечной точки
@@ -1209,7 +1187,7 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Origin(uint16_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 addr(fmk, log), transfer(fmk, log), origins(num) {}
+		 transfer(fmk, log), origins(num) {}
 	} origin_t;
 
 	/**
@@ -1219,8 +1197,6 @@ namespace io {
 	typedef struct Client : public node_t {
 		// Флаги активированных событий
 		uint8_t activity;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Объект параметров конечной точки
@@ -1242,8 +1218,9 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
-		 activity(::activity::NONE), addr(fmk, log),
-		 transfer(fmk, log), source(nullptr), target(nullptr) {}
+		 activity(::activity::NONE),
+		 transfer(fmk, log),
+		 source(nullptr), target(nullptr) {}
 	} client_t;
 
 	/**
@@ -1259,8 +1236,6 @@ namespace io {
 		uint8_t activity;
 		// Объект пропускной способности записи
 		wrate_t wrate;
-		// Объект работы с сетевыми адресами
-		net_addr_t addr;
 		// Размер очереди ожидания подключения
 		backlog_t backlog;
 		// Объект параметров конечной точки
@@ -1289,8 +1264,9 @@ namespace io {
 		 * @param log объект работы с логами
 		 */
 		explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), actions(::action::NONE),
-		 activity(::activity::NONE), addr(fmk, log) {}
+		 fd(net::invalid_socket_t),
+		 actions(::action::NONE),
+		 activity(::activity::NONE) {}
 	} server_t;
 };
 
@@ -4122,16 +4098,6 @@ namespace io {
 	 */
 	static bool change(::io::dir_t *, const engine::io_t *, const fmk_t *, const log_t *) noexcept;
 	/**
-	 * @brief Прототип функции обработки события принятия подключения
-	 *
-	 * @param  узел сервера в котором произошло событие
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 */
-	static bool accept(::io::server_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
-	/**
 	 * @brief Прототип функции обработки события подключения
 	 *
 	 * @param  узел клиента в котором произошло событие
@@ -4142,16 +4108,16 @@ namespace io {
 	 */
 	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *, const log_t *) noexcept;
 	/**
-	 * @brief Прототип функции обработки события чтения
+	 * @brief Прототип функции обработки события принятия подключения
 	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
+	 * @param  узел сервера в котором произошло событие
 	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события записи
 	 *
@@ -4164,16 +4130,29 @@ namespace io {
 	 */
 	static bool write(::io::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
+	 * @brief Прототип функции обработки события чтения
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 */
+	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
+	/**
 	 * @brief Прототип функции опроса событий
 	 *
 	 * @param  объект события kqueue
 	 * @param  объект работы с асинхронными событиями
 	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
 	 *
@@ -4182,11 +4161,12 @@ namespace io {
 	 * @param  размер буфера данных подключения
 	 * @param  объект работы с асинхронными событиями
 	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
 	 */
-	static bool origin(::io::server_t *, const char *, const size_t, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
+	static bool origin(::io::server_t *, const char *, const size_t, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
 };
 
 /**
@@ -5503,11 +5483,12 @@ namespace io {
 	 * @param tunnel узел в котором произошло событие
 	 * @param io     объект работы с асинхронными событиями
 	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param addr   объект для работы с сетевыми адресами
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
 	 */
-	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -5636,9 +5617,9 @@ namespace io {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 										// Устанавливаем полученный IP-адрес
-										tunnel->addr.v4(source, net_addr_t::endian_t::LITTLE);
+										const_cast <net_addr_t *> (addr)->v4(source, net_addr_t::endian_t::LITTLE);
 										// Устанавливаем текст ошибки
-										const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+										const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 										// Если установлена функция обратного вызова
 										if(tunnel->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -5737,9 +5718,9 @@ namespace io {
 										// Копируем полученный IP-адрес в буфер
 										::memcpy(&buffer[0], source, 16);
 										// Устанавливаем полученный IP-адрес
-										tunnel->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+										const_cast <net_addr_t *> (addr)->v6(buffer, net_addr_t::endian_t::LITTLE);
 										// Устанавливаем текст ошибки
-										const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+										const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 										// Если установлена функция обратного вызова
 										if(tunnel->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -5970,9 +5951,9 @@ namespace io {
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 									// Устанавливаем полученный IP-адрес
-									tunnel->addr.v4(source, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->v4(source, net_addr_t::endian_t::LITTLE);
 									// Устанавливаем текст ошибки
-									const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+									const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -6071,9 +6052,9 @@ namespace io {
 									// Копируем полученный IP-адрес в буфер
 									::memcpy(&buffer[0], source, 16);
 									// Устанавливаем полученный IP-адрес
-									tunnel->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->v6(buffer, net_addr_t::endian_t::LITTLE);
 									// Устанавливаем текст ошибки
-									const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (tunnel->addr).c_str());
+									const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -7731,11 +7712,12 @@ namespace io {
 	 * @param server узел в котором произошло событие
 	 * @param io     объект работы с асинхронными событиями
 	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param addr   объект работы с сетевыми адресами
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
 	 */
-	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -7824,7 +7806,7 @@ namespace io {
 								// Если мы получили данные из сокета
 								} else if(bytes > 0) {
 									// Выполняем обработку полученных данных
-									result = ::io::origin(server, ::__awh_buffer__, bytes, io, eth, fmk, log);
+									result = ::io::origin(server, ::__awh_buffer__, bytes, io, eth, addr, fmk, log);
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(server->wrate.limit > 0){
 										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
@@ -7939,7 +7921,7 @@ namespace io {
 							// Если мы получили данные из сокета
 							} else if(bytes > 0) {
 								// Выполняем обработку полученных данных
-								result = ::io::origin(server, ::__awh_buffer__, bytes, io, eth, fmk, log);
+								result = ::io::origin(server, ::__awh_buffer__, bytes, io, eth, addr, fmk, log);
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
@@ -20521,15 +20503,98 @@ namespace io {
 		return false;
 	}
 	/**
+	 * @brief Функция обработки события подключения
+	 *
+	 * @param client узел клиента в котором произошло событие
+	 * @param io     объект работы с асинхронными событиями
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param log    объект работы с логами
+	 * @return       результат выполнения обработки
+	 */
+	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+		// Результат работы функции
+		bool result = false;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если разрешено выполнять подключения
+			if(client->transfer.actions & ::action::CONNECT){
+				// Создаём охранника узла события
+				::local::guard_t guard(client);
+				// Если установлена функция обратного вызова
+				if(client->callbacks.event != nullptr)
+					// Вызываем функцию обратного вызова с установленным флагом события
+					client->callbacks.event(client->id, event::action_t::CONNECT);
+				// Активируем событие на чтение данных из сокета
+				::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+				// Если событие является неблокирующим
+				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+					// Удаляем таймаут ожидания подключения к серверу
+					::timeout::clear(client->timeouts.connect, event::rate_t::INSTANT, log);
+				// Если событие является блокирующим
+				else eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+				// Если функция обратного вызова для вывода подключения установлена
+				if(client->callbacks.connect != nullptr)
+					// Вызываем функцию обратного вызова для подключения
+					client->callbacks.connect(client->id, true);
+				// Если установлен таймаут на чтение данных
+				if(client->timeouts.read.delay > 0){
+					// Если событие является неблокирующим
+					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
+						// Создаём таймаут на ожидание получения данных
+						::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
+					// Если событие является блокирующим
+					else eth->socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+				}
+				// Выполняем "пинок" для применения изменений
+				result = const_cast <engine::io_t *> (io)->kick();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Создаём охранника узла события
+			::local::guard_t guard(client);
+			// Если установлена функция обратного вызова
+			if(client->callbacks.status != nullptr)
+				// Вызываем функцию обратного вызова об ошибке отказа
+				client->callbacks.status(client->id, event::status_t::FAILURE);
+			// Если установлена функция обратного вызова
+			if(client->callbacks.error != nullptr)
+				// Вызываем функцию обратного вызова ошибки события
+				client->callbacks.error(client->id, event::error_t::UNKNOWN, error.what());
+			// Если функция обратного вызова для вывода события не установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
 	 * @brief Функция обработки события принятия подключения
 	 *
 	 * @param server узел сервера в котором произошло событие
 	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param addr   объект работы с сетевыми адресами
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
 	 */
-	static bool accept(::io::server_t * server, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -20788,9 +20853,9 @@ namespace io {
 									// Если MAC-адрес успешно получен
 									if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
-										peer->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+										const_cast <net_addr_t *> (addr)->mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 										// Получаем MAC-адрес для проверки
-										string mac = ::move(static_cast <string> (peer->addr));
+										string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
@@ -20859,9 +20924,9 @@ namespace io {
 										}
 									}
 									// Устанавливаем полученный IP-адрес
-									peer->addr.v4(trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->v4(trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
-									string ip = ::move(static_cast <string> (peer->addr));
+									string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 									// Если адрес находится в чёрном списке
 									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
@@ -20964,9 +21029,9 @@ namespace io {
 									// Если MAC-адрес успешно получен
 									if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
-										peer->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+										const_cast <net_addr_t *> (addr)->mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 										// Получаем MAC-адрес для проверки
-										string mac = ::move(static_cast <string> (peer->addr));
+										string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
@@ -21035,9 +21100,9 @@ namespace io {
 										}
 									}
 									// Устанавливаем полученный IP-адрес
-									peer->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
-									string ip = ::move(static_cast <string> (peer->addr));
+									string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 									// Если адрес находится в чёрном списке
 									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
@@ -21234,266 +21299,6 @@ namespace io {
 		return false;
 	}
 	/**
-	 * @brief Функция обработки события подключения
-	 *
-	 * @param client узел клиента в котором произошло событие
-	 * @param io     объект работы с асинхронными событиями
-	 * @param eth    объект работы с сетевыми интерфейсами
-	 * @param log    объект работы с логами
-	 * @return       результат выполнения обработки
-	 */
-	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
-		bool result = false;
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если разрешено выполнять подключения
-			if(client->transfer.actions & ::action::CONNECT){
-				// Создаём охранника узла события
-				::local::guard_t guard(client);
-				// Если установлена функция обратного вызова
-				if(client->callbacks.event != nullptr)
-					// Вызываем функцию обратного вызова с установленным флагом события
-					client->callbacks.event(client->id, event::action_t::CONNECT);
-				// Активируем событие на чтение данных из сокета
-				::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
-				// Если событие является неблокирующим
-				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-					// Удаляем таймаут ожидания подключения к серверу
-					::timeout::clear(client->timeouts.connect, event::rate_t::INSTANT, log);
-				// Если событие является блокирующим
-				else eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
-				// Если функция обратного вызова для вывода подключения установлена
-				if(client->callbacks.connect != nullptr)
-					// Вызываем функцию обратного вызова для подключения
-					client->callbacks.connect(client->id, true);
-				// Если установлен таймаут на чтение данных
-				if(client->timeouts.read.delay > 0){
-					// Если событие является неблокирующим
-					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-						// Создаём таймаут на ожидание получения данных
-						::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
-					// Если событие является блокирующим
-					else eth->socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
-				}
-				// Выполняем "пинок" для применения изменений
-				result = const_cast <engine::io_t *> (io)->kick();
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Создаём охранника узла события
-			::local::guard_t guard(client);
-			// Если установлена функция обратного вызова
-			if(client->callbacks.status != nullptr)
-				// Вызываем функцию обратного вызова об ошибке отказа
-				client->callbacks.status(client->id, event::status_t::FAILURE);
-			// Если установлена функция обратного вызова
-			if(client->callbacks.error != nullptr)
-				// Вызываем функцию обратного вызова ошибки события
-				client->callbacks.error(client->id, event::error_t::UNKNOWN, error.what());
-			// Если функция обратного вызова для вывода события не установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			}
-		}
-		// Выводим результат
-		return result;
-	}
-	/**
-	 * @brief Функция обработки события чтения
-	 *
-	 * @param node узел в котором произошло событие
-	 * @param io   объект работы с асинхронными событиями
-	 * @param eth  объект работы с сетевыми интерфейсами
-	 * @param fmk  объект фреймворка
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
-	 */
-	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Создаём охранника узла события
-			::local::guard_t guard(node);
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (node->state.node)){
-				// Если узел является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE): {
-					// Получаем текущее значение объекта файловой системы
-					::io::file_t * fs = awh_cast <::io::file_t *> (node);
-					// Если событие чтения разрешено
-					if(fs->actions & ::action::READ){
-						// Если событие находится не в состоянии паузы
-						if(fs->state.status != event::status_t::PAUSED)
-							// Выполняем чтение данных из узла файловой системы
-							return ::io::read(fs, io, eth, log);
-					}
-				} break;
-				// Если узел является межпроцессным взаимодействием
-				case static_cast <uint8_t> (event::node_t::IPC): {
-					// Получаем текущее значение объекта межпроцессного взаимодействия
-					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
-					// Если событие чтения разрешено
-					if(ipc->transfer.actions & ::action::READ){
-						// Если событие находится не в состоянии паузы
-						if(ipc->state.status != event::status_t::PAUSED)
-							// Выполняем чтение данных из узла межпроцессного взаимодействия
-							return ::io::read(ipc, io, eth, log);
-					}
-				} break;
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Получаем текущее значение объекта однорангового узла
-					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-					// Если событие чтения разрешено
-					if(peer->transfer.actions & ::action::READ){
-						// Если событие находится не в состоянии паузы
-						if(peer->state.status != event::status_t::PAUSED)
-							// Выполняем чтение данных из однорангового узла
-							return ::io::read(peer, io, eth, log);
-					}
-				} break;
-				// Если узел является туннелем
-				case static_cast <uint8_t> (event::node_t::TUNNEL): {
-					// Получаем объект туннеля
-					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
-					// Если событие чтения разрешено
-					if(tunnel->actions & ::action::READ)
-						// Выполняем чтение данных из узла туннеля
-						return ::io::read(tunnel, io, eth, fmk, log);
-				} break;
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Получаем текущее значение объекта клиента
-					::io::client_t * client = awh_cast <::io::client_t *> (node);
-					// Если событие чтения разрешено
-					if(client->transfer.actions & ::action::READ){
-						// Если событие находится не в состоянии паузы
-						if(client->state.status != event::status_t::PAUSED)
-							// Выполняем чтение данных из узла клиента
-							return ::io::read(client, io, eth, log);
-					}
-				} break;
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER): {
-					// Получаем текущее значение объекта сервера
-					::io::server_t * server = awh_cast <::io::server_t *> (node);
-					// Если активирован режим прослушивания
-					if(server->state.status == event::status_t::LISTENING){
-						/**
-						 * Определяем тип сокета
-						 */
-						switch(static_cast <uint8_t> (server->state.type)){
-							/**
-							 * Для операционной системы FreeBSD
-							 */
-							#if __FreeBSD__
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							#endif
-							// Если событие принадлежит к типу STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM): {
-								// Если событие чтения разрешено
-								if(server->actions & ::action::READ)
-									// Выполняем принятие нового подключения
-									return ::io::accept(server, eth, fmk, log);
-							} break;
-							// Для остальных типов сокетов
-							default: {
-								// Если установлена функция обратного вызова
-								if(server->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									server->callbacks.status(server->id, event::status_t::FAILURE);
-								/**
-								 * Для операционной системы FreeBSD
-								 */
-								#if __FreeBSD__
-									// Устанавливаем текст ошибки
-									const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
-								/**
-								 * Для остальных операционных систем
-								 */
-								#else
-									// Устанавливаем текст ошибки
-									const string error = "Only STREAM socket types are supported for server nodes";
-								#endif
-								// Если установлена функция обратного вызова
-								if(server->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова вывода ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
-						}
-					// Если сервер находится в запущенном состоянии
-					} else if(server->state.status == event::status_t::LAUNCHED) {
-						// Если событие чтения разрешено
-						if(server->actions & ::action::READ){
-							// Если событие находится не в состоянии паузы
-							if(server->state.status != event::status_t::PAUSED)
-								// Выполняем чтение данных из узла сервера
-								return ::io::read(server, io, eth, fmk, log);
-						}
-					}
-				} break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Создаём охранника узла события
-			::local::guard_t guard(node);
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат по умолчанию
-		return false;
-	}
-	/**
 	 * @brief Функция обработки события записи
 	 *
 	 * @param node узел в котором произошло событие
@@ -21613,16 +21418,196 @@ namespace io {
 		return result;
 	}
 	/**
+	 * @brief Функция обработки события чтения
+	 *
+	 * @param node узел в котором произошло событие
+	 * @param io   объект работы с асинхронными событиями
+	 * @param eth  объект работы с сетевыми интерфейсами
+	 * @param addr объект работы с сетевыми адресами
+	 * @param fmk  объект фреймворка
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
+	 */
+	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём охранника узла события
+			::local::guard_t guard(node);
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					::io::file_t * fs = awh_cast <::io::file_t *> (node);
+					// Если событие чтения разрешено
+					if(fs->actions & ::action::READ){
+						// Если событие находится не в состоянии паузы
+						if(fs->state.status != event::status_t::PAUSED)
+							// Выполняем чтение данных из узла файловой системы
+							return ::io::read(fs, io, eth, log);
+					}
+				} break;
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем текущее значение объекта межпроцессного взаимодействия
+					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
+					// Если событие чтения разрешено
+					if(ipc->transfer.actions & ::action::READ){
+						// Если событие находится не в состоянии паузы
+						if(ipc->state.status != event::status_t::PAUSED)
+							// Выполняем чтение данных из узла межпроцессного взаимодействия
+							return ::io::read(ipc, io, eth, log);
+					}
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+					// Если событие чтения разрешено
+					if(peer->transfer.actions & ::action::READ){
+						// Если событие находится не в состоянии паузы
+						if(peer->state.status != event::status_t::PAUSED)
+							// Выполняем чтение данных из однорангового узла
+							return ::io::read(peer, io, eth, log);
+					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+					// Если событие чтения разрешено
+					if(tunnel->actions & ::action::READ)
+						// Выполняем чтение данных из узла туннеля
+						return ::io::read(tunnel, io, eth, addr, fmk, log);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
+					// Если событие чтения разрешено
+					if(client->transfer.actions & ::action::READ){
+						// Если событие находится не в состоянии паузы
+						if(client->state.status != event::status_t::PAUSED)
+							// Выполняем чтение данных из узла клиента
+							return ::io::read(client, io, eth, log);
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (node);
+					// Если активирован режим прослушивания
+					if(server->state.status == event::status_t::LISTENING){
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (server->state.type)){
+							/**
+							 * Для операционной системы FreeBSD
+							 */
+							#if __FreeBSD__
+								// Если событие принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET):
+							#endif
+							// Если событие принадлежит к типу STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM): {
+								// Если событие чтения разрешено
+								if(server->actions & ::action::READ)
+									// Выполняем принятие нового подключения
+									return ::io::accept(server, eth, addr, fmk, log);
+							} break;
+							// Для остальных типов сокетов
+							default: {
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									server->callbacks.status(server->id, event::status_t::FAILURE);
+								/**
+								 * Для операционной системы FreeBSD
+								 */
+								#if __FreeBSD__
+									// Устанавливаем текст ошибки
+									const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
+								/**
+								 * Для остальных операционных систем
+								 */
+								#else
+									// Устанавливаем текст ошибки
+									const string error = "Only STREAM socket types are supported for server nodes";
+								#endif
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						}
+					// Если сервер находится в запущенном состоянии
+					} else if(server->state.status == event::status_t::LAUNCHED) {
+						// Если событие чтения разрешено
+						if(server->actions & ::action::READ){
+							// Если событие находится не в состоянии паузы
+							if(server->state.status != event::status_t::PAUSED)
+								// Выполняем чтение данных из узла сервера
+								return ::io::read(server, io, eth, addr, fmk, log);
+						}
+					}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Создаём охранника узла события
+			::local::guard_t guard(node);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+	/**
 	 * @brief Функция опроса событий
 	 *
-	 * @param ev  объект события kqueue
-	 * @param io  объект работы с асинхронными событиями
-	 * @param eth объект работы с сетевыми интерфейсами
-	 * @param fmk объект фреймворка
-	 * @param log объект работы с логами
-	 * @return    результат выполнения обработки
+	 * @param ev   объект события kqueue
+	 * @param io   объект работы с асинхронными событиями
+	 * @param eth  объект работы с сетевыми интерфейсами
+	 * @param addr объект работы с сетевыми адресами
+	 * @param fmk  объект фреймворка
+	 * @param log  объект работы с логами
+	 * @return     результат выполнения обработки
 	 */
-	static bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Значение узла для обработки изменений
 		::io::node_t * node = reinterpret_cast <::io::node_t *> (ev.udata);
 		// Создаём охранника узла события
@@ -21778,7 +21763,7 @@ namespace io {
 									// Если событие чтения разрешено
 									if(fs->actions & ::action::READ)
 										// Выполняем чтение данных из файла
-										return ::io::read(node, io, eth, fmk, log);
+										return ::io::read(node, io, eth, addr, fmk, log);
 								}
 							// Если мы детектировали событие переименования файла
 							} else if(ev.fflags & NOTE_RENAME) {
@@ -21836,7 +21821,7 @@ namespace io {
 									// Если событие чтения разрешено
 									if(fs->actions & ::action::READ)
 										// Выполняем чтение данных из файла
-										return ::io::read(node, io, eth, fmk, log);
+										return ::io::read(node, io, eth, addr, fmk, log);
 								}
 							// Если мы детектировали событие удаления файла
 							} else if(ev.fflags & NOTE_DELETE) {
@@ -21939,7 +21924,7 @@ namespace io {
 									::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 								}
 								// Обрабатываем событие готовности сокета на чтение
-								return ::io::read(node, io, eth, fmk, log);
+								return ::io::read(node, io, eth, addr, fmk, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == peer->bandwidth.write.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
@@ -22011,7 +21996,7 @@ namespace io {
 									::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 								}
 								// Обрабатываем событие готовности сокета на чтение
-								return ::io::read(node, io, eth, fmk, log);
+								return ::io::read(node, io, eth, addr, fmk, log);
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(static_cast <uint32_t> (ev.ident) == client->bandwidth.write.timeout.id) {
 								// Снимаем статус таймаута с состояния ожидания ограничения пропускной способности на запись данных
@@ -22112,7 +22097,7 @@ namespace io {
 									::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 								}
 								// Обрабатываем событие готовности сокета на чтение
-								return ::io::read(node, io, eth, fmk, log);
+								return ::io::read(node, io, eth, addr, fmk, log);
 							}
 						}
 					} break;
@@ -22203,7 +22188,7 @@ namespace io {
 						} break;
 					}
 					// Обрабатываем событие доступности сокета на чтение
-					return ::io::read(node, io, eth, fmk, log);
+					return ::io::read(node, io, eth, addr, fmk, log);
 				}
 				// Выполняем удаление узла
 				return !::io::destroy(node, eth, log);
@@ -22276,11 +22261,12 @@ namespace io {
 	 * @param size   размер буфера данных подключения
 	 * @param io     объект работы с асинхронными событиями
 	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param addr   объект работы с сетевыми адресами
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
 	 */
-	static bool origin(::io::server_t * server, const char * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool origin(::io::server_t * server, const char * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Идентификатор сессии источника
 		origin_id_t sid;
 		/**
@@ -22455,9 +22441,9 @@ namespace io {
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
-								server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+								const_cast <net_addr_t *> (addr)->mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 								// Получаем MAC-адрес для проверки
-								string mac = ::move(static_cast <string> (server->addr));
+								string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 								// Если адрес находится в чёрном списке
 								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
@@ -22522,9 +22508,9 @@ namespace io {
 								}
 							}
 							// Устанавливаем полученный IP-адрес
-							server->addr.v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+							const_cast <net_addr_t *> (addr)->v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
-							string ip = ::move(static_cast <string> (server->addr));
+							string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 							// Если адрес находится в чёрном списке
 							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
@@ -22614,9 +22600,9 @@ namespace io {
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
-								origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+								const_cast <net_addr_t *> (addr)->mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 								// Получаем MAC-адрес для проверки
-								string mac = ::move(static_cast <string> (origin->addr));
+								string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 								// Если адрес находится в чёрном списке
 								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
@@ -22681,9 +22667,9 @@ namespace io {
 								}
 							}
 							// Устанавливаем полученный IP-адрес
-							origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
+							const_cast <net_addr_t *> (addr)->v6(awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address, net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
-							string ip = ::move(static_cast <string> (origin->addr));
+							string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 							// Если адрес находится в чёрном списке
 							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
@@ -26364,7 +26350,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, const string & val
 									// Если тип адреса принадлежит к Unix Domain Socket
 									case static_cast <uint8_t> (event::address_t::UDS): {
 										// Если адрес соответствует адресу файловой системы
-										if(server->addr.check(value, net_addr_t::type_t::FS))
+										if(this->_addr.check(value, net_addr_t::type_t::FS))
 											// Выполняем добавление нового адреса в чёрный список
 											return server->blacklist.emplace(value, server->state.address).second;
 										// Если адрес не принадлежит к адресу файловой системы
@@ -26404,7 +26390,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, const string & val
 										/**
 										 * Определяем проверку соответствует ли адрес
 										 */
-										switch(static_cast <uint8_t> (server->addr.host(value))){
+										switch(static_cast <uint8_t> (this->_addr.host(value))){
 											// Если адрес соответствует IPv4-адресу
 											case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 												// Выполняем добавление нового адреса в чёрный список
@@ -26457,7 +26443,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, const string & val
 									// Если тип адреса принадлежит к Unix Domain Socket
 									case static_cast <uint8_t> (event::address_t::UDS): {
 										// Если адрес соответствует адресу файловой системы
-										if(server->addr.check(value, net_addr_t::type_t::FS))
+										if(this->_addr.check(value, net_addr_t::type_t::FS))
 											// Выполняем добавление нового адреса в белый список
 											return server->whitelist.emplace(value, server->state.address).second;
 										// Если адрес не принадлежит к адресу файловой системы
@@ -26497,7 +26483,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, const string & val
 										/**
 										 * Определяем проверку соответствует ли адрес
 										 */
-										switch(static_cast <uint8_t> (server->addr.host(value))){
+										switch(static_cast <uint8_t> (this->_addr.host(value))){
 											// Если адрес соответствует IPv4-адресу
 											case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 												// Выполняем добавление нового адреса в белый список
@@ -27146,7 +27132,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										// Если размер файла не пустой
 										if(fs->info.st_size > 0)
 											// Выполняем чтение данных из файла
-											::io::read(fs, this, &this->_eth, this->_fmk, this->_log);
+											::io::read(fs, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 									}
 								// Если файловый дескриптор файла не существует
 								} else {
@@ -27731,9 +27717,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Получаем объект хоста клиента
 													net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (client->target.get());
-													// Получаем адрес сокета клиента
+													// Получаем установленный адрес клиента
 													const string & unixsocket = awh_cast <net::addr_fs_t *> (remote->path.get())->address;
-													// Если адрес сокета клиента не пустой
+													// Если установленный адрес клиента не пустой
 													if((result = (!unixsocket.empty() && (unixsocket.length() < sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path))))){
 														// Устанавливаем размер объекта подключения
 														client->endpoint.size = sizeof(struct sockaddr_un);
@@ -27758,7 +27744,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
-																// Копируем адрес сокета сервера
+																// Копируем установленный адрес сервера
 																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 															} break;
 															/**
@@ -27778,7 +27764,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
-																// Копируем адрес сокета сервера
+																// Копируем установленный адрес сервера
 																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем путь к файлу unix-сокета
 																string fullpath = "", sockname = "";
@@ -27894,7 +27880,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	::close(fd);
 																	// Удаляем созданный временный файл unix-сокета
 																	::unlink(filename.c_str());
-																	// Копируем адрес сокета клиента
+																	// Копируем установленный адрес клиента
 																	::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path), filename.length()));
 																	// Получаем размер объекта сокета
 																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
@@ -27989,7 +27975,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														client->transfer.actions |= ::action::RECONNECT;
 														// Устанавливаем флаг разрешающий выполнять отключение от сервера
 														client->transfer.actions |= ::action::DISCONNECT;
-													// Если адрес сокета клиента пустой
+													// Если установленный адрес клиента пустой
 													} else {
 														// Если установлена функция обратного вызова
 														if(client->callbacks.status != nullptr)
@@ -28133,9 +28119,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
-																	client->addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																	this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -28336,9 +28322,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				 */
 																				#if DEBUG_MODE
 																					// Устанавливаем полученный IP-адрес
-																					client->addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																					this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																					// Выводим сообщение об ошибке
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
@@ -28436,9 +28422,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Устанавливаем полученный IP-адрес
-																			client->addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																			this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -28635,9 +28621,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
-																	client->addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
+																	this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -28836,9 +28822,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				 */
 																				#if DEBUG_MODE
 																					// Устанавливаем полученный IP-адрес
-																					client->addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
+																					this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
 																					// Выводим сообщение об ошибке
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
@@ -28936,9 +28922,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Устанавливаем полученный IP-адрес
-																			client->addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
+																			this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -29304,9 +29290,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Получаем объект хоста сервера
 													net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
-													// Получаем адрес сокета сервера
+													// Получаем установленный адрес сервера
 													const string & unixsocket = awh_cast <net::addr_fs_t *> (host->path.get())->address;
-													// Если адрес сокета сервера не пустой
+													// Если установленный адрес сервера не пустой
 													if((result = (!unixsocket.empty() && (unixsocket.length() < sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))))){
 														// Устанавливаем размер объекта подключения
 														server->endpoint.size = sizeof(struct sockaddr_un);
@@ -29340,7 +29326,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
-																// Копируем адрес сокета сервера
+																// Копируем установленный адрес сервера
 																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
@@ -29400,7 +29386,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Удаляем файл сокета
 																		::unlink(unixsocket.c_str());
 																}
-																// Копируем адрес сокета сервера
+																// Копируем установленный адрес сервера
 																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
@@ -29482,7 +29468,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														server->actions |= ::action::CLOSE;
 														// Устанавливаем флаг разрешающий выполнять принятие подключений
 														server->actions |= ::action::ACCEPT;
-													// Если адрес сокета клиента пустой
+													// Если установленный адрес клиента пустой
 													} else {
 														// Если установлена функция обратного вызова
 														if(server->callbacks.status != nullptr)
@@ -29618,9 +29604,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
-																	server->addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																	this->_addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (server->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -29784,9 +29770,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
-																	server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
+																	this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (server->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -30695,9 +30681,9 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 								// Если префикс сети не максимальный
 								if(ip->prefix < 32){
 									// Устанавливаем IP-адрес сети в хостовом порядке
-									server->addr.v4(ip->address, net_addr_t::endian_t::LITTLE);
+									this->_addr.v4(ip->address, net_addr_t::endian_t::LITTLE);
 									// Выполняем наложение префикса сети
-									server->addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
+									this->_addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
 									// Выполняем инициализацию объекта адреса сети IPv4
 									unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv4_t> ();
 									// Извлекаем объект адреса сети IPv4
@@ -30705,7 +30691,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
+									addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
@@ -30719,7 +30705,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve network interface name, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve network interface name, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -30755,9 +30741,9 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 								// Если префикс сети не максимальный
 								if(ip->prefix < 128){
 									// Устанавливаем IP-адрес сети в хостовом порядке
-									server->addr.v6(ip->address, net_addr_t::endian_t::LITTLE);
+									this->_addr.v6(ip->address, net_addr_t::endian_t::LITTLE);
 									// Выполняем наложение префикса сети
-									server->addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
+									this->_addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
 									// Выполняем инициализацию объекта адреса сети IPv6
 									unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv6_t> ();
 									// Извлекаем объект адреса сети IPv6
@@ -30765,7 +30751,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(server->addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
@@ -30779,7 +30765,7 @@ string awh::engine::IO::iface(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve network interface name, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve network interface name, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31215,9 +31201,9 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 								// Если префикс сети не максимальный
 								if(ip->prefix < 32){
 									// Устанавливаем IP-адрес сети в хостовом порядке
-									server->addr.v4(ip->address, net_addr_t::endian_t::LITTLE);
+									this->_addr.v4(ip->address, net_addr_t::endian_t::LITTLE);
 									// Выполняем наложение префикса сети
-									server->addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
+									this->_addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
 									// Выполняем инициализацию объекта адреса сети IPv4
 									unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv4_t> ();
 									// Извлекаем объект адреса сети IPv4
@@ -31225,7 +31211,7 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
+									addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
@@ -31239,7 +31225,7 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve network interface MTU, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve network interface MTU, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31275,9 +31261,9 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 								// Если префикс сети не максимальный
 								if(ip->prefix < 128){
 									// Устанавливаем IP-адрес сети в хостовом порядке
-									server->addr.v6(ip->address, net_addr_t::endian_t::LITTLE);
+									this->_addr.v6(ip->address, net_addr_t::endian_t::LITTLE);
 									// Выполняем наложение префикса сети
-									server->addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
+									this->_addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
 									// Выполняем инициализацию объекта адреса сети IPv6
 									unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv6_t> ();
 									// Извлекаем объект адреса сети IPv6
@@ -31285,7 +31271,7 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(server->addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
@@ -31299,7 +31285,7 @@ uint16_t awh::engine::IO::mtu(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve network interface MTU, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve network interface MTU, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31468,9 +31454,9 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 								// Если префикс сети не максимальный
 								if(ip->prefix < 32){
 									// Устанавливаем IP-адрес сети в хостовом порядке
-									server->addr.v4(ip->address, net_addr_t::endian_t::LITTLE);
+									this->_addr.v4(ip->address, net_addr_t::endian_t::LITTLE);
 									// Выполняем наложение префикса сети
-									server->addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
+									this->_addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
 									// Выполняем инициализацию объекта адреса сети IPv4
 									unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv4_t> ();
 									// Извлекаем объект адреса сети IPv4
@@ -31478,7 +31464,7 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
+									addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
@@ -31528,9 +31514,9 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 								// Если префикс сети не максимальный
 								if(ip->prefix < 128){
 									// Устанавливаем IP-адрес сети в хостовом порядке
-									server->addr.v6(ip->address, net_addr_t::endian_t::LITTLE);
+									this->_addr.v6(ip->address, net_addr_t::endian_t::LITTLE);
 									// Выполняем наложение префикса сети
-									server->addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
+									this->_addr.impose(ip->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
 									// Выполняем инициализацию объекта адреса сети IPv6
 									unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv6_t> ();
 									// Извлекаем объект адреса сети IPv6
@@ -31538,7 +31524,7 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(server->addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network, source);
 								// Выполняем извлечение сетевых параметров
@@ -31601,10 +31587,10 @@ bool awh::engine::IO::mtu(const event::id_t id, const uint16_t mtu) const noexce
 	return false;
 }
 /**
- * @brief Метод получения хоста целевой машины
+ * @brief Метод получения адреса хоста целевой машины
  *
  * @param id идентификатор события
- * @return   хост целевой машины
+ * @return   адрес хоста целевой машины
  */
 string awh::engine::IO::target(const event::id_t id) const noexcept {
 	/**
@@ -31659,7 +31645,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 						case static_cast <uint8_t> (event::family_t::UDS): {
 							// Получаем объект хоста однорангового узла
 							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (peer->remote.get());
-							// Извлекаем и возвращаем адрес сокета
+							// Извлекаем и возвращаем установленный адрес однорангового узла
 							return awh_cast <net::addr_fs_t *> (remote->path.get())->address;
 						}
 						// Для семейства IPv4
@@ -31669,9 +31655,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(remote->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
-								peer->addr.v4(awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (peer->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -31679,7 +31665,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									peer->callbacks.status(peer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31709,17 +31695,17 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(remote->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
-								peer->addr.v6(awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (peer->addr);
-							// Если размер IP-адреса не соответствует IPv4
+								return static_cast <string> (this->_addr);
+							// Если размер IP-адреса не соответствует IPv6
 							} else {
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									peer->callbacks.status(peer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31760,7 +31746,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 						case static_cast <uint8_t> (event::family_t::UDS): {
 							// Получаем объект хоста однорангового узла
 							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
-							// Извлекаем и возвращаем адрес сокета
+							// Извлекаем и возвращаем установленный адрес однорангового узла-источника
 							return awh_cast <net::addr_fs_t *> (remote->path.get())->address;
 						}
 						// Для семейства IPv4
@@ -31770,9 +31756,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(remote->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
-								origin->addr.v4(awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (origin->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -31780,7 +31766,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									origin->callbacks.status(origin->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31810,9 +31796,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(remote->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
-								origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (origin->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -31820,7 +31806,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									origin->callbacks.status(origin->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31864,9 +31850,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(target->size == 4){
 								// Устанавливаем полученный IP-адрес
-								tunnel->addr.v4(target->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(target->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (tunnel->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -31874,7 +31860,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31904,9 +31890,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(target->size == 16){
 								// Устанавливаем полученный IP-адрес
-								tunnel->addr.v6(target->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(target->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (tunnel->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
 								// Если установлена функция обратного вызова
@@ -31914,7 +31900,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31958,9 +31944,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(target->size == 4){
 								// Устанавливаем полученный IP-адрес
-								mediator->addr.v4(target->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(target->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (mediator->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -31968,7 +31954,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(mediator->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -31998,9 +31984,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(target->size == 16){
 								// Устанавливаем полученный IP-адрес
-								mediator->addr.v6(target->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(target->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (mediator->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
 								// Если установлена функция обратного вызова
@@ -32008,7 +31994,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(mediator->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32049,7 +32035,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 						case static_cast <uint8_t> (event::family_t::UDS): {
 							// Получаем объект адреса целевой машины
 							net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
-							// Извлекаем и возвращаем адрес сокета
+							// Извлекаем и возвращаем установленный адрес целевой машины
 							return awh_cast <net::addr_fs_t *> (target->path.get())->address;
 						}
 						// Для семейства IPv4
@@ -32059,9 +32045,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(target->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
-								client->addr.v4(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (client->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -32069,7 +32055,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32099,9 +32085,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(target->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
-								client->addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (client->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
 								// Если установлена функция обратного вызова
@@ -32109,7 +32095,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32150,7 +32136,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 						case static_cast <uint8_t> (event::family_t::UDS): {
 							// Получаем объект адреса хоста сервера
 							net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
-							// Извлекаем и возвращаем адрес сокета
+							// Извлекаем и возвращаем установленный адрес хоста сервера
 							return awh_cast <net::addr_fs_t *> (host->path.get())->address;
 						}
 						// Для семейства IPv4
@@ -32160,9 +32146,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv4
 							if(host->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
-								server->addr.v4(awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (server->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -32170,7 +32156,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv4-address does not match set IPv6";
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32200,9 +32186,9 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 							// Если IP-адрес установлен и соответствует размеру IPv6
 							if(host->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
-								server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Возвращаем результат работы функции
-								return static_cast <string> (server->addr);
+								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
 								// Если установлена функция обратного вызова
@@ -32210,7 +32196,7 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "To retrieve target address, desired IPv6-address does not match set IPv4";
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32259,11 +32245,11 @@ string awh::engine::IO::target(const event::id_t id) const noexcept {
 	return "";
 }
 /**
- * @brief Метод установки хоста целевой машины
+ * @brief Метод установки адреса хоста целевой машины
  *
- * @param id   идентификатор события
- * @param host хост целевой машины
- * @return     результат выполнения установки
+ * @param id     идентификатор события
+ * @param target адрес хоста целевой машины
+ * @return       результат выполнения установки
  */
 bool awh::engine::IO::target(const event::id_t id, const string & target) noexcept {
 	/**
@@ -32289,7 +32275,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Получаем текущее значение объекта файловой системы
 							::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
 							// Если адрес соответствует адресу файловой системы
-							if(fs->addr.check(target, net_addr_t::type_t::FS)){
+							if(this->_addr.check(target, net_addr_t::type_t::FS)){
 								// Если объект адреса файловой системы не инициализирован
 								if(fs->path == nullptr)
 									// Инициализируем объект адреса файловой системы
@@ -32370,7 +32356,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Получаем текущее значение объекта файловой системы
 							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если адрес соответствует адресу файловой системы
-							if(fs->addr.check(target, net_addr_t::type_t::FS)){
+							if(this->_addr.check(target, net_addr_t::type_t::FS)){
 								// Если объект адреса файловой системы не инициализирован
 								if(fs->path == nullptr)
 									// Инициализируем объект адреса файловой системы
@@ -32455,7 +32441,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем парсинг IPv4-адреса
-								if(tunnel->addr.parse(target, net_addr_t::type_t::IPV4)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV4)){
 									// Если объект адреса клиента не инициализирован
 									if(tunnel->target == nullptr)
 										// Создаём новый объект адреса IPv4 удалённого узла
@@ -32465,7 +32451,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv4
 										tunnel->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address = tunnel->addr.v4(net_addr_t::endian_t::LITTLE);
+									awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -32501,7 +32487,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем парсинг IPv6-адреса
-								if(tunnel->addr.parse(target, net_addr_t::type_t::IPV6)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV6)){
 									// Если объект адреса клиента не инициализирован
 									if(tunnel->target == nullptr)
 										// Создаём новый объект адреса IPv6 удалённого узла
@@ -32511,7 +32497,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv6
 										tunnel->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address = ::move(tunnel->addr.v6(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -32557,7 +32543,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем парсинг IPv4-адреса
-								if(mediator->addr.parse(target, net_addr_t::type_t::IPV4)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV4)){
 									// Если объект хоста не инициализирован
 									if(mediator->host == nullptr)
 										// Создаём новый объект хоста IPv4 удалённого узла
@@ -32567,7 +32553,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv4
 										mediator->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес в хост
-									awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = mediator->addr.v4(net_addr_t::endian_t::LITTLE);
+									awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -32603,7 +32589,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем парсинг IPv6-адреса
-								if(mediator->addr.parse(target, net_addr_t::type_t::IPV6)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV6)){
 									// Если объект хоста не инициализирован
 									if(mediator->host == nullptr)
 										// Создаём новый объект хоста IPv6 удалённого узла
@@ -32613,7 +32599,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv6
 										mediator->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес в хост
-									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(mediator->addr.v6(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -32659,7 +32645,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
 								// Если адрес соответствует адресу файловой системы
-								if(client->addr.check(target, net_addr_t::type_t::FS)){
+								if(this->_addr.check(target, net_addr_t::type_t::FS)){
 									// Если объект адреса клиента не инициализирован
 									if(client->target == nullptr)
 										// Создаём новый объект адреса удалённого узла
@@ -32705,7 +32691,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем парсинг IPv4-адреса
-								if(client->addr.parse(target, net_addr_t::type_t::IPV4)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV4)){
 									// Если объект адреса клиента не инициализирован
 									if(client->target == nullptr){
 										// Создаём новый объект адреса удалённого узла
@@ -32718,7 +32704,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv4
 										client->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = client->addr.v4(net_addr_t::endian_t::LITTLE);
+									awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -32754,7 +32740,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем парсинг IPv6-адреса
-								if(client->addr.parse(target, net_addr_t::type_t::IPV6)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV6)){
 									// Если объект адреса клиента не инициализирован
 									if(client->target == nullptr){
 										// Создаём новый объект адреса удалённого узла
@@ -32767,7 +32753,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv6
 										client->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = ::move(client->addr.v6(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -32813,7 +32799,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
 								// Если адрес соответствует адресу файловой системы
-								if(server->addr.check(target, net_addr_t::type_t::FS)){
+								if(this->_addr.check(target, net_addr_t::type_t::FS)){
 									// Если объект адреса сервера не инициализирован
 									if(server->host == nullptr)
 										// Создаём новый объект адреса сервера
@@ -32859,7 +32845,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем парсинг IPv4-адреса
-								if(server->addr.parse(target, net_addr_t::type_t::IPV4)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV4)){
 									// Если объект адреса сервера не инициализирован
 									if(server->host == nullptr){
 										// Создаём новый объект адреса сервера
@@ -32872,7 +32858,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv4
 										server->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
+									awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -32908,7 +32894,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем парсинг IPv6-адреса
-								if(server->addr.parse(target, net_addr_t::type_t::IPV6)){
+								if(this->_addr.parse(target, net_addr_t::type_t::IPV6)){
 									// Если объект адреса сервера не инициализирован
 									if(server->host == nullptr){
 										// Создаём новый объект адреса сервера
@@ -32921,7 +32907,7 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 										// Устанавливаем тип адреса как IPv6
 										server->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = ::move(server->addr.v6(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -32979,6 +32965,1067 @@ bool awh::engine::IO::target(const event::id_t id, const string & target) noexce
 	}
 	// Выводим результат по умолчанию
 	return false;
+}
+/**
+ * @brief Метод получения адреса хоста целевой машины
+ *
+ * @param id     идентификатор события
+ * @param target объект для извлечения адреса хоста целевой машины
+ * @return       результат выполнения извлечения адреса хоста целевой машины
+ */
+bool awh::engine::IO::target(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR): {
+					// Получаем текущее значение объекта директории
+					::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
+					// Если объект адреса директории не инициализирован
+					if(!(result = (fs->path != nullptr)))
+						// Прерываем выполнение
+						break;
+					// Если объект для извлечения адреса хоста целевой машины не инициализирован
+					if(target == nullptr)
+						// Создаём новый объект для извлечения адреса хоста целевой машины
+						target = make_unique <net::addr_fs_t> ();
+					// Возвращаем адрес директории
+					awh_cast <net::addr_fs_t *> (target.get())->address = awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+				} break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE): {
+					// Получаем текущее значение объекта файловой системы
+					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+					// Если объект адреса файловой системы не инициализирован
+					if(!(result = (fs->path != nullptr)))
+						// Прерываем выполнение
+						break;
+					// Если объект для извлечения адреса хоста целевой машины не инициализирован
+					if(target == nullptr)
+						// Создаём новый объект для извлечения адреса хоста целевой машины
+						target = make_unique <net::addr_fs_t> ();
+					// Возвращаем адрес файловой системы
+					awh_cast <net::addr_fs_t *> (target.get())->address = awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если объект адреса однорангового узла не инициализирован
+					if(!(result = (peer->remote != nullptr)))
+						// Прерываем выполнение
+						break;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (peer->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_fs_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (peer->remote.get());
+							// Извлекаем и возвращаем установленный адрес unix-доменного сокета
+							awh_cast <net::addr_fs_t *> (target.get())->address = awh_cast <net::addr_fs_t *> (remote->path.get())->address;
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv4_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+							// Если IP-адрес установлен и соответствует размеру IPv4
+							if(remote->ip->size == 4)
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+							// Если размер IP-адреса не соответствует IPv4
+							else {
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									peer->callbacks.status(peer->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv6_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+							// Если IP-адрес установлен и соответствует размеру IPv6
+							if(remote->ip->size == 16)
+								// Устанавливаем полученный IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+							// Если размер IP-адреса не соответствует IPv6
+							else {
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									peer->callbacks.status(peer->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+					}
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Если объект адреса однорангового узла не инициализирован
+					if(!(result = (origin->remote != nullptr)))
+						// Прерываем выполнение
+						break;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (origin->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_fs_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
+							// Извлекаем и возвращаем установленный адрес unix-доменного сокета
+							awh_cast <net::addr_fs_t *> (target.get())->address = awh_cast <net::addr_fs_t *> (remote->path.get())->address;
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv4_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+							// Если IP-адрес установлен и соответствует размеру IPv4
+							if(remote->ip->size == 4)
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+							// Если размер IP-адреса не соответствует IPv4
+							else {
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv6_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+							// Если IP-адрес установлен и соответствует размеру IPv6
+							if(remote->ip->size == 16)
+								// Устанавливаем полученный IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+							// Если размер IP-адреса не соответствует IPv6
+							else {
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(origin->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+					}
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					// Если объект адреса не инициализирован
+					if(!(result = (tunnel->target != nullptr)))
+						// Прерываем выполнение
+						break;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (tunnel->state.family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv4_t> ();
+							// Получаем объект адреса целевой машины
+							net::addr_net_ipv4_t * source = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get());
+							// Если IP-адрес установлен и соответствует размеру IPv4
+							if(source->size == 4)
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = source->address;
+							// Если размер IP-адреса не соответствует IPv4
+							else {
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv6_t> ();
+							// Получаем объект адреса целевой машины
+							net::addr_net_ipv6_t * source = awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get());
+							// Если IP-адрес установлен и соответствует размеру IPv6
+							if(source->size == 16)
+								// Устанавливаем полученный IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &source->address[0], 16);
+							// Если размер IP-адреса не соответствует IPv6
+							else {
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+					}
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если объект хоста не инициализирован
+					if(!(result = (mediator->host != nullptr)))
+						// Прерываем выполнение
+						break;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (mediator->state.family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv4_t> ();
+							// Получаем объект хоста целевой машины
+							net::addr_net_ipv4_t * source = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get());
+							// Если IP-адрес установлен и соответствует размеру IPv4
+							if(source->size == 4)
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = source->address;
+							// Если размер IP-адреса не соответствует IPv4
+							else {
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									mediator->callbacks.error(mediator->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv6_t> ();
+							// Получаем объект хоста целевой машины
+							net::addr_net_ipv6_t * source = awh_cast <net::addr_net_ipv6_t *> (mediator->host.get());
+							// Если IP-адрес установлен и соответствует размеру IPv6
+							if(source->size == 16)
+								// Устанавливаем полученный IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &source->address[0], 16);
+							// Если размер IP-адреса не соответствует IPv6
+							else {
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									mediator->callbacks.error(mediator->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+					}
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Если объект адреса клиента не инициализирован
+					if(!(result = (client->target != nullptr)))
+						// Прерываем выполнение
+						break;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (client->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_fs_t> ();
+							// Получаем объект хоста однорангового узла
+							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (client->target.get());
+							// Извлекаем и возвращаем установленный адрес unix-доменного сокета
+							awh_cast <net::addr_fs_t *> (target.get())->address = awh_cast <net::addr_fs_t *> (remote->path.get())->address;
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv4_t> ();
+							// Получаем объект адреса целевой машины
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (client->target.get());
+							// Если IP-адрес установлен и соответствует размеру IPv4
+							if(remote->ip->size == 4)
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+							// Если размер IP-адреса не соответствует IPv4
+							else {
+								// Если установлена функция обратного вызова
+								if(client->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									client->callbacks.status(client->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv6_t> ();
+							// Получаем объект адреса целевой машины
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (client->target.get());
+							// Если IP-адрес установлен и соответствует размеру IPv6
+							if(remote->ip->size == 16)
+								// Устанавливаем полученный IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+							// Если размер IP-адреса не соответствует IPv6
+							else {
+								// Если установлена функция обратного вызова
+								if(client->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									client->callbacks.status(client->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+					}
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Если объект адреса сервера не инициализирован
+					if(!(result = (server->host != nullptr)))
+						// Прерываем выполнение
+						break;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (server->state.family)){
+						// Для семейства UNIX-доменных сокетов
+						case static_cast <uint8_t> (event::family_t::UDS): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_fs_t> ();
+							// Получаем объект адреса хоста сервера
+							net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
+							// Извлекаем и возвращаем установленный адрес unix-доменного сокета
+							awh_cast <net::addr_fs_t *> (target.get())->address = awh_cast <net::addr_fs_t *> (host->path.get())->address;
+						} break;
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv4_t> ();
+							// Получаем объект адреса хоста сервера
+							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+							// Если IP-адрес установлен и соответствует размеру IPv4
+							if(host->ip->size == 4)
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+							// Если размер IP-адреса не соответствует IPv4
+							else {
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									server->callbacks.status(server->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv4-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если объект для извлечения адреса хоста целевой машины не инициализирован
+							if(target == nullptr)
+								// Создаём новый объект для извлечения адреса хоста целевой машины
+								target = make_unique <net::addr_net_ipv6_t> ();
+							// Получаем объект адреса хоста сервера
+							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+							// Если IP-адрес установлен и соответствует размеру IPv6
+							if(host->ip->size == 16)
+								// Устанавливаем полученный IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+							// Если размер IP-адреса не соответствует IPv6
+							else {
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									server->callbacks.status(server->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "To retrieve target address, desired IPv6-address does not match set address";
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						} break;
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки адреса хоста целевой машины
+ *
+ * @param id     идентификатор события
+ * @param target адрес хоста целевой машины
+ * @return       результат выполнения установки
+ */
+bool awh::engine::IO::target(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если объект для установки адреса хоста целевой машины не инициализирован
+		if(target == nullptr)
+			// Выводим результат по умолчанию
+			return result;
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			// Если событие ещё не инициализировано или клонированно от другого события
+			if(i->second->state.status == event::status_t::NONE){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является директорией
+					case static_cast <uint8_t> (event::node_t::DIR): {
+						// Если типы адресов соответствуют
+						if((result = (i->second->state.family == event::family_t::FSYS))){
+							// Получаем текущее значение объекта файловой системы
+							::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
+							// Если объект адреса файловой системы не инициализирован
+							if(fs->path == nullptr)
+								// Инициализируем объект адреса файловой системы
+								fs->path = make_unique <net::addr_fs_t> ();
+							// Если тип адреса не установлен
+							if(fs->state.address == event::address_t::NONE)
+								// Устанавливаем тип адреса как файл в файловой системе
+								fs->state.address = event::address_t::FS;
+							// Устанавливаем адрес файловой системы
+							awh_cast <net::addr_fs_t *> (fs->path.get())->address = awh_cast <net::addr_fs_t *> (target.get())->address;
+						// Если типы адресов не соответствуют
+						} else {
+							// Получаем текущее значение объекта файловой системы
+							::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								fs->callbacks.status(fs->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", awh_cast <net::addr_fs_t *> (target.get())->address.c_str());
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+							// Если функция обратного вызова для вывода события не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является файловой системой
+					case static_cast <uint8_t> (event::node_t::FILE): {
+						// Если типы адресов соответствуют
+						if((result = (i->second->state.family == event::family_t::FSYS))){
+							// Получаем текущее значение объекта файловой системы
+							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+							// Если объект адреса файловой системы не инициализирован
+							if(fs->path == nullptr)
+								// Инициализируем объект адреса файловой системы
+								fs->path = make_unique <net::addr_fs_t> ();
+							// Если тип адреса не установлен
+							if(fs->state.address == event::address_t::NONE)
+								// Устанавливаем тип адреса как файл в файловой системе
+								fs->state.address = event::address_t::FS;
+							// Устанавливаем адрес файловой системы
+							awh_cast <net::addr_fs_t *> (fs->path.get())->address = awh_cast <net::addr_fs_t *> (target.get())->address;
+						// Если типы адресов не соответствуют
+						} else {
+							// Получаем текущее значение объекта файловой системы
+							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								fs->callbacks.status(fs->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", awh_cast <net::addr_fs_t *> (target.get())->address.c_str());
+							// Если установлена функция обратного вызова
+							if(fs->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+							// Если функция обратного вызова для вывода события не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем объект туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (tunnel->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если объект адреса клиента не инициализирован
+								if(tunnel->target == nullptr)
+									// Создаём новый объект адреса IPv4 удалённого узла
+									tunnel->target = make_unique <net::addr_net_ipv4_t> ();
+								// Если тип адреса не установлен
+								if(tunnel->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv4
+									tunnel->state.address = event::address_t::IPV4;
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address = awh_cast <net::addr_net_ipv4_t *> (target.get())->address;
+								// Выводим результат работы функции
+								return true;
+							}
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если объект адреса клиента не инициализирован
+								if(tunnel->target == nullptr)
+									// Создаём новый объект адреса IPv6 удалённого узла
+									tunnel->target = make_unique <net::addr_net_ipv6_t> ();
+								// Если тип адреса не установлен
+								if(tunnel->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv6
+									tunnel->state.address = event::address_t::IPV6;
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address = ::move(awh_cast <net::addr_net_ipv6_t *> (target.get())->address);
+								// Выводим результат работы функции
+								return true;
+							}
+						}
+					} break;
+					// Если узел является посредником
+					case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+						// Получаем объект посредника
+						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (mediator->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если объект хоста не инициализирован
+								if(mediator->host == nullptr)
+									// Создаём новый объект хоста IPv4 удалённого узла
+									mediator->host = make_unique <net::addr_net_ipv4_t> ();
+								// Если тип адреса не установлен
+								if(mediator->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv4
+									mediator->state.address = event::address_t::IPV4;
+								// Устанавливаем полученный IP-адрес в хост
+								awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = awh_cast <net::addr_net_ipv4_t *> (target.get())->address;
+								// Выводим результат работы функции
+								return true;
+							}
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если объект хоста не инициализирован
+								if(mediator->host == nullptr)
+									// Создаём новый объект хоста IPv6 удалённого узла
+									mediator->host = make_unique <net::addr_net_ipv6_t> ();
+								// Если тип адреса не установлен
+								if(mediator->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv6
+									mediator->state.address = event::address_t::IPV6;
+								// Устанавливаем полученный IP-адрес в хост
+								awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(awh_cast <net::addr_net_ipv6_t *> (target.get())->address);
+								// Выводим результат работы функции
+								return true;
+							}
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства UNIX-доменных сокетов
+							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Если объект адреса клиента не инициализирован
+								if(client->target == nullptr)
+									// Создаём новый объект адреса удалённого узла
+									client->target = make_unique <net::attr_uds_t> ();
+								// Если тип адреса не установлен
+								if(client->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как файловая система
+									client->state.address = event::address_t::UDS;
+								// Устанавливаем адрес uinix-доменного сокета
+								awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = awh_cast <net::addr_fs_t *> (target.get())->address;
+								// Выводим результат работы функции
+								return true;
+							}
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если объект адреса клиента не инициализирован
+								if(client->target == nullptr){
+									// Создаём новый объект адреса удалённого узла
+									client->target = make_unique <net::attr_net_t> ();
+									// Создаём новый объект адреса клиента IPv4
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+								}
+								// Если тип адреса не установлен
+								if(client->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv4
+									client->state.address = event::address_t::IPV4;
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (target.get())->address;
+								// Выводим результат работы функции
+								return true;
+							}
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если объект адреса клиента не инициализирован
+								if(client->target == nullptr){
+									// Создаём новый объект адреса удалённого узла
+									client->target = make_unique <net::attr_net_t> ();
+									// Создаём новый объект адреса клиента IPv6
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+								}
+								// Если тип адреса не установлен
+								if(client->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv6
+									client->state.address = event::address_t::IPV6;
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = ::move(awh_cast <net::addr_net_ipv6_t *> (target.get())->address);
+								// Выводим результат работы функции
+								return true;
+							}
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем текущее значение объекта сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (server->state.family)){
+							// Для семейства UNIX-доменных сокетов
+							case static_cast <uint8_t> (event::family_t::UDS): {
+								// Если объект адреса сервера не инициализирован
+								if(server->host == nullptr)
+									// Создаём новый объект адреса сервера
+									server->host = make_unique <net::attr_uds_t> ();
+								// Если тип адреса не установлен
+								if(server->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как файловая система
+									server->state.address = event::address_t::UDS;
+								// Устанавливаем адрес uinix-доменного сокета
+								awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = awh_cast <net::addr_fs_t *> (target.get())->address;
+								// Выводим результат работы функции
+								return true;
+							}
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если объект адреса сервера не инициализирован
+								if(server->host == nullptr){
+									// Создаём новый объект адреса сервера
+									server->host = make_unique <net::attr_net_t> ();
+									// Создаём новый объект адреса сервера IPv4
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+								}
+								// Если тип адреса не установлен
+								if(server->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv4
+									server->state.address = event::address_t::IPV4;
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (target.get())->address;
+								// Выводим результат работы функции
+								return true;
+							}
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если объект адреса сервера не инициализирован
+								if(server->host == nullptr){
+									// Создаём новый объект адреса сервера
+									server->host = make_unique <net::attr_net_t> ();
+									// Создаём новый объект адреса сервера IPv6
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+								}
+								// Если тип адреса не установлен
+								if(server->state.address == event::address_t::NONE)
+									// Устанавливаем тип адреса как IPv6
+									server->state.address = event::address_t::IPV6;
+								// Устанавливаем полученный IP-адрес
+								awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = ::move(awh_cast <net::addr_net_ipv6_t *> (target.get())->address);
+								// Выводим результат работы функции
+								return true;
+							}
+						}
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод получения адреса события
@@ -33098,9 +34145,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											peer->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (peer->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33137,7 +34184,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 											// Вызываем функцию обратного вызова об ошибке отказа
 											peer->callbacks.status(peer->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv4-address does not match set IPv6";
+										const string error = "Desired IPv4-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33175,9 +34222,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											peer->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (peer->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33207,14 +34254,14 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												#endif
 											}
 										}
-									// Если размер IP-адреса не соответствует IPv4
+									// Если размер IP-адреса не соответствует IPv6
 									} else {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											peer->callbacks.status(peer->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv6-address does not match set IPv4";
+										const string error = "Desired IPv6-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33295,9 +34342,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (origin->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33334,7 +34381,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 											// Вызываем функцию обратного вызова об ошибке отказа
 											origin->callbacks.status(origin->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv4-address does not match set IPv6";
+										const string error = "Desired IPv4-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(origin->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33372,9 +34419,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											origin->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (origin->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33404,14 +34451,14 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												#endif
 											}
 										}
-									// Если размер IP-адреса не соответствует IPv4
+									// Если размер IP-адреса не соответствует IPv6
 									} else {
 										// Если установлена функция обратного вызова
 										if(origin->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											origin->callbacks.status(origin->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv6-address does not match set IPv4";
+										const string error = "Desired IPv6-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(origin->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33499,9 +34546,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											client->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (client->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33538,7 +34585,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 											// Вызываем функцию обратного вызова об ошибке отказа
 											client->callbacks.status(client->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv4-address does not match set IPv6";
+										const string error = "Desired IPv4-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33574,9 +34621,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											client->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (client->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33606,14 +34653,14 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												#endif
 											}
 										}
-									// Если размер IP-адреса не соответствует IPv4
+									// Если размер IP-адреса не соответствует IPv6
 									} else {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											client->callbacks.status(client->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv6-address does not match set IPv4";
+										const string error = "Desired IPv6-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33705,9 +34752,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												// Если MAC-адрес успешно получен
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
-													server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+													this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 													// Выводим результат работы функции
-													return static_cast <string> (server->addr);
+													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -33753,9 +34800,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (server->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33792,7 +34839,7 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv4-address does not match set IPv6";
+										const string error = "Desired IPv4-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -33841,9 +34888,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												// Если MAC-адрес успешно получен
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
-													server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+													this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 													// Выводим результат работы функции
-													return static_cast <string> (server->addr);
+													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -33889,9 +34936,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 										// Если MAC-адрес успешно получен
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											server->addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
+											this->_addr.mac(awh_cast <net::addr_mac_t *> (source.mac.get())->address);
 											// Выводим результат работы функции
-											return static_cast <string> (server->addr);
+											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -33921,14 +34968,14 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												#endif
 											}
 										}
-									// Если размер IP-адреса не соответствует IPv4
+									// Если размер IP-адреса не соответствует IPv6
 									} else {
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Desired IPv6-address does not match set IPv4";
+										const string error = "Desired IPv6-address does not match set address";
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -34109,9 +35156,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv4-адрес
-								peer->addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (peer->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -34122,9 +35169,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv4-адрес
-								origin->addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (origin->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является туннелем
 							case static_cast <uint8_t> (event::node_t::TUNNEL): {
@@ -34135,9 +35182,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv4-адрес
-								tunnel->addr.v4(awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (tunnel->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является посредником
 							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -34148,9 +35195,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv4-адрес хоста
-								mediator->addr.v4(awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (mediator->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -34161,9 +35208,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv4-адрес
-								client->addr.v4(awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (client->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -34195,16 +35242,16 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 												// Если подключение к серверу предположительно подготовлено
 												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
-													server->addr.v4(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+													this->_addr.v4(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Выводим результат работы функции
-													return static_cast <string> (server->addr);
+													return static_cast <string> (this->_addr);
 												}
 											} break;
 										}
 										// Устанавливаем полученный IPv4-адрес
-										server->addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
+										this->_addr.v4(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
 										// Выводим результат работы функции
-										return static_cast <string> (server->addr);
+										return static_cast <string> (this->_addr);
 									}
 								}
 							} break;
@@ -34291,9 +35338,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv6-адрес
-								peer->addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (peer->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -34304,9 +35351,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv6-адрес
-								origin->addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (origin->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является туннелем
 							case static_cast <uint8_t> (event::node_t::TUNNEL): {
@@ -34317,9 +35364,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv6-адрес
-								tunnel->addr.v6(awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (tunnel->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является посредником
 							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -34330,9 +35377,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv6-адрес хоста
-								mediator->addr.v6(awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (mediator->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -34343,9 +35390,9 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv6-адрес
-								client->addr.v6(awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address, net_addr_t::endian_t::LITTLE);
+								this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address, net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
-								return static_cast <string> (client->addr);
+								return static_cast <string> (this->_addr);
 							}
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -34381,16 +35428,16 @@ string awh::engine::IO::address(const event::id_t id, const event::address_t add
 													// Копируем полученный IPv6-адрес во временный буфер
 													::memcpy(&buffer[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 													// Устанавливаем полученный IPv6-адрес
-													server->addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+													this->_addr.v6(buffer, net_addr_t::endian_t::LITTLE);
 													// Выводим результат работы функции
-													return static_cast <string> (server->addr);
+													return static_cast <string> (this->_addr);
 												}
 											} break;
 										}
 										// Устанавливаем полученный IPv6-адрес
-										server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
+										this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address, net_addr_t::endian_t::LITTLE);
 										// Выводим результат работы функции
-										return static_cast <string> (server->addr);
+										return static_cast <string> (this->_addr);
 									}
 								}
 							} break;
@@ -34552,7 +35599,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 							break;
 						}
 						// Устанавливаем текст ошибки
-						const string error = this->_fmk->format("Address \"%s\" type NONE cannot be set", value.c_str());
+						const string error = this->_fmk->format("Unable to set this address \"%s\" type", value.c_str());
 						// Если установлена функция обратного вызова
 						if(callback != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
@@ -34587,7 +35634,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(fs->state.family == event::family_t::FSYS){
 									// Если адрес соответствует адресу файловой системы
-									if(fs->addr.check(value, net_addr_t::type_t::FS)){
+									if(this->_addr.check(value, net_addr_t::type_t::FS)){
 										// Устанавливаем тип адреса
 										fs->state.address = address;
 										// Если объект адреса файловой системы не инициализирован
@@ -34664,7 +35711,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(fs->state.family == event::family_t::FSYS){
 									// Если адрес соответствует адресу файловой системы
-									if(fs->addr.check(value, net_addr_t::type_t::FS)){
+									if(this->_addr.check(value, net_addr_t::type_t::FS)){
 										// Устанавливаем тип адреса
 										fs->state.address = address;
 										// Если объект адреса файловой системы не инициализирован
@@ -34782,7 +35829,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Получаем объект клиента
 										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										// Устанавливаем полученный MAC-адрес
-										if(client->addr.parse(value, net_addr_t::type_t::MAC)){
+										if(this->_addr.parse(value, net_addr_t::type_t::MAC)){
 											/**
 											 * Определяем семейство события
 											 */
@@ -34792,7 +35839,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(client->addr.mac());
+													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(this->_addr.mac());
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, source);
 													// Если IP-адрес успешно получен
@@ -34843,7 +35890,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(client->addr.mac());
+													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(this->_addr.mac());
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, source);
 													// Если IP-адрес успешно получен
@@ -34925,7 +35972,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Получаем объект сервера
 										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										// Устанавливаем полученный MAC-адрес
-										if(server->addr.parse(value, net_addr_t::type_t::MAC)){
+										if(this->_addr.parse(value, net_addr_t::type_t::MAC)){
 											/**
 											 * Определяем семейство события
 											 */
@@ -34935,7 +35982,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(server->addr.mac());
+													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(this->_addr.mac());
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, source);
 													// Если IP-адрес успешно получен
@@ -34987,7 +36034,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(server->addr.mac());
+													awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(this->_addr.mac());
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, source);
 													// Если IP-адрес успешно получен
@@ -35106,7 +36153,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Получаем объект адреса удалённого узла
 											::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 											// Если адрес соответствует адресу файловой системы
-											if(client->addr.check(value, net_addr_t::type_t::FS)){
+											if(this->_addr.check(value, net_addr_t::type_t::FS)){
 												// Устанавливаем тип адреса
 												client->state.address = address;
 												// Если объект адреса клиента не инициализирован
@@ -35116,7 +36163,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Выполняем инициализацию объекта адреса файловой системы
 													awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
 												}
-												// Устанавливаем адрес сокета в UNIX-домене
+												// Устанавливаем адрес в UNIX-домене
 												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = value;
 												// Возвращаем результат работы функции
 												return true;
@@ -35155,7 +36202,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Получаем объект адреса сервера
 											::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 											// Если адрес соответствует адресу файловой системы
-											if(server->addr.check(value, net_addr_t::type_t::FS)){
+											if(this->_addr.check(value, net_addr_t::type_t::FS)){
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
@@ -35165,7 +36212,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 													// Выполняем инициализацию объекта адреса файловой системы
 													awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
 												}
-												// Устанавливаем адрес сокета в UNIX-домене
+												// Устанавливаем адрес в UNIX-домене
 												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = value;
 												// Возвращаем результат работы функции
 												return true;
@@ -35248,7 +36295,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(tunnel->state.family == event::family_t::IPV4){
 									// Выполняем парсинг IPv4-адреса
-									if((result = tunnel->addr.parse(value, net_addr_t::type_t::IPV4))){
+									if((result = this->_addr.parse(value, net_addr_t::type_t::IPV4))){
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Если объект адреса не инициализирован
@@ -35256,7 +36303,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Создаём новый объект адреса IPv4
 											tunnel->source = make_unique <net::addr_net_ipv4_t> ();
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address = tunnel->addr.v4(net_addr_t::endian_t::LITTLE);
+										awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -35323,7 +36370,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(mediator->state.family == event::family_t::IPV4){
 									// Выполняем парсинг IPv4-адреса
-									if((result = mediator->addr.parse(value, net_addr_t::type_t::IPV4))){
+									if((result = this->_addr.parse(value, net_addr_t::type_t::IPV4))){
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Если объект хоста не инициализирован
@@ -35331,7 +36378,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Создаём новый объект хоста IPv4
 											mediator->host = make_unique <net::addr_net_ipv4_t> ();
 										// Устанавливаем полученный IP-адрес хоста в источник сетевого адреса посредника
-										awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = mediator->addr.v4(net_addr_t::endian_t::LITTLE);
+										awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -35398,9 +36445,9 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(client->state.family == event::family_t::IPV4){
 									// Выполняем парсинг IPv4-адреса
-									if(client->addr.parse(value, net_addr_t::type_t::IPV4)){
+									if(this->_addr.parse(value, net_addr_t::type_t::IPV4)){
 										// Извлекаем полученный IPv4-адрес
-										const uint32_t addr = client->addr.v4(net_addr_t::endian_t::LITTLE);
+										const uint32_t addr = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 										// Если адрес равен нулю и узел является клиентом
 										if(addr == 0){
 											// Устанавливаем тип адреса
@@ -35418,7 +36465,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											return true;
 										}
 										// Определяем принадлежность сетевого адреса
-										const net_addr_t::own_t own = client->addr.own();
+										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -35534,9 +36581,9 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(server->state.family == event::family_t::IPV4){
 									// Выполняем парсинг IPv4-адреса
-									if(server->addr.parse(value, net_addr_t::type_t::IPV4)){
+									if(this->_addr.parse(value, net_addr_t::type_t::IPV4)){
 										// Извлекаем полученный IPv4-адрес
-										const uint32_t addr = server->addr.v4(net_addr_t::endian_t::LITTLE);
+										const uint32_t addr = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 										// Если адрес равен нулю и узел является сервером
 										if((result = (addr == 0))){
 											// Устанавливаем тип адреса
@@ -35551,7 +36598,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Если адрес не равен нулю
 										} else {
 											// Определяем принадлежность сетевого адреса
-											const net_addr_t::own_t own = server->addr.own();
+											const net_addr_t::own_t own = this->_addr.own();
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 											// Устанавливаем полученный IP-адрес во временный объект
@@ -35693,7 +36740,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(tunnel->state.family == event::family_t::IPV6){
 									// Выполняем парсинг IPv6-адреса
-									if((result = tunnel->addr.parse(value, net_addr_t::type_t::IPV6))){
+									if((result = this->_addr.parse(value, net_addr_t::type_t::IPV6))){
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Если объект адреса не инициализирован
@@ -35701,7 +36748,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Создаём новый объект адреса IPv6
 											tunnel->source = make_unique <net::addr_net_ipv6_t> ();
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address = ::move(tunnel->addr.v6(net_addr_t::endian_t::LITTLE));
+										awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -35768,7 +36815,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(mediator->state.family == event::family_t::IPV6){
 									// Выполняем парсинг IPv6-адреса
-									if((result = mediator->addr.parse(value, net_addr_t::type_t::IPV6))){
+									if((result = this->_addr.parse(value, net_addr_t::type_t::IPV6))){
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Если объект хоста не инициализирован
@@ -35776,7 +36823,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Создаём новый объект хоста IPv6
 											mediator->host = make_unique <net::addr_net_ipv6_t> ();
 										// Устанавливаем полученный IP-адрес в хост посредника
-										awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(mediator->addr.v6(net_addr_t::endian_t::LITTLE));
+										awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -35843,9 +36890,9 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(client->state.family == event::family_t::IPV6){
 									// Устанавливаем полученный IPv6-адрес
-									if(client->addr.parse(value, net_addr_t::type_t::IPV6)){
+									if(this->_addr.parse(value, net_addr_t::type_t::IPV6)){
 										// Извлекаем полученный IPv6-адрес
-										auto addr = ::move(client->addr.v6(net_addr_t::endian_t::LITTLE));
+										auto addr = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 										// Если адрес равен нулю и узел является клиентом
 										if(::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0){
 											// Устанавливаем тип адреса
@@ -35863,7 +36910,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											return true;
 										}
 										// Определяем принадлежность сетевого адреса
-										const net_addr_t::own_t own = client->addr.own();
+										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -35979,9 +37026,9 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								// Если типы адресов соответствуют
 								if(server->state.family == event::family_t::IPV6){
 									// Устанавливаем полученный IPv6-адрес
-									if(server->addr.parse(value, net_addr_t::type_t::IPV6)){
+									if(this->_addr.parse(value, net_addr_t::type_t::IPV6)){
 										// Извлекаем полученный IPv6-адрес
-										auto addr = ::move(server->addr.v6(net_addr_t::endian_t::LITTLE));
+										auto addr = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 										// Если адрес равен нулю и узел является клиентом
 										if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
 											// Устанавливаем тип адреса
@@ -35996,7 +37043,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Если адрес не равен нулю
 										} else {
 											// Определяем принадлежность сетевого адреса
-											const net_addr_t::own_t own = server->addr.own();
+											const net_addr_t::own_t own = this->_addr.own();
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 											// Устанавливаем полученный IP-адрес во временный объект
@@ -36163,7 +37210,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								/**
 								 * Определяем тип полученного IP-адреса
 								 */
-								switch(static_cast <uint8_t> (client->addr.host(ip))){
+								switch(static_cast <uint8_t> (this->_addr.host(ip))){
 									// Для типа IPv4
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 										// Если маска сети не указана
@@ -36192,7 +37239,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Если типы адресов соответствуют
 										if(client->state.family == event::family_t::IPV4){
 											// Выполняем парсинг IP-адреса сети
-											client->addr.parse(ip, net_addr_t::type_t::IPV4);
+											this->_addr.parse(ip, net_addr_t::type_t::IPV4);
 											// Создаём уникальный объект сетевого адреса IPv4
 											unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv4_t> ();
 											// Получаем объект сетевого адреса IPv4
@@ -36204,11 +37251,11 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если маска является стандартной маской сети
 											else
 												// Устанавливаем префикс сети
-												addr->prefix = client->addr.mask2Prefix(mask, type);
+												addr->prefix = this->_addr.mask2Prefix(mask, type);
 											// Выполняем наложение префикса на IP-адрес сети
-											client->addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
+											this->_addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
 											// Получаем значение IP-адреса сети
-											addr->address = client->addr.v4(net_addr_t::endian_t::LITTLE);
+											addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 											// Выполняем извлечение сетевых параметров
@@ -36290,7 +37337,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Если типы адресов соответствуют
 										if(client->state.family == event::family_t::IPV6){
 											// Выполняем парсинг IP-адреса сети
-											client->addr.parse(ip, net_addr_t::type_t::IPV6);
+											this->_addr.parse(ip, net_addr_t::type_t::IPV6);
 											// Создаём уникальный объект сетевого адреса IPv6
 											unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv6_t> ();
 											// Получаем объект сетевого адреса IPv6
@@ -36302,11 +37349,11 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если маска является стандартной маской сети
 											else
 												// Устанавливаем префикс сети
-												addr->prefix = client->addr.mask2Prefix(mask, type);
+												addr->prefix = this->_addr.mask2Prefix(mask, type);
 											// Выполняем наложение префикса на IP-адрес сети
-											client->addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
+											this->_addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
 											// Получаем значение IP-адреса сети
-											addr->address = client->addr.v6(net_addr_t::endian_t::LITTLE);
+											addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 											// Выполняем извлечение сетевых параметров
@@ -36392,7 +37439,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 								/**
 								 * Определяем тип полученного IP-адреса
 								 */
-								switch(static_cast <uint8_t> (server->addr.host(ip))){
+								switch(static_cast <uint8_t> (this->_addr.host(ip))){
 									// Для типа IPv4
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 										// Если маска сети не указана
@@ -36421,7 +37468,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Если типы адресов соответствуют
 										if(server->state.family == event::family_t::IPV4){
 											// Выполняем парсинг IP-адреса сети
-											server->addr.parse(ip, net_addr_t::type_t::IPV4);
+											this->_addr.parse(ip, net_addr_t::type_t::IPV4);
 											// Создаём уникальный объект сетевого адреса IPv4
 											unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv4_t> ();
 											// Получаем объект сетевого адреса IPv4
@@ -36433,11 +37480,11 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если маска является стандартной маской сети
 											else
 												// Устанавливаем префикс сети
-												addr->prefix = server->addr.mask2Prefix(mask, type);
+												addr->prefix = this->_addr.mask2Prefix(mask, type);
 											// Выполняем наложение префикса на IP-адрес сети
-											server->addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
+											this->_addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV4);
 											// Получаем значение IP-адреса сети
-											addr->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
+											addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
 											// Выполняем извлечение сетевых параметров
@@ -36520,7 +37567,7 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 										// Если типы адресов соответствуют
 										if(server->state.family == event::family_t::IPV6){
 											// Выполняем парсинг IP-адреса сети
-											server->addr.parse(ip, net_addr_t::type_t::IPV6);
+											this->_addr.parse(ip, net_addr_t::type_t::IPV6);
 											// Создаём уникальный объект сетевого адреса IPv6
 											unique_ptr <net::addr_t> network = make_unique <net::addr_net_ipv6_t> ();
 											// Получаем объект сетевого адреса IPv6
@@ -36532,11 +37579,11 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 											// Если маска является стандартной маской сети
 											else
 												// Устанавливаем префикс сети
-												addr->prefix = server->addr.mask2Prefix(mask, type);
+												addr->prefix = this->_addr.mask2Prefix(mask, type);
 											// Выполняем наложение префикса на IP-адрес сети
-											server->addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
+											this->_addr.impose(addr->prefix, net_addr_t::addr_t::NETWORK, net_addr_t::type_t::IPV6);
 											// Получаем значение IP-адреса сети
-											addr->address = server->addr.v6(net_addr_t::endian_t::LITTLE);
+											addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
 											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
 											// Выполняем извлечение сетевых параметров
@@ -36673,6 +37720,3840 @@ bool awh::engine::IO::address(const event::id_t id, const event::address_t addre
 	}
 	// Возвращаем результат работы функции
 	return result;
+}
+/**
+ * @brief Метод получения адреса события
+ *
+ * @param id      идентификатор события
+ * @param address тип адреса события
+ * @param value   объект для извлечения адреса события
+ * @return        результат выполнения извлечения адреса события
+ */
+bool awh::engine::IO::address(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем тип адреса события
+			 */
+			switch(static_cast <uint8_t> (address)){
+				// Если тип адреса принадлежит к файловой системе
+				case static_cast <uint8_t> (event::address_t::FS): {
+					// Если типы адресов соответствуют
+					if(address == i->second->state.address){
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем объект файловой системы
+								::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
+								// Если объект адреса файловой системы не инициализирован
+								if(!(result = (fs->path != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения адреса хоста целевой машины не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект адреса файловой системы
+									value = make_unique <net::addr_fs_t> ();
+								// Извлекаем адрес файловой системы
+								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+							} break;
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Получаем объект файловой системы
+								::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+								// Если объект адреса файловой системы не инициализирован
+								if(!(result = (fs->path != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения адреса файловой системы не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект адреса файловой системы
+									value = make_unique <net::addr_fs_t> ();
+								// Извлекаем адрес файловой системы
+								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (fs->path.get())->address;
+							} break;
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						// Получаем объект файловой системы
+						::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							fs->callbacks.status(fs->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "Requested filesystem address does not match current address";
+						// Если установлена функция обратного вызова
+						if(fs->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
+				// Если тип адреса принадлежит к MAC-адресам
+				case static_cast <uint8_t> (event::address_t::MAC): {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является одноранговым узлом
+						case static_cast <uint8_t> (event::node_t::PEER): {
+							// Получаем объект однорангового узла
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+							// Если объект адреса однорангового узла не инициализирован
+							if(!(result = (peer->remote != nullptr)))
+								// Прерываем выполнение
+								break;
+							// Если объект для извлечения MAC-адреса не инициализирован
+							if(value == nullptr)
+								// Создаём новый объект MAC-адреса
+								value = make_unique <net::addr_mac_t> ();
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (peer->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Получаем объект адреса хоста сервера
+									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+									// Если IP-адрес установлен и соответствует размеру IPv4
+									if(remote->ip->size == 4){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(peer->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												peer->callbacks.status(peer->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											peer->callbacks.status(peer->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Получаем объект адреса хоста сервера
+									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
+									// Если IP-адрес установлен и соответствует размеру IPv6
+									if(remote->ip->size == 16){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(peer->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												peer->callbacks.status(peer->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv6
+									} else {
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											peer->callbacks.status(peer->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(peer->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Если семейство события не определено
+								default: {
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										peer->callbacks.status(peer->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							}
+						} break;
+						// Если узел является одноранговым узлом-источником
+						case static_cast <uint8_t> (event::node_t::ORIGIN): {
+							// Получаем объект однорангового узла-источника
+							::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+							// Если объект адреса однорангового узла не инициализирован
+							if(!(result = (origin->remote != nullptr)))
+								// Прерываем выполнение
+								break;
+							// Если объект для извлечения MAC-адреса не инициализирован
+							if(value == nullptr)
+								// Создаём новый объект MAC-адреса
+								value = make_unique <net::addr_mac_t> ();
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (origin->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Получаем объект адреса хоста сервера
+									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+									// Если IP-адрес установлен и соответствует размеру IPv4
+									if(remote->ip->size == 4){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(origin->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												origin->callbacks.status(origin->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											origin->callbacks.status(origin->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Получаем объект адреса хоста сервера
+									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+									// Если IP-адрес установлен и соответствует размеру IPv6
+									if(remote->ip->size == 16){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(origin->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												origin->callbacks.status(origin->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(origin->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv6
+									} else {
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											origin->callbacks.status(origin->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(origin->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Если семейство события не определено
+								default: {
+									// Если установлена функция обратного вызова
+									if(origin->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										origin->callbacks.status(origin->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(origin->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										origin->callbacks.error(origin->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							}
+						} break;
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+							// Получаем объект посредника
+							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+							// Если идентификатор связанного события установлен
+							if(mediator->dest != 0)
+								// Выводим запрошенный адрес связанного события
+								return this->address(mediator->dest, address, value);
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+							// Если объект адреса клиента не инициализирован
+							if(!(result = (client->source != nullptr)))
+								// Прерываем выполнение
+								break;
+							// Если объект для извлечения MAC-адреса не инициализирован
+							if(value == nullptr)
+								// Создаём новый объект MAC-адреса
+								value = make_unique <net::addr_mac_t> ();
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (client->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Если IP-адрес установлен и соответствует размеру IPv4
+									if((client->source != nullptr) && (client->source->size == 4)){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(client->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											client->callbacks.status(client->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Если IP-адрес установлен и соответствует размеру IPv6
+									if((client->source != nullptr) && (client->source->size == 16)){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(client->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv6
+									} else {
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											client->callbacks.status(client->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Если семейство события не определено
+								default: {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							}
+						} break;
+						// Если узел является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER): {
+							// Получаем объект сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+							// Если объект адреса сервера не инициализирован
+							if(!(result = (server->host != nullptr)))
+								// Прерываем выполнение
+								break;
+							// Если объект для извлечения MAC-адреса не инициализирован
+							if(value == nullptr)
+								// Создаём новый объект MAC-адреса
+								value = make_unique <net::addr_mac_t> ();
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (server->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (server->state.type)){
+										/**
+										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 */
+										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+											// Если событие принадлежит к типу SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
+										#endif
+										// Если событие принадлежит к типу DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если подключение к серверу предположительно подготовлено
+											if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												// Устанавливаем полученный IP-адрес во временный объект
+												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+												// Выполняем извлечение сетевых параметров
+												this->_eth.addr.fillSource(event::node_t::PEER, source);
+												// Если MAC-адрес успешно получен
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+													// Устанавливаем полученный MAC-адрес в объект события
+													::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+												// Если MAC-адрес не получен
+												else {
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address for specified event could not be retrieved";
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											}
+										} break;
+									}
+									// Получаем объект адреса хоста сервера
+									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+									// Если IP-адрес установлен и соответствует размеру IPv4
+									if(host->ip->size == 4){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(server->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv4
+									} else {
+										// Если установлена функция обратного вызова
+										if(server->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv4-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (server->state.type)){
+										/**
+										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 */
+										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+											// Если событие принадлежит к типу SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
+										#endif
+										// Если событие принадлежит к типу DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Если подключение к серверу предположительно подготовлено
+											if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												// Устанавливаем полученный IP-адрес во временный объект
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+												// Выполняем извлечение сетевых параметров
+												this->_eth.addr.fillSource(event::node_t::PEER, source);
+												// Если MAC-адрес успешно получен
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+													// Устанавливаем полученный MAC-адрес в объект события
+													::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+												// Если MAC-адрес не получен
+												else {
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address for specified event could not be retrieved";
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											}
+										} break;
+									}
+									// Получаем объект адреса хоста сервера
+									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+									// Если IP-адрес установлен и соответствует размеру IPv6
+									if(host->ip->size == 16){
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(server->state.node, source);
+										// Если MAC-адрес успешно получен
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+											// Устанавливаем полученный MAC-адрес в объект события
+											::memcpy(&awh_cast <net::addr_mac_t *> (value.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+										// Если MAC-адрес не получен
+										else {
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "MAC-address for specified event could not be retrieved";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									// Если размер IP-адреса не соответствует IPv6
+									} else {
+										// Если установлена функция обратного вызова
+										if(server->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Desired IPv6-address does not match set address";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								} break;
+								// Если семейство события не определено
+								default: {
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "MAC-address for specified event could not be retrieved";
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							}
+						} break;
+					}
+				} break;
+				// Если тип адреса принадлежит к Unix Domain Socket
+				case static_cast <uint8_t> (event::address_t::UDS): {
+					// Если типы адресов соответствуют
+					if(address == i->second->state.address){
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Получаем объект адреса удалённого узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+								// Если объект адреса сервера не инициализирован
+								if(!(result = (peer->remote != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения UDS-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект UDS-адреса
+									value = make_unique <net::addr_fs_t> ();
+								// Устанавливаем полученный UDS-адрес
+								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (peer->remote.get())->path.get())->address;
+							} break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN): {
+								// Получаем объект адреса удалённого узла-источника
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+								// Если объект адреса сервера не инициализирован
+								if(!(result = (origin->remote != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения UDS-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект UDS-адреса
+									value = make_unique <net::addr_fs_t> ();
+								// Устанавливаем полученный UDS-адрес
+								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (origin->remote.get())->path.get())->address;
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем объект адреса удалённого узла
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+								// Если объект адреса клиента не инициализирован
+								if(!(result = (client->target != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения UDS-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект UDS-адреса
+									value = make_unique <net::addr_fs_t> ();
+								// Устанавливаем полученный UDS-адрес
+								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address;
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем объект адреса сервера
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+								// Если объект адреса сервера не инициализирован
+								if(!(result = (server->host != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения UDS-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект UDS-адреса
+									value = make_unique <net::addr_fs_t> ();
+								// Устанавливаем полученный UDS-адрес
+								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
+							} break;
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						/**
+						 * Функция обратного вызова ошибки события
+						 */
+						event::callback::error_t callback = nullptr;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Requested UDS-address does not match current address";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
+				// Если тип адреса принадлежит к IPv4-адресам
+				case static_cast <uint8_t> (event::address_t::IPV4): {
+					// Если типы адресов соответствуют
+					if(address == i->second->state.address){
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Получаем объект адреса удалённого узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+								// Если объект адреса однорангового узла не инициализирован
+								if(!(result = (peer->remote != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем полученный IPv4-адрес
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address;
+							} break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN): {
+								// Получаем объект адреса удалённого узла-источника
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+								// Если объект адреса однорангового узла не инициализирован
+								if(!(result = (origin->remote != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем полученный IPv4-адрес
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address;
+							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем объект туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+								// Если объект адреса туннеля не инициализирован
+								if(!(result = (tunnel->source != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем полученный IPv4-адрес
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если объект хоста посредника не инициализирован
+								if(!(result = (mediator->host != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем полученный IPv4-адрес хоста
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address;
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем объект адреса удалённого узла
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+								// Если объект адреса клиента не инициализирован
+								if(!(result = (client->source != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем полученный IPv4-адрес
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем объект адреса сервера
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (server->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Если объект адреса сервера не инициализирован
+										if(!(result = (server->host != nullptr)))
+											// Прерываем выполнение
+											break;
+										// Если объект для извлечения IP-адреса не инициализирован
+										if(value == nullptr)
+											// Создаём новый объект IP-адреса
+											value = make_unique <net::addr_net_ipv4_t> ();
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (server->state.type)){
+											/**
+											 * Для операционной системы MacOS X, NetBSD, OpenBSD
+											 */
+											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+												// Если событие принадлежит к типу SEQPACKET
+												case static_cast <uint8_t> (event::type_t::SEQPACKET):
+											#endif
+											// Если событие принадлежит к типу DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Если подключение к серверу предположительно подготовлено
+												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
+													// Устанавливаем полученный IPv4-адрес
+													awh_cast <net::addr_net_ipv4_t *> (value.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+													// Выводим результат работы функции
+													return result;
+												}
+											} break;
+										}
+										// Устанавливаем полученный IPv4-адрес
+										awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address;
+									} break;
+								}
+							} break;
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						/**
+						 * Функция обратного вызова ошибки события
+						 */
+						event::callback::error_t callback = nullptr;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Requested IP-address does not match current IPv4-address";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
+				// Если тип адреса принадлежит к IPv6-адресам
+				case static_cast <uint8_t> (event::address_t::IPV6): {
+					// Если типы адресов соответствуют
+					if(address == i->second->state.address){
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER): {
+								// Получаем объект адреса удалённого узла
+								::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+								// Если объект адреса однорангового узла не инициализирован
+								if(!(result = (peer->remote != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем полученный IPv6-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address[0], 16);
+							} break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN): {
+								// Получаем объект адреса удалённого узла-источника
+								::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+								// Если объект адреса однорангового узла не инициализирован
+								if(!(result = (origin->remote != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем полученный IPv6-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address[0], 16);
+							} break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем объект туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+								// Если объект адреса туннеля не инициализирован
+								if(!(result = (tunnel->source != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем полученный IPv6-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект хоста посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если объект хоста посредника не инициализирован
+								if(!(result = (mediator->host != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем полученный IPv6-адрес хоста
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем объект адреса удалённого узла
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+								// Если объект адреса клиента не инициализирован
+								if(!(result = (client->source != nullptr)))
+									// Прерываем выполнение
+									break;
+								// Если объект для извлечения IP-адреса не инициализирован
+								if(value == nullptr)
+									// Создаём новый объект IP-адреса
+									value = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем полученный IPv6-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем объект адреса сервера
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (server->state.family)){
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Если объект адреса сервера не инициализирован
+										if(!(result = (server->host != nullptr)))
+											// Прерываем выполнение
+											break;
+										// Если объект для извлечения IP-адреса не инициализирован
+										if(value == nullptr)
+											// Создаём новый объект IP-адреса
+											value = make_unique <net::addr_net_ipv6_t> ();
+										/**
+										 * Определяем тип сокета
+										 */
+										switch(static_cast <uint8_t> (server->state.type)){
+											/**
+											 * Для операционной системы MacOS X, NetBSD, OpenBSD
+											 */
+											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+												// Если событие принадлежит к типу SEQPACKET
+												case static_cast <uint8_t> (event::type_t::SEQPACKET):
+											#endif
+											// Если событие принадлежит к типу DATAGRAM
+											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												// Если подключение к серверу предположительно подготовлено
+												if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
+													// Копируем полученный IPv6-адрес во временный буфер
+													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+													// Выводим результат работы функции
+													return result;
+												}
+											} break;
+										}
+										// Устанавливаем полученный IPv6-адрес
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address[0], 16);
+									} break;
+								}
+							} break;
+						}
+					// Если типы адресов не соответствуют
+					} else {
+						/**
+						 * Функция обратного вызова ошибки события
+						 */
+						event::callback::error_t callback = nullptr;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Requested IP-address does not match current IPv6-address";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Метод установки адреса события
+ *
+ * @param id      идентификатор события
+ * @param address тип адреса события
+ * @param value   значение адреса события
+ * @return        результат выполнения установки
+ */
+bool awh::engine::IO::address(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если объект для установки адреса не инициализирован
+		if(value == nullptr)
+			// Выводим результат по умолчанию
+			return result;
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			// Если событие ещё не инициализировано или клонированно от другого события
+			if(i->second->state.status == event::status_t::NONE){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем тип адреса события
+				 */
+				switch(static_cast <uint8_t> (address)){
+					// Если тип адреса не определён
+					case static_cast <uint8_t> (event::address_t::NONE): {
+						/**
+						 * Функция обратного вызова ошибки события
+						 */
+						event::callback::error_t callback = nullptr;
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::dir_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::file_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Получаем функцию обратного вызова ошибки события
+								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
+							break;
+						}
+						// Устанавливаем текст ошибки
+						const string error = "Unable to set this address type";
+						// Если установлена функция обратного вызова
+						if(callback != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если тип адреса принадлежит к адресу файловой системы
+					case static_cast <uint8_t> (event::address_t::FS): {
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем объект файловой системы
+								::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if(fs->state.family == event::family_t::FSYS){
+									// Устанавливаем тип адреса
+									fs->state.address = address;
+									// Если объект адреса файловой системы не инициализирован
+									if(!(result = (fs->path != nullptr)))
+										// Создаём новый объект адреса файловой системы
+										fs->path = make_unique <net::addr_fs_t> ();
+									// Устанавливаем адрес файловой системы события
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::fs::fullpath(awh_cast <net::addr_fs_t *> (value.get())->address, this->_log);
+									// Возвращаем результат работы функции
+									return true;
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										fs->callbacks.status(fs->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", awh_cast <net::addr_fs_t *> (value.get())->address.c_str());
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE): {
+								// Получаем объект файловой системы
+								::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if(fs->state.family == event::family_t::FSYS){
+									// Устанавливаем тип адреса
+									fs->state.address = address;
+									// Если объект адреса файловой системы не инициализирован
+									if(!(result = (fs->path != nullptr)))
+										// Создаём новый объект адреса файловой системы
+										fs->path = make_unique <net::addr_fs_t> ();
+									// Устанавливаем адрес файловой системы события
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::fs::fullpath(awh_cast <net::addr_fs_t *> (value.get())->address, this->_log);
+									// Возвращаем результат работы функции
+									return true;
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										fs->callbacks.status(fs->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", awh_cast <net::addr_fs_t *> (value.get())->address.c_str());
+									// Если установлена функция обратного вызова
+									if(fs->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел имеет неподдерживаемый тип
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Address can only be set for node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Address can only be set for node", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если тип адреса принадлежит к MAC-адресам
+					case static_cast <uint8_t> (event::address_t::MAC): {
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (i->second->state.node)){
+									// Если узел является посредником
+									case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+										// Получаем объект посредника
+										::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+										// Если идентификатор связанного события установлен
+										if(mediator->dest != 0)
+											// Устанавливаем полученный MAC-адрес в связанное событие
+											return this->address(mediator->dest, address, value);
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Получаем объект клиента
+										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+										/**
+										 * Определяем семейство события
+										 */
+										switch(static_cast <uint8_t> (client->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												// Устанавливаем полученный MAC-адрес во временный объект
+												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(awh_cast <net::addr_mac_t *> (value.get())->address);
+												// Выполняем извлечение сетевых параметров
+												this->_eth.addr.fillSource(client->state.node, source);
+												// Если IP-адрес успешно получен
+												if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+													// Устанавливаем тип адреса
+													client->state.address = event::address_t::IPV4;
+													// Если объект адреса клиента не инициализирован
+													if(client->target == nullptr){
+														// Создаём новый объект адреса удалённого узла
+														client->target = make_unique <net::attr_net_t> ();
+														// Создаём новый объект адреса клиента IPv4
+														awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+													}
+													// Устанавливаем IP-адрес в источник сетевого адреса клиента
+													client->source = ::move(source.ip);
+												// Если IP-адрес не получен
+												} else {
+													// Если установлена функция обратного вызова
+													if(client->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														client->callbacks.status(client->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address is not found";
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::NOT_FOUND, error);
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												// Устанавливаем полученный MAC-адрес во временный объект
+												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(awh_cast <net::addr_mac_t *> (value.get())->address);
+												// Выполняем извлечение сетевых параметров
+												this->_eth.addr.fillSource(client->state.node, source);
+												// Если IP-адрес успешно получен
+												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+													// Устанавливаем тип адреса
+													client->state.address = event::address_t::IPV6;
+													// Если объект адреса клиента не инициализирован
+													if(client->target == nullptr){
+														// Создаём новый объект адреса удалённого узла
+														client->target = make_unique <net::attr_net_t> ();
+														// Создаём новый объект адреса клиента IPv6
+														awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+													}
+													// Устанавливаем IP-адрес в источник сетевого адреса клиента
+													client->source = ::move(source.ip);
+												// Если IP-адрес не получен
+												} else {
+													// Если установлена функция обратного вызова
+													if(client->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														client->callbacks.status(client->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address is not found";
+													// Если установлена функция обратного вызова
+													if(client->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														client->callbacks.error(client->id, event::error_t::NOT_FOUND, error);
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											} break;
+										}
+									} break;
+									// Если узел является сервером
+									case static_cast <uint8_t> (event::node_t::SERVER): {
+										// Получаем объект сервера
+										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+										/**
+										 * Определяем семейство события
+										 */
+										switch(static_cast <uint8_t> (server->state.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												// Устанавливаем полученный MAC-адрес во временный объект
+												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(awh_cast <net::addr_mac_t *> (value.get())->address);
+												// Выполняем извлечение сетевых параметров
+												this->_eth.addr.fillSource(server->state.node, source);
+												// Если IP-адрес успешно получен
+												if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+													// Устанавливаем тип адреса
+													server->state.address = event::address_t::IPV4;
+													// Если объект адреса сервера не инициализирован
+													if(server->host == nullptr)
+														// Создаём новый объект адреса сервера
+														server->host = make_unique <net::attr_net_t> ();
+													// Устанавливаем IP-адрес в источник сетевого адреса сервера
+													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+													// Если событие является мультикастовым
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+														// Устанавливаем интерфейс для мультикастовой передачи
+														result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+												// Если IP-адрес не получен
+												} else {
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address is not found";
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Временный объект для извлечения сетевого интерфейса
+												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												// Устанавливаем полученный MAC-адрес во временный объект
+												awh_cast <net::addr_mac_t *> (source.mac.get())->address = ::move(awh_cast <net::addr_mac_t *> (value.get())->address);
+												// Выполняем извлечение сетевых параметров
+												this->_eth.addr.fillSource(server->state.node, source);
+												// Если IP-адрес успешно получен
+												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+													// Устанавливаем тип адреса
+													server->state.address = event::address_t::IPV6;
+													// Если объект адреса сервера не инициализирован
+													if(server->host == nullptr)
+														// Создаём новый объект адреса сервера
+														server->host = make_unique <net::attr_net_t> ();
+													// Устанавливаем IP-адрес в источник сетевого адреса сервера
+													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+													// Если событие является мультикастовым
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+														// Устанавливаем интерфейс для мультикастовой передачи
+														result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+												// Если IP-адрес не получен
+												} else {
+													// Если установлена функция обратного вызова
+													if(server->callbacks.status != nullptr)
+														// Вызываем функцию обратного вызова об ошибке отказа
+														server->callbacks.status(server->id, event::status_t::FAILURE);
+													// Устанавливаем текст ошибки
+													const string error = "MAC-address is not found";
+													// Если установлена функция обратного вызова
+													if(server->callbacks.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки события
+														server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
+													// Если функция обратного вызова для вывода события не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													}
+												}
+											} break;
+										}
+									} break;
+								}
+							} break;
+							// Если узел имеет неподдерживаемый тип
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("MAC-address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("MAC-address can only be set for client or server nodes", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если тип адреса принадлежит к Unix Domain Socket
+					case static_cast <uint8_t> (event::address_t::UDS): {
+						// Если типы адресов соответствуют
+						if(i->second->state.family == event::family_t::UDS){
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (i->second->state.node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER): {
+									/**
+									 * Определяем чем является текущий узел
+									 */
+									switch(static_cast <uint8_t> (i->second->state.node)){
+										// Если узел является клиентом
+										case static_cast <uint8_t> (event::node_t::CLIENT): {
+											// Получаем объект адреса удалённого узла
+											::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+											// Устанавливаем тип адреса
+											client->state.address = address;
+											// Если объект адреса клиента не инициализирован
+											if(client->target == nullptr){
+												// Создаём новый объект адреса удалённого узла
+												client->target = make_unique <net::attr_uds_t> ();
+												// Выполняем инициализацию объекта адреса файловой системы
+												awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
+											}
+											// Устанавливаем адрес в UNIX-домене
+											awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = awh_cast <net::addr_fs_t *> (value.get())->address;
+											// Возвращаем результат работы функции
+											return true;
+										}
+										// Если узел является сервером
+										case static_cast <uint8_t> (event::node_t::SERVER): {
+											// Получаем объект адреса сервера
+											::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+											// Устанавливаем тип адреса
+											server->state.address = address;
+											// Если объект адреса сервера не инициализирован
+											if(server->host == nullptr){
+												// Создаём новый объект адреса сервера
+												server->host = make_unique <net::attr_uds_t> ();
+												// Выполняем инициализацию объекта адреса файловой системы
+												awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
+											}
+											// Устанавливаем адрес в UNIX-домене
+											awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = awh_cast <net::addr_fs_t *> (value.get())->address;
+											// Возвращаем результат работы функции
+											return true;
+										}
+									}
+								} break;
+								// Если узел имеет неподдерживаемый тип
+								default: {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Unix socket address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Unix socket address can only be set for client or server nodes", log_t::flag_t::WARNING);
+									#endif
+								}
+							}
+						// Если типы адресов не соответствуют
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("You cannot set address because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("You cannot set address because event family does not belong to unix domain socket", log_t::flag_t::WARNING);
+							#endif
+						}
+					} break;
+					// Если тип адреса принадлежит к IPv4-адресам
+					case static_cast <uint8_t> (event::address_t::IPV4): {
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем объект туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if((result = (tunnel->state.family == event::family_t::IPV4))){
+									// Устанавливаем тип адреса
+									tunnel->state.address = address;
+									// Если объект адреса не инициализирован
+									if(tunnel->source == nullptr)
+										// Создаём новый объект адреса IPv4
+										tunnel->source = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
+									awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address = awh_cast <net::addr_net_ipv4_t *> (value.get())->address;
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv4-address";
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if((result = (mediator->state.family == event::family_t::IPV4))){
+									// Устанавливаем тип адреса
+									mediator->state.address = address;
+									// Если объект хоста не инициализирован
+									if(mediator->host == nullptr)
+										// Создаём новый объект хоста IPv4
+										mediator->host = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем полученный IP-адрес хоста в источник сетевого адреса посредника
+									awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = awh_cast <net::addr_net_ipv4_t *> (value.get())->address;
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv4-address";
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										mediator->callbacks.error(mediator->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем объект клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if(client->state.family == event::family_t::IPV4){
+									// Извлекаем полученный IPv4-адрес
+									const uint32_t addr = awh_cast <net::addr_net_ipv4_t *> (value.get())->address;
+									// Если адрес равен нулю и узел является клиентом
+									if((result = (addr == 0))){
+										// Устанавливаем тип адреса
+										client->state.address = address;
+										// Если объект адреса клиента не инициализирован
+										if(client->target == nullptr){
+											// Создаём новый объект адреса удалённого узла
+											client->target = make_unique <net::attr_net_t> ();
+											// Создаём новый объект адреса клиента IPv4
+											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										}
+										// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
+										client->source = make_unique <net::addr_net_ipv4_t> ();
+										// Возвращаем результат работы функции
+										return result;
+									}
+									// Определяем принадлежность сетевого адреса
+									const net_addr_t::own_t own = this->_addr.own();
+									// Временный объект для извлечения сетевого интерфейса
+									net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+									// Устанавливаем полученный IP-адрес во временный объект
+									awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+									// Выполняем извлечение сетевых параметров
+									this->_eth.addr.fillSource(client->state.node, source);
+									// Если MAC-адрес успешно получен
+									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
+									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										// Устанавливаем тип адреса
+										client->state.address = address;
+										// Если объект адреса клиента не инициализирован
+										if(client->target == nullptr){
+											// Создаём новый объект адреса удалённого узла
+											client->target = make_unique <net::attr_net_t> ();
+											// Создаём новый объект адреса клиента IPv4
+											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										}
+										// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
+										client->source = ::move(source.ip);
+									// Если MAC-адрес не получен
+									} else {
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											client->callbacks.status(client->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "IPv4-address is not found";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::NOT_FOUND, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv4-address";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем объект сервера
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if(server->state.family == event::family_t::IPV4){
+									// Извлекаем полученный IPv4-адрес
+									const uint32_t addr = awh_cast <net::addr_net_ipv4_t *> (value.get())->address;
+									// Если адрес равен нулю и узел является сервером
+									if((result = (addr == 0))){
+										// Устанавливаем тип адреса
+										server->state.address = address;
+										// Если объект адреса сервера не инициализирован
+										if(server->host == nullptr){
+											// Создаём новый объект адреса сервера
+											server->host = make_unique <net::attr_net_t> ();
+											// Создаём новый объект адреса сервера IPv4
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										}
+									// Если адрес не равен нулю
+									} else {
+										// Определяем принадлежность сетевого адреса
+										const net_addr_t::own_t own = this->_addr.own();
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(server->state.node, source);
+										// Если MAC-адрес успешно получен
+										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											// Устанавливаем тип адреса
+											server->state.address = address;
+											// Если объект адреса сервера не инициализирован
+											if(server->host == nullptr)
+												// Создаём новый объект адреса сервера
+												server->host = make_unique <net::attr_net_t> ();
+											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+											// Если событие является мультикастовым
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+												// Устанавливаем интерфейс для мультикастовой передачи
+												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+										// Если MAC-адрес не получен
+										} else {
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "IPv4-address is not found";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									}
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv4-address";
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел имеет неподдерживаемый тип
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("IP-address can only be set for client or server nodes", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Если тип адреса принадлежит к IPv6-адресам
+					case static_cast <uint8_t> (event::address_t::IPV6): {
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (i->second->state.node)){
+							// Если узел является туннелем
+							case static_cast <uint8_t> (event::node_t::TUNNEL): {
+								// Получаем объект туннеля
+								::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if((result = (tunnel->state.family == event::family_t::IPV6))){
+									// Устанавливаем тип адреса
+									tunnel->state.address = address;
+									// Если объект адреса не инициализирован
+									if(tunnel->source == nullptr)
+										// Создаём новый объект адреса IPv6
+										tunnel->source = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
+									awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address = ::move(awh_cast <net::addr_net_ipv6_t *> (value.get())->address);
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv6-address";
+									// Если установлена функция обратного вызова
+									if(tunnel->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+								// Получаем объект посредника
+								::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if((result = (mediator->state.family == event::family_t::IPV6))){
+									// Устанавливаем тип адреса
+									mediator->state.address = address;
+									// Если объект хоста не инициализирован
+									if(mediator->host == nullptr)
+										// Создаём новый объект хоста IPv6
+										mediator->host = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем полученный IP-адрес в хост посредника
+									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(awh_cast <net::addr_net_ipv6_t *> (value.get())->address);
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv6-address";
+									// Если установлена функция обратного вызова
+									if(mediator->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										mediator->callbacks.error(mediator->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								// Получаем объект клиента
+								::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if(client->state.family == event::family_t::IPV6){
+									// Извлекаем полученный IPv6-адрес
+									auto addr = ::move(awh_cast <net::addr_net_ipv6_t *> (value.get())->address);
+									// Если адрес равен нулю и узел является клиентом
+									if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
+										// Устанавливаем тип адреса
+										client->state.address = address;
+										// Если объект адреса клиента не инициализирован
+										if(client->target == nullptr){
+											// Создаём новый объект адреса удалённого узла
+											client->target = make_unique <net::attr_net_t> ();
+											// Создаём новый объект адреса клиента IPv6
+											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										}
+										// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
+										client->source = make_unique <net::addr_net_ipv6_t> ();
+										// Возвращаем результат работы функции
+										return result;
+									}
+									// Определяем принадлежность сетевого адреса
+									const net_addr_t::own_t own = this->_addr.own();
+									// Временный объект для извлечения сетевого интерфейса
+									net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+									// Устанавливаем полученный IP-адрес во временный объект
+									awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+									// Выполняем извлечение сетевых параметров
+									this->_eth.addr.fillSource(client->state.node, source);
+									// Если MAC-адрес успешно получен
+									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
+									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										// Устанавливаем тип адреса
+										client->state.address = address;
+										// Если объект адреса клиента не инициализирован
+										if(client->target == nullptr){
+											// Создаём новый объект адреса удалённого узла
+											client->target = make_unique <net::attr_net_t> ();
+											// Создаём новый объект адреса клиента IPv6
+											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										}
+										// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
+										client->source = ::move(source.ip);
+									// Если MAC-адрес не получен
+									} else {
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											client->callbacks.status(client->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "IPv6-address is not found";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::NOT_FOUND, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+									}
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv6-address";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Получаем объект сервера
+								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+								// Если типы адресов соответствуют
+								if(server->state.family == event::family_t::IPV6){
+									// Извлекаем полученный IPv6-адрес
+									auto addr = ::move(awh_cast <net::addr_net_ipv6_t *> (value.get())->address);
+									// Если адрес равен нулю и узел является клиентом
+									if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
+										// Устанавливаем тип адреса
+										server->state.address = address;
+										// Если объект адреса сервера не инициализирован
+										if(server->host == nullptr){
+											// Создаём новый объект адреса сервера
+											server->host = make_unique <net::attr_net_t> ();
+											// Создаём новый объект адреса сервера IPv6
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										}
+									// Если адрес не равен нулю
+									} else {
+										// Определяем принадлежность сетевого адреса
+										const net_addr_t::own_t own = this->_addr.own();
+										// Временный объект для извлечения сетевого интерфейса
+										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										// Устанавливаем полученный IP-адрес во временный объект
+										awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+										// Выполняем извлечение сетевых параметров
+										this->_eth.addr.fillSource(server->state.node, source);
+										// Если MAC-адрес успешно получен
+										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											// Устанавливаем тип адреса
+											server->state.address = address;
+											// Если объект адреса сервера не инициализирован
+											if(server->host == nullptr)
+												// Создаём новый объект адреса сервера
+												server->host = make_unique <net::attr_net_t> ();
+											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+											// Если событие является мультикастовым
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+												// Устанавливаем интерфейс для мультикастовой передачи
+												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+										// Если MAC-адрес не получен
+										} else {
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "IPv6-address is not found";
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::NOT_FOUND, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									}
+								// Если типы адресов не соответствуют
+								} else {
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "You cannot set address because event family does not belong to IPv6-address";
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если узел имеет неподдерживаемый тип
+							default: {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("IP-address can only be set for client or server nodes", log_t::flag_t::WARNING);
+								#endif
+							}
+						}
+					} break;
+					// Для остальных типов адресов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Unsupported address type cannot be set", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Метод активации/деактивации мультикаст группы события
+ *
+ * @param id     идентификатор события
+ * @param mode   режим активации/деактивации
+ * @param group  мультикаст-группа для активации/деактивации
+ * @param source адрес сетевого интерфейса с которого выполняется подписка
+ * @param port   порт мультикаст-группы с которого выполняется подписка
+ * @return       результат выполнения установки
+ */
+bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если мультикаст-группа передана
+		if(!group.empty() && !source.empty()){
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем объект клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Выполняем разбор адреса группы подписки
+								if(this->_addr.parse(group, net_addr_t::type_t::IPV4)){
+									// Создаём объект IPv4-адреса
+									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем адрес мультикаст-группы
+									awh_cast <net::addr_net_ipv4_t *> (addr.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
+									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
+									if(this->_addr.parse(source, net_addr_t::type_t::IPV4)){
+										// Создаём объект IPv4-адреса
+										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv4_t> ();
+										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
+										awh_cast <net::addr_net_ipv4_t *> (source.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
+										// Создаём объект конечной точки подключения
+										struct sockaddr_in endpoint{0};
+										// Устанавливаем семейство IP-адресов
+										endpoint.sin_family = AF_INET;
+										// Устанавливаем произвольный порт с которого выполняется подключение
+										endpoint.sin_port = htons(port);
+										// Устанавливаем длину структуры
+										endpoint.sin_len = sizeof(struct sockaddr_in);
+										// Устанавливаем адрес для локального подключения
+										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
+										// Обнуляем серверную структуру
+										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
+										// Выполняем бинд события
+										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Устанавливаем полученный IP-адрес
+													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											client->state.status = event::status_t::NONE;
+											// Выходим из функции с ошибкой
+											return false;
+										}
+										/**
+										 * Определяем тип действия события
+										 */
+										switch(static_cast <uint8_t> (mode)){
+											// Если режим действия события является включённым
+											case static_cast <uint8_t> (event::mode_t::ENABLED):
+												// Выполняем добавление в мультикаст-группу
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+											// Если режим действия события является отключённым
+											case static_cast <uint8_t> (event::mode_t::DISABLED):
+												// Выполняем удаление из мультикаст-группы
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+										}
+									// Если адрес не удалось определить
+									} else {
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											client->callbacks.status(client->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Source address is invalid for IPv4 family";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не удалось определить
+								} else {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "Multicast group address is invalid for IPv4 family";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем разбор адреса группы подписки
+								if(this->_addr.parse(group, net_addr_t::type_t::IPV6)){
+									// Создаём объект IPv6-адреса
+									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем адрес мультикаст-группы
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], &this->_addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
+									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
+									if(this->_addr.parse(source, net_addr_t::type_t::IPV6)){
+										// Создаём объект IPv6-адреса
+										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv6_t> ();
+										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], &this->_addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
+										// Создаём объект конечной точки подключения
+										struct sockaddr_in6 endpoint{0};
+										// Устанавливаем семейство IP-адресов
+										endpoint.sin6_family = AF_INET6;
+										// Устанавливаем произвольный порт с которого выполняется подключение
+										endpoint.sin6_port = htons(port);
+										// Устанавливаем длину структуры
+										endpoint.sin6_len = sizeof(struct sockaddr_in6);
+										// Устанавливаем адрес для локального подключения
+										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+										// Выполняем бинд события
+										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Устанавливаем полученный IP-адрес
+													this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.get())->address, net_addr_t::endian_t::LITTLE);
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											client->state.status = event::status_t::NONE;
+											// Выходим из функции с ошибкой
+											return false;
+										}
+										/**
+										 * Определяем тип действия события
+										 */
+										switch(static_cast <uint8_t> (mode)){
+											// Если режим действия события является включённым
+											case static_cast <uint8_t> (event::mode_t::ENABLED):
+												// Выполняем добавление в мультикаст-группу
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+											// Если режим действия события является отключённым
+											case static_cast <uint8_t> (event::mode_t::DISABLED):
+												// Выполняем удаление из мультикаст-группы
+												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+										}
+									// Если адрес не удалось определить
+									} else {
+										// Если установлена функция обратного вызова
+										if(client->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											client->callbacks.status(client->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Source address is invalid for IPv6 family";
+										// Если установлена функция обратного вызова
+										if(client->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не удалось определить
+								} else {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "Multicast group address is invalid for IPv6 family";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (server->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Выполняем разбор адреса группы подписки
+								if(this->_addr.parse(group, net_addr_t::type_t::IPV4)){
+									// Создаём объект IPv4-адреса
+									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем адрес мультикаст-группы
+									awh_cast <net::addr_net_ipv4_t *> (addr.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
+									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
+									if(this->_addr.parse(source, net_addr_t::type_t::IPV4)){
+										// Создаём объект IPv4-адреса
+										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv4_t> ();
+										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
+										awh_cast <net::addr_net_ipv4_t *> (source.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
+										// Создаём объект конечной точки подключения
+										struct sockaddr_in endpoint{0};
+										// Устанавливаем семейство IP-адресов
+										endpoint.sin_family = AF_INET;
+										// Устанавливаем длину структуры
+										endpoint.sin_len = sizeof(struct sockaddr_in);
+										// Если порт подписки для сервера не указан
+										if(port == 0){
+											// Получаем объект хоста текущего сервера
+											net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+											// Устанавливаем произвольный порт для локального подключения
+											endpoint.sin_port = htons(host->port);
+										// Выполняем подписку на указанный порт
+										} else endpoint.sin_port = htons(port);
+										// Устанавливаем адрес для локального подключения
+										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
+										// Обнуляем серверную структуру
+										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
+										// Выполняем бинд события
+										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Устанавливаем полученный IP-адрес
+													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											server->state.status = event::status_t::NONE;
+											// Выходим из функции с ошибкой
+											return false;
+										}
+										/**
+										 * Определяем тип действия события
+										 */
+										switch(static_cast <uint8_t> (mode)){
+											// Если режим действия события является включённым
+											case static_cast <uint8_t> (event::mode_t::ENABLED):
+												// Выполняем добавление в мультикаст-группу
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+											// Если режим действия события является отключённым
+											case static_cast <uint8_t> (event::mode_t::DISABLED):
+												// Выполняем удаление из мультикаст-группы
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+										}
+									// Если адрес не удалось определить
+									} else {
+										// Если установлена функция обратного вызова
+										if(server->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Source address is invalid for IPv4 family";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не удалось определить
+								} else {
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "Multicast group address is invalid for IPv4 family";
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Выполняем разбор адреса группы подписки
+								if(this->_addr.parse(group, net_addr_t::type_t::IPV6)){
+									// Создаём объект IPv6-адреса
+									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем адрес мультикаст-группы
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], &this->_addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
+									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
+									if(this->_addr.parse(source, net_addr_t::type_t::IPV6)){
+										// Создаём объект IPv6-адреса
+										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv6_t> ();
+										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], &this->_addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
+										// Создаём объект конечной точки подключения
+										struct sockaddr_in6 endpoint{0};
+										// Устанавливаем семейство IP-адресов
+										endpoint.sin6_family = AF_INET6;
+										// Устанавливаем длину структуры
+										endpoint.sin6_len = sizeof(struct sockaddr_in6);
+										// Если порт подписки для сервера не указан
+										if(port == 0){
+											// Получаем объект хоста текущего сервера
+											net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+											// Устанавливаем произвольный порт для локального подключения
+											endpoint.sin6_port = htons(host->port);
+										// Выполняем подписку на указанный порт
+										} else endpoint.sin6_port = htons(port);
+										// Устанавливаем адрес для локального подключения
+										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+										// Выполняем бинд события
+										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+											// Если установлена функция обратного вызова
+											if(server->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Если установлена функция обратного вызова
+											if(server->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Устанавливаем полученный IP-адрес
+													this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.get())->address, net_addr_t::endian_t::LITTLE);
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+											// Снимаем флаг ожидания подключения
+											server->state.status = event::status_t::NONE;
+											// Выходим из функции с ошибкой
+											return false;
+										}
+										/**
+										 * Определяем тип действия события
+										 */
+										switch(static_cast <uint8_t> (mode)){
+											// Если режим действия события является включённым
+											case static_cast <uint8_t> (event::mode_t::ENABLED):
+												// Выполняем добавление в мультикаст-группу
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
+											// Если режим действия события является отключённым
+											case static_cast <uint8_t> (event::mode_t::DISABLED):
+												// Выполняем удаление из мультикаст-группы
+												return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
+										}
+									// Если адрес не удалось определить
+									} else {
+										// Если установлена функция обратного вызова
+										if(server->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Source address is invalid for IPv6 family";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								// Если адрес не удалось определить
+								} else {
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "Multicast group address is invalid for IPv6 family";
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+						}
+					} break;
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Unable to add or remove multicast group for nodes other than client or server", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				}
+			}
+		// Если мультикаст-группа не передана
+		} else {
+			/**
+			 * Определяем тип действия события
+			 */
+			switch(static_cast <uint8_t> (mode)){
+				// Если режим действия события является включённым
+				case static_cast <uint8_t> (event::mode_t::ENABLED): {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Multicast group cannot be added because it is empty", log_t::flag_t::CRITICAL);
+					#endif
+				} break;
+				// Если режим действия события является отключённым
+				case static_cast <uint8_t> (event::mode_t::DISABLED): {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Multicast group cannot be removed because it is empty", log_t::flag_t::CRITICAL);
+					#endif
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод активации/деактивации мультикаст группы события
+ *
+ * @param id     идентификатор события
+ * @param mode   режим активации/деактивации
+ * @param group  мультикаст-группа для активации/деактивации
+ * @param source адрес сетевого интерфейса с которого выполняется подписка
+ * @param port   порт мультикаст-группы с которого выполняется подписка
+ * @return       результат выполнения установки
+ */
+bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, const unique_ptr <net::addr_t> & group, const unique_ptr <net::addr_t> & source, const uint16_t port) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если мультикаст-группа передана
+		if((group != nullptr) && (source != nullptr)){
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем объект клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Создаём объект конечной точки подключения
+								struct sockaddr_in endpoint{0};
+								// Устанавливаем семейство IP-адресов
+								endpoint.sin_family = AF_INET;
+								// Устанавливаем произвольный порт с которого выполняется подключение
+								endpoint.sin_port = htons(port);
+								// Устанавливаем длину структуры
+								endpoint.sin_len = sizeof(struct sockaddr_in);
+								// Устанавливаем адрес для локального подключения
+								endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
+								// Обнуляем серверную структуру
+								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
+								// Выполняем бинд события
+								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Устанавливаем полученный IP-адрес
+											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										#endif
+									}
+									// Снимаем флаг ожидания подключения
+									client->state.status = event::status_t::NONE;
+									// Выходим из функции с ошибкой
+									return false;
+								}
+								/**
+								 * Определяем тип действия события
+								 */
+								switch(static_cast <uint8_t> (mode)){
+									// Если режим действия события является включённым
+									case static_cast <uint8_t> (event::mode_t::ENABLED):
+										// Выполняем добавление в мультикаст-группу
+										return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+									// Если режим действия события является отключённым
+									case static_cast <uint8_t> (event::mode_t::DISABLED):
+										// Выполняем удаление из мультикаст-группы
+										return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Создаём объект конечной точки подключения
+								struct sockaddr_in6 endpoint{0};
+								// Устанавливаем семейство IP-адресов
+								endpoint.sin6_family = AF_INET6;
+								// Устанавливаем произвольный порт с которого выполняется подключение
+								endpoint.sin6_port = htons(port);
+								// Устанавливаем длину структуры
+								endpoint.sin6_len = sizeof(struct sockaddr_in6);
+								// Устанавливаем адрес для локального подключения
+								::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+								// Выполняем бинд события
+								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Устанавливаем полученный IP-адрес
+											this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.get())->address, net_addr_t::endian_t::LITTLE);
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										#endif
+									}
+									// Снимаем флаг ожидания подключения
+									client->state.status = event::status_t::NONE;
+									// Выходим из функции с ошибкой
+									return false;
+								}
+								/**
+								 * Определяем тип действия события
+								 */
+								switch(static_cast <uint8_t> (mode)){
+									// Если режим действия события является включённым
+									case static_cast <uint8_t> (event::mode_t::ENABLED):
+										// Выполняем добавление в мультикаст-группу
+										return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+									// Если режим действия события является отключённым
+									case static_cast <uint8_t> (event::mode_t::DISABLED):
+										// Выполняем удаление из мультикаст-группы
+										return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+								}
+							} break;
+						}
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (server->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Создаём объект конечной точки подключения
+								struct sockaddr_in endpoint{0};
+								// Устанавливаем семейство IP-адресов
+								endpoint.sin_family = AF_INET;
+								// Устанавливаем длину структуры
+								endpoint.sin_len = sizeof(struct sockaddr_in);
+								// Если порт подписки для сервера не указан
+								if(port == 0){
+									// Получаем объект хоста текущего сервера
+									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+									// Устанавливаем произвольный порт для локального подключения
+									endpoint.sin_port = htons(host->port);
+								// Выполняем подписку на указанный порт
+								} else endpoint.sin_port = htons(port);
+								// Устанавливаем адрес для локального подключения
+								endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
+								// Обнуляем серверную структуру
+								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
+								// Выполняем бинд события
+								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Устанавливаем полученный IP-адрес
+											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										#endif
+									}
+									// Снимаем флаг ожидания подключения
+									server->state.status = event::status_t::NONE;
+									// Выходим из функции с ошибкой
+									return false;
+								}
+								/**
+								 * Определяем тип действия события
+								 */
+								switch(static_cast <uint8_t> (mode)){
+									// Если режим действия события является включённым
+									case static_cast <uint8_t> (event::mode_t::ENABLED):
+										// Выполняем добавление в мультикаст-группу
+										return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+									// Если режим действия события является отключённым
+									case static_cast <uint8_t> (event::mode_t::DISABLED):
+										// Выполняем удаление из мультикаст-группы
+										return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Создаём объект конечной точки подключения
+								struct sockaddr_in6 endpoint{0};
+								// Устанавливаем семейство IP-адресов
+								endpoint.sin6_family = AF_INET6;
+								// Устанавливаем длину структуры
+								endpoint.sin6_len = sizeof(struct sockaddr_in6);
+								// Если порт подписки для сервера не указан
+								if(port == 0){
+									// Получаем объект хоста текущего сервера
+									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
+									// Устанавливаем произвольный порт для локального подключения
+									endpoint.sin6_port = htons(host->port);
+								// Выполняем подписку на указанный порт
+								} else endpoint.sin6_port = htons(port);
+								// Устанавливаем адрес для локального подключения
+								::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+								// Выполняем бинд события
+								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+									// Если установлена функция обратного вызова
+									if(server->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Если установлена функция обратного вызова
+									if(server->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Устанавливаем полученный IP-адрес
+											this->_addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.get())->address, net_addr_t::endian_t::LITTLE);
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										#endif
+									}
+									// Снимаем флаг ожидания подключения
+									server->state.status = event::status_t::NONE;
+									// Выходим из функции с ошибкой
+									return false;
+								}
+								/**
+								 * Определяем тип действия события
+								 */
+								switch(static_cast <uint8_t> (mode)){
+									// Если режим действия события является включённым
+									case static_cast <uint8_t> (event::mode_t::ENABLED):
+										// Выполняем добавление в мультикаст-группу
+										return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+									// Если режим действия события является отключённым
+									case static_cast <uint8_t> (event::mode_t::DISABLED):
+										// Выполняем удаление из мультикаст-группы
+										return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, reinterpret_cast <net::addr_net_t *> (group.get()), reinterpret_cast <net::addr_net_t *> (source.get()));
+								}
+							} break;
+						}
+					} break;
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Unable to add or remove multicast group for nodes other than client or server", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				}
+			}
+		// Если мультикаст-группа не передана
+		} else {
+			/**
+			 * Определяем тип действия события
+			 */
+			switch(static_cast <uint8_t> (mode)){
+				// Если режим действия события является включённым
+				case static_cast <uint8_t> (event::mode_t::ENABLED): {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Multicast group cannot be added because it is empty", log_t::flag_t::CRITICAL);
+					#endif
+				} break;
+				// Если режим действия события является отключённым
+				case static_cast <uint8_t> (event::mode_t::DISABLED): {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Multicast group cannot be removed because it is empty", log_t::flag_t::CRITICAL);
+					#endif
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод удаления события
@@ -36819,7 +41700,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					// Для семейства IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::mediator_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::mediator_t> ());
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -36989,7 +41870,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					// Для семейства директорий
 					case static_cast <uint8_t> (event::family_t::FSYS): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::dir_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::dir_t> ());
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -37040,7 +41921,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					// Для семейства директорий
 					case static_cast <uint8_t> (event::family_t::FSYS): {
 						// Выполняем создание события
-						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::file_t> (this->_fmk, this->_log));
+						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::file_t> ());
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -42673,7 +47554,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
 			// Выполняем чтение данных события
-			return ::io::read(i->second.get(), this, &this->_eth, this->_fmk, this->_log);
+			return ::io::read(i->second.get(), this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -42886,664 +47767,6 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	}
 	// Выводим результат работы функции
 	return result;
-}
-/**
- * @brief Метод активации/деактивации мультикаст группы события
- *
- * @param id     идентификатор события
- * @param mode   режим активации/деактивации
- * @param group  мультикаст-группа для активации/деактивации
- * @param source адрес сетевого интерфейса с которого выполняется подписка
- * @param port   порт мультикаст-группы с которого выполняется подписка
- * @return       результат выполнения установки
- */
-bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Если мультикаст-группа передана
-		if(!group.empty() && !source.empty()){
-			// Выполняем поиск идентификатора события
-			auto i = ::__awh_nodes__.find(id);
-			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-				// Создаём охранника узла события
-				::local::guard_t guard(i->second.get());
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем объект клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (client->state.family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Выполняем разбор адреса группы подписки
-								if(client->addr.parse(group, net_addr_t::type_t::IPV4)){
-									// Создаём объект IPv4-адреса
-									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv4_t> ();
-									// Устанавливаем адрес мультикаст-группы
-									awh_cast <net::addr_net_ipv4_t *> (addr.get())->address = client->addr.v4(net_addr_t::endian_t::LITTLE);
-									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
-									if(client->addr.parse(source, net_addr_t::type_t::IPV4)){
-										// Создаём объект IPv4-адреса
-										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv4_t> ();
-										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
-										awh_cast <net::addr_net_ipv4_t *> (source.get())->address = client->addr.v4(net_addr_t::endian_t::LITTLE);
-										// Создаём объект конечной точки подключения
-										struct sockaddr_in endpoint{0};
-										// Устанавливаем семейство IP-адресов
-										endpoint.sin_family = AF_INET;
-										// Устанавливаем произвольный порт с которого выполняется подключение
-										endpoint.sin_port = htons(port);
-										// Устанавливаем длину структуры
-										endpoint.sin_len = sizeof(struct sockaddr_in);
-										// Устанавливаем адрес для локального подключения
-										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
-										// Обнуляем серверную структуру
-										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-										// Выполняем бинд события
-										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
-											// Если установлена функция обратного вызова
-											if(client->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												client->callbacks.status(client->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(client->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события не установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Устанавливаем полученный IP-адрес
-													client->addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
-											// Снимаем флаг ожидания подключения
-											client->state.status = event::status_t::NONE;
-											// Выходим из функции с ошибкой
-											return false;
-										}
-										/**
-										 * Определяем тип действия события
-										 */
-										switch(static_cast <uint8_t> (mode)){
-											// Если режим действия события является включённым
-											case static_cast <uint8_t> (event::mode_t::ENABLED):
-												// Выполняем добавление в мультикаст-группу
-												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
-											// Если режим действия события является отключённым
-											case static_cast <uint8_t> (event::mode_t::DISABLED):
-												// Выполняем удаление из мультикаст-группы
-												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
-										}
-									// Если адрес не удалось определить
-									} else {
-										// Если установлена функция обратного вызова
-										if(client->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											client->callbacks.status(client->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Source address is invalid for IPv4 family";
-										// Если установлена функция обратного вызова
-										if(client->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события не установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-											#endif
-										}
-									}
-								// Если адрес не удалось определить
-								} else {
-									// Если установлена функция обратного вызова
-									if(client->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										client->callbacks.status(client->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Multicast group address is invalid for IPv4 family";
-									// Если установлена функция обратного вызова
-									if(client->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Выполняем разбор адреса группы подписки
-								if(client->addr.parse(group, net_addr_t::type_t::IPV6)){
-									// Создаём объект IPv6-адреса
-									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv6_t> ();
-									// Устанавливаем адрес мультикаст-группы
-									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], &client->addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
-									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
-									if(client->addr.parse(source, net_addr_t::type_t::IPV6)){
-										// Создаём объект IPv6-адреса
-										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv6_t> ();
-										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], &client->addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
-										// Создаём объект конечной точки подключения
-										struct sockaddr_in6 endpoint{0};
-										// Устанавливаем семейство IP-адресов
-										endpoint.sin6_family = AF_INET6;
-										// Устанавливаем произвольный порт с которого выполняется подключение
-										endpoint.sin6_port = htons(port);
-										// Устанавливаем длину структуры
-										endpoint.sin6_len = sizeof(struct sockaddr_in6);
-										// Устанавливаем адрес для локального подключения
-										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
-										// Выполняем бинд события
-										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
-											// Если установлена функция обратного вызова
-											if(client->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												client->callbacks.status(client->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(client->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события не установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Устанавливаем полученный IP-адрес
-													client->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.get())->address, net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (client->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
-											// Снимаем флаг ожидания подключения
-											client->state.status = event::status_t::NONE;
-											// Выходим из функции с ошибкой
-											return false;
-										}
-										/**
-										 * Определяем тип действия события
-										 */
-										switch(static_cast <uint8_t> (mode)){
-											// Если режим действия события является включённым
-											case static_cast <uint8_t> (event::mode_t::ENABLED):
-												// Выполняем добавление в мультикаст-группу
-												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
-											// Если режим действия события является отключённым
-											case static_cast <uint8_t> (event::mode_t::DISABLED):
-												// Выполняем удаление из мультикаст-группы
-												return this->_eth.socket.membership(client->transfer.fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
-										}
-									// Если адрес не удалось определить
-									} else {
-										// Если установлена функция обратного вызова
-										if(client->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											client->callbacks.status(client->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Source address is invalid for IPv6 family";
-										// Если установлена функция обратного вызова
-										if(client->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события не установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-											#endif
-										}
-									}
-								// Если адрес не удалось определить
-								} else {
-									// Если установлена функция обратного вызова
-									if(client->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										client->callbacks.status(client->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Multicast group address is invalid for IPv6 family";
-									// Если установлена функция обратного вызова
-									if(client->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
-						}
-					} break;
-					// Если узел является сервером
-					case static_cast <uint8_t> (event::node_t::SERVER): {
-						// Получаем объект сервера
-						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (server->state.family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Выполняем разбор адреса группы подписки
-								if(server->addr.parse(group, net_addr_t::type_t::IPV4)){
-									// Создаём объект IPv4-адреса
-									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv4_t> ();
-									// Устанавливаем адрес мультикаст-группы
-									awh_cast <net::addr_net_ipv4_t *> (addr.get())->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
-									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
-									if(server->addr.parse(source, net_addr_t::type_t::IPV4)){
-										// Создаём объект IPv4-адреса
-										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv4_t> ();
-										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
-										awh_cast <net::addr_net_ipv4_t *> (source.get())->address = server->addr.v4(net_addr_t::endian_t::LITTLE);
-										// Создаём объект конечной точки подключения
-										struct sockaddr_in endpoint{0};
-										// Устанавливаем семейство IP-адресов
-										endpoint.sin_family = AF_INET;
-										// Устанавливаем длину структуры
-										endpoint.sin_len = sizeof(struct sockaddr_in);
-										// Если порт подписки для сервера не указан
-										if(port == 0){
-											// Получаем объект хоста текущего сервера
-											net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
-											// Устанавливаем произвольный порт для локального подключения
-											endpoint.sin_port = htons(host->port);
-										// Выполняем подписку на указанный порт
-										} else endpoint.sin_port = htons(port);
-										// Устанавливаем адрес для локального подключения
-										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
-										// Обнуляем серверную структуру
-										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-										// Выполняем бинд события
-										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
-											// Если установлена функция обратного вызова
-											if(server->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												server->callbacks.status(server->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(server->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события не установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Устанавливаем полученный IP-адрес
-													server->addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (server->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
-											// Снимаем флаг ожидания подключения
-											server->state.status = event::status_t::NONE;
-											// Выходим из функции с ошибкой
-											return false;
-										}
-										/**
-										 * Определяем тип действия события
-										 */
-										switch(static_cast <uint8_t> (mode)){
-											// Если режим действия события является включённым
-											case static_cast <uint8_t> (event::mode_t::ENABLED):
-												// Выполняем добавление в мультикаст-группу
-												return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
-											// Если режим действия события является отключённым
-											case static_cast <uint8_t> (event::mode_t::DISABLED):
-												// Выполняем удаление из мультикаст-группы
-												return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
-										}
-									// Если адрес не удалось определить
-									} else {
-										// Если установлена функция обратного вызова
-										if(server->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											server->callbacks.status(server->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Source address is invalid for IPv4 family";
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события не установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-											#endif
-										}
-									}
-								// Если адрес не удалось определить
-								} else {
-									// Если установлена функция обратного вызова
-									if(server->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										server->callbacks.status(server->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Multicast group address is invalid for IPv4 family";
-									// Если установлена функция обратного вызова
-									if(server->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Выполняем разбор адреса группы подписки
-								if(server->addr.parse(group, net_addr_t::type_t::IPV6)){
-									// Создаём объект IPv6-адреса
-									unique_ptr <net::addr_net_t> addr = ::make_unique <net::addr_net_ipv6_t> ();
-									// Устанавливаем адрес мультикаст-группы
-									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], &server->addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
-									// Если адрес сетевого интерфейса с которого выполняется подписка соответствует
-									if(server->addr.parse(source, net_addr_t::type_t::IPV6)){
-										// Создаём объект IPv6-адреса
-										unique_ptr <net::addr_net_t> source = ::make_unique <net::addr_net_ipv6_t> ();
-										// Устанавливаем адрес сетевого интерфейса с которого выполняется подписка
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], &server->addr.v6(net_addr_t::endian_t::LITTLE)[0], 16);
-										// Создаём объект конечной точки подключения
-										struct sockaddr_in6 endpoint{0};
-										// Устанавливаем семейство IP-адресов
-										endpoint.sin6_family = AF_INET6;
-										// Устанавливаем длину структуры
-										endpoint.sin6_len = sizeof(struct sockaddr_in6);
-										// Если порт подписки для сервера не указан
-										if(port == 0){
-											// Получаем объект хоста текущего сервера
-											net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
-											// Устанавливаем произвольный порт для локального подключения
-											endpoint.sin6_port = htons(host->port);
-										// Выполняем подписку на указанный порт
-										} else endpoint.sin6_port = htons(port);
-										// Устанавливаем адрес для локального подключения
-										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
-										// Выполняем бинд события
-										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
-											// Если установлена функция обратного вызова
-											if(server->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об ошибке отказа
-												server->callbacks.status(server->id, event::status_t::FAILURE);
-											// Если установлена функция обратного вызова
-											if(server->callbacks.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-											// Если функция обратного вызова для вывода события не установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Устанавливаем полученный IP-адрес
-													server->addr.v6(awh_cast <net::addr_net_ipv6_t *> (source.get())->address, net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (server->addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
-											// Снимаем флаг ожидания подключения
-											server->state.status = event::status_t::NONE;
-											// Выходим из функции с ошибкой
-											return false;
-										}
-										/**
-										 * Определяем тип действия события
-										 */
-										switch(static_cast <uint8_t> (mode)){
-											// Если режим действия события является включённым
-											case static_cast <uint8_t> (event::mode_t::ENABLED):
-												// Выполняем добавление в мультикаст-группу
-												return this->_eth.socket.membership(server->fd, net::socket_mode_t::ENABLED, addr.get(), source.get());
-											// Если режим действия события является отключённым
-											case static_cast <uint8_t> (event::mode_t::DISABLED):
-												// Выполняем удаление из мультикаст-группы
-												return this->_eth.socket.membership(server->fd, net::socket_mode_t::DISABLED, addr.get(), source.get());
-										}
-									// Если адрес не удалось определить
-									} else {
-										// Если установлена функция обратного вызова
-										if(server->callbacks.status != nullptr)
-											// Вызываем функцию обратного вызова об ошибке отказа
-											server->callbacks.status(server->id, event::status_t::FAILURE);
-										// Устанавливаем текст ошибки
-										const string error = "Source address is invalid for IPv6 family";
-										// Если установлена функция обратного вызова
-										if(server->callbacks.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-										// Если функция обратного вызова для вывода события не установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-											#endif
-										}
-									}
-								// Если адрес не удалось определить
-								} else {
-									// Если установлена функция обратного вызова
-									if(server->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										server->callbacks.status(server->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Multicast group address is invalid for IPv6 family";
-									// Если установлена функция обратного вызова
-									if(server->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, event::error_t::INVALID_ADDRESS, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
-						}
-					} break;
-					// Для других типов узлов
-					default: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Unable to add or remove multicast group for nodes other than client or server", log_t::flag_t::CRITICAL);
-						#endif
-					}
-				}
-			}
-		// Если мультикаст-группа не передана
-		} else {
-			/**
-			 * Определяем тип действия события
-			 */
-			switch(static_cast <uint8_t> (mode)){
-				// Если режим действия события является включённым
-				case static_cast <uint8_t> (event::mode_t::ENABLED): {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Multicast group cannot be added because it is empty", log_t::flag_t::CRITICAL);
-					#endif
-				} break;
-				// Если режим действия события является отключённым
-				case static_cast <uint8_t> (event::mode_t::DISABLED): {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Multicast group cannot be removed because it is empty", log_t::flag_t::CRITICAL);
-					#endif
-				} break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return false;
 }
 /**
  * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -49579,7 +53802,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Пропускаем событие
 						continue;
 					// Выполняем опрос событий
-					::io::polling(ev, this, &this->_eth, this->_fmk, this->_log);
+					::io::polling(ev, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 				}
 			}
 		/**

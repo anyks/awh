@@ -185,7 +185,8 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект работы с логами
 					 */
-					explicit Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept : _eth(fmk, log), _fmk(fmk), _log(log) {}
+					explicit Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept :
+					 _eth(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -204,6 +205,9 @@ namespace awh {
 				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Control_List {
+					private:
+						// Объект работы с сетевыми адресами
+						net_addr_t _addr;
 					private:
 						// Тип списка контрольного списка
 						event::control_list_t _type;
@@ -250,7 +254,7 @@ namespace awh {
 						 * @param type тип списка контрольного списка
 						 */
 						explicit Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
-						_type(type), _fmk(fmk), _log(log) {}
+						 _addr(fmk, log), _type(type), _fmk(fmk), _log(log) {}
 						/**
 						 * @brief Деструктор
 						 *
@@ -320,20 +324,37 @@ namespace awh {
 				bool mtu(const event::id_t id, const uint16_t mtu) const noexcept;
 			public:
 				/**
-				 * @brief Метод получения хоста целевой машины
+				 * @brief Метод получения адреса хоста целевой машины
 				 *
 				 * @param id идентификатор события
-				 * @return   хост целевой машины
+				 * @return   адрес хоста целевой машины
 				 */
 				string target(const event::id_t id) const noexcept;
 				/**
-				 * @brief Метод установки хоста целевой машины
+				 * @brief Метод установки адреса хоста целевой машины
 				 *
-				 * @param id   идентификатор события
-				 * @param host хост целевой машины
-				 * @return     результат выполнения установки
+				 * @param id     идентификатор события
+				 * @param target адрес хоста целевой машины
+				 * @return       результат выполнения установки
 				 */
 				bool target(const event::id_t id, const string & target) noexcept;
+			public:
+				/**
+				 * @brief Метод получения адреса хоста целевой машины
+				 *
+				 * @param id     идентификатор события
+				 * @param target объект для извлечения адреса хоста целевой машины
+				 * @return       результат выполнения извлечения адреса хоста целевой машины
+				 */
+				bool target(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept;
+				/**
+				 * @brief Метод установки адреса хоста целевой машины
+				 *
+				 * @param id     идентификатор события
+				 * @param target адрес хоста целевой машины
+				 * @return       результат выполнения установки
+				 */
+				bool target(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса события
@@ -354,6 +375,25 @@ namespace awh {
 				bool address(const event::id_t id, const event::address_t address, const string & value) noexcept;
 			public:
 				/**
+				 * @brief Метод получения адреса события
+				 *
+				 * @param id      идентификатор события
+				 * @param address тип адреса события
+				 * @param value   объект для извлечения адреса события
+				 * @return        результат выполнения извлечения адреса события
+				 */
+				bool address(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
+				/**
+				 * @brief Метод установки адреса события
+				 *
+				 * @param id      идентификатор события
+				 * @param address тип адреса события
+				 * @param value   значение адреса события
+				 * @return        результат выполнения установки
+				 */
+				bool address(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept;
+			public:
+				/**
 				 * @brief Метод активации/деактивации мультикаст группы события
 				 *
 				 * @param id     идентификатор события
@@ -364,6 +404,17 @@ namespace awh {
 				 * @return       результат выполнения установки
 				 */
 				bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port = 0) noexcept;
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы события
+				 *
+				 * @param id     идентификатор события
+				 * @param mode   режим активации/деактивации
+				 * @param group  мультикаст-группа для активации/деактивации
+				 * @param source адрес сетевого интерфейса с которого выполняется подписка
+				 * @param port   порт мультикаст-группы с которого выполняется подписка
+				 * @return       результат выполнения установки
+				 */
+				bool membership(const event::id_t id, const event::mode_t mode, const unique_ptr <net::addr_t> & group, const unique_ptr <net::addr_t> & source, const uint16_t port = 0) noexcept;
 			public:
 				/**
 				 * @brief Метод удаления события
