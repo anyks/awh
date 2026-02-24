@@ -178,37 +178,37 @@ TEST_F(IoFixture, IoSuiteTest){
 				// Устанавливаем таймаут INIT SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
 				// Проверяем что таймаут INIT SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::INIT));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::INIT));
 
 				// Устанавливаем таймаут DATA SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
 				// Проверяем что таймаут DATA SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::DATA));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::DATA));
 
 				// Устанавливаем таймаут SACK SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
 				// Проверяем что таймаут SACK SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SACK));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::SACK));
 
 				// Устанавливаем таймаут COOKIE SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
 				// Проверяем что таймаут COOKIE SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::COOKIE));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::COOKIE));
 
 				// Устанавливаем таймаут SHUTDOWN SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
 				// Проверяем что таймаут SHUTDOWN SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
 
 				// Устанавливаем таймаут HEARTBEAT SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Проверяем что таймаут HEARTBEAT SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
 
 				// Устанавливаем таймаут SHUTDOWNACK SCTP события
 				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
 				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
-				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
+				ASSERT_NE(3000, this->_sctp->getTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
 
 				// Устанавливаем ключ аутентификации SCTP-сокета
 				ASSERT_FALSE(this->_sctp->authenticateKey(eid1, 1, "0123456789abcdef0123456789abcdef"));
@@ -11800,7 +11800,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем таймаут heartbeat SCTP-сокета
 			ASSERT_TRUE(this->_sctp->setTimeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 			// Выводим heartbeat timeout SCTP-сокета
-			ASSERT_EQ(3000, this->_sctp->timeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT));
+			ASSERT_EQ(3000, this->_sctp->getTimeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT));
 			// Устанавливаем адрес сервера назначения
 			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -11968,8 +11968,8 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Устанавливаем таймаут heartbeat SCTP-сокета
 				ASSERT_TRUE(this->_sctp->setTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Выводим heartbeat timeout SCTP-сокета
-				ASSERT_EQ(3000, this->_sctp->timeout(cid, awh::net::sctp::timeout_t::HEARTBEAT));
-				ASSERT_EQ(3000, this->_sctp->timeout(sid, awh::net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_EQ(3000, this->_sctp->getTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_EQ(3000, this->_sctp->getTimeout(sid, awh::net::sctp::timeout_t::HEARTBEAT));
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -12475,7 +12475,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					// Выводим информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Выводим heartbeat timeout SCTP-сокета
-				ASSERT_EQ(3000, this->_sctp->timeout(eid, awh::net::sctp::timeout_t::HEARTBEAT));
+				ASSERT_EQ(3000, this->_sctp->getTimeout(eid, awh::net::sctp::timeout_t::HEARTBEAT));
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Выводим сообщение о переподключении события

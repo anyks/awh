@@ -24969,7 +24969,7 @@ namespace sctp {
 	 * @param type тип таймаута
 	 * @return     значение таймаута в миллисекундах
 	 */
-	uint32_t awh::engine::Stream_Control_Transmission_Protocol::timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
+	uint32_t awh::engine::Stream_Control_Transmission_Protocol::getTimeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -25158,7 +25158,7 @@ namespace sctp {
 	 * @param timeout значение таймаута в миллисекундах
 	 * @return        результат работы функции
 	 */
-	bool awh::engine::Stream_Control_Transmission_Protocol::timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::setTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */

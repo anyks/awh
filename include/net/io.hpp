@@ -107,7 +107,7 @@ namespace awh {
 					 * @param type тип таймаута
 					 * @return     значение таймаута в миллисекундах
 					 */
-					uint32_t timeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept;
+					uint32_t getTimeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept;
 					/**
 					 * @brief Метод установки таймаута SCTP события
 					 *
@@ -116,7 +116,7 @@ namespace awh {
 					 * @param timeout значение таймаута в миллисекундах
 					 * @return        результат работы функции
 					 */
-					bool timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
+					bool setTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
 				public:
 					/**
 					 * @brief Метод установки ключа аутентификации SCTP сокета
