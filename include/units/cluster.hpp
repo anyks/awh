@@ -292,7 +292,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @return       размер буфера события
 				 */
-				size_t bufferSize(const pid_t pid, const event::action_t action) const noexcept;
+				size_t getBufferSize(const pid_t pid, const event::action_t action) const noexcept;
 				/**
 				 * @brief Метод установки размера буфера события
 				 *
@@ -301,7 +301,7 @@ namespace awh {
 				 * @param size   размер буфера события
 				 * @return       результат выполнения установки
 				 */
-				bool bufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept;
+				bool setBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)

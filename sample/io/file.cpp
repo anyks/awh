@@ -104,7 +104,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим сообщение о выполнении события в ожидании
 					log.print("Событие в ожидании: ID=%u", log_t::flag_t::INFO, eid);
 					// Устанавливаем смещение в файле
-					// io.seek(eid, 1024);
+					// io.getSeek(eid, 1024);
 					// Отправляем тестовое сообщение в файл
 					io.send(eid, "Hello World!!!", 14);
 				} break;
@@ -253,13 +253,13 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Устананавливаем опции события
-				if(io.options(eid, event::options::KEEPALIVE))
+				if(io.setOptions(eid, event::options::KEEPALIVE))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
 				// Отключаем событие на чтение
-				// io.action(eid, event::action_t::READ, event::mode_t::DISABLED);
+				// io.setAction(eid, event::action_t::READ, event::mode_t::DISABLED);
 				// Выполняем запуск события
 				if(io.launch(eid)){
 					// Выводим сообщение об успешном запуске события

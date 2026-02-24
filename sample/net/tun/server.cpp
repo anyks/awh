@@ -77,17 +77,17 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие сервера UDP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.setPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события туннеля
-		if(io.options(tid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+		if(io.setOptions(tid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события туннеля!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события туннеля!" << endl;
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::KEEPALIVE))
+		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::KEEPALIVE))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события сервера! " << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -320,7 +320,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Объединяем с пиром
 					io.splice(mid, cid);
 					// Выводим сообщение о принятии события
-					log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.port(cid));
+					log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
 					// Устанавливаем функцию обратного вызова на событие таймера
 					io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 						/**
@@ -869,7 +869,7 @@ int32_t main(int32_t argc, char * argv[]){
 						// Маршрут туннеля
 						eth::gateway_t::route_t route;
 						// Устанавливаем интерфейс туннеля
-						route.ifname = io.iface(tid);
+						route.ifname = io.getIface(tid);
 						// Устанавливаем префикс маршрута туннеля
 						route.prefix = 24;
 						// Создаём шлюз маршрута туннеля

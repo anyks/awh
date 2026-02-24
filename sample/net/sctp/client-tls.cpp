@@ -54,7 +54,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.setPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Флаг завершения работы
@@ -175,7 +175,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -190,9 +190,9 @@ int32_t main(int32_t argc, char * argv[]){
 			net::sctp::event_type_t::REMOTE_ERROR
 		});
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "127.0.0.1")){
+			if(io.setTarget(eid, "127.0.0.1")){
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&io, &sctp, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -527,11 +527,11 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем таймаут события на чтение
-				// io.timeout(eid, event::action_t::READ, 3000);
+				// io.setTimeout(eid, event::action_t::READ, 3000);
 				// Устанавливаем таймаут события на запись
-				io.timeout(eid, event::action_t::WRITE, 3000);
+				io.setTimeout(eid, event::action_t::WRITE, 3000);
 				// Устанавливаем таймаут события на подключение
-				io.timeout(eid, event::action_t::CONNECT, 5000);
+				io.setTimeout(eid, event::action_t::CONNECT, 5000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid)){
 					// Если подключение к серверу прошло успешно

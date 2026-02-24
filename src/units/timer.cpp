@@ -99,7 +99,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
 	event::id_t result = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Добавляем новое событие таймера
-	this->_io->timeout(result, event::action_t::NONE, delay);
+	this->_io->setTimeout(result, event::action_t::NONE, delay);
 	// Выполняем фиксацию настроек события таймера
 	if(this->_io->commit(result)){
 		// Устанавливаем функцию обратного вызова на событие таймера
@@ -158,7 +158,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
 	event::id_t result = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Добавляем новое событие таймера
-	this->_io->timeout(result, event::action_t::NONE, delay);
+	this->_io->setTimeout(result, event::action_t::NONE, delay);
 	// Выполняем фиксацию настроек события таймера
 	if(this->_io->commit(result)){
 		// Устанавливаем функцию обратного вызова на событие таймера

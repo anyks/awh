@@ -103,7 +103,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   MTU сетевого интерфейса
 			 */
-			virtual uint16_t getMtu(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getMaximumTransmissionUnit(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки MTU сетевого интерфейса
 			 *
@@ -111,7 +111,7 @@ namespace awh {
 			 * @param mtu размер MTU интерфейса
 			 * @return    результат установки MTU сетевого интерфейса
 			 */
-			virtual bool setMtu(const event::id_t id, const uint16_t mtu) const noexcept = 0;
+			virtual bool setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины

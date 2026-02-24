@@ -109,19 +109,19 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid1, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid1, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid1, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid1));
+			ASSERT_EQ(8080, this->_io->getPort(eid1));
 			// Устанавливаем MTU события
-			// ASSERT_TRUE(this->_io->mtu(eid1, 1500));
+			// ASSERT_TRUE(this->_io->setMaximumTransmissionUnit(eid1, 1500));
 			// Проверяем что MTU получен
-			ASSERT_EQ(1500, this->_io->mtu(eid1));
+			ASSERT_EQ(1500, this->_io->getMaximumTransmissionUnit(eid1));
 			// Устанавливаем сетевой интерфейс события
-			ASSERT_TRUE(this->_io->iface(eid1, source.iface));
+			ASSERT_TRUE(this->_io->setIface(eid1, source.iface));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid1).empty());
+			ASSERT_FALSE(this->_io->getIface(eid1).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid1));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid1));
 
 			/**
 			 * Для операционной системы FreeBSD
@@ -176,37 +176,37 @@ TEST_F(IoFixture, IoSuiteTest){
 				ASSERT_NE(types, this->_sctp->eventsSubscribed(eid1));
 
 				// Устанавливаем таймаут INIT SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
 				// Проверяем что таймаут INIT SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::INIT));
 
 				// Устанавливаем таймаут DATA SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
 				// Проверяем что таймаут DATA SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::DATA));
 
 				// Устанавливаем таймаут SACK SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
 				// Проверяем что таймаут SACK SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SACK));
 
 				// Устанавливаем таймаут COOKIE SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
 				// Проверяем что таймаут COOKIE SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::COOKIE));
 
 				// Устанавливаем таймаут SHUTDOWN SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
 				// Проверяем что таймаут SHUTDOWN SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
 
 				// Устанавливаем таймаут HEARTBEAT SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Проверяем что таймаут HEARTBEAT SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
 
 				// Устанавливаем таймаут SHUTDOWNACK SCTP события
-				ASSERT_FALSE(this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
+				ASSERT_FALSE(this->_sctp->setTimeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
 				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
 				ASSERT_NE(3000, this->_sctp->timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
 
@@ -232,170 +232,170 @@ TEST_F(IoFixture, IoSuiteTest){
 			#endif
 
 			// Извлекаем IP-адрес сетевого интерфейса
-			ip = this->_io->address(eid1, awh::event::address_t::IPV4);
+			ip = this->_io->getAddress(eid1, awh::event::address_t::IPV4);
 			// Извлекаем MAC-адрес сетевого интерфейса
-			mac = this->_io->address(eid1, awh::event::address_t::MAC);
+			mac = this->_io->getAddress(eid1, awh::event::address_t::MAC);
 			// Проверяем, что IP-адрес получен
 			ASSERT_FALSE(ip.empty());
 			// Проверяем, что MAC-адрес получен
 			ASSERT_FALSE(mac.empty());
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid1).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid1).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid1, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid1, awh::event::address_t::UDS).empty());
 
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid2 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid2, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid2, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid2, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid2));
+			ASSERT_EQ(8080, this->_io->getPort(eid2));
 			// Устанавливаем MAC-адрес события
-			ASSERT_TRUE(this->_io->address(eid2, awh::event::address_t::MAC, mac));
+			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid2).empty());
+			ASSERT_FALSE(this->_io->getIface(eid2).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid2));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid2));
 			// Устанавливаем MTU события
-			// ASSERT_TRUE(this->_io->mtu(eid2, 1500));
+			// ASSERT_TRUE(this->_io->setMaximumTransmissionUnit(eid2, 1500));
 			// Проверяем что MTU получен
-			ASSERT_EQ(1500, this->_io->mtu(eid2));
+			ASSERT_EQ(1500, this->_io->getMaximumTransmissionUnit(eid2));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->address(eid2, awh::event::address_t::IPV4));
+			ASSERT_EQ(ip, this->_io->getAddress(eid2, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->address(eid2, awh::event::address_t::MAC));
+			ASSERT_EQ(mac, this->_io->getAddress(eid2, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid2).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid2).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid2, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid2, awh::event::address_t::UDS).empty());
 
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid3 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid3, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid3, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid3, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid3));
+			ASSERT_EQ(8080, this->_io->getPort(eid3));
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(eid3, awh::event::address_t::IPV4, ip));
+			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV4, ip));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid3).empty());
+			ASSERT_FALSE(this->_io->getIface(eid3).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid3));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid3));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->address(eid3, awh::event::address_t::IPV4));
+			ASSERT_EQ(ip, this->_io->getAddress(eid3, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->address(eid3, awh::event::address_t::MAC));
+			ASSERT_EQ(mac, this->_io->getAddress(eid3, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid3).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid3).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid3, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid3, awh::event::address_t::UDS).empty());
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid4 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid4, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid4, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid4, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid4));
+			ASSERT_EQ(8080, this->_io->getPort(eid4));
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(eid4, awh::event::address_t::NETWORK, ip + "/255.255.255.0"));
+			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/255.255.255.0"));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid4).empty());
+			ASSERT_FALSE(this->_io->getIface(eid4).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid4));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid4));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->address(eid4, awh::event::address_t::IPV4));
+			ASSERT_EQ(ip, this->_io->getAddress(eid4, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->address(eid4, awh::event::address_t::MAC));
+			ASSERT_EQ(mac, this->_io->getAddress(eid4, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid4).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid4).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid4, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid4, awh::event::address_t::UDS).empty());
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid5 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid5, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->port(eid5, 8080));
+			ASSERT_FALSE(this->_io->setPort(eid5, 8080));
 			// Устанавливаем UDS-адрес события
-			ASSERT_TRUE(this->_io->address(eid5, awh::event::address_t::UDS, "/tmp/awh.sock"));
+			ASSERT_TRUE(this->_io->setAddress(eid5, awh::event::address_t::UDS, "/tmp/awh.sock"));
 			// Проверяем, что название сетевого интерфейса не получено
-			ASSERT_TRUE(this->_io->iface(eid5).empty());
+			ASSERT_TRUE(this->_io->getIface(eid5).empty());
 			// Проверяем, что IP-адрес не совпадает с извлечённым ранее
-			ASSERT_NE(ip, this->_io->address(eid5, awh::event::address_t::IPV4));
+			ASSERT_NE(ip, this->_io->getAddress(eid5, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес не совпадает с извлечённым ранее
-			ASSERT_NE(mac, this->_io->address(eid5, awh::event::address_t::MAC));
+			ASSERT_NE(mac, this->_io->getAddress(eid5, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid4).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid4).empty());
 			// Проверяем, что UDS-адрес установлен и правильный
-			ASSERT_EQ("/tmp/awh.sock", this->_io->address(eid5, awh::event::address_t::UDS));
+			ASSERT_EQ("/tmp/awh.sock", this->_io->getAddress(eid5, awh::event::address_t::UDS));
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid6 = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid6, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->port(eid6, 8080));
+			ASSERT_FALSE(this->_io->setPort(eid6, 8080));
 			// Устанавливаем сетевой адрес события
-			ASSERT_TRUE(this->_io->address(eid6, awh::event::address_t::FS, "/tmp/awh.txt"));
+			ASSERT_TRUE(this->_io->setAddress(eid6, awh::event::address_t::FS, "/tmp/awh.txt"));
 			// Проверяем, что название сетевого интерфейса не получено
-			ASSERT_TRUE(this->_io->iface(eid6).empty());
+			ASSERT_TRUE(this->_io->getIface(eid6).empty());
 			// Проверяем, что IP-адрес не совпадает с извлечённым ранее
-			ASSERT_NE(ip, this->_io->address(eid6, awh::event::address_t::IPV4));
+			ASSERT_NE(ip, this->_io->getAddress(eid6, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес не совпадает с извлечённым ранее
-			ASSERT_NE(mac, this->_io->address(eid6, awh::event::address_t::MAC));
+			ASSERT_NE(mac, this->_io->getAddress(eid6, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid6).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid6).empty());
 			// Проверяем, что адрес установлен и правильный
-			ASSERT_EQ("/tmp/awh.txt", this->_io->address(eid6, awh::event::address_t::FS));
+			ASSERT_EQ("/tmp/awh.txt", this->_io->getAddress(eid6, awh::event::address_t::FS));
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid7 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid7, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid7, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid7, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid7));
+			ASSERT_EQ(8080, this->_io->getPort(eid7));
 			// Устанавливаем IP-адрес назначения для события
-			ASSERT_TRUE(this->_io->target(eid7, ip));
+			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid7).empty());
+			ASSERT_FALSE(this->_io->getIface(eid7).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid7));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid7));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->address(eid7, awh::event::address_t::IPV4));
+			ASSERT_EQ(ip, this->_io->getAddress(eid7, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->address(eid7, awh::event::address_t::MAC));
+			ASSERT_EQ(mac, this->_io->getAddress(eid7, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен и соответствует
-			ASSERT_EQ(ip, this->_io->target(eid7));
+			ASSERT_EQ(ip, this->_io->getTarget(eid7));
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid7, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid7, awh::event::address_t::UDS).empty());
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid8 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid8, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->port(eid8, 8080));
+			ASSERT_FALSE(this->_io->setPort(eid8, 8080));
 			// Устанавливаем UDS-адрес назначения для события
-			ASSERT_TRUE(this->_io->target(eid8, "/tmp/awh.sock"));
+			ASSERT_TRUE(this->_io->setTarget(eid8, "/tmp/awh.sock"));
 			// Проверяем, что название сетевого интерфейса не получено
-			ASSERT_TRUE(this->_io->iface(eid8).empty());
+			ASSERT_TRUE(this->_io->getIface(eid8).empty());
 			// Проверяем, что IP-адрес не совпадает с извлечённым ранее
-			ASSERT_NE(ip, this->_io->address(eid8, awh::event::address_t::IPV4));
+			ASSERT_NE(ip, this->_io->getAddress(eid8, awh::event::address_t::IPV4));
 			// Проверяем, что MAC-адрес не совпадает с извлечённым ранее
-			ASSERT_NE(mac, this->_io->address(eid8, awh::event::address_t::MAC));
+			ASSERT_NE(mac, this->_io->getAddress(eid8, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_EQ("/tmp/awh.sock", this->_io->target(eid8));
+			ASSERT_EQ("/tmp/awh.sock", this->_io->getTarget(eid8));
 			// Проверяем, что UDS-адрес установлен и правильный
-			ASSERT_EQ("/tmp/awh.sock", this->_io->address(eid8, awh::event::address_t::UDS));
+			ASSERT_EQ("/tmp/awh.sock", this->_io->getAddress(eid8, awh::event::address_t::UDS));
 		}
 		/**
 		 * IPv6 событие
@@ -406,109 +406,109 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid1, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid1, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid1, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid1));
+			ASSERT_EQ(8080, this->_io->getPort(eid1));
 			// Устанавливаем сетевой интерфейс события
-			ASSERT_TRUE(this->_io->iface(eid1, source.iface));
+			ASSERT_TRUE(this->_io->setIface(eid1, source.iface));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid1).empty());
+			ASSERT_FALSE(this->_io->getIface(eid1).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid1));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid1));
 			// Извлекаем IP-адрес сетевого интерфейса
-			ip = this->_io->address(eid1, awh::event::address_t::IPV6);
+			ip = this->_io->getAddress(eid1, awh::event::address_t::IPV6);
 			// Извлекаем MAC-адрес сетевого интерфейса
-			mac = this->_io->address(eid1, awh::event::address_t::MAC);
+			mac = this->_io->getAddress(eid1, awh::event::address_t::MAC);
 			// Проверяем, что IP-адрес получен
 			ASSERT_FALSE(ip.empty());
 			// Проверяем, что MAC-адрес получен
 			ASSERT_FALSE(mac.empty());
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid1).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid1).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid1, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid1, awh::event::address_t::UDS).empty());
 
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid2 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid2, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid2, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid2, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid2));
+			ASSERT_EQ(8080, this->_io->getPort(eid2));
 			// Устанавливаем MAC-адрес события
-			ASSERT_TRUE(this->_io->address(eid2, awh::event::address_t::MAC, mac));
+			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid2).empty());
+			ASSERT_FALSE(this->_io->getIface(eid2).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid2));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid2));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->address(eid2, awh::event::address_t::IPV6));
+			ASSERT_EQ(ip, this->_io->getAddress(eid2, awh::event::address_t::IPV6));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->address(eid2, awh::event::address_t::MAC));
+			ASSERT_EQ(mac, this->_io->getAddress(eid2, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid2).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid2).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid2, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid2, awh::event::address_t::UDS).empty());
 
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid3 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid3, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid3, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid3, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid3));
+			ASSERT_EQ(8080, this->_io->getPort(eid3));
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(eid3, awh::event::address_t::IPV6, ip));
+			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV6, ip));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid3).empty());
+			ASSERT_FALSE(this->_io->getIface(eid3).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->iface(eid3));
+			ASSERT_EQ(source.iface, this->_io->getIface(eid3));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->address(eid3, awh::event::address_t::IPV6));
+			ASSERT_EQ(ip, this->_io->getAddress(eid3, awh::event::address_t::IPV6));
 			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->address(eid3, awh::event::address_t::MAC));
+			ASSERT_EQ(mac, this->_io->getAddress(eid3, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid3).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid3).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid3, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid3, awh::event::address_t::UDS).empty());
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid4 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid4, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid4, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid4, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid4));
+			ASSERT_EQ(8080, this->_io->getPort(eid4));
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(eid4, awh::event::address_t::NETWORK, ip + "/64"));
+			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/64"));
 			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->iface(eid4).empty());
+			ASSERT_FALSE(this->_io->getIface(eid4).empty());
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_FALSE(this->_io->address(eid4, awh::event::address_t::IPV6).empty());
+			ASSERT_FALSE(this->_io->getAddress(eid4, awh::event::address_t::IPV6).empty());
 			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->target(eid4).empty());
+			ASSERT_FALSE(this->_io->getTarget(eid4).empty());
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid4, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid4, awh::event::address_t::UDS).empty());
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid7 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid7, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(eid7, 8080));
+			ASSERT_TRUE(this->_io->setPort(eid7, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->port(eid7));
+			ASSERT_EQ(8080, this->_io->getPort(eid7));
 			// Устанавливаем IP-адрес назначения для события
-			ASSERT_TRUE(this->_io->target(eid7, ip));
+			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_FALSE(this->_io->address(eid4, awh::event::address_t::IPV6).empty());
+			ASSERT_FALSE(this->_io->getAddress(eid4, awh::event::address_t::IPV6).empty());
 			// Проверяем, что адрес назначения получен и соответствует
-			ASSERT_EQ(ip, this->_io->target(eid7));
+			ASSERT_EQ(ip, this->_io->getTarget(eid7));
 			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->address(eid7, awh::event::address_t::UDS).empty());
+			ASSERT_TRUE(this->_io->getAddress(eid7, awh::event::address_t::UDS).empty());
 		}
 	}
 }
@@ -531,9 +531,9 @@ TEST_F(IoFixture, IoTCPTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -542,13 +542,13 @@ TEST_F(IoFixture, IoTCPTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -685,7 +685,7 @@ TEST_F(IoFixture, IoTCPTest){
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -844,9 +844,9 @@ TEST_F(IoFixture, IoTCPTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Выполняем прослушивание сервера
@@ -859,9 +859,9 @@ TEST_F(IoFixture, IoTCPTest){
 	 */
 	{
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -1092,11 +1092,11 @@ TEST_F(IoFixture, IoTCPTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
@@ -1130,9 +1130,9 @@ TEST_F(IoFixture, IoUDPTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -1141,13 +1141,13 @@ TEST_F(IoFixture, IoUDPTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -1224,7 +1224,7 @@ TEST_F(IoFixture, IoUDPTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -1570,9 +1570,9 @@ TEST_F(IoFixture, IoUDPTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Запускаем событие сервера
@@ -1583,9 +1583,9 @@ TEST_F(IoFixture, IoUDPTest){
 	 */
 	{
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -1808,9 +1808,9 @@ TEST_F(IoFixture, IoUDPTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Запускаем событие клиента
@@ -1846,9 +1846,9 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -1857,13 +1857,13 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -1940,7 +1940,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -2286,9 +2286,9 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Запускаем событие сервера
@@ -2299,9 +2299,9 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	 */
 	{
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -2532,11 +2532,11 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
@@ -2569,12 +2569,12 @@ TEST_F(IoFixture, IoUDSTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-	ASSERT_TRUE(this->_io->options(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->target(cid, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setTarget(cid, "/tmp/awh.sock"));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->address(sid, awh::event::address_t::UDS, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, "/tmp/awh.sock"));
 	/**
 	 * Серверное событие
 	 */
@@ -2713,9 +2713,9 @@ TEST_F(IoFixture, IoUDSTest){
 		// Устанавливаем функцию обратного вызова на принятие события
 		this->_io->on(sid, static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, sid, cid, this->_io->address(cid, awh::event::address_t::UDS).c_str());
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, sid, cid, this->_io->getAddress(cid, awh::event::address_t::UDS).c_str());
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на чтение из события
@@ -2869,9 +2869,9 @@ TEST_F(IoFixture, IoUDSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(sid, awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(sid, awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(sid, awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(sid, awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(sid));
 		// Выполняем прослушивание сервера
@@ -3113,11 +3113,11 @@ TEST_F(IoFixture, IoUDSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(cid, awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(cid, awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(cid, awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(cid, awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(cid, awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(cid, awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(cid));
 		// Выполняем подключение к серверу
@@ -3150,12 +3150,12 @@ TEST_F(IoFixture, IoUDPUDSTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-	ASSERT_TRUE(this->_io->options(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->target(cid, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setTarget(cid, "/tmp/awh.sock"));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->address(sid, awh::event::address_t::UDS, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, "/tmp/awh.sock"));
 	/**
 	 * Серверное событие
 	 */
@@ -3236,7 +3236,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(sid, static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::UDS).c_str());
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::UDS).c_str());
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -3582,9 +3582,9 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(sid, awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(sid, awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(sid, awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(sid, awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(sid));
 		// Запускаем событие сервера
@@ -3824,11 +3824,11 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(cid, awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(cid, awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(cid, awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(cid, awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(cid, awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(cid, awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(cid));
 		// Выполняем подключение к серверу
@@ -3862,9 +3862,9 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -3873,9 +3873,9 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 */
 	{
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -3952,7 +3952,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -4298,7 +4298,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 			}
 		});
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Запускаем событие сервера
@@ -4309,7 +4309,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 */
 	{
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::BROADCAST));
+		ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::BROADCAST));
 		// Создаём объект работы с Ethernet
 		awh::eth_t eth(this->_fmk.get(), this->_log.get());
 		// Временный объект для извлечения сетевого интерфейса
@@ -4319,11 +4319,11 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Если сетевой интерфейс не принадлежит к VPN
 		if(::memcmp("ut", source.iface.c_str(), 2) != 0){
 			// Устанавливаем сетевой интерфейс события
-			ASSERT_TRUE(this->_io->iface(events[0], source.iface));
+			ASSERT_TRUE(this->_io->setIface(events[0], source.iface));
 			// Создаём объект сетевого адреса
 			awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
 			// Извлекаем IP-адрес сетевого интерфейса
-			addr = std::move(this->_io->address(events[0], awh::event::address_t::IPV4));
+			addr = std::move(this->_io->getAddress(events[0], awh::event::address_t::IPV4));
 			// Если IP-адрес не принадлежит к LAN
 			if(addr.own() != awh::net_addr_t::own_t::LAN){
 				// Уничтожаем все события после получения ответа
@@ -4334,11 +4334,11 @@ TEST_F(IoFixture, IoBroadcastTest){
 			// Проверяем, что название сетевого интерфейса получено
 			ASSERT_FALSE(source.iface.empty());
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Формируем адрес Broadcast
 			addr.v4((addr.v4(awh::net_addr_t::endian_t::BIG) & 0xFFFFFF00U) | 0x000000FFU, awh::net_addr_t::endian_t::BIG);
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->target(events[0], static_cast <std::string> (addr)));
+			ASSERT_TRUE(this->_io->setTarget(events[0], static_cast <std::string> (addr)));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -4553,9 +4553,9 @@ TEST_F(IoFixture, IoBroadcastTest){
 				}
 			});
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
-			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Запускаем событие клиента
@@ -4600,29 +4600,29 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 		// Устанавливаем размер буфера для чтения и записи
-		this->_io->bufferSize(events[i], awh::event::action_t::READ, 10240);
-		this->_io->bufferSize(events[i], awh::event::action_t::WRITE, 10240);
+		this->_io->setBufferSize(events[i], awh::event::action_t::READ, 10240);
+		this->_io->setBufferSize(events[i], awh::event::action_t::WRITE, 10240);
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем адрес текстового файла для чтения
-	ASSERT_TRUE(this->_io->address(fid, awh::event::address_t::FS, "../README.md"));
+	ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, "../README.md"));
 	/**
 	 * Выставляем опции и параметры для каждого события
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -4699,7 +4699,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -5045,9 +5045,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Запускаем событие сервера
@@ -5058,9 +5058,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	 */
 	{
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Выполняем объединение двух сокетов
 		ASSERT_TRUE(this->_io->splice(fid, events[0]));
 		// Устанавливаем функцию обратного вызова на событие таймера
@@ -5217,7 +5217,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 				// Выполняем фиксацию события файла
 				ASSERT_TRUE(this->_io->commit(fid));
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->options(fid, awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::KEEPALIVE));
 			}
 		}));
 		// Устанавливаем функцию обратного вызова на общее событие
@@ -5289,11 +5289,11 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
@@ -5666,7 +5666,7 @@ TEST_F(IoFixture, IoFsTest){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому каталогу
-		ASSERT_TRUE(this->_io->address(did, awh::event::address_t::FS, "./"));
+		ASSERT_TRUE(this->_io->setAddress(did, awh::event::address_t::FS, "./"));
 		// Выполняем фиксацию настроек события каталога
 		ASSERT_TRUE(this->_io->commit(did));
 		// Запускаем событие каталога
@@ -5727,7 +5727,7 @@ TEST_F(IoFixture, IoFsTest){
 					// Выводим сообщение о выполнении события в ожидании
 					this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
 					// Устанавливаем смещение в файле
-					// this->_io->seek(eid, 1024);
+					// this->_io->getSeek(eid, 1024);
 					// Отправляем тестовое сообщение в файл
 					this->_io->send(eid, "Hello World!!!", 14);
 					// Останавливаем тест
@@ -5909,11 +5909,11 @@ TEST_F(IoFixture, IoFsTest){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому файлу
-		ASSERT_TRUE(this->_io->address(fid, awh::event::address_t::FS, "./tmp.txt"));
+		ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, "./tmp.txt"));
 		// Выполняем фиксацию настроек события файла
 		ASSERT_TRUE(this->_io->commit(fid));
 		// Устанавливаем опции события
-		ASSERT_TRUE(this->_io->options(fid, awh::event::options::KEEPALIVE));
+		ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::KEEPALIVE));
 		// Запускаем событие файла
 		ASSERT_TRUE(this->_io->launch(fid));
 	}
@@ -6193,9 +6193,9 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -6204,13 +6204,13 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 */
 	{
 		// Устанавливаем мультикастовый режим события
-		ASSERT_TRUE(this->_io->delivery(events[1], awh::event::delivery_mode_t::MULTICAST));
+		ASSERT_TRUE(this->_io->setDelivery(events[1], awh::event::delivery_mode_t::MULTICAST));
 		// Устанавливаем TTL для мультикастового события
-		ASSERT_TRUE(this->_io->hops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
+		ASSERT_TRUE(this->_io->setHops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
+		ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->membership(events[1], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0"));
 		// Выполняем фиксацию настроек события сервера
@@ -6291,7 +6291,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -6666,13 +6666,13 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 */
 	{
 		// Устанавливаем мультикастовый режим события
-		ASSERT_TRUE(this->_io->delivery(events[0], awh::event::delivery_mode_t::MULTICAST));
+		ASSERT_TRUE(this->_io->setDelivery(events[0], awh::event::delivery_mode_t::MULTICAST));
 		// Устанавливаем количество хопов события
-		ASSERT_TRUE(this->_io->hops(events[0], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
+		ASSERT_TRUE(this->_io->setHops(events[0], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
+		ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "239.255.1.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0"));
 		// Выполняем фиксацию настроек события клиента
@@ -6924,9 +6924,9 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -6939,7 +6939,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(tid, 0);
 		// Добавляем новое событие интервала
-		this->_io->timeout(tid, awh::event::action_t::NONE, 5000);
+		this->_io->setTimeout(tid, awh::event::action_t::NONE, 5000);
 		// Выполняем фиксацию настроек события интервала
 		ASSERT_TRUE(this->_io->commit(tid));
 		// Устанавливаем функцию обратного вызова на событие интервала
@@ -6954,13 +6954,13 @@ TEST_F(IoFixture, IoMulticast3Test){
 				this->_log->print("Сообщение отправлено: ID=%u, %s", awh::log_t::flag_t::INFO, events[1], message.c_str());
 		});
 		// Устанавливаем мультикастовый режим события
-		ASSERT_TRUE(this->_io->delivery(events[1], awh::event::delivery_mode_t::MULTICAST));
+		ASSERT_TRUE(this->_io->setDelivery(events[1], awh::event::delivery_mode_t::MULTICAST));
 		// Устанавливаем TTL для мультикастового события
-		ASSERT_TRUE(this->_io->hops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
+		ASSERT_TRUE(this->_io->setHops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
+		ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Устанавливаем функцию обратного вызова на событие таймера
@@ -7039,7 +7039,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->address(cid, awh::event::address_t::IPV4).c_str(), this->_io->port(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -7393,9 +7393,9 @@ TEST_F(IoFixture, IoMulticast3Test){
 	 */
 	{
 		// Устанавливаем мультикастовый режим события
-		ASSERT_TRUE(this->_io->delivery(events[0], awh::event::delivery_mode_t::MULTICAST));
+		ASSERT_TRUE(this->_io->setDelivery(events[0], awh::event::delivery_mode_t::MULTICAST));
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0", port));
 		// Выполняем фиксацию настроек события клиента
@@ -7645,9 +7645,9 @@ TEST_F(IoFixture, IoTLSTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -7656,13 +7656,13 @@ TEST_F(IoFixture, IoTLSTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объект транспортного уровня безопасности
 		awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
@@ -7878,11 +7878,11 @@ TEST_F(IoFixture, IoTLSTest){
 				}
 			});
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+			this->_tls->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
 			this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
@@ -8065,9 +8065,9 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Выполняем прослушивание сервера
@@ -8197,9 +8197,9 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -8428,11 +8428,11 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
@@ -8466,9 +8466,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -8477,13 +8477,13 @@ TEST_F(IoFixture, IoMultiTLSTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объекты транспортного уровня безопасности
 		awh::tls_t::id_t cts1 = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 		awh::tls_t::id_t cts2 = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
@@ -8716,11 +8716,11 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				}
 			});
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+			this->_tls->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
 			this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
@@ -8903,9 +8903,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Выполняем прослушивание сервера
@@ -9035,9 +9035,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -9266,11 +9266,11 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
@@ -9304,9 +9304,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->port(events[i], port));
+		ASSERT_TRUE(this->_io->setPort(events[i], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->port(events[i]));
+		ASSERT_EQ(port, this->_io->getPort(events[i]));
 	}
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
@@ -9315,13 +9315,13 @@ TEST_F(IoFixture, IoDTLSTest){
 	 */
 	for(uint8_t i = 0; i < 2; i++)
 		// Устанавливаем опции событий
-		ASSERT_TRUE(this->_io->options(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	/**
 	 * Серверное событие
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объект транспортного уровня безопасности
 		awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
@@ -9543,7 +9543,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+			this->_tls->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
 			this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
@@ -9726,9 +9726,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Запускаем событие сервера
@@ -9856,9 +9856,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем IP-адрес события
-		ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
-		ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			/**
@@ -10087,11 +10087,11 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем таймаут события на чтение
-		this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
-		this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
-		this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(events[0]));
 		// Выполняем подключение к серверу
@@ -10129,9 +10129,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(events[i], port));
+			ASSERT_TRUE(this->_io->setPort(events[i], port));
 			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->port(events[i]));
+			ASSERT_EQ(port, this->_io->getPort(events[i]));
 		}
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
@@ -10140,7 +10140,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -10149,7 +10149,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -10380,7 +10380,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -10539,9 +10539,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 			// Выполняем фиксацию настроек события сервера
 			ASSERT_TRUE(this->_io->commit(events[1]));
 			// Выполняем прослушивание сервера
@@ -10554,7 +10554,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -10563,9 +10563,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -10902,11 +10902,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
-			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
@@ -10940,9 +10940,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(events[i], port));
+			ASSERT_TRUE(this->_io->setPort(events[i], port));
 			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->port(events[i]));
+			ASSERT_EQ(port, this->_io->getPort(events[i]));
 		}
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
@@ -10951,7 +10951,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -10960,7 +10960,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -11191,7 +11191,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -11350,9 +11350,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 			// Выполняем фиксацию настроек события сервера
 			ASSERT_TRUE(this->_io->commit(events[1]));
 			// Текст инициализационных сообщений SCTP
@@ -11375,7 +11375,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -11384,9 +11384,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -11723,11 +11723,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
-			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
@@ -11761,9 +11761,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(events[i], port));
+			ASSERT_TRUE(this->_io->setPort(events[i], port));
 			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->port(events[i]));
+			ASSERT_EQ(port, this->_io->getPort(events[i]));
 		}
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
@@ -11772,7 +11772,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Устанавливаем ключ аутентификации SCTP-сокета
 			ASSERT_TRUE(this->_sctp->authenticateKey(events[1], 1, "0123456789abcdef0123456789abcdef"));
 			// Устанавливаем режим использования ключа аутентификации SCTP-сокета
@@ -11798,11 +11798,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим информацию о чанках аутентификации SCTP-сокета
 				std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 			// Устанавливаем таймаут heartbeat SCTP-сокета
-			ASSERT_TRUE(this->_sctp->timeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+			ASSERT_TRUE(this->_sctp->setTimeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 			// Выводим heartbeat timeout SCTP-сокета
 			ASSERT_EQ(3000, this->_sctp->timeout(events[1], awh::net::sctp::timeout_t::HEARTBEAT));
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -11966,7 +11966,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					// Выводим информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
-				ASSERT_TRUE(this->_sctp->timeout(cid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				ASSERT_TRUE(this->_sctp->setTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Выводим heartbeat timeout SCTP-сокета
 				ASSERT_EQ(3000, this->_sctp->timeout(cid, awh::net::sctp::timeout_t::HEARTBEAT));
 				ASSERT_EQ(3000, this->_sctp->timeout(sid, awh::net::sctp::timeout_t::HEARTBEAT));
@@ -12046,7 +12046,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -12205,9 +12205,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 			// Выполняем фиксацию настроек события сервера
 			ASSERT_TRUE(this->_io->commit(events[1]));
 			// Текст инициализационных сообщений SCTP
@@ -12230,7 +12230,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Устанавливаем ключ аутентификации SCTP-сокета
 			ASSERT_TRUE(this->_sctp->authenticateKey(events[0], 1, "0123456789abcdef0123456789abcdef"));
 			// Устанавливаем режим использования ключа аутентификации SCTP-сокета
@@ -12256,11 +12256,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим информацию о чанках аутентификации SCTP-сокета
 				std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 			// Устанавливаем таймаут heartbeat SCTP-сокета
-			ASSERT_TRUE(this->_sctp->timeout(events[0], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+			ASSERT_TRUE(this->_sctp->setTimeout(events[0], awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -12361,7 +12361,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							// Выводим информацию о чанках аутентификации SCTP-сокета
 							std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 						// Устанавливаем таймаут heartbeat SCTP-сокета
-						ASSERT_TRUE(this->_sctp->timeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+						ASSERT_TRUE(this->_sctp->setTimeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 					} break;
 				}
 			});
@@ -12626,11 +12626,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
-			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
@@ -12664,9 +12664,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(events[i], port));
+			ASSERT_TRUE(this->_io->setPort(events[i], port));
 			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->port(events[i]));
+			ASSERT_EQ(port, this->_io->getPort(events[i]));
 		}
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
@@ -12675,7 +12675,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Регистрируем объект транспортного уровня безопасности
 			awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::SCTP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
@@ -12703,7 +12703,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -12865,7 +12865,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Проверяем, что идентификатор транспортного уровня больше нуля
 				ASSERT_GT(ctl, 0);
 				// Устанавливаем клиента DTLS для события
-				this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+				this->_tls->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
 					// Выводим сообщение о предупреждающей ошибке TLS
@@ -13002,7 +13002,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -13187,9 +13187,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 			// Выполняем фиксацию настроек события сервера
 			ASSERT_TRUE(this->_io->commit(events[1]));
 			// Текст инициализационных сообщений SCTP
@@ -13212,7 +13212,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -13337,9 +13337,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -13674,11 +13674,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
-			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу
@@ -13712,9 +13712,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->port(events[i], port));
+			ASSERT_TRUE(this->_io->setPort(events[i], port));
 			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->port(events[i]));
+			ASSERT_EQ(port, this->_io->getPort(events[i]));
 		}
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
@@ -13723,7 +13723,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Регистрируем объект транспортного уровня безопасности
 			awh::tls_t::id_t cts = this->_tls->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
@@ -13751,7 +13751,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->address(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -13913,7 +13913,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Проверяем, что идентификатор транспортного уровня больше нуля
 				ASSERT_GT(ctl, 0);
 				// Устанавливаем клиента DTLS для события
-				this->_tls->peer(ctl, this->_io->address(cid, awh::event::address_t::IPV4), this->_io->port(cid));
+				this->_tls->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				this->_tls->on(ctl, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
 					// Выводим сообщение о предупреждающей ошибке TLS
@@ -14046,7 +14046,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->options(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				this->_tls->on(ctl, [cid, this](const awh::tls_t::id_t id, const awh::tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -14231,9 +14231,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[1], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[1], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
 			// Выполняем фиксацию настроек события сервера
 			ASSERT_TRUE(this->_io->commit(events[1]));
 			// Выполняем прослушивание сервера
@@ -14246,7 +14246,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		 */
 		{
 			// Устанавливаем опции событий
-			ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Выполняем подписку на SCTP события
 			this->_sctp->eventsSubscribe(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -14371,9 +14371,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->address(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(this->_io->target(events[0], "127.0.0.1"));
+			ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -14708,11 +14708,11 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			this->_io->timeout(events[0], awh::event::action_t::READ, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
-			this->_io->timeout(events[0], awh::event::action_t::WRITE, 3000);
+			this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
-			this->_io->timeout(events[0], awh::event::action_t::CONNECT, 5000);
+			this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
 			// Выполняем фиксацию настроек события клиента
 			ASSERT_TRUE(this->_io->commit(events[0]));
 			// Выполняем подключение к серверу

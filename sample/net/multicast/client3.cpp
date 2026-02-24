@@ -60,13 +60,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT))
+		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем мультикастовый режим события
-		if(io.delivery(eid, event::delivery_mode_t::MULTICAST)){
+		if(io.setDelivery(eid, event::delivery_mode_t::MULTICAST)){
 			// Устанавливаем адрес сервера назначения
 			if(io.membership(eid, event::mode_t::ENABLED, "239.1.2.3", "0.0.0.0", 5000)){
 				// Фиксировать нужно до вызова membership!
@@ -284,7 +284,7 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем таймаут события на чтение
-					// io.timeout(eid, event::action_t::READ, 3000);
+					// io.setTimeout(eid, event::action_t::READ, 3000);
 					// Выполняем запуск события
 					if(io.launch(eid)){
 						// Выводим сообщение об успешном запуске события

@@ -170,11 +170,11 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->options(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR));
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR));
 	// Устанавливаем IP-адрес события
-	ASSERT_TRUE(this->_io->address(eid, awh::event::address_t::IPV4, this->_parameter.source));
+	ASSERT_TRUE(this->_io->setAddress(eid, awh::event::address_t::IPV4, this->_parameter.source));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->target(eid, this->_parameter.target));
+	ASSERT_TRUE(this->_io->setTarget(eid, this->_parameter.target));
 	// Устанавливаем функцию обратного вызова на запись в событие
 	this->_io->on(eid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 		// Выводим сообщение о переподключении события
@@ -316,9 +316,9 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		}
 	});
 	// Устанавливаем таймаут события на запись
-	this->_io->timeout(eid, awh::event::action_t::WRITE, 3000);
+	this->_io->setTimeout(eid, awh::event::action_t::WRITE, 3000);
 	// Устанавливаем таймаут события на подключение
-	this->_io->timeout(eid, awh::event::action_t::CONNECT, 5000);
+	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 5000);
 	// Выполняем фиксацию настроек события сервера
 	ASSERT_TRUE(this->_io->commit(eid));
 	// Выполняем запуск события
@@ -422,7 +422,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	// Проверяем, что идентификатор события больше нуля
 	ASSERT_GT(eid, 0);
 	// Добавляем новое событие таймера
-	this->_io->timeout(eid, awh::event::action_t::NONE, this->_parameter.timeout);
+	this->_io->setTimeout(eid, awh::event::action_t::NONE, this->_parameter.timeout);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Выполняем фиксацию настроек события сервера
@@ -559,9 +559,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие дочернего процесса для записи
 					ASSERT_TRUE(this->_io->destroy(cfds[1]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(cfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(this->_io->setOptions(cfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(mfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(this->_io->setOptions(mfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					this->_io->on(cfds[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
@@ -793,9 +793,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие дочернего процесса для чтения
 					ASSERT_TRUE(this->_io->destroy(cfds[0]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(mfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(this->_io->setOptions(mfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(cfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(this->_io->setOptions(cfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
 					this->_io->on(mfds[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
@@ -1055,7 +1055,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие родительского процесса
 					ASSERT_TRUE(this->_io->destroy(events[0]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
 					this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
@@ -1284,7 +1284,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Уничтожаем событие дочернего процесса
 					ASSERT_TRUE(this->_io->destroy(events[1]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->options(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
 					this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**

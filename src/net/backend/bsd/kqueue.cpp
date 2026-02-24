@@ -22045,7 +22045,7 @@ namespace io {
 									// Получаем объект работы с асинхронными событиями
 									engine::io_t * self = const_cast <engine::io_t *> (io);
 									// Выполняем установку опций события и фиксацию изменений
-									if(self->options(client->id, options) && self->commit(client->id)){
+									if(self->setOptions(client->id, options) && self->commit(client->id)){
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова для возрождения клиента
@@ -30363,7 +30363,7 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Извлекаем порт связанного события
-								return this->port(mediator->dest);
+								return this->getPort(mediator->dest);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30494,7 +30494,7 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Устанавливаем порт связанного события рекурсивно
-								return this->port(mediator->dest, port);
+								return this->setPort(mediator->dest, port);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30627,7 +30627,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем сетевой интерфейс связанного события
-						return this->iface(mediator->dest);
+						return this->getIface(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30844,7 +30844,7 @@ bool awh::engine::IO::setIface(const event::id_t id, const string & name) noexce
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем сетевой интерфейс связанного события
-						return this->iface(mediator->dest, name);
+						return this->setIface(mediator->dest, name);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31079,7 +31079,7 @@ bool awh::engine::IO::setIface(const event::id_t id, const string & name) noexce
  * @param id идентификатор события
  * @return   MTU сетевого интерфейса
  */
-uint16_t awh::engine::IO::getMtu(const event::id_t id) const noexcept {
+uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -31139,7 +31139,7 @@ uint16_t awh::engine::IO::getMtu(const event::id_t id) const noexcept {
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем MTU связанного события
-						return this->mtu(mediator->dest);
+						return this->getMaximumTransmissionUnit(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31332,7 +31332,7 @@ uint16_t awh::engine::IO::getMtu(const event::id_t id) const noexcept {
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
  */
-bool awh::engine::IO::setMtu(const event::id_t id, const uint16_t mtu) const noexcept {
+bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -31392,7 +31392,7 @@ bool awh::engine::IO::setMtu(const event::id_t id, const uint16_t mtu) const noe
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем MTU связанного события
-						return this->mtu(mediator->dest, mtu);
+						return this->setMaximumTransmissionUnit(mediator->dest, mtu);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -42786,7 +42786,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем опции для связанного события
-						return this->options(mediator->dest, options);
+						return this->setOptions(mediator->dest, options);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -43430,7 +43430,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем опции для связанного события
-						return this->option(mediator->dest, option, mode);
+						return this->setOption(mediator->dest, option, mode);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -48905,7 +48905,7 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем режим трансляции пакетов для связанного события
-						return this->delivery(mediator->dest, delivery);
+						return this->setDelivery(mediator->dest, delivery);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -49044,7 +49044,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					// Получаем текущее значение объекта посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 					// Если идентификатор связанного события установлен
-					if((mediator->dest != 0) && (result = this->hops(mediator->dest, family, hops)))
+					if((mediator->dest != 0) && (result = this->setHops(mediator->dest, family, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						mediator->state.hops = hops;
 				} break;
@@ -49182,7 +49182,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Выводим значение таймаута для связанного события
-						return this->timeout(mediator->dest, action);
+						return this->getTimeout(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -49476,7 +49476,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем значение таймаута для связанного события
-						this->timeout(mediator->dest, action, timeout);
+						this->setTimeout(mediator->dest, action, timeout);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -50024,7 +50024,7 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем режим действия для связанного события
-						return this->action(mediator->dest, action);
+						return this->getAction(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -50946,7 +50946,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем действие для связанного события
-						return this->action(mediator->dest, action, mode);
+						return this->setAction(mediator->dest, action, mode);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {

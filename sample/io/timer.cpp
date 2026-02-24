@@ -53,9 +53,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие интервала
 	event::id_t eid2 = io.event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Добавляем новое событие таймера
-	io.timeout(eid1, event::action_t::NONE, 12000);
+	io.setTimeout(eid1, event::action_t::NONE, 12000);
 	// Добавляем новое событие интервала
-	io.timeout(eid2, event::action_t::NONE, 5000);
+	io.setTimeout(eid2, event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Выполняем фиксацию настроек события таймера

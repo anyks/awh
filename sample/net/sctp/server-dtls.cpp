@@ -53,7 +53,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента UDP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.setPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Регистрируем объект транспортного уровня безопасности
@@ -74,7 +74,7 @@ int32_t main(int32_t argc, char * argv[]){
 			log.print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
 		});
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -89,7 +89,7 @@ int32_t main(int32_t argc, char * argv[]){
 			net::sctp::event_type_t::REMOTE_ERROR
 		});
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -187,11 +187,11 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
 				// Выводим сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
+				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
 				// Создаём идентификатор транспортного уровня DTLS
 				tls_t::id_t ctl = tls.transport(cts);
 				// Устанавливаем клиента DTLS для события
-				tls.peer(ctl, io.address(cid, event::address_t::IPV4), io.port(cid));
+				tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getPort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				tls.on(ctl, [&log](const tls_t::id_t id, [[maybe_unused]] const tls_t::error_t error, const string & message) noexcept -> void {
 					// Выводим сообщение о предупреждающей ошибке DTLS
@@ -440,7 +440,7 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устананавливаем опции события
-				if(io.options(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
+				if(io.setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 					// Устанавливаем функцию обратного вызова на чтение из события
@@ -655,9 +655,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 10000);
+			io.setTimeout(eid, event::action_t::READ, 10000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 7000);
+			io.setTimeout(eid, event::action_t::WRITE, 7000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Текст инициализационных сообщений SCTP

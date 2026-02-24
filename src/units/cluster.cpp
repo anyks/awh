@@ -149,7 +149,7 @@ void awh::unit::Cluster::create() noexcept {
 							// Уничтожаем события всех активных воркеров
 							this->_workers.clear();
 							// Устанавливаем опции события
-							if(!this->_io->options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+							if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -241,7 +241,7 @@ void awh::unit::Cluster::create() noexcept {
 						// Уничтожаем событие дочернего процесса
 						this->_io->destroy(events[1]);
 						// Устанавливаем опции события
-						if(!this->_io->options(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+						if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -406,7 +406,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						// Уничтожаем события всех активных воркеров
 						this->_workers.clear();
 						// Устанавливаем опции события
-						if(!this->_io->options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+						if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -498,7 +498,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 					// Уничтожаем событие дочернего процесса
 					this->_io->destroy(events[1]);
 					// Устанавливаем опции события
-					if(!this->_io->options(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+					if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1528,7 +1528,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
  * @param action тип действия события
  * @return       размер буфера события
  */
-size_t awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t action) const noexcept {
+size_t awh::unit::Cluster::getBufferSize(const pid_t pid, const event::action_t action) const noexcept {
 	// Если процесс является родительским
 	if(this->master()){
 		// Выполняем поиск процесса по идентификатору
@@ -1536,7 +1536,7 @@ size_t awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t act
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Извлекаем размер буфера события
-			return this->_io->bufferSize(i->second->eid, action);
+			return this->_io->getBufferSize(i->second->eid, action);
 	// Если процесс является дочерним
 	} else {
 		// Выполняем поиск процесса по идентификатору
@@ -1544,7 +1544,7 @@ size_t awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t act
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Извлекаем размер буфера события
-			return this->_io->bufferSize(i->second->eid, action);
+			return this->_io->getBufferSize(i->second->eid, action);
 	}
 	// Выводим результат по умолчанию
 	return 0;
@@ -1557,7 +1557,7 @@ size_t awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t act
  * @param size   размер буфера события
  * @return       результат выполнения установки
  */
-bool awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
+bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
 		// Выполняем поиск процесса по идентификатору
@@ -1565,7 +1565,7 @@ bool awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t actio
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Устанавливаем размер буфера события
-			return this->_io->bufferSize(i->second->eid, action, size);
+			return this->_io->setBufferSize(i->second->eid, action, size);
 	// Если процесс является дочерним
 	} else {
 		// Выполняем поиск процесса по идентификатору
@@ -1573,7 +1573,7 @@ bool awh::unit::Cluster::bufferSize(const pid_t pid, const event::action_t actio
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Устанавливаем размер буфера события
-			return this->_io->bufferSize(i->second->eid, action, size);
+			return this->_io->setBufferSize(i->second->eid, action, size);
 	}
 	// Выводим результат по умолчанию
 	return false;

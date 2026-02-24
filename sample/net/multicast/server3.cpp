@@ -59,9 +59,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента UDP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	io.port(eid, 5000);
+	io.setPort(eid, 5000);
 	// Добавляем новое событие интервала
-	io.timeout(tid, event::action_t::NONE, 5000);
+	io.setTimeout(tid, event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Выполняем фиксацию настроек события интервала
@@ -78,22 +78,22 @@ int32_t main(int32_t argc, char * argv[]){
 				log.print("Сообщение отправлено: ID=%u, %s", log_t::flag_t::INFO, eid, message.c_str());
 		});
 		// Устанавливаем мультикастовый режим события
-		if(io.delivery(eid, event::delivery_mode_t::MULTICAST)){
+		if(io.setDelivery(eid, event::delivery_mode_t::MULTICAST)){
 			// Устанавливаем TTL для мультикастового события
-			if(io.hops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
+			if(io.setHops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
 				/**
 				 * event::options::MULTICAST_LOOPBACK разрешает или запрещает отправку сообщений в локальный порт 127.0.0.1 если клиент висит на 0.0.0.0 то он получит две копии сообщений
 				 */
-				// if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::MULTICAST_LOOPBACK))
-				if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | awh::event::options::MULTICAST_LOOPBACK))
+				// if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::MULTICAST_LOOPBACK))
+				if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | awh::event::options::MULTICAST_LOOPBACK))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
 				// Можно установить сетевой интерфейс через который пойдёт трафик
 				// Или сначала установить IP-адрес который висит на сетевом интерфейсе, тогда он будет активирован, а потом установить группу мультикаста
-				// io.iface(eid, "en0");
+				// io.setIface(eid, "en0");
 				// Устанавливаем IP-адрес события
 				if(io.setAddress(eid, event::address_t::IPV4, "239.1.2.3")){
 					// Устанавливаем функцию обратного вызова на событие сервера
@@ -172,7 +172,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Устанавливаем функцию обратного вызова на подключение нового клиента
 					io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 						// Выводим сообщение о принятии события
-						log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.port(cid));
+						log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
 						// Устанавливаем функцию обратного вызова на событие таймера
 						io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 							/**
@@ -517,9 +517,9 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем таймаут события на чтение
-					// io.timeout(eid, event::action_t::READ, 5000);
+					// io.setTimeout(eid, event::action_t::READ, 5000);
 					// Устанавливаем таймаут события на запись
-					// io.timeout(eid, event::action_t::WRITE, 5000);
+					// io.setTimeout(eid, event::action_t::WRITE, 5000);
 					// Выполняем фиксацию настроек события сервера
 					if(io.commit(eid)){
 						// Выполняем запуск события сервера и таймера

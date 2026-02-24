@@ -171,11 +171,11 @@ int32_t main(int32_t argc, char * argv[]){
 		else eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	#endif
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.setPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC))
+		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -372,9 +372,9 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем таймаут события на запись
-				io.timeout(eid, event::action_t::WRITE, 3000);
+				io.setTimeout(eid, event::action_t::WRITE, 3000);
 				// Устанавливаем таймаут события на чтение
-				io.timeout(eid, event::action_t::READ, 10000);
+				io.setTimeout(eid, event::action_t::READ, 10000);
 				// Выполняем фиксацию настроек события сервера
 				if(io.commit(eid) && io.launch(eid)){
 					// Выполняем инициализацию генератора

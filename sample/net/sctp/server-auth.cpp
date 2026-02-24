@@ -50,11 +50,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента TCP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устанавливаем порт события
-	io.port(eid, 2222);
+	io.setPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события
-		if(io.options(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 			// Выводим сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Выводим сообщение об ошибке установки опций события
@@ -86,11 +86,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выводим информацию о чанках аутентификации SCTP-сокета
 			cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 		// Устанавливаем таймаут heartbeat SCTP-сокета
-		sctp.timeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
+		sctp.setTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
 		// Выводим heartbeat timeout SCTP-сокета
-		cout << " TIMEOUT: " << sctp.timeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+		cout << " TIMEOUT: " << sctp.getTimeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -252,10 +252,10 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим информацию о чанках аутентификации SCTP-сокета
 					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
-				sctp.timeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
+				sctp.setTimeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
 				// Выводим heartbeat timeout SCTP-сокета
-				cout << " TIMEOUT PEER: " << sctp.timeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
-				cout << " TIMEOUT SERVER: " << sctp.timeout(sid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+				cout << " TIMEOUT PEER: " << sctp.getTimeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+				cout << " TIMEOUT SERVER: " << sctp.getTimeout(sid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -332,7 +332,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устананавливаем опции события
-				if(io.options(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
+				if(io.setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 					// Устанавливаем функцию обратного вызова на чтение из события
@@ -488,9 +488,9 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			io.timeout(eid, event::action_t::READ, 10000);
+			io.setTimeout(eid, event::action_t::READ, 10000);
 			// Устанавливаем таймаут события на запись
-			io.timeout(eid, event::action_t::WRITE, 7000);
+			io.setTimeout(eid, event::action_t::WRITE, 7000);
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Текст инициализационных сообщений SCTP

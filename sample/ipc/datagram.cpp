@@ -75,7 +75,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Уничтожаем событие родительского процесса
 				io.destroy(events[0]);
 				// Устананавливаем опции события
-				if(io.options(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+				if(io.setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
@@ -309,7 +309,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Уничтожаем событие дочернего процесса
 				io.destroy(events[1]);
 				// Устананавливаем опции события
-				if(io.options(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+				if(io.setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Выводим сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
