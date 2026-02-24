@@ -26868,6 +26868,18 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 	// Выводим результат работы функции
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param type тип списка контрольного списка
+ */
+awh::engine::IO::Control_List::Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
+ _addr(fmk, log), _type(type), _fmk(fmk), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::engine::IO::Control_List::~Control_List() noexcept {}
 
 /**
  * @brief Метод фиксации настроек события

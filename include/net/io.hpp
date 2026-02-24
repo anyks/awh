@@ -252,13 +252,12 @@ namespace awh {
 						 *
 						 * @param type тип списка контрольного списка
 						 */
-						explicit Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
-						 _addr(fmk, log), _type(type), _fmk(fmk), _log(log) {}
+						explicit Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept;
 						/**
 						 * @brief Деструктор
 						 *
 						 */
-						virtual ~Control_List() noexcept {}
+						virtual ~Control_List() noexcept;
 				} control_list_t;
 			public:
 				// Объект управления белым списком
