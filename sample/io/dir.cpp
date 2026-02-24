@@ -350,7 +350,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Если действие является переименованием
 				case static_cast <uint8_t> (event::action_t::RENAME):
 					// Выводим сообщение о переименовании события
-					log.print("Событие на переименование: ID=%u, новый адрес: %s", log_t::flag_t::INFO, eid, io.address(eid, event::address_t::FS).c_str());
+					log.print("Событие на переименование: ID=%u, новый адрес: %s", log_t::flag_t::INFO, eid, io.getAddress(eid, event::address_t::FS).c_str());
 				break;
 				// Если действие является изменением атрибутов
 				case static_cast <uint8_t> (event::action_t::ATTRIB):
@@ -370,7 +370,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому каталогу
-		if(io.address(eid, event::address_t::FS, "../tmp")){
+		if(io.setAddress(eid, event::address_t::FS, "../tmp")){
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Выполняем запуск события

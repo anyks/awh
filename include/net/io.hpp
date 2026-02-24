@@ -281,7 +281,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   порт события
 				 */
-				uint16_t port(const event::id_t id) const noexcept;
+				uint16_t getPort(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки порта события
 				 *
@@ -289,7 +289,7 @@ namespace awh {
 				 * @param port порт события
 				 * @return     результат выполнения установки
 				 */
-				bool port(const event::id_t id, const uint16_t port) noexcept;
+				bool setPort(const event::id_t id, const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод получения сетевого интерфейса события
@@ -297,7 +297,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   сетевой интерфейс события
 				 */
-				string iface(const event::id_t id) const noexcept;
+				string getIface(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки сетевого интерфейса события
 				 *
@@ -305,7 +305,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса для установки
 				 * @return     результат выполнения установки
 				 */
-				bool iface(const event::id_t id, const string & name) noexcept;
+				bool setIface(const event::id_t id, const string & name) noexcept;
 			public:
 				/**
 				 * @brief Метод получения MTU сетевого интерфейса
@@ -313,7 +313,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   MTU сетевого интерфейса
 				 */
-				uint16_t mtu(const event::id_t id) const noexcept;
+				uint16_t getMtu(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки MTU сетевого интерфейса
 				 *
@@ -321,7 +321,7 @@ namespace awh {
 				 * @param mtu размер MTU интерфейса
 				 * @return    результат установки MTU сетевого интерфейса
 				 */
-				bool mtu(const event::id_t id, const uint16_t mtu) const noexcept;
+				bool setMtu(const event::id_t id, const uint16_t mtu) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины
@@ -329,7 +329,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   адрес хоста целевой машины
 				 */
-				string target(const event::id_t id) const noexcept;
+				string getTarget(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки адреса хоста целевой машины
 				 *
@@ -337,7 +337,7 @@ namespace awh {
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
 				 */
-				bool target(const event::id_t id, const string & target) noexcept;
+				bool setTarget(const event::id_t id, const string & target) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины
@@ -346,7 +346,7 @@ namespace awh {
 				 * @param target объект для извлечения адреса хоста целевой машины
 				 * @return       результат выполнения извлечения адреса хоста целевой машины
 				 */
-				bool target(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept;
+				bool getTarget(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept;
 				/**
 				 * @brief Метод установки адреса хоста целевой машины
 				 *
@@ -354,7 +354,7 @@ namespace awh {
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
 				 */
-				bool target(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept;
+				bool setTarget(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса события
@@ -363,7 +363,7 @@ namespace awh {
 				 * @param address тип адреса события
 				 * @return        значение адреса события
 				 */
-				string address(const event::id_t id, const event::address_t address) const noexcept;
+				string getAddress(const event::id_t id, const event::address_t address) const noexcept;
 				/**
 				 * @brief Метод установки адреса события
 				 *
@@ -372,7 +372,7 @@ namespace awh {
 				 * @param value   значение адреса события
 				 * @return        результат выполнения установки
 				 */
-				bool address(const event::id_t id, const event::address_t address, const string & value) noexcept;
+				bool setAddress(const event::id_t id, const event::address_t address, const string & value) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса события
@@ -382,7 +382,7 @@ namespace awh {
 				 * @param value   объект для извлечения адреса события
 				 * @return        результат выполнения извлечения адреса события
 				 */
-				bool address(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
+				bool getAddress(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 				/**
 				 * @brief Метод установки адреса события
 				 *
@@ -391,7 +391,7 @@ namespace awh {
 				 * @param value   значение адреса события
 				 * @return        результат выполнения установки
 				 */
-				bool address(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept;
+				bool setAddress(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации мультикаст группы события
@@ -452,7 +452,7 @@ namespace awh {
 				 * @param seek тип смещения в файле события
 				 * @return     смещение в файле события
 				 */
-				size_t seek(const event::id_t id, const event::seek_t seek) noexcept;
+				size_t getSeek(const event::id_t id, const event::seek_t seek) noexcept;
 				/**
 				 * @brief Метод установки смещения в файле события
 				 *
@@ -461,7 +461,7 @@ namespace awh {
 				 * @param offset смещение в файле события
 				 * @return       результат выполнения установки
 				 */
-				bool seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept;
+				bool setSeek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept;
 			public:
 				/**
 				 * @brief Метод получения опций события
@@ -469,7 +469,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   опции события
 				 */
-				uint16_t options(const event::id_t id) const noexcept;
+				uint16_t getOptions(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки опций события
 				 *
@@ -477,7 +477,7 @@ namespace awh {
 				 * @param options опции события для установки
 				 * @return        результат выполнения установки
 				 */
-				bool options(const event::id_t id, const uint16_t options) noexcept;
+				bool setOptions(const event::id_t id, const uint16_t options) noexcept;
 				/**
 				 * @brief Метод установки опции события
 				 *
@@ -486,7 +486,7 @@ namespace awh {
 				 * @param mode   режим установки опции события
 				 * @return       результат выполнения установки
 				 */
-				bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept;
+				bool setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод перемещения данных между событиями
@@ -578,7 +578,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @return       размер буфера события
 				 */
-				size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept;
+				size_t getBufferSize(const event::id_t id, const event::action_t action) const noexcept;
 				/**
 				 * @brief Метод установки размера буфера события
 				 *
@@ -587,7 +587,7 @@ namespace awh {
 				 * @param size   размер буфера события
 				 * @return       результат выполнения установки
 				 */
-				bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept;
+				bool setBufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки пропускной способности события
@@ -612,7 +612,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   режим трансляции пакетов (unicast, multicast, broadcast)
 				 */
-				event::delivery_mode_t delivery(const event::id_t id) const noexcept;
+				event::delivery_mode_t getDelivery(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки режима трансляции пакетов для события
 				 *
@@ -620,7 +620,7 @@ namespace awh {
 				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
 				 * @return         результат выполнения установки
 				 */
-				bool delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept;
+				bool setDelivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept;
 			public:
 				/**
 				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
@@ -628,7 +628,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   максимальное количество хопов
 				 */
-				event::hops_t hops(const event::id_t id) const noexcept;
+				event::hops_t getHops(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 				 *
@@ -637,7 +637,7 @@ namespace awh {
 				 * @param hops   максимальное количество хопов
 				 * @return       результат работы функции
 				 */
-				bool hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
+				bool setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
 			public:
 				/**
 				 * @brief Метод получения таймаута события
@@ -646,7 +646,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @return       значение таймаута в миллисекундах
 				 */
-				uint32_t timeout(const event::id_t id, const event::action_t action) const noexcept;
+				uint32_t getTimeout(const event::id_t id, const event::action_t action) const noexcept;
 				/**
 				 * @brief Метод установки таймаута события
 				 *
@@ -654,7 +654,7 @@ namespace awh {
 				 * @param action  тип действия события
 				 * @param timeout значение таймаута в миллисекундах
 				 */
-				void timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept;
+				void setTimeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept;
 			public:
 				/**
 				 * @brief Метод получения действия события
@@ -663,7 +663,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @return       режим действия события
 				 */
-				event::mode_t action(const event::id_t id, const event::action_t action) const noexcept;
+				event::mode_t getAction(const event::id_t id, const event::action_t action) const noexcept;
 				/**
 				 * @brief Метод установки действия события
 				 *
@@ -672,7 +672,7 @@ namespace awh {
 				 * @param mode   режим установки действия события
 				 * @return       результат выполнения установки
 				 */
-				bool action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept;
+				bool setAction(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров keep-alive для события

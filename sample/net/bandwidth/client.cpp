@@ -61,10 +61,10 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0") && io.bandwidth(eid, event::limiting_t::INGRESS, "100 Mbps") && io.bandwidth(eid, event::limiting_t::EGRESS, "100 Mbps")){
-		// if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0") && io.bandwidth(eid, event::limiting_t::INGRESS, "100 Mbps") && io.bandwidth(eid, event::limiting_t::EGRESS, "100 Mbps")){
+		// if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "127.0.0.1")){
+			if(io.setTarget(eid, "127.0.0.1")){
 				// Счётчики отправленных и полученных байт
 				size_t bytesSent = 0, bytesReceived = 0;
 				// Дата и время последнего отправленного сообщения

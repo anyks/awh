@@ -32,6 +32,7 @@
 /**
  * Наши модуля
  */
+#include "net.hpp"
 #include "../sys/os.hpp"
 #include "../sys/log.hpp"
 
@@ -249,6 +250,21 @@ namespace awh {
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
 			void v6(const std::array <uint8_t, 16> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
+		public:
+			/**
+			 * @brief Метод извлечения адреса в чистом виде
+			 *
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 * @return       адрес в чистом виде
+			 */
+			unique_ptr <net::addr_t> source(const endian_t endian = endian_t::LITTLE) const noexcept;
+			/**
+			 * @brief Метод установки адреса в чистом виде
+			 *
+			 * @param value  адрес в чистом виде для установки
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 */
+			void source(const unique_ptr <net::addr_t> & value, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки валидности IP-адреса

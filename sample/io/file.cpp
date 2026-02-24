@@ -249,7 +249,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому файлу
-		if(io.address(eid, event::address_t::FS, "../README2.md")){
+		if(io.setAddress(eid, event::address_t::FS, "../README2.md")){
 			// Выполняем фиксацию настроек события сервера
 			if(io.commit(eid)){
 				// Устананавливаем опции события

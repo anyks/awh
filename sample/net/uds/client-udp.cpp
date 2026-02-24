@@ -59,7 +59,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем адрес сервера назначения
-		if(io.target(eid, "/tmp/awh.sock")){
+		if(io.setTarget(eid, "/tmp/awh.sock")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**

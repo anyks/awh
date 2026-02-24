@@ -93,7 +93,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -237,11 +237,11 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устананавливаем опции события
 				if(io.options(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
-					cout << " Выполнено подключение: " << io.address(cid, event::address_t::IPV4) << ":" << io.port(cid) << endl;
+					cout << " Выполнено подключение: " << io.getAddress(cid, event::address_t::IPV4) << ":" << io.port(cid) << endl;
 					// Создаём идентификатор транспортного уровня DTLS
 					tls_t::id_t ctl = tls.transport(cts1);
 					// Устанавливаем клиента TLS для события
-					tls.peer(ctl, io.address(cid, event::address_t::IPV4), io.port(cid));
+					tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.port(cid));
 					// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 					tls.on(ctl, [cid, &tls, &io, &log](const tls_t::id_t id, const tls_t::state_t state) noexcept -> void {
 						/**

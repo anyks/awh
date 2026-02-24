@@ -71,9 +71,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события клиента!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0") && io.address(tid, event::address_t::IPV4, "10.0.0.2")){
+		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0") && io.setAddress(tid, event::address_t::IPV4, "10.0.0.2")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "127.0.0.1") && io.target(mid, "10.0.0.1") && io.target(tid, "10.0.0.1") && io.splice(mid, eid)){
+			if(io.setTarget(eid, "127.0.0.1") && io.setTarget(mid, "10.0.0.1") && io.setTarget(tid, "10.0.0.1") && io.splice(mid, eid)){
 				// Устанавливаем функцию обратного вызова на событие клиента
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**

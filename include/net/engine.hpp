@@ -71,7 +71,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   порт события
 			 */
-			virtual uint16_t port(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getPort(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки порта события
 			 *
@@ -79,7 +79,7 @@ namespace awh {
 			 * @param port порт события
 			 * @return     результат выполнения установки
 			 */
-			virtual bool port(const event::id_t id, const uint16_t port) noexcept = 0;
+			virtual bool setPort(const event::id_t id, const uint16_t port) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения сетевого интерфейса события
@@ -87,7 +87,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   сетевой интерфейс события
 			 */
-			virtual string iface(const event::id_t id) const noexcept = 0;
+			virtual string getIface(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки сетевого интерфейса события
 			 *
@@ -95,7 +95,7 @@ namespace awh {
 			 * @param name имя сетевого интерфейса для установки
 			 * @return     результат выполнения установки
 			 */
-			virtual bool iface(const event::id_t id, const string & name) noexcept = 0;
+			virtual bool setIface(const event::id_t id, const string & name) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения MTU сетевого интерфейса
@@ -103,7 +103,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   MTU сетевого интерфейса
 			 */
-			virtual uint16_t mtu(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getMtu(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки MTU сетевого интерфейса
 			 *
@@ -111,7 +111,7 @@ namespace awh {
 			 * @param mtu размер MTU интерфейса
 			 * @return    результат установки MTU сетевого интерфейса
 			 */
-			virtual bool mtu(const event::id_t id, const uint16_t mtu) const noexcept = 0;
+			virtual bool setMtu(const event::id_t id, const uint16_t mtu) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины
@@ -119,7 +119,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   адрес хоста целевой машины
 			 */
-			virtual string target(const event::id_t id) const noexcept = 0;
+			virtual string getTarget(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки адреса хоста целевой машины
 			 *
@@ -127,7 +127,7 @@ namespace awh {
 			 * @param target адрес хоста целевой машины
 			 * @return       результат выполнения установки
 			 */
-			virtual bool target(const event::id_t id, const string & target) noexcept = 0;
+			virtual bool setTarget(const event::id_t id, const string & target) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины
@@ -136,7 +136,7 @@ namespace awh {
 			 * @param target объект для извлечения адреса хоста целевой машины
 			 * @return       результат выполнения извлечения адреса хоста целевой машины
 			 */
-			virtual bool target(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept = 0;
+			virtual bool getTarget(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept = 0;
 			/**
 			 * @brief Метод установки адреса хоста целевой машины
 			 *
@@ -144,7 +144,7 @@ namespace awh {
 			 * @param target адрес хоста целевой машины
 			 * @return       результат выполнения установки
 			 */
-			virtual bool target(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept = 0;
+			virtual bool setTarget(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса события
@@ -153,7 +153,7 @@ namespace awh {
 			 * @param address тип адреса события
 			 * @return        значение адреса события
 			 */
-			virtual string address(const event::id_t id, const event::address_t address) const noexcept = 0;
+			virtual string getAddress(const event::id_t id, const event::address_t address) const noexcept = 0;
 			/**
 			 * @brief Метод установки адреса события
 			 *
@@ -162,7 +162,7 @@ namespace awh {
 			 * @param value   значение адреса события
 			 * @return        результат выполнения установки
 			 */
-			virtual bool address(const event::id_t id, const event::address_t address, const string & value) noexcept = 0;
+			virtual bool setAddress(const event::id_t id, const event::address_t address, const string & value) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса события
@@ -172,7 +172,7 @@ namespace awh {
 			 * @param value   объект для извлечения адреса события
 			 * @return        результат выполнения извлечения адреса события
 			 */
-			virtual bool address(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept = 0;
+			virtual bool getAddress(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept = 0;
 			/**
 			 * @brief Метод установки адреса события
 			 *
@@ -181,7 +181,7 @@ namespace awh {
 			 * @param value   значение адреса события
 			 * @return        результат выполнения установки
 			 */
-			virtual bool address(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept = 0;
+			virtual bool setAddress(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы события
@@ -242,7 +242,7 @@ namespace awh {
 			 * @param seek тип смещения в файле события
 			 * @return     смещение в файле события
 			 */
-			virtual size_t seek(const event::id_t id, const event::seek_t seek) noexcept = 0;
+			virtual size_t getSeek(const event::id_t id, const event::seek_t seek) noexcept = 0;
 			/**
 			 * @brief Метод установки смещения в файле события
 			 *
@@ -251,7 +251,7 @@ namespace awh {
 			 * @param offset смещение в файле события
 			 * @return       результат выполнения установки
 			 */
-			virtual bool seek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept = 0;
+			virtual bool setSeek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения опций события
@@ -259,7 +259,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   опции события
 			 */
-			virtual uint16_t options(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getOptions(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки опций события
 			 *
@@ -267,7 +267,7 @@ namespace awh {
 			 * @param options опции события для установки
 			 * @return        результат выполнения установки
 			 */
-			virtual bool options(const event::id_t id, const uint16_t options) noexcept = 0;
+			virtual bool setOptions(const event::id_t id, const uint16_t options) noexcept = 0;
 			/**
 			 * @brief Метод установки опции события
 			 *
@@ -276,7 +276,7 @@ namespace awh {
 			 * @param mode   режим установки опции события
 			 * @return       результат выполнения установки
 			 */
-			virtual bool option(const event::id_t id, const uint16_t option, const bool mode) noexcept = 0;
+			virtual bool setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод перемещения данных между событиями
@@ -352,7 +352,7 @@ namespace awh {
 			 * @param action тип действия события
 			 * @return       размер буфера события
 			 */
-			virtual size_t bufferSize(const event::id_t id, const event::action_t action) const noexcept = 0;
+			virtual size_t getBufferSize(const event::id_t id, const event::action_t action) const noexcept = 0;
 			/**
 			 * @brief Метод установки размера буфера события
 			 *
@@ -361,7 +361,7 @@ namespace awh {
 			 * @param size   размер буфера события
 			 * @return       результат выполнения установки
 			 */
-			virtual bool bufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept = 0;
+			virtual bool setBufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод установки пропускной способности события
@@ -386,7 +386,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   режим трансляции пакетов (unicast, multicast, broadcast)
 			 */
-			virtual event::delivery_mode_t delivery(const event::id_t id) const noexcept = 0;
+			virtual event::delivery_mode_t getDelivery(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки режима трансляции пакетов для события
 			 *
@@ -394,7 +394,7 @@ namespace awh {
 			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
 			 * @return         результат выполнения установки
 			 */
-			virtual bool delivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept = 0;
+			virtual bool setDelivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
@@ -402,7 +402,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   максимальное количество хопов
 			 */
-			virtual event::hops_t hops(const event::id_t id) const noexcept = 0;
+			virtual event::hops_t getHops(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 			 *
@@ -411,7 +411,7 @@ namespace awh {
 			 * @param hops   максимальное количество хопов
 			 * @return       результат работы функции
 			 */
-			virtual bool hops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept = 0;
+			virtual bool setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения таймаута события
@@ -420,7 +420,7 @@ namespace awh {
 			 * @param action тип действия события
 			 * @return       значение таймаута в миллисекундах
 			 */
-			virtual uint32_t timeout(const event::id_t id, const event::action_t action) const noexcept = 0;
+			virtual uint32_t getTimeout(const event::id_t id, const event::action_t action) const noexcept = 0;
 			/**
 			 * @brief Метод установки таймаута события
 			 *
@@ -428,7 +428,7 @@ namespace awh {
 			 * @param action  тип действия события
 			 * @param timeout значение таймаута в миллисекундах
 			 */
-			virtual void timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept = 0;
+			virtual void setTimeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения действия события
@@ -437,7 +437,7 @@ namespace awh {
 			 * @param action тип действия события
 			 * @return       режим действия события
 			 */
-			virtual event::mode_t action(const event::id_t id, const event::action_t action) const noexcept = 0;
+			virtual event::mode_t getAction(const event::id_t id, const event::action_t action) const noexcept = 0;
 			/**
 			 * @brief Метод установки действия события
 			 *
@@ -446,7 +446,7 @@ namespace awh {
 			 * @param mode   режим установки действия события
 			 * @return       результат выполнения установки
 			 */
-			virtual bool action(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept = 0;
+			virtual bool setAction(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод установки параметров keep-alive для события

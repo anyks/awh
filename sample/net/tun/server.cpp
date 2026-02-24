@@ -93,9 +93,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события сервера!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "127.0.0.1") && io.address(tid, event::address_t::IPV4, "10.0.0.1")){
+		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1") && io.setAddress(tid, event::address_t::IPV4, "10.0.0.1")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(mid, "10.0.0.2")){
+			if(io.setTarget(mid, "10.0.0.2")){
 				// Устанавливаем функцию обратного вызова на событие сервера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -320,7 +320,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Объединяем с пиром
 					io.splice(mid, cid);
 					// Выводим сообщение о принятии события
-					log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
+					log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.port(cid));
 					// Устанавливаем функцию обратного вызова на событие таймера
 					io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 						/**

@@ -70,14 +70,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем сетевой интерфейс события
 			if(io.iface(eid1, "EN0")){
 				// Извлекаем MAC-адрес сетевого интерфейса
-				mac = io.address(eid1, event::address_t::MAC);
+				mac = io.getAddress(eid1, event::address_t::MAC);
 				// Извлекаем IP-адрес сетевого интерфейса
-				ip = io.address(eid1, event::address_t::IPV4);
+				ip = io.getAddress(eid1, event::address_t::IPV4);
 
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid1) << endl;
 				cout << " MAC-адрес: " << mac << endl;
-				cout << " IP-адрес: " << ip << " == " << io.target(eid1) << " || " << io.address(eid1, event::address_t::UDS) << endl;
+				cout << " IP-адрес: " << ip << " == " << io.getTarget(eid1) << " || " << io.getAddress(eid1, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid1) << endl;
 
 				io.bufferSize(eid1, event::action_t::READ, 1024 * 64);
@@ -97,11 +97,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
-			if(io.address(eid2, event::address_t::MAC, mac)){
+			if(io.setAddress(eid2, event::address_t::MAC, mac)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid2) << endl;
-				cout << " MAC-адрес: " << io.address(eid2, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid2, event::address_t::IPV4) << " == " << io.target(eid2) << " || " << io.address(eid2, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid2, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid2, event::address_t::IPV4) << " == " << io.getTarget(eid2) << " || " << io.getAddress(eid2, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid2) << endl;
 
 				io.bufferSize(eid2, event::action_t::READ, 1024 * 64);
@@ -121,11 +121,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
-			if(io.address(eid3, event::address_t::IPV4, ip)){
+			if(io.setAddress(eid3, event::address_t::IPV4, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid3) << endl;
-				cout << " MAC-адрес: " << io.address(eid3, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid3, event::address_t::IPV4) << " == " << io.target(eid3) << " || " << io.address(eid3, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid3, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid3, event::address_t::IPV4) << " == " << io.getTarget(eid3) << " || " << io.getAddress(eid3, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid3) << endl;
 
 				io.bufferSize(eid3, event::action_t::READ, 1024 * 64);
@@ -145,11 +145,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid4, event::address_t::NETWORK, ip + "/255.255.255.0")){
+			if(io.setAddress(eid4, event::address_t::NETWORK, ip + "/255.255.255.0")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid4) << endl;
-				cout << " MAC-адрес: " << io.address(eid4, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid4, event::address_t::IPV4) << " == " << io.target(eid4) << " || " << io.address(eid4, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid4, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid4, event::address_t::IPV4) << " == " << io.getTarget(eid4) << " || " << io.getAddress(eid4, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid4) << endl;
 
 				io.bufferSize(eid4, event::action_t::READ, 1024 * 64);
@@ -169,11 +169,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid5, event::address_t::UDS, "/tmp/awh.sock")){
+			if(io.setAddress(eid5, event::address_t::UDS, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid5) << endl;
-				cout << " MAC-адрес: " << io.address(eid5, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid5, event::address_t::UDS) << " == " << io.target(eid5) << " || " << io.address(eid5, event::address_t::IPV4) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid5, event::address_t::MAC) << endl;
+				cout << " UDS-адрес: " << io.getAddress(eid5, event::address_t::UDS) << " == " << io.getTarget(eid5) << " || " << io.getAddress(eid5, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid5) << endl;
 
 				io.bufferSize(eid5, event::action_t::READ, 1024 * 64);
@@ -193,11 +193,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid6, event::address_t::FS, "/tmp/awh.txt")){
+			if(io.setAddress(eid6, event::address_t::FS, "/tmp/awh.txt")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
-				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FS) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid6, event::address_t::MAC) << endl;
+				cout << " FILE-адрес: " << io.getAddress(eid6, event::address_t::FS) << " == " << io.getTarget(eid6) << " || " << io.getAddress(eid6, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -217,11 +217,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid7, ip)){
+			if(io.setTarget(eid7, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid7) << endl;
-				cout << " MAC-адрес: " << io.address(eid7, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid7, event::address_t::IPV4) << " == " << io.target(eid7) << " || " << io.address(eid7, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid7, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid7, event::address_t::IPV4) << " == " << io.getTarget(eid7) << " || " << io.getAddress(eid7, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid7) << endl;
 
 				io.bufferSize(eid7, event::action_t::READ, 1024 * 64);
@@ -241,11 +241,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid8, "/tmp/awh.sock")){
+			if(io.setTarget(eid8, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid8) << endl;
-				cout << " MAC-адрес: " << io.address(eid8, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid8, event::address_t::IPV4) << " == " << io.target(eid8) << " || " << io.address(eid8, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid8, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid8, event::address_t::IPV4) << " == " << io.getTarget(eid8) << " || " << io.getAddress(eid8, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid8) << endl;
 
 				io.bufferSize(eid8, event::action_t::READ, 1024 * 64);
@@ -274,14 +274,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем сетевой интерфейс события
 			if(io.iface(eid1, "EN0")){
 				// Извлекаем MAC-адрес сетевого интерфейса
-				mac = io.address(eid1, event::address_t::MAC);
+				mac = io.getAddress(eid1, event::address_t::MAC);
 				// Извлекаем IP-адрес сетевого интерфейса
-				ip = io.address(eid1, event::address_t::IPV6);
+				ip = io.getAddress(eid1, event::address_t::IPV6);
 
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid1) << endl;
 				cout << " MAC-адрес: " << mac << endl;
-				cout << " IP-адрес: " << ip << " == " << io.target(eid1) << " || " << io.address(eid1, event::address_t::UDS) << endl;
+				cout << " IP-адрес: " << ip << " == " << io.getTarget(eid1) << " || " << io.getAddress(eid1, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid1) << endl;
 
 				io.bufferSize(eid1, event::action_t::READ, 1024 * 64);
@@ -301,11 +301,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
-			if(io.address(eid2, event::address_t::MAC, mac)){
+			if(io.setAddress(eid2, event::address_t::MAC, mac)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid2) << endl;
-				cout << " MAC-адрес: " << io.address(eid2, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid2, event::address_t::IPV6) << " == " << io.target(eid2) << " || " << io.address(eid2, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid2, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid2, event::address_t::IPV6) << " == " << io.getTarget(eid2) << " || " << io.getAddress(eid2, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid2) << endl;
 
 				io.bufferSize(eid2, event::action_t::READ, 1024 * 64);
@@ -325,11 +325,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
-			if(io.address(eid3, event::address_t::IPV6, ip)){
+			if(io.setAddress(eid3, event::address_t::IPV6, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid3) << endl;
-				cout << " MAC-адрес: " << io.address(eid3, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid3, event::address_t::IPV6) << " == " << io.target(eid3) << " || " << io.address(eid3, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid3, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid3, event::address_t::IPV6) << " == " << io.getTarget(eid3) << " || " << io.getAddress(eid3, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid3) << endl;
 
 				io.bufferSize(eid3, event::action_t::READ, 1024 * 64);
@@ -349,11 +349,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid4, event::address_t::NETWORK, ip + "/112")){
+			if(io.setAddress(eid4, event::address_t::NETWORK, ip + "/112")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid4) << endl;
-				cout << " MAC-адрес: " << io.address(eid4, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid4, event::address_t::IPV6) << " == " << io.target(eid4) << " || " << io.address(eid4, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid4, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid4, event::address_t::IPV6) << " == " << io.getTarget(eid4) << " || " << io.getAddress(eid4, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid4) << endl;
 
 				io.bufferSize(eid4, event::action_t::READ, 1024 * 64);
@@ -373,11 +373,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid5, event::address_t::UDS, "/tmp/awh.sock")){
+			if(io.setAddress(eid5, event::address_t::UDS, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid5) << endl;
-				cout << " MAC-адрес: " << io.address(eid5, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid5, event::address_t::UDS) << " == " << io.target(eid5) << " || " << io.address(eid5, event::address_t::IPV6) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid5, event::address_t::MAC) << endl;
+				cout << " UDS-адрес: " << io.getAddress(eid5, event::address_t::UDS) << " == " << io.getTarget(eid5) << " || " << io.getAddress(eid5, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid5) << endl;
 
 				io.bufferSize(eid5, event::action_t::READ, 1024 * 64);
@@ -397,11 +397,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid6, event::address_t::FS, "/tmp/awh.txt")){
+			if(io.setAddress(eid6, event::address_t::FS, "/tmp/awh.txt")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
-				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FS) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid6, event::address_t::MAC) << endl;
+				cout << " FILE-адрес: " << io.getAddress(eid6, event::address_t::FS) << " == " << io.getTarget(eid6) << " || " << io.getAddress(eid6, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -421,11 +421,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid7, ip)){
+			if(io.setTarget(eid7, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid7) << endl;
-				cout << " MAC-адрес: " << io.address(eid7, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid7, event::address_t::IPV6) << " == " << io.target(eid7) << " || " << io.address(eid7, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid7, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid7, event::address_t::IPV6) << " == " << io.getTarget(eid7) << " || " << io.getAddress(eid7, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid7) << endl;
 
 				io.bufferSize(eid7, event::action_t::READ, 1024 * 64);
@@ -445,11 +445,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid8, "/tmp/awh.sock")){
+			if(io.setTarget(eid8, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid8) << endl;
-				cout << " MAC-адрес: " << io.address(eid8, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid8, event::address_t::IPV6) << " == " << io.target(eid8) << " || " << io.address(eid8, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid8, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid8, event::address_t::IPV6) << " == " << io.getTarget(eid8) << " || " << io.getAddress(eid8, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid8) << endl;
 
 				io.bufferSize(eid8, event::action_t::READ, 1024 * 64);
@@ -485,14 +485,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем сетевой интерфейс события
 			if(io.iface(eid1, "EN0")){
 				// Извлекаем MAC-адрес сетевого интерфейса
-				mac = io.address(eid1, event::address_t::MAC);
+				mac = io.getAddress(eid1, event::address_t::MAC);
 				// Извлекаем IP-адрес сетевого интерфейса
-				ip = io.address(eid1, event::address_t::IPV4);
+				ip = io.getAddress(eid1, event::address_t::IPV4);
 
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid1) << endl;
 				cout << " MAC-адрес: " << mac << endl;
-				cout << " IP-адрес: " << ip << " == " << io.target(eid1) << " || " << io.address(eid1, event::address_t::UDS) << endl;
+				cout << " IP-адрес: " << ip << " == " << io.getTarget(eid1) << " || " << io.getAddress(eid1, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid1) << endl;
 
 				io.bufferSize(eid1, event::action_t::READ, 1024 * 64);
@@ -512,11 +512,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
-			if(io.address(eid2, event::address_t::MAC, mac)){
+			if(io.setAddress(eid2, event::address_t::MAC, mac)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid2) << endl;
-				cout << " MAC-адрес: " << io.address(eid2, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid2, event::address_t::IPV4) << " == " << io.target(eid2) << " || " << io.address(eid2, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid2, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid2, event::address_t::IPV4) << " == " << io.getTarget(eid2) << " || " << io.getAddress(eid2, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid2) << endl;
 
 				io.bufferSize(eid2, event::action_t::READ, 1024 * 64);
@@ -536,11 +536,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
-			if(io.address(eid3, event::address_t::IPV4, ip)){
+			if(io.setAddress(eid3, event::address_t::IPV4, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid3) << endl;
-				cout << " MAC-адрес: " << io.address(eid3, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid3, event::address_t::IPV4) << " == " << io.target(eid3) << " || " << io.address(eid3, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid3, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid3, event::address_t::IPV4) << " == " << io.getTarget(eid3) << " || " << io.getAddress(eid3, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid3) << endl;
 
 				io.bufferSize(eid3, event::action_t::READ, 1024 * 64);
@@ -560,11 +560,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid4, event::address_t::NETWORK, ip + "/255.255.255.0")){
+			if(io.setAddress(eid4, event::address_t::NETWORK, ip + "/255.255.255.0")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid4) << endl;
-				cout << " MAC-адрес: " << io.address(eid4, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid4, event::address_t::IPV4) << " == " << io.target(eid4) << " || " << io.address(eid4, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid4, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid4, event::address_t::IPV4) << " == " << io.getTarget(eid4) << " || " << io.getAddress(eid4, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid4) << endl;
 
 				io.bufferSize(eid4, event::action_t::READ, 1024 * 64);
@@ -584,11 +584,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid5, event::address_t::UDS, "/tmp/awh.sock")){
+			if(io.setAddress(eid5, event::address_t::UDS, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid5) << endl;
-				cout << " MAC-адрес: " << io.address(eid5, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid5, event::address_t::UDS) << " == " << io.target(eid5) << " || " << io.address(eid5, event::address_t::IPV4) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid5, event::address_t::MAC) << endl;
+				cout << " UDS-адрес: " << io.getAddress(eid5, event::address_t::UDS) << " == " << io.getTarget(eid5) << " || " << io.getAddress(eid5, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid5) << endl;
 
 				io.bufferSize(eid5, event::action_t::READ, 1024 * 64);
@@ -608,11 +608,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid6, event::address_t::FS, "/tmp/awh.txt")){
+			if(io.setAddress(eid6, event::address_t::FS, "/tmp/awh.txt")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
-				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FS) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid6, event::address_t::MAC) << endl;
+				cout << " FILE-адрес: " << io.getAddress(eid6, event::address_t::FS) << " == " << io.getTarget(eid6) << " || " << io.getAddress(eid6, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -632,11 +632,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid7, ip)){
+			if(io.setTarget(eid7, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid7) << endl;
-				cout << " MAC-адрес: " << io.address(eid7, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid7, event::address_t::IPV4) << " == " << io.target(eid7) << " || " << io.address(eid7, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid7, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid7, event::address_t::IPV4) << " == " << io.getTarget(eid7) << " || " << io.getAddress(eid7, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid7) << endl;
 
 				io.bufferSize(eid7, event::action_t::READ, 1024 * 64);
@@ -656,11 +656,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid8, "/tmp/awh.sock")){
+			if(io.setTarget(eid8, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid8) << endl;
-				cout << " MAC-адрес: " << io.address(eid8, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid8, event::address_t::IPV4) << " == " << io.target(eid8) << " || " << io.address(eid8, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid8, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid8, event::address_t::IPV4) << " == " << io.getTarget(eid8) << " || " << io.getAddress(eid8, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid8) << endl;
 
 				io.bufferSize(eid8, event::action_t::READ, 1024 * 64);
@@ -689,14 +689,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем сетевой интерфейс события
 			if(io.iface(eid1, "EN0")){
 				// Извлекаем MAC-адрес сетевого интерфейса
-				mac = io.address(eid1, event::address_t::MAC);
+				mac = io.getAddress(eid1, event::address_t::MAC);
 				// Извлекаем IP-адрес сетевого интерфейса
-				ip = io.address(eid1, event::address_t::IPV6);
+				ip = io.getAddress(eid1, event::address_t::IPV6);
 
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid1) << endl;
 				cout << " MAC-адрес: " << mac << endl;
-				cout << " IP-адрес: " << ip << " == " << io.target(eid1) << " || " << io.address(eid1, event::address_t::UDS) << " || " << io.address(eid1, event::address_t::IPV4) << endl;
+				cout << " IP-адрес: " << ip << " == " << io.getTarget(eid1) << " || " << io.getAddress(eid1, event::address_t::UDS) << " || " << io.getAddress(eid1, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid1) << endl;
 
 				io.bufferSize(eid1, event::action_t::READ, 1024 * 64);
@@ -716,11 +716,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
-			if(io.address(eid2, event::address_t::MAC, mac)){
+			if(io.setAddress(eid2, event::address_t::MAC, mac)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid2) << endl;
-				cout << " MAC-адрес: " << io.address(eid2, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid2, event::address_t::IPV6) << " == " << io.target(eid2) << " || " << io.address(eid2, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid2, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid2, event::address_t::IPV6) << " == " << io.getTarget(eid2) << " || " << io.getAddress(eid2, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid2) << endl;
 
 				io.bufferSize(eid2, event::action_t::READ, 1024 * 64);
@@ -743,11 +743,11 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Устанавливаем IP-адрес события: " << ip << endl;
 
 			// Устанавливаем IP-адрес события
-			if(io.address(eid3, event::address_t::IPV6, ip)){
+			if(io.setAddress(eid3, event::address_t::IPV6, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid3) << endl;
-				cout << " MAC-адрес: " << io.address(eid3, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid3, event::address_t::IPV6) << " == " << io.target(eid3) << " || " << io.address(eid3, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid3, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid3, event::address_t::IPV6) << " == " << io.getTarget(eid3) << " || " << io.getAddress(eid3, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid3) << endl;
 
 				io.bufferSize(eid3, event::action_t::READ, 1024 * 64);
@@ -770,11 +770,11 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << " Устанавливаем IP-сеть события: " << (ip + "/112") << endl;
 
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid4, event::address_t::NETWORK, ip + "/112")){
+			if(io.setAddress(eid4, event::address_t::NETWORK, ip + "/112")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid4) << endl;
-				cout << " MAC-адрес: " << io.address(eid4, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid4, event::address_t::IPV6) << " == " << io.target(eid4) << " || " << io.address(eid4, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid4, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid4, event::address_t::IPV6) << " == " << io.getTarget(eid4) << " || " << io.getAddress(eid4, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid4) << endl;
 
 				io.bufferSize(eid4, event::action_t::READ, 1024 * 64);
@@ -794,11 +794,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid5, event::address_t::UDS, "/tmp/awh.sock")){
+			if(io.setAddress(eid5, event::address_t::UDS, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid5) << endl;
-				cout << " MAC-адрес: " << io.address(eid5, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid5, event::address_t::UDS) << " == " << io.target(eid5) << " || " << io.address(eid5, event::address_t::IPV6) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid5, event::address_t::MAC) << endl;
+				cout << " UDS-адрес: " << io.getAddress(eid5, event::address_t::UDS) << " == " << io.getTarget(eid5) << " || " << io.getAddress(eid5, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid5) << endl;
 
 				io.bufferSize(eid5, event::action_t::READ, 1024 * 64);
@@ -818,11 +818,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid6, event::address_t::FS, "/tmp/awh.txt")){
+			if(io.setAddress(eid6, event::address_t::FS, "/tmp/awh.txt")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
-				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FS) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid6, event::address_t::MAC) << endl;
+				cout << " FILE-адрес: " << io.getAddress(eid6, event::address_t::FS) << " == " << io.getTarget(eid6) << " || " << io.getAddress(eid6, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -842,11 +842,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid7, ip)){
+			if(io.setTarget(eid7, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid7) << endl;
-				cout << " MAC-адрес: " << io.address(eid7, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid7, event::address_t::IPV6) << " == " << io.target(eid7) << " || " << io.address(eid7, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid7, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid7, event::address_t::IPV6) << " == " << io.getTarget(eid7) << " || " << io.getAddress(eid7, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid7) << endl;
 
 				io.bufferSize(eid7, event::action_t::READ, 1024 * 64);
@@ -866,11 +866,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid8, "/tmp/awh.sock")){
+			if(io.setTarget(eid8, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid8) << endl;
-				cout << " MAC-адрес: " << io.address(eid8, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid8, event::address_t::IPV6) << " == " << io.target(eid8) << " || " << io.address(eid8, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid8, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid8, event::address_t::IPV6) << " == " << io.getTarget(eid8) << " || " << io.getAddress(eid8, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid8) << endl;
 
 				io.bufferSize(eid8, event::action_t::READ, 1024 * 64);
@@ -906,14 +906,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем сетевой интерфейс события
 			if(io.iface(eid1, "EN0")){
 				// Извлекаем MAC-адрес сетевого интерфейса
-				mac = io.address(eid1, event::address_t::MAC);
+				mac = io.getAddress(eid1, event::address_t::MAC);
 				// Извлекаем IP-адрес сетевого интерфейса
-				ip = io.address(eid1, event::address_t::IPV4);
+				ip = io.getAddress(eid1, event::address_t::IPV4);
 
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid1) << endl;
 				cout << " MAC-адрес: " << mac << endl;
-				cout << " IP-адрес: " << ip << " == " << io.target(eid1) << " || " << io.address(eid1, event::address_t::UDS) << endl;
+				cout << " IP-адрес: " << ip << " == " << io.getTarget(eid1) << " || " << io.getAddress(eid1, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid1) << endl;
 
 				io.bufferSize(eid1, event::action_t::READ, 1024 * 64);
@@ -933,11 +933,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
-			if(io.address(eid2, event::address_t::MAC, mac)){
+			if(io.setAddress(eid2, event::address_t::MAC, mac)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid2) << endl;
-				cout << " MAC-адрес: " << io.address(eid2, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid2, event::address_t::IPV4) << " == " << io.target(eid2) << " || " << io.address(eid2, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid2, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid2, event::address_t::IPV4) << " == " << io.getTarget(eid2) << " || " << io.getAddress(eid2, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid2) << endl;
 
 				io.bufferSize(eid2, event::action_t::READ, 1024 * 64);
@@ -957,11 +957,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
-			if(io.address(eid3, event::address_t::IPV4, ip)){
+			if(io.setAddress(eid3, event::address_t::IPV4, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid3) << endl;
-				cout << " MAC-адрес: " << io.address(eid3, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid3, event::address_t::IPV4) << " == " << io.target(eid3) << " || " << io.address(eid3, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid3, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid3, event::address_t::IPV4) << " == " << io.getTarget(eid3) << " || " << io.getAddress(eid3, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid3) << endl;
 
 				io.bufferSize(eid3, event::action_t::READ, 1024 * 64);
@@ -981,11 +981,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid4, event::address_t::NETWORK, ip + "/255.255.255.0")){
+			if(io.setAddress(eid4, event::address_t::NETWORK, ip + "/255.255.255.0")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid4) << endl;
-				cout << " MAC-адрес: " << io.address(eid4, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid4, event::address_t::IPV4) << " == " << io.target(eid4) << " || " << io.address(eid4, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid4, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid4, event::address_t::IPV4) << " == " << io.getTarget(eid4) << " || " << io.getAddress(eid4, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid4) << endl;
 
 				io.bufferSize(eid4, event::action_t::READ, 1024 * 64);
@@ -1005,11 +1005,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid5, event::address_t::UDS, "/tmp/awh.sock")){
+			if(io.setAddress(eid5, event::address_t::UDS, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid5) << endl;
-				cout << " MAC-адрес: " << io.address(eid5, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid5, event::address_t::UDS) << " == " << io.target(eid5) << " || " << io.address(eid5, event::address_t::IPV4) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid5, event::address_t::MAC) << endl;
+				cout << " UDS-адрес: " << io.getAddress(eid5, event::address_t::UDS) << " == " << io.getTarget(eid5) << " || " << io.getAddress(eid5, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid5) << endl;
 
 				io.bufferSize(eid5, event::action_t::READ, 1024 * 64);
@@ -1029,11 +1029,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid6, event::address_t::FS, "/tmp/awh.txt")){
+			if(io.setAddress(eid6, event::address_t::FS, "/tmp/awh.txt")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
-				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FS) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV4) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid6, event::address_t::MAC) << endl;
+				cout << " FILE-адрес: " << io.getAddress(eid6, event::address_t::FS) << " == " << io.getTarget(eid6) << " || " << io.getAddress(eid6, event::address_t::IPV4) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -1053,11 +1053,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid7, "192.168.7.11")){
+			if(io.setTarget(eid7, "192.168.7.11")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid7) << endl;
-				cout << " MAC-адрес: " << io.address(eid7, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid7, event::address_t::IPV4) << " == " << io.target(eid7) << " || " << io.address(eid7, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid7, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid7, event::address_t::IPV4) << " == " << io.getTarget(eid7) << " || " << io.getAddress(eid7, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid7) << endl;
 
 				io.bufferSize(eid7, event::action_t::READ, 1024 * 64);
@@ -1077,11 +1077,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid8, "/tmp/awh.sock")){
+			if(io.setTarget(eid8, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid8) << endl;
-				cout << " MAC-адрес: " << io.address(eid8, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid8, event::address_t::IPV4) << " == " << io.target(eid8) << " || " << io.address(eid8, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid8, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid8, event::address_t::IPV4) << " == " << io.getTarget(eid8) << " || " << io.getAddress(eid8, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid8) << endl;
 
 				io.bufferSize(eid8, event::action_t::READ, 1024 * 64);
@@ -1110,14 +1110,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем сетевой интерфейс события
 			if(io.iface(eid1, "EN0")){
 				// Извлекаем MAC-адрес сетевого интерфейса
-				mac = io.address(eid1, event::address_t::MAC);
+				mac = io.getAddress(eid1, event::address_t::MAC);
 				// Извлекаем IP-адрес сетевого интерфейса
-				ip = io.address(eid1, event::address_t::IPV6);
+				ip = io.getAddress(eid1, event::address_t::IPV6);
 
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid1) << endl;
 				cout << " MAC-адрес: " << mac << endl;
-				cout << " IP-адрес: " << ip << " == " << io.target(eid1) << " || " << io.address(eid1, event::address_t::UDS) << endl;
+				cout << " IP-адрес: " << ip << " == " << io.getTarget(eid1) << " || " << io.getAddress(eid1, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid1) << endl;
 
 				io.bufferSize(eid1, event::action_t::READ, 1024 * 64);
@@ -1137,11 +1137,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid2, 8080);
 			// Устанавливаем MAC-адрес события
-			if(io.address(eid2, event::address_t::MAC, mac)){
+			if(io.setAddress(eid2, event::address_t::MAC, mac)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid2) << endl;
-				cout << " MAC-адрес: " << io.address(eid2, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid2, event::address_t::IPV6) << " == " << io.target(eid2) << " || " << io.address(eid2, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid2, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid2, event::address_t::IPV6) << " == " << io.getTarget(eid2) << " || " << io.getAddress(eid2, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid2) << endl;
 
 				io.bufferSize(eid2, event::action_t::READ, 1024 * 64);
@@ -1161,11 +1161,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid3, 8080);
 			// Устанавливаем IP-адрес события
-			if(io.address(eid3, event::address_t::IPV6, ip)){
+			if(io.setAddress(eid3, event::address_t::IPV6, ip)){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid3) << endl;
-				cout << " MAC-адрес: " << io.address(eid3, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid3, event::address_t::IPV6) << " == " << io.target(eid3) << " || " << io.address(eid3, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid3, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid3, event::address_t::IPV6) << " == " << io.getTarget(eid3) << " || " << io.getAddress(eid3, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid3) << endl;
 
 				io.bufferSize(eid3, event::action_t::READ, 1024 * 64);
@@ -1185,11 +1185,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid4, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid4, event::address_t::NETWORK, ip + "/112")){
+			if(io.setAddress(eid4, event::address_t::NETWORK, ip + "/112")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid4) << endl;
-				cout << " MAC-адрес: " << io.address(eid4, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid4, event::address_t::IPV6) << " == " << io.target(eid4) << " || " << io.address(eid4, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid4, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid4, event::address_t::IPV6) << " == " << io.getTarget(eid4) << " || " << io.getAddress(eid4, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid4) << endl;
 
 				io.bufferSize(eid4, event::action_t::READ, 1024 * 64);
@@ -1209,11 +1209,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid5, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid5, event::address_t::UDS, "/tmp/awh.sock")){
+			if(io.setAddress(eid5, event::address_t::UDS, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid5) << endl;
-				cout << " MAC-адрес: " << io.address(eid5, event::address_t::MAC) << endl;
-				cout << " UDS-адрес: " << io.address(eid5, event::address_t::UDS) << " == " << io.target(eid5) << " || " << io.address(eid5, event::address_t::IPV6) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid5, event::address_t::MAC) << endl;
+				cout << " UDS-адрес: " << io.getAddress(eid5, event::address_t::UDS) << " == " << io.getTarget(eid5) << " || " << io.getAddress(eid5, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid5) << endl;
 
 				io.bufferSize(eid5, event::action_t::READ, 1024 * 64);
@@ -1233,11 +1233,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid6, 8080);
 			// Устанавливаем сетевой адрес события
-			if(io.address(eid6, event::address_t::FS, "/tmp/awh.txt")){
+			if(io.setAddress(eid6, event::address_t::FS, "/tmp/awh.txt")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid6) << endl;
-				cout << " MAC-адрес: " << io.address(eid6, event::address_t::MAC) << endl;
-				cout << " FILE-адрес: " << io.address(eid6, event::address_t::FS) << " == " << io.target(eid6) << " || " << io.address(eid6, event::address_t::IPV6) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid6, event::address_t::MAC) << endl;
+				cout << " FILE-адрес: " << io.getAddress(eid6, event::address_t::FS) << " == " << io.getTarget(eid6) << " || " << io.getAddress(eid6, event::address_t::IPV6) << endl;
 				cout << " Порт: " << io.port(eid6) << endl;
 
 				io.bufferSize(eid6, event::action_t::READ, 1024 * 64);
@@ -1257,11 +1257,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid7, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid7, "fd44:135d:afb:0:14e3:5f29:f2cc:1746")){
+			if(io.setTarget(eid7, "fd44:135d:afb:0:14e3:5f29:f2cc:1746")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid7) << endl;
-				cout << " MAC-адрес: " << io.address(eid7, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid7, event::address_t::IPV6) << " == " << io.target(eid7) << " || " << io.address(eid7, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid7, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid7, event::address_t::IPV6) << " == " << io.getTarget(eid7) << " || " << io.getAddress(eid7, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid7) << endl;
 
 				io.bufferSize(eid7, event::action_t::READ, 1024 * 64);
@@ -1281,11 +1281,11 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем порт события
 			io.port(eid8, 8080);
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid8, "/tmp/awh.sock")){
+			if(io.setTarget(eid8, "/tmp/awh.sock")){
 				// Выводим основные параметры события
 				cout << " Сетевой интерфейс: " << io.iface(eid8) << endl;
-				cout << " MAC-адрес: " << io.address(eid8, event::address_t::MAC) << endl;
-				cout << " IP-адрес: " << io.address(eid8, event::address_t::IPV6) << " == " << io.target(eid8) << " || " << io.address(eid8, event::address_t::UDS) << endl;
+				cout << " MAC-адрес: " << io.getAddress(eid8, event::address_t::MAC) << endl;
+				cout << " IP-адрес: " << io.getAddress(eid8, event::address_t::IPV6) << " == " << io.getTarget(eid8) << " || " << io.getAddress(eid8, event::address_t::UDS) << endl;
 				cout << " Порт: " << io.port(eid8) << endl;
 
 				io.bufferSize(eid8, event::action_t::READ, 1024 * 64);
@@ -1316,7 +1316,7 @@ int32_t main(int32_t argc, char * argv[]){
 		io.port(eids1[0], 8080);
 
 		// Устанавливаем адрес сервера назначения
-		if(io.target(eids1[0], "192.168.7.11")){
+		if(io.setTarget(eids1[0], "192.168.7.11")){
 			cout << " Успешно установлено адреса события! №1." << endl;
 		} else cout << " Ошибка установки адреса события! №1." << endl;
 		
@@ -1339,7 +1339,7 @@ int32_t main(int32_t argc, char * argv[]){
 		io.port(eids2[0], 8080);
 
 		// Устанавливаем адрес сервера назначения
-		if(io.target(eids2[0], "192.168.7.11")){
+		if(io.setTarget(eids2[0], "192.168.7.11")){
 			cout << " Успешно установлено адреса события! №1." << endl;
 		} else cout << " Ошибка установки адреса события! №1." << endl;
 		
@@ -1396,9 +1396,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес и адрес файла для отслеживания
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0") && io.address(fid, event::address_t::FS, "../README.md")){
+		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0") && io.setAddress(fid, event::address_t::FS, "../README.md")){
 			// Устанавливаем адрес сервера назначения
-			if(io.target(eid, "127.0.0.1") && io.splice(fid, eid)){
+			if(io.setTarget(eid, "127.0.0.1") && io.splice(fid, eid)){
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -1682,18 +1682,18 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем порт события
 	io.port(eid, 8080);
 	// Устанавливаем адрес события (en0 -> ea:ab:fd:74:1d:0d -> 10.9.5.161)
-	// if(io.address(eid, event::address_t::NETWORK, "10.9.5.0/255.255.255.0")){
-	// if(io.address(eid, event::address_t::NETWORK, "fe80::105d:12e9:40c7:a76/76")){
-	// if(io.address(eid, event::address_t::IPV4, "192.168.7.231")){
-	// if(io.address(eid, event::address_t::NETWORK, "192.168.7.231/255.255.255.0")){
-	// if(io.address(eid, event::address_t::NETWORK, "FE80::96:81FE:CCE3:0/112")){
-	// if(io.address(eid, event::address_t::MAC, "EA:AB:FD:74:1D:0D")){
-	// if(io.address(eid, event::address_t::UDS, "/tmp/awh.sock")){
+	// if(io.setAddress(eid, event::address_t::NETWORK, "10.9.5.0/255.255.255.0")){
+	// if(io.setAddress(eid, event::address_t::NETWORK, "fe80::105d:12e9:40c7:a76/76")){
+	// if(io.setAddress(eid, event::address_t::IPV4, "192.168.7.231")){
+	// if(io.setAddress(eid, event::address_t::NETWORK, "192.168.7.231/255.255.255.0")){
+	// if(io.setAddress(eid, event::address_t::NETWORK, "FE80::96:81FE:CCE3:0/112")){
+	// if(io.setAddress(eid, event::address_t::MAC, "EA:AB:FD:74:1D:0D")){
+	// if(io.setAddress(eid, event::address_t::UDS, "/tmp/awh.sock")){
 	if(io.iface(eid, "EN0")){
 
-		cout << " !!!!! " << io.address(eid, event::address_t::MAC) << ":" << io.port(eid) << " !!!!! " << io.target(eid) << " == " << io.iface(eid) << endl;
+		cout << " !!!!! " << io.getAddress(eid, event::address_t::MAC) << ":" << io.port(eid) << " !!!!! " << io.getTarget(eid) << " == " << io.iface(eid) << endl;
 
-		// cout << " !!!!! " << io.address(eid, event::address_t::UDS) << " !!!!! " << io.host(eid) << endl;
+		// cout << " !!!!! " << io.getAddress(eid, event::address_t::UDS) << " !!!!! " << io.host(eid) << endl;
 
 		io.bufferSize(eid, event::action_t::READ, 1024 * 64);
 		io.bufferSize(eid, event::action_t::WRITE, 1024 * 64);

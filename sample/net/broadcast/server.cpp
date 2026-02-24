@@ -60,7 +60,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.address(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем функцию обратного вызова на событие таймера
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
@@ -137,7 +137,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
 			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.address(cid, event::address_t::IPV4).c_str(), io.port(cid));
+				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.port(cid));
 				// Устанавливаем функцию обратного вызова на событие таймера
 				io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**

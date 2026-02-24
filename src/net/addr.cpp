@@ -1674,7 +1674,193 @@ void awh::Network_Address::v6(const std::array <uint8_t, 16> & addr, const endia
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(addr.front(), addr.back()),
+				std::make_tuple(addr.front(), addr.back(), static_cast <uint16_t> (endian)),
+				log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод извлечения адреса в чистом виде
+ *
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
+ * @return       адрес в чистом виде
+ */
+unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian) const noexcept {
+	// Результат работы функции
+	unique_ptr <awh::net::addr_t> result = nullptr;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(this->_buffer.size()){
+			// Если адрес является MAC-адресом
+			case 6: {
+				// Выполняем выделение памяти для MAC-адреса
+				result = make_unique <net::addr_mac_t> ();
+				// Выполняем перевод бинарного буфера MAC-адреса в числовой вид
+				::memcpy(&awh_cast <net::addr_mac_t *> (result.get())->address[0], &this->_buffer[0], this->_buffer.size());
+			} break;
+			// Если адрес является IPv4-адресом
+			case 4: {
+				// Выполняем выделение памяти для IPv4-адреса
+				result = make_unique <net::addr_net_ipv4_t> ();
+				/**
+				 * Определяем какой порядок следования байт установлен
+				 */
+				switch(static_cast <uint8_t> (endian)){
+					// Если установлен порядок следования байт от старшего к младшему
+					case static_cast <uint8_t> (endian_t::BIG):
+						// Получаем буфер данных IP-адреса
+						::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&awh_cast <net::addr_net_ipv4_t *> (result.get())->address));
+					break;
+					// Если установлен порядок следования байт от младшего к старшему
+					case static_cast <uint8_t> (endian_t::LITTLE):
+						// Выполняем копирование данных адреса IPv4
+						::memcpy(&awh_cast <net::addr_net_ipv4_t *> (result.get())->address, &this->_buffer[0], this->_buffer.size());
+					break;
+				}
+			} break;
+			// Если адрес является IPv6-адресом
+			case 16: {
+				// Выполняем выделение памяти для IPv6-адреса
+				result = make_unique <net::addr_net_ipv6_t> ();
+				/**
+				 * Определяем какой порядок следования байт установлен
+				 */
+				switch(static_cast <uint8_t> (endian)){
+					// Если установлен порядок следования байт от старшего к младшему
+					case static_cast <uint8_t> (endian_t::BIG):
+						// Получаем буфер данных IP-адреса
+						::convertEndian <16> (&this->_buffer[0], reinterpret_cast <uint8_t *> (&awh_cast <net::addr_net_ipv6_t *> (result.get())->address[0]));
+					break;
+					// Если установлен порядок следования байт от младшего к старшему
+					case static_cast <uint8_t> (endian_t::LITTLE):
+						// Выполняем копирование данных адреса IPv6
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (result.get())->address[0], &this->_buffer[0], this->_buffer.size());
+					break;
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(static_cast <uint16_t> (endian)),
+				log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки адреса в чистом виде
+ *
+ * @param value  адрес в чистом виде для установки
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
+ */
+void awh::Network_Address::source(const unique_ptr <net::addr_t> & value, const endian_t endian) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если передан пустой адрес
+		if(value == nullptr)
+			// Выходим из функции
+			return;
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(value->size){
+			// Если адрес является MAC-адресом
+			case 6: {
+				// Устанавливаем тип MAC адреса
+				this->_type = type_t::MAC;
+				// Выполняем выделение памяти для MAC адреса
+				this->_buffer.resize(6, 0);
+				// Выполняем копирование данных адреса MAC
+				::memcpy(&this->_buffer[0], &awh_cast <net::addr_mac_t *> (value.get())->address[0], 6);
+			} break;
+			// Если адрес является IPv4
+			case 4: {
+				// Устанавливаем тип IP-адреса
+				this->_type = type_t::IPV4;
+				// Выполняем выделение памяти для IPv4 адреса
+				this->_buffer.resize(4, 0);
+				/**
+				 * Определяем какой порядок следования байт установлен
+				 */
+				switch(static_cast <uint8_t> (endian)){
+					// Если установлен порядок следования байт от старшего к младшему
+					case static_cast <uint8_t> (endian_t::BIG):
+						// Устанавливаем буфер данных IP-адреса
+						::convertEndian(reinterpret_cast <const uint8_t *> (&awh_cast <net::addr_net_ipv4_t *> (value.get())->address), &this->_buffer[0]);
+					break;
+					// Если установлен порядок следования байт от младшего к старшему
+					case static_cast <uint8_t> (endian_t::LITTLE):
+						// Выполняем копирование данных адреса IPv4
+						::memcpy(&this->_buffer[0], &awh_cast <net::addr_net_ipv4_t *> (value.get())->address, 4);
+					break;
+				}
+			} break;
+			// Если адрес является IPv6-адресом
+			case 16: {
+				// Устанавливаем тип IP-адреса
+				this->_type = type_t::IPV6;
+				// Выполняем выделение памяти для IPv6 адреса
+				this->_buffer.resize(16, 0);
+				/**
+				 * Определяем какой порядок следования байт установлен
+				 */
+				switch(static_cast <uint8_t> (endian)){
+					// Если установлен порядок следования байт от старшего к младшему
+					case static_cast <uint8_t> (endian_t::BIG):
+						// Устанавливаем буфер данных IP-адреса
+						::convertEndian <16> (reinterpret_cast <const uint8_t *> (&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0]), &this->_buffer[0]);
+					break;
+					// Если установлен порядок следования байт от младшего к старшему
+					case static_cast <uint8_t> (endian_t::LITTLE):
+						// Выполняем копирование данных адреса IPv6
+						::memcpy(&this->_buffer[0], &awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], 16);
+					break;
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(static_cast <uint16_t> (endian)),
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
