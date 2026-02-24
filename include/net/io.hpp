@@ -185,13 +185,12 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект работы с логами
 					 */
-					explicit Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept :
-					 _eth(fmk, log), _fmk(fmk), _log(log) {}
+					explicit Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~Stream_Control_Transmission_Protocol() noexcept {}
+					virtual ~Stream_Control_Transmission_Protocol() noexcept;
 			} sctp_t;
 		#endif
 		/**

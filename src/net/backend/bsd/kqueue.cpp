@@ -26199,6 +26199,19 @@ namespace sctp {
 			#endif
 		}
 	}
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param fmk объект фреймворка
+	 * @param log объект работы с логами
+	 */
+	awh::engine::Stream_Control_Transmission_Protocol::Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept :
+	 _eth(fmk, log), _fmk(fmk), _log(log) {}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	awh::engine::Stream_Control_Transmission_Protocol::~Stream_Control_Transmission_Protocol() noexcept {}
 #endif
 
 /**
