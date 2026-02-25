@@ -295,14 +295,14 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события из клиента
 				io.on(eid, [tid, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано из клиента: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 					// Отправляем данные обратно клиенту
 					if(io.send(tid, reinterpret_cast <const char *> (data), size))
@@ -315,7 +315,7 @@ int32_t main(int32_t argc, char * argv[]){
 				io.on(mid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано из посредника: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 					// Отправляем данные обратно клиенту
 					if(io.send(eid, reinterpret_cast <const char *> (data), size))

@@ -47,7 +47,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
-	// Добавляем новое событие клиента TCP
+	// Добавляем новое событие сервера
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.setPort(eid, 2222);
@@ -61,7 +61,7 @@ int32_t main(int32_t argc, char * argv[]){
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
 		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
-			// Устанавливаем функцию обратного вызова на событие таймера
+			// Устанавливаем функцию обратного вызова на изменение статуса события
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
 				 * Обрабатываем статус события
@@ -138,7 +138,7 @@ int32_t main(int32_t argc, char * argv[]){
 			io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
-				// Устанавливаем функцию обратного вызова на событие таймера
+				// Устанавливаем функцию обратного вызова на изменение статуса события
 				io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
@@ -213,14 +213,14 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(cid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
 				io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 					// Отправляем данные обратно клиенту
 					if(io.send(eid, reinterpret_cast <const char *> (data), size))

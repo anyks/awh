@@ -56,11 +56,11 @@ int32_t main(int32_t argc, char * argv[]){
 	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие интервала
 	event::id_t tid = io.event(event::node_t::INTERVAL, event::family_t::TIMER);
-	// Добавляем новое событие клиента UDP
+	// Добавляем новое событие сервера
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.setPort(eid, 5000);
-	// Добавляем новое событие интервала
+	// Устанавливаем таймаут интервала
 	io.setTimeout(tid, event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
@@ -173,7 +173,7 @@ int32_t main(int32_t argc, char * argv[]){
 					io.on(eid, static_cast <event::callback::accept_t> ([&io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 						// Выводим сообщение о принятии события
 						log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
-						// Устанавливаем функцию обратного вызова на событие таймера
+						// Устанавливаем функцию обратного вызова на изменение статуса события
 						io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 							/**
 							 * Обрабатываем статус события
@@ -248,14 +248,14 @@ int32_t main(int32_t argc, char * argv[]){
 						});
 						// Устанавливаем функцию обратного вызова на запись в событие
 						io.on(cid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-							// Выводим сообщение о переподключении события
+							// Выводим сообщение о записи данных
 							log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 						}));
 						// Устанавливаем функцию обратного вызова на чтение из события
 						io.on(cid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 							// Текст входящего сообщения
 							const string message(reinterpret_cast <const char *> (data), size);
-							// Выводим сообщение о переподключении события
+							// Выводим сообщение о чтении данных
 							log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 						});
 						// Устанавливаем функцию обратного вызова на ошибку события
@@ -387,7 +387,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}));
 					// Устанавливаем функцию обратного вызова на запись в событие
 					io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-						// Выводим сообщение о переподключении события
+						// Выводим сообщение о записи данных
 						log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на ошибку события

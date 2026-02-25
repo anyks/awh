@@ -54,7 +54,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// log.level(log_t::level_t::NONE);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
-	// Добавляем новое событие клиента UDP
+	// Добавляем новое событие клиента
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.setPort(eid, 5000);
@@ -153,7 +153,7 @@ int32_t main(int32_t argc, char * argv[]){
 							io.on(eid, [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 								// Текст входящего сообщения
 								const string message(reinterpret_cast <const char *> (data), size);
-								// Выводим сообщение о переподключении события
+								// Выводим сообщение о чтении данных
 								log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 							});
 							// Устанавливаем функцию обратного вызова на ошибку события

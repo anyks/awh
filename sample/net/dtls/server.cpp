@@ -50,7 +50,7 @@ int32_t main(int32_t argc, char * argv[]){
 	engine::io_t io(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
 	tls_t tls(&fmk, &log);
-	// Добавляем новое событие клиента UDP
+	// Добавляем новое событие сервера
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
 	io.setPort(eid, 2222);
@@ -81,7 +81,7 @@ int32_t main(int32_t argc, char * argv[]){
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
 		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
-			// Устанавливаем функцию обратного вызова на событие таймера
+			// Устанавливаем функцию обратного вызова на изменение статуса события
 			io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
 				 * Обрабатываем статус события
@@ -258,7 +258,7 @@ int32_t main(int32_t argc, char * argv[]){
 						} break;
 					}
 				});
-				// Устанавливаем функцию обратного вызова на событие таймера
+				// Устанавливаем функцию обратного вызова на изменение статуса события
 				io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
@@ -333,7 +333,7 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(cid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события

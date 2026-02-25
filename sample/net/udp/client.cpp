@@ -48,7 +48,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// log.level(log_t::level_t::NONE);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
-	// Добавляем новое событие клиента TCP
+	// Добавляем новое событие клиента UDP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
 	io.setPort(eid, 2222);
@@ -64,7 +64,7 @@ int32_t main(int32_t argc, char * argv[]){
 		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
 			if(io.setTarget(eid, "127.0.0.1")){
-				// Устанавливаем функцию обратного вызова на событие таймера
+				// Устанавливаем функцию обратного вызова на изменение статуса события
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
@@ -139,7 +139,7 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Счётчик эхо-ответов
@@ -148,7 +148,7 @@ int32_t main(int32_t argc, char * argv[]){
 				io.on(eid, [&count, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 					// Задержка перед ответом 1 секунду
 					::sleep(1);

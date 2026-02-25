@@ -188,7 +188,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== FILE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие файла
 			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.setPort(eid6, 8080);
@@ -392,7 +392,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== FILE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие файла
 			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.setPort(eid6, 8080);
@@ -440,7 +440,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие клиента
 			event::id_t eid8 = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.setPort(eid8, 8080);
@@ -474,7 +474,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << endl << " ******************** IPv4 SERVER ******************** " << endl;
 			cout << " ======================================== IFACE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid1 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid1, 8080);
@@ -507,7 +507,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== MAC " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid2 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid2, 8080);
@@ -531,7 +531,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== IPv4 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера UDP
 			event::id_t eid3 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 			// Устанавливаем порт события
 			io.setPort(eid3, 8080);
@@ -555,7 +555,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== NETWORK IPv4 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid4 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid4, 8080);
@@ -579,7 +579,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера
 			event::id_t eid5 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.setPort(eid5, 8080);
@@ -603,7 +603,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== FILE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие файла
 			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.setPort(eid6, 8080);
@@ -627,7 +627,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET IPv4 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid7 = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid7, 8080);
@@ -651,7 +651,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера
 			event::id_t eid8 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.setPort(eid8, 8080);
@@ -678,7 +678,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << endl << " ******************** IPv6 SERVER ******************** " << endl;
 			cout << " ======================================== IFACE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid1 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid1, 8080);
@@ -711,7 +711,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== MAC " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid2 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid2, 8080);
@@ -735,7 +735,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== IPv6 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid3 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid3, 8080);
@@ -762,7 +762,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== NETWORK IPv6 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid4 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid4, 8080);
@@ -789,7 +789,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid5 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid5, 8080);
@@ -813,7 +813,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== FILE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие файла
 			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.setPort(eid6, 8080);
@@ -837,7 +837,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET IPv6 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера TCP
 			event::id_t eid7 = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid7, 8080);
@@ -861,7 +861,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие сервера
 			event::id_t eid8 = io.event(event::node_t::SERVER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.setPort(eid8, 8080);
@@ -895,7 +895,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << endl << " ******************** IPv4 PEER ******************** " << endl;
 			cout << " ======================================== IFACE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid1 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid1, 8080);
@@ -928,7 +928,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== MAC " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid2 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid2, 8080);
@@ -952,7 +952,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== IPv4 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid3 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid3, 8080);
@@ -976,7 +976,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== NETWORK IPv4 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid4 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid4, 8080);
@@ -1000,7 +1000,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира
 			event::id_t eid5 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.setPort(eid5, 8080);
@@ -1024,7 +1024,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== FILE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие файла
 			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.setPort(eid6, 8080);
@@ -1048,7 +1048,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET IPv4 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid7 = io.event(event::node_t::PEER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid7, 8080);
@@ -1072,7 +1072,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid8 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid8, 8080);
@@ -1099,7 +1099,7 @@ int32_t main(int32_t argc, char * argv[]){
 			cout << endl << " ******************** IPv6 PEER ******************** " << endl;
 			cout << " ======================================== IFACE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid1 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid1, 8080);
@@ -1132,7 +1132,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== MAC " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid2 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid2, 8080);
@@ -1156,7 +1156,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== IPv6 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid3 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid3, 8080);
@@ -1180,7 +1180,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== NETWORK IPv6 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid4 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid4, 8080);
@@ -1204,7 +1204,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid5 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid5, 8080);
@@ -1228,7 +1228,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== FILE " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие файла
 			event::id_t eid6 = io.event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем порт события
 			io.setPort(eid6, 8080);
@@ -1252,7 +1252,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET IPv6 " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира TCP
 			event::id_t eid7 = io.event(event::node_t::PEER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 			// Устанавливаем порт события
 			io.setPort(eid7, 8080);
@@ -1276,7 +1276,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 			cout << " ======================================== TARGET UDS " << endl;
 
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие пира
 			event::id_t eid8 = io.event(event::node_t::PEER, event::family_t::UDS, event::type_t::STREAM);
 			// Устанавливаем порт события
 			io.setPort(eid8, 8080);
@@ -1307,7 +1307,7 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << endl << " ******************** IPC ******************** " << endl;
 		cout << " ======================================== UDS " << endl;
 
-		// Добавляем новое событие клиента TCP
+		// Добавляем новую пару событий UDS
 		auto eids1 = io.events(event::family_t::UDS);
 
 		cout << " Найдено событий: " << eids1[0] << " == " << eids1[1] << endl;
@@ -1330,7 +1330,7 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << endl << " ******************** IPC ******************** " << endl;
 		cout << " ======================================== IPC " << endl;
 
-		// Добавляем новое событие клиента TCP
+		// Добавляем новую пару событий PIPE
 		auto eids2 = io.events(event::family_t::PIPE);
 
 		cout << " Найдено событий: " << eids2[0] << " == " << eids2[1] << endl;
@@ -1381,7 +1381,7 @@ int32_t main(int32_t argc, char * argv[]){
 	*/
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
-	// Добавляем новое событие клиента TCP
+	// Добавляем новое событие клиента SCTP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устанавливаем порт события
 	io.setPort(eid, 2222);
@@ -1425,7 +1425,7 @@ int32_t main(int32_t argc, char * argv[]){
 		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
 			if(io.setTarget(eid, "127.0.0.1")){
-				// Устанавливаем функцию обратного вызова на событие таймера
+				// Устанавливаем функцию обратного вызова на изменение статуса события
 				io.on(eid, [&io, &sctp, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
@@ -1531,7 +1531,7 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -1640,7 +1640,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << " HEARTBEAT TIMEOUT: " << sctp.getTimeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
@@ -1850,7 +1850,7 @@ int32_t main(int32_t argc, char * argv[]){
 	/*
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
-	// Добавляем новое событие клиента TCP
+	// Добавляем новое событие сервера TCP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV6, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
 	io.setPort(eid, 8080);

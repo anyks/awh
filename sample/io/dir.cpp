@@ -49,11 +49,11 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
-	// Добавляем новое событие отслеживания каталога
+	// Добавляем новое событие каталога
 	event::id_t eid = io.event(event::node_t::DIR, event::family_t::FSYS);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
-		// Устанавливаем функцию обратного вызова на событие таймера
+		// Устанавливаем функцию обратного вызова на изменение статуса события
 		io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Обрабатываем статус события

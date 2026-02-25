@@ -157,7 +157,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
-		// Добавляем новое событие клиента TCP
+		// Добавляем новое событие клиента ICMP
 		eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	/**
 	 * Для операционной системы не являющейся MS Windows
@@ -165,9 +165,9 @@ int32_t main(int32_t argc, char * argv[]){
 	#else
 		// Если пользователь является привилигированным
 		if(::getuid())
-			// Добавляем новое событие клиента TCP
+			// Добавляем новое событие клиента ICMP
 			eid = io.event(awh::event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::ICMP);
-		// Добавляем новое событие клиента TCP
+		// Добавляем новое событие клиента ICMP
 		else eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	#endif
 	// Устанавливаем порт события
@@ -186,7 +186,7 @@ int32_t main(int32_t argc, char * argv[]){
 			if(io.setTarget(eid, "8.8.8.8")){
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(eid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
@@ -216,7 +216,7 @@ int32_t main(int32_t argc, char * argv[]){
 							printf("ID: %u, Seq: %u\n", ntohs(icmp->meta.echo.identifier), ntohs(icmp->meta.echo.sequence));
 							// Добавляем полученный IP-адрес
 							addr.v4(icmp->meta.redirect.gatewayAddress);
-							// Выводим сообщение о переподключении события
+							// Выводим сообщение о чтении данных
 							log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, static_cast <string> (addr).c_str());
 						}
 					// Если данные пришли с читсым ICMP
@@ -225,7 +225,7 @@ int32_t main(int32_t argc, char * argv[]){
 						auto icmpResponseHeader = reinterpret_cast <const struct IcmpHeader *> (data);
 						// Добавляем полученный IP-адрес
 						addr.v4(icmpResponseHeader->meta.redirect.gatewayAddress);
-						// Выводим сообщение о переподключении события
+						// Выводим сообщение о чтении данных
 						log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, static_cast <string> (addr).c_str());
 					}
 				});

@@ -922,7 +922,7 @@ Public License instead of this License.  But first, please read
 					bytesReceived += size;
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					cout << " Прочитано: ID=" << eid << ", " << size << " байт, сообщение: " << message << endl;
 					// Выводим сообщение о переподключении события
 					// log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());

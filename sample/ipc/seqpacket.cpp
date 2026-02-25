@@ -80,7 +80,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
-				// Устанавливаем функцию обратного вызова на событие таймера
+				// Устанавливаем функцию обратного вызова на изменение статуса события
 				io.on(events[1], [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
@@ -155,14 +155,14 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(events[1], static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
 				io.on(events[1], [mpid, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
@@ -314,7 +314,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << " Успешно установлены опции события!" << endl;
 				// Выводим сообщение об ошибке установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
-				// Устанавливаем функцию обратного вызова на событие таймера
+				// Устанавливаем функцию обратного вызова на изменение статуса события
 				io.on(events[0], [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
@@ -389,14 +389,14 @@ int32_t main(int32_t argc, char * argv[]){
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
 				io.on(events[0], static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
 				io.on(events[0], [mpid, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
-					// Выводим сообщение о переподключении события
+					// Выводим сообщение о чтении данных
 					log.print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
