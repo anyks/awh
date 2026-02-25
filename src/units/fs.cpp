@@ -1,0 +1,292 @@
+/**
+ * @file: fs.cpp
+ * @date: 2026-02-22
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <units/fs.hpp>
+
+/**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
+ * @brief Метод обработки событий записи в файл
+ *
+ * @param eid  идентификатор события файловой системы
+ * @param size размер сообщения
+ */
+void awh::unit::Filesystem::write(const event::id_t eid, const size_t size) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("write"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
+}
+/**
+ * @brief Метод обработки событий чтения из файла
+ *
+ * @param eid  идентификатор события файловой системы
+ * @param data данные сообщения
+ * @param size размер сообщения
+ */
+void awh::unit::Filesystem::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("read"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
+}
+/**
+ * @brief Метод обработки состояния файловой системы
+ *
+ * @param eid    идентификатор события файловой системы
+ * @param status статус события
+ */
+void awh::unit::Filesystem::state(const event::id_t eid, const event::status_t status) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("state"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+}
+/**
+ * @brief Метод обработки исключений событий файловой системы
+ *
+ * @param eid     идентификатор события файловой системы
+ * @param error   тип ошибки
+ * @param message сообщение об ошибке
+ */
+void awh::unit::Filesystem::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("error"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
+}
+/**
+ * @brief Метод обработки событий каталогов
+ *
+ * @param eid    идентификатор события файловой системы
+ * @param action экшен события каталога (добавление/удаление)
+ * @param vnode  событие файловой системы
+ * @param path   адрес по которому произошло событие
+ */
+void awh::unit::Filesystem::vnode(const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("vnode"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::action_t, const event::vnode_t, const string &)> ("vnode", eid, action, vnode, path);
+}
+/**
+ * @brief Метод уничтожения события файловой системы
+ *
+ * @param eid идентификатор события файловой системы
+ */
+void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
+	// Удаляем событие файловой системы
+	this->_io->destroy(eid);
+}
+/**
+ * @brief Метод создания события файловой системы
+ *
+ * @param type тип файловой системы для создания
+ * @return     идентификатор события файловой системы
+ */
+awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
+	// Результат работы функции
+	event::id_t result = 0;
+	/**
+	 * Определяем тип файловой системы для создания
+	 */
+	switch(static_cast <uint8_t> (type)){
+		// Если тип файловой системы является наблюдателем за каталогами
+		case static_cast <uint8_t> (type_t::DIR):
+			// Выполняем создание события файловой системы для узла каталога
+			result = this->_io->event(event::node_t::DIR, event::family_t::FSYS);
+		break;
+		// Если тип файловой системы является наблюдателем за файлами
+		case static_cast <uint8_t> (type_t::FILE): {
+			// Выполняем создание события файловой системы для узла файла
+			result = this->_io->event(event::node_t::FILE, event::family_t::FSYS);
+			// Устанавливаем функцию обратного вызова на событие записи сообщений
+			this->_io->on(result, static_cast <event::callback::write_t> (std::bind(&fs_t::write, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения сообщений
+			this->_io->on(result, static_cast <event::callback::read_t> (std::bind(&fs_t::read, this, _1, _2, _3)));
+		} break;
+	}
+	// Устанавливаем функцию обратного вызова на событие изменения статуса
+	this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
+	// Устанавливаем функцию обратного вызова на событие получения ошибок
+	this->_io->on(result, static_cast <event::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
+	// Устанавливаем функцию обратного вызова на событие изменения состояния каталога
+	this->_io->on(result, static_cast <event::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения типа ноды файловой системы
+ *
+ * @param eid идентификатор события файловой системы
+ * @return    тип ноды файловой системы
+ */
+awh::unit::Filesystem::type_t awh::unit::Filesystem::type(const event::id_t eid) const noexcept {
+	/**
+	 * Определяем тип узла события файловой системы
+	 */
+	switch(static_cast <uint8_t> (this->_io->node(eid))){
+		// Если тип узла события является каталогом
+		case static_cast <uint8_t> (event::node_t::DIR):
+			// Устанавливаем результат типа ноды файловой системы как каталог
+			return type_t::DIR;
+		// Если тип узла события является файлом
+		case static_cast <uint8_t> (event::node_t::FILE):
+			// Устанавливаем результат типа ноды файловой системы как файл
+			return type_t::FILE;
+	}
+	// Выводим результат по умолчанию
+	return type_t::NONE;
+}
+/**
+ * @brief Метод получения адреса события
+ *
+ * @param eid идентификатор события файловой системы
+ * @return    значение адреса события
+ */
+string awh::unit::Filesystem::getAddress(const event::id_t eid) const noexcept {
+	// Выполняем получение адреса события
+	return this->_io->getAddress(eid, event::address_t::FS);
+}
+/**
+ * @brief Метод установки адреса события
+ *
+ * @param eid   идентификатор события файловой системы
+ * @param value значение адреса события
+ * @return      результат выполнения установки
+ */
+bool awh::unit::Filesystem::setAddress(const event::id_t eid, const string & value) noexcept {
+	// Результат работы функции
+	bool result = this->_io->setAddress(eid, event::address_t::FS, value);
+	// Если результат выполнения установки адреса события является успешным
+	if(result)
+		// Выполняем запуск события файловой системы
+		result = (this->_io->commit(eid) && this->_io->launch(eid));
+	// Выполняем результат
+	return result;
+}
+/**
+ * @brief Метод отправки данных в файл
+ *
+ * @param eid    идентификатор события файловой системы
+ * @param buffer буфер данных для отправки
+ * @param size   размер буфера данных
+ * @return       количество отправленных байт
+ */
+size_t awh::unit::Filesystem::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
+	// Выполняем отправку данных в файл
+	return this->_io->send(eid, buffer, size);
+}
+/**
+ * @brief Метод получения смещения в файле события
+ *
+ * @param eid  идентификатор события файловой системы
+ * @param seek тип смещения в файле события
+ * @return     смещение в файле события
+ */
+size_t awh::unit::Filesystem::getSeek(const event::id_t eid, const event::seek_t seek) noexcept {
+	// Выполняем получение смещения в файле события
+	return this->_io->getSeek(eid, seek);
+}
+/**
+ * @brief Метод установки смещения в файле события
+ *
+ * @param eid    идентификатор события файловой системы
+ * @param seek   тип смещения в файле события
+ * @param offset смещение в файле события
+ * @return       результат выполнения установки
+ */
+bool awh::unit::Filesystem::setSeek(const event::id_t eid, const event::seek_t seek, const size_t offset) noexcept {
+	// Выполняем установку смещения в файле события
+	return this->_io->setSeek(eid, seek, offset);
+}
+/**
+ * @brief Метод получения опций события
+ *
+ * @param eid идентификатор события
+ * @return    опции события
+ */
+uint16_t awh::unit::Filesystem::getOptions(const event::id_t eid) const noexcept {
+	// Выполняем получение опций события
+	return this->_io->getOptions(eid);
+}
+/**
+ * @brief Метод установки опций события
+ *
+ * @param eid    идентификатор события
+ * @param options опции события для установки
+ * @return        результат выполнения установки
+ */
+bool awh::unit::Filesystem::setOptions(const event::id_t eid, const uint16_t options) noexcept {
+	// Выполняем установку опций события
+	return this->_io->setOptions(eid, options);
+}
+/**
+ * @brief Метод установки опции события
+ *
+ * @param eid    идентификатор события
+ * @param option опция события для установки
+ * @param mode   режим установки опции события
+ * @return       результат выполнения установки
+ */
+bool awh::unit::Filesystem::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
+	// Выполняем установку опции события
+	return this->_io->setOption(eid, option, mode);
+}
+/**
+ * @brief Метод получения размера буфера события
+ *
+ * @param eid    идентификатор события файловой системы
+ * @param action тип действия события
+ * @return       размер буфера события
+ */
+size_t awh::unit::Filesystem::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
+	// Выполняем получение размера буфера события
+	return this->_io->getBufferSize(eid, action);
+}
+/**
+ * @brief Метод установки размера буфера события
+ *
+ * @param eid    идентификатор события файловой системы
+ * @param action тип действия события
+ * @param size   размер буфера события
+ * @return       результат выполнения установки
+ */
+bool awh::unit::Filesystem::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
+	// Выполняем установку размера буфера события
+	return this->_io->setBufferSize(eid, action, size);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::unit::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::unit::Filesystem::~Filesystem() noexcept {}

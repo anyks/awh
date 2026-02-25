@@ -104,7 +104,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим сообщение о выполнении события в ожидании
 					log.print("Событие в ожидании: ID=%u", log_t::flag_t::INFO, eid);
 					// Устанавливаем смещение в файле
-					// io.getSeek(eid, 1024);
+					// io.setSeek(eid, 1024);
 					// Отправляем тестовое сообщение в файл
 					io.send(eid, "Hello World!!!", 14);
 				} break;

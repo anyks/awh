@@ -616,19 +616,19 @@ namespace awh {
 			 */
 			virtual void on(const event::id_t id, const event::callback::error_t & cb) noexcept = 0;
 			/**
+			 * @brief Методы установки функции обратного вызова на изменение события
+			 *
+			 * @param id идентификатор события
+			 * @param cb функция обратного вызова
+			 */
+			virtual void on(const event::id_t id, const event::callback::vnode_t & cb) noexcept = 0;
+			/**
 			 * @brief Методы установки функции обратного вызова на изменение статуса события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
 			virtual void on(const event::id_t id, const event::callback::status_t & cb) noexcept = 0;
-			/**
-			 * @brief Методы установки функции обратного вызова на изменение события
-			 *
-			 * @param id идентификатор события
-			 * @param cb функция обратного вызова
-			 */
-			virtual void on(const event::id_t id, const event::callback::change_t & cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на принятие события
 			 *

@@ -168,8 +168,8 @@ void awh::unit::Cluster::create() noexcept {
 							this->_io->on(events[1], static_cast <event::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на событие чтения сообщений
 							this->_io->on(events[1], static_cast <event::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-							// Устанавливаем функцию обратного вызова на событие изменения статуса
-							this->_io->on(events[1], static_cast <event::callback::status_t> (std::bind(&cluster_t::status, this, _1, _2)));
+							// Устанавливаем функцию обратного вызова на событие изменения состояния
+							this->_io->on(events[1], static_cast <event::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на событие получения ошибок
 							this->_io->on(events[1], static_cast <event::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 							// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
@@ -260,8 +260,8 @@ void awh::unit::Cluster::create() noexcept {
 						this->_io->on(events[0], static_cast <event::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 						// Устанавливаем функцию обратного вызова на событие чтения сообщений
 						this->_io->on(events[0], static_cast <event::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-						// Устанавливаем функцию обратного вызова на событие изменения статуса
-						this->_io->on(events[0], static_cast <event::callback::status_t> (std::bind(&cluster_t::status, this, _1, _2)));
+						// Устанавливаем функцию обратного вызова на событие изменения состояния
+						this->_io->on(events[0], static_cast <event::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 						// Устанавливаем функцию обратного вызова на событие получения ошибок
 						this->_io->on(events[0], static_cast <event::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 						// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
@@ -425,8 +425,8 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						this->_io->on(events[1], static_cast <event::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 						// Устанавливаем функцию обратного вызова на событие чтения сообщений
 						this->_io->on(events[1], static_cast <event::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-						// Устанавливаем функцию обратного вызова на событие изменения статуса
-						this->_io->on(events[1], static_cast <event::callback::status_t> (std::bind(&cluster_t::status, this, _1, _2)));
+						// Устанавливаем функцию обратного вызова на событие изменения состояния
+						this->_io->on(events[1], static_cast <event::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 						// Устанавливаем функцию обратного вызова на событие получения ошибок
 						this->_io->on(events[1], static_cast <event::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 						// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
@@ -517,8 +517,8 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 					this->_io->on(events[0], static_cast <event::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 					// Устанавливаем функцию обратного вызова на событие чтения сообщений
 					this->_io->on(events[0], static_cast <event::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-					// Устанавливаем функцию обратного вызова на событие изменения статуса
-					this->_io->on(events[0], static_cast <event::callback::status_t> (std::bind(&cluster_t::status, this, _1, _2)));
+					// Устанавливаем функцию обратного вызова на событие изменения состояния
+					this->_io->on(events[0], static_cast <event::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
 					this->_io->on(events[0], static_cast <event::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
@@ -814,12 +814,12 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 	}
 }
 /**
- * @brief Метод обработки событий кластера
+ * @brief Метод обработки состояния кластера
  *
  * @param eid    идентификатор события
  * @param status статус события
  */
-void awh::unit::Cluster::status(const event::id_t eid, const event::status_t status) noexcept {
+void awh::unit::Cluster::state(const event::id_t eid, const event::status_t status) noexcept {
 	/**
 	 * Обрабатываем статус события
 	 */
@@ -914,8 +914,8 @@ void awh::unit::Cluster::status(const event::id_t eid, const event::status_t sta
 /**
  * @brief Метод обработки исключений событий кластера
  *
- * @param eid идентификатор события
- * @param error тип ошибки
+ * @param eid     идентификатор события
+ * @param error   тип ошибки
  * @param message сообщение об ошибке
  */
 void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {

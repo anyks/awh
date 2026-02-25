@@ -15,8 +15,8 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CLUSTER__
-#define __AWH_CLUSTER__
+#ifndef __AWH_UNIT_CLUSTER__
+#define __AWH_UNIT_CLUSTER__
 
 /**
  * Стандартные модули
@@ -161,18 +161,18 @@ namespace awh {
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 			private:
 				/**
-				 * @brief Метод обработки событий кластера
+				 * @brief Метод обработки состояния кластера
 				 *
 				 * @param eid    идентификатор события
 				 * @param status статус события
 				 */
-				void status(const event::id_t eid, const event::status_t status) noexcept;
+				void state(const event::id_t eid, const event::status_t status) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки исключений событий кластера
 				 *
-				 * @param eid идентификатор события
-				 * @param error тип ошибки
+				 * @param eid     идентификатор события
+				 * @param error   тип ошибки
 				 * @param message сообщение об ошибке
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
@@ -331,4 +331,4 @@ namespace awh {
 	};
 };
 
-#endif // __AWH_CLUSTER__
+#endif // __AWH_UNIT_CLUSTER__

@@ -438,7 +438,7 @@ namespace awh {
 			 * @brief Функция обратного вызова срабатывающая при изменении каталога
 			 *
 			 */
-			using change_t = std::function <void (const event::id_t, const action_t, const vnode_t, const std::string &)>;
+			using vnode_t = std::function <void (const event::id_t, const action_t, const vnode_t, const std::string &)>;
 		};
 	};
 };

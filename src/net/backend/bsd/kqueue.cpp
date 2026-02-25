@@ -802,14 +802,14 @@ namespace io {
 		// Обратный вызов при получении общего события
 		event::callback::event_t event;
 		// Обратный вызов при изменении события
-		event::callback::change_t change;
+		event::callback::vnode_t vnode;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Filesystem_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
-		 event(nullptr), change(nullptr) {}
+		 event(nullptr), vnode(nullptr) {}
 	} fs_callbacks_t;
 
 	/**
@@ -10877,9 +10877,9 @@ namespace io {
 			// Выделяем память под запись данных в файл
 			::ftruncate(fs->fd, (((actual + fs->size - 1) / fs->size) * fs->size));
 			// Выполняем маппинг файла в память
-			char * buffer = reinterpret_cast <char *> (::mmap(nullptr, fs->size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, offset));
+			char * data = reinterpret_cast <char *> (::mmap(nullptr, fs->size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, offset));
 			// Если mmap выполнился с ошибкой
-			if(buffer == MAP_FAILED){
+			if(data == MAP_FAILED){
 				// Если установлена функция обратного вызова
 				if(fs->callbacks.status != nullptr)
 					// Вызываем функцию обратного вызова об ошибке отказа
@@ -10912,16 +10912,16 @@ namespace io {
 				return result;
 			}
 			// Выполняем запись данных в файл
-			::memcpy(buffer + (fs->offset - static_cast <size_t> (offset)), buffer, size);
+			::memcpy(data + (fs->offset - static_cast <size_t> (offset)), buffer, size);
 			// Если событие является неблокирующим
 			if((fs->state.options & event::options::NO_IO_BLOCK) ||
 			   (fs->state.options & event::options::SM_IO_BLOCK))
 				// Выполняем синхронизацию данных в файл
-				::msync(buffer, fs->size, MS_ASYNC);
+				::msync(data, fs->size, MS_ASYNC);
 			// Выполняем синхронизацию данных в файл
-			else ::msync(buffer, fs->size, MS_SYNC);
+			else ::msync(data, fs->size, MS_SYNC);
 			// Выполняем освобождение маппинга файла
-			::munmap(buffer, fs->size);
+			::munmap(data, fs->size);
 			// Обрезаем файл до нужных нам размеров
 			::ftruncate(fs->fd, actual);
 			// Если чтение из файла не предполагается
@@ -20400,7 +20400,7 @@ namespace io {
 			// Если событие изменения каталога разрешено
 			if(dir->actions & ::action::CHANGE){
 				// Если функция обратного вызова для сигнализации изменения каталога установлена
-				if(dir->callbacks.change != nullptr){
+				if(dir->callbacks.vnode != nullptr){
 					// Создаём охранника узла события
 					::local::guard_t guard(dir);
 					// Создаем указатель на содержимое каталога
@@ -20458,7 +20458,7 @@ namespace io {
 							// Если адрес был успешно добавлен
 							if(ret.second)
 								// Вызываем функцию обратного вызова
-								dir->callbacks.change(dir->id, event::action_t::CHANGE, vnode, address);
+								dir->callbacks.vnode(dir->id, event::action_t::CHANGE, vnode, address);
 							// Удаляем адрес из списка отслеживаемых
 							else entries.erase(address);
 						}
@@ -20470,7 +20470,7 @@ namespace io {
 						// Проходим по всем записям во временном множестве
 						for(const auto & entry : entries){
 							// Вызываем функцию обратного вызова
-							dir->callbacks.change(dir->id, event::action_t::DELETE, entry.second, entry.first);
+							dir->callbacks.vnode(dir->id, event::action_t::DELETE, entry.second, entry.first);
 							// Удаляем адрес из списка отслеживаемых
 							dir->entries.erase(entry.first);
 						}
@@ -21634,106 +21634,127 @@ namespace io {
 								::io::destroy(node, eth, log);
 							// Пропускаем дальнейшую обработку события
 							return false;
-						// Если установлена функция обратного вызова
-						} else if(dir->callbacks.event != nullptr) {
-							// Если мы детектировали событие изменения директории
-							if(ev.fflags & NOTE_WRITE){
-								// Если событие изменения директории разрешено
-								if(dir->actions & ::action::CHANGE){
-									// Вызываем функцию обратного вызова с установленным флагом события
-									dir->callbacks.event(dir->id, event::action_t::CHANGE);
-									// Выполняем изменение содержимого в директории
-									return ::io::change(dir, io, fmk, log);
-								}
-							// Если мы детектировали событие переименования директории
-							} else if(ev.fflags & NOTE_RENAME) {
-								/**
-								 * Для операционной системы MacOS X
-								 */
-								#if __APPLE__ || __MACH__
-									// Получаем актуальный путь директории
-									if(::fcntl(dir->fd, F_GETPATH, ::__awh_buffer__) == 0){
-										// Множество уже прочитанных записей каталога
-										unordered_map <string, event::vnode_t> entries;
-										// Проходим по всем записям в директории
-										for(auto i = dir->entries.begin(); i != dir->entries.end();){
-											// Добавляем запись в список содержимого директории с новым путём
-											entries.emplace(fmk->format("%s%s", ::__awh_buffer__, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
-											// Удаляем старую запись из списка содержимого директории
-											i = dir->entries.erase(i);
-										}
-										// Заменяем старый список записей в дирректории на новый
-										dir->entries = ::move(entries);
-										// Устанавливаем новый путь директории
-										awh_cast <net::addr_fs_t *> (dir->path.get())->address = ::__awh_buffer__;
-										// Если событие переименования директории разрешено
-										if(dir->actions & ::action::RENAME)
+						}
+						// Если мы детектировали событие изменения директории
+						if(ev.fflags & NOTE_WRITE){
+							// Если событие изменения директории разрешено
+							if(dir->actions & ::action::CHANGE){
+								// Вызываем функцию обратного вызова с установленным флагом события
+								dir->callbacks.event(dir->id, event::action_t::CHANGE);
+								// Выполняем изменение содержимого в директории
+								return ::io::change(dir, io, fmk, log);
+							}
+						// Если мы детектировали событие переименования директории
+						} else if(ev.fflags & NOTE_RENAME) {
+							/**
+							 * Для операционной системы MacOS X
+							 */
+							#if __APPLE__ || __MACH__
+								// Получаем актуальный путь директории
+								if(::fcntl(dir->fd, F_GETPATH, ::__awh_buffer__) == 0){
+									// Множество уже прочитанных записей каталога
+									unordered_map <string, event::vnode_t> entries;
+									// Проходим по всем записям в директории
+									for(auto i = dir->entries.begin(); i != dir->entries.end();){
+										// Добавляем запись в список содержимого директории с новым путём
+										entries.emplace(fmk->format("%s%s", ::__awh_buffer__, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
+										// Удаляем старую запись из списка содержимого директории
+										i = dir->entries.erase(i);
+									}
+									// Заменяем старый список записей в дирректории на новый
+									dir->entries = ::move(entries);
+									// Устанавливаем новый путь директории
+									awh_cast <net::addr_fs_t *> (dir->path.get())->address = ::__awh_buffer__;
+									// Если событие переименования директории разрешено
+									if(dir->actions & ::action::RENAME){
+										// Если установлена функция обратного вызова
+										if(dir->callbacks.event != nullptr)
 											// Вызываем функцию обратного вызова с установленным флагом события
 											dir->callbacks.event(dir->id, event::action_t::RENAME);
-										// Формируем положительный результат
-										return true;
+										// Если функция обратного вызова для сигнализации переименования адреса каталога установлена
+										if(dir->callbacks.vnode != nullptr)
+											// Вызываем функцию обратного вызова
+											dir->callbacks.vnode(dir->id, event::action_t::RENAME, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
 									}
-								#endif
-								// Если событие удаления директории разрешено
-								if(dir->actions & ::action::DELETE)
+									// Формируем положительный результат
+									return true;
+								}
+							#endif
+							// Если событие удаления директории разрешено
+							if(dir->actions & ::action::DELETE){
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::DELETE);
-								// Выполняем удаление узла
-								::io::destroy(node, eth, log);
-								// Пропускаем дальнейшую обработку события
-								return false;
-							// Если мы детектировали событие удаления директории
-							} else if(ev.fflags & NOTE_DELETE) {
-								// Если событие удаления директории разрешено
-								if(dir->actions & ::action::DELETE)
+								// Если функция обратного вызова для сигнализации удаления каталога установлена
+								if(dir->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									dir->callbacks.vnode(dir->id, event::action_t::DELETE, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
+							}
+							// Выполняем удаление узла
+							::io::destroy(node, eth, log);
+							// Пропускаем дальнейшую обработку события
+							return false;
+						// Если мы детектировали событие удаления директории
+						} else if(ev.fflags & NOTE_DELETE) {
+							// Если событие удаления директории разрешено
+							if(dir->actions & ::action::DELETE){
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::DELETE);
-								// Выполняем удаление узла
-								::io::destroy(node, eth, log);
-								// Пропускаем дальнейшую обработку события
-								return false;
-							// Если мы детектировали событие изменения атрибутов директории
-							} else if(ev.fflags & NOTE_ATTRIB) {
-								// Если событие изменения атрибутов директории разрешено
-								if(dir->actions & ::action::ATTRIB)
+								// Если функция обратного вызова для сигнализации удаления каталога установлена
+								if(dir->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									dir->callbacks.vnode(dir->id, event::action_t::DELETE, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
+							}
+							// Выполняем удаление узла
+							::io::destroy(node, eth, log);
+							// Пропускаем дальнейшую обработку события
+							return false;
+						// Если мы детектировали событие изменения атрибутов директории
+						} else if(ev.fflags & NOTE_ATTRIB) {
+							// Если событие изменения атрибутов директории разрешено
+							if(dir->actions & ::action::ATTRIB){
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::ATTRIB);
-							// Если мы детектировали событие отзыва директории
-							} else if(ev.fflags & NOTE_REVOKE) {
-								// Если событие отзыва директории разрешено
-								if(dir->actions & ::action::REVOKE)
+								// Если функция обратного вызова для сигнализации изменения атрибутов каталога установлена
+								if(dir->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									dir->callbacks.vnode(dir->id, event::action_t::ATTRIB, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
+							}
+						// Если мы детектировали событие отзыва директории
+						} else if(ev.fflags & NOTE_REVOKE) {
+							// Если событие отзыва директории разрешено
+							if(dir->actions & ::action::REVOKE){
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::REVOKE);
-							// Если мы детектировали событие изменение жёсткой ссылки директории
-							} else if(ev.fflags & NOTE_LINK) {
-								// Если событие изменение жёсткой ссылки директории разрешено
-								if(dir->actions & ::action::HDLINK)
+								// Если функция обратного вызова для сигнализации отзыва каталога установлена
+								if(dir->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									dir->callbacks.vnode(dir->id, event::action_t::REVOKE, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
+							}
+						// Если мы детектировали событие изменение жёсткой ссылки директории
+						} else if(ev.fflags & NOTE_LINK) {
+							// Если событие изменение жёсткой ссылки директории разрешено
+							if(dir->actions & ::action::HDLINK){
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									dir->callbacks.event(dir->id, event::action_t::HDLINK);
-								// Если событие изменения директории разрешено
-								if(dir->actions & ::action::CHANGE)
-									// Выполняем изменение содержимого в директории
-									return ::io::change(dir, io, fmk, log);
+								// Если функция обратного вызова для сигнализации изменения жёсткой ссылки каталога установлена
+								if(dir->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									dir->callbacks.vnode(dir->id, event::action_t::HDLINK, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
 							}
-						// Если функция обратного вызова не установлена
-						} else {
-							// Если мы детектировали событие изменения директории
-							if(ev.fflags & NOTE_WRITE){
-								// Если событие изменения директории разрешено
-								if(dir->actions & ::action::CHANGE)
-									// Выполняем изменение содержимого в директории
-									return ::io::change(dir, io, fmk, log);
-							// Если мы детектировали событие удаления директории
-							} else if(ev.fflags & NOTE_DELETE)
-								// Выполняем удаление узла
-								::io::destroy(node, eth, log);
-							// Если мы детектировали событие изменение жёсткой ссылки директории
-							else if(ev.fflags & NOTE_LINK) {
-								// Если событие изменения директории разрешено
-								if(dir->actions & ::action::CHANGE)
-									// Выполняем изменение содержимого в директории
-									return ::io::change(dir, io, fmk, log);
-							}
+							// Если событие изменения директории разрешено
+							if(dir->actions & ::action::CHANGE)
+								// Выполняем изменение содержимого в директории
+								return ::io::change(dir, io, fmk, log);
 						}
 					} break;
 					// Если узел является файловой системой
@@ -21748,94 +21769,119 @@ namespace io {
 								::io::destroy(node, eth, log);
 							// Пропускаем дальнейшую обработку события
 							return false;
-						// Если установлена функция обратного вызова
-						} else if(fs->callbacks.event != nullptr) {
-							// Если мы детектировали событие изменения файла
-							if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
-								// Если событие изменения файла разрешено
-								if(fs->actions & ::action::CHANGE){
+						}
+						// Если мы детектировали событие изменения файла
+						if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
+							// Если событие изменения файла разрешено
+							if(fs->actions & ::action::CHANGE){
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::CHANGE);
-									// Если функция обратного вызова для сигнализации изменения файла установлена
-									if(fs->callbacks.change != nullptr)
-										// Вызываем функцию обратного вызова
-										fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-									// Если событие чтения разрешено
-									if(fs->actions & ::action::READ)
-										// Выполняем чтение данных из файла
-										return ::io::read(node, io, eth, addr, fmk, log);
+								// Если функция обратного вызова для сигнализации изменения файла установлена
+								if(fs->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									fs->callbacks.vnode(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+								// Если событие чтения разрешено
+								if(fs->actions & ::action::READ)
+									// Выполняем чтение данных из файла
+									return ::io::read(node, io, eth, addr, fmk, log);
+							}
+						// Если мы детектировали событие переименования файла
+						} else if(ev.fflags & NOTE_RENAME) {
+							/**
+							 * Для операционной системы MacOS X
+							 */
+							#if __APPLE__ || __MACH__
+								// Получаем актуальный путь файла
+								if(::fcntl(fs->fd, F_GETPATH, ::__awh_buffer__) == 0){
+									// Устанавливаем новый путь файла
+									awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::__awh_buffer__;
+									// Если событие переименования файла разрешено
+									if(fs->actions & ::action::RENAME){
+										// Если установлена функция обратного вызова
+										if(fs->callbacks.event != nullptr)
+											// Вызываем функцию обратного вызова с установленным флагом события
+											fs->callbacks.event(fs->id, event::action_t::RENAME);
+										// Если функция обратного вызова для сигнализации переименования адреса файла установлена
+										if(fs->callbacks.vnode != nullptr)
+											// Вызываем функцию обратного вызова
+											fs->callbacks.vnode(fs->id, event::action_t::RENAME, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+									}
+									// Формируем положительный результат
+									return true;
 								}
-							// Если мы детектировали событие переименования файла
-							} else if(ev.fflags & NOTE_RENAME) {
-								// Если событие переименования файла разрешено
-								if(fs->actions & ::action::RENAME)
-									// Вызываем функцию обратного вызова с установленным флагом события
-									fs->callbacks.event(fs->id, event::action_t::RENAME);
-							// Если мы детектировали событие удаления файла
-							} else if(ev.fflags & NOTE_DELETE) {
-								// Если событие удаления файла разрешено
-								if(fs->actions & ::action::DELETE){
+							#endif
+							// Если событие удаления файла разрешено
+							if(fs->actions & ::action::DELETE){
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::DELETE);
-									// Если событие изменения файла разрешено
-									if(fs->actions & ::action::CHANGE){
-										// Если функция обратного вызова для сигнализации изменения файла установлена
-										if(fs->callbacks.change != nullptr)
-											// Вызываем функцию обратного вызова
-											fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-									}
-								}
-								// Выполняем удаление узла
-								::io::destroy(node, eth, log);
-								// Пропускаем дальнейшую обработку события
-								return false;
-							// Если мы детектировали событие изменения атрибутов файла
-							} else if(ev.fflags & NOTE_ATTRIB) {
-								// Если событие изменения атрибутов файла разрешено
-								if(fs->actions & ::action::ATTRIB)
+								// Если функция обратного вызова для сигнализации удаления файла установлена
+								if(fs->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									fs->callbacks.vnode(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+							}
+							// Выполняем удаление узла
+							::io::destroy(node, eth, log);
+							// Пропускаем дальнейшую обработку события
+							return false;
+						// Если мы детектировали событие удаления файла
+						} else if(ev.fflags & NOTE_DELETE) {
+							// Если событие удаления файла разрешено
+							if(fs->actions & ::action::DELETE){
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова с установленным флагом события
+									fs->callbacks.event(fs->id, event::action_t::DELETE);
+								// Если функция обратного вызова для сигнализации удаления файла установлена
+								if(fs->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									fs->callbacks.vnode(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+							}
+							// Выполняем удаление узла
+							::io::destroy(node, eth, log);
+							// Пропускаем дальнейшую обработку события
+							return false;
+						// Если мы детектировали событие изменения атрибутов файла
+						} else if(ev.fflags & NOTE_ATTRIB) {
+							// Если событие изменения атрибутов файла разрешено
+							if(fs->actions & ::action::ATTRIB){
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::ATTRIB);
-							// Если мы детектировали событие отзыва файла
-							} else if(ev.fflags & NOTE_REVOKE) {
-								// Если событие отзыва файла разрешено
-								if(fs->actions & ::action::REVOKE)
+								// Если функция обратного вызова для сигнализации изменения атрибутов файла установлена
+								if(fs->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									fs->callbacks.vnode(fs->id, event::action_t::ATTRIB, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+							}
+						// Если мы детектировали событие отзыва файла
+						} else if(ev.fflags & NOTE_REVOKE) {
+							// Если событие отзыва файла разрешено
+							if(fs->actions & ::action::REVOKE){
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::REVOKE);
-							// Если мы детектировали событие изменение жёсткой ссылки файла
-							} else if(ev.fflags & NOTE_LINK) {
-								// Если событие изменение жёсткой ссылки файла разрешено
-								if(fs->actions & ::action::HDLINK)
+								// Если функция обратного вызова для сигнализации отзыва файла установлена
+								if(fs->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									fs->callbacks.vnode(fs->id, event::action_t::REVOKE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
+							}
+						// Если мы детектировали событие изменение жёсткой ссылки файла
+						} else if(ev.fflags & NOTE_LINK) {
+							// Если событие изменение жёсткой ссылки файла разрешено
+							if(fs->actions & ::action::HDLINK){
+								// Если установлена функция обратного вызова
+								if(fs->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
 									fs->callbacks.event(fs->id, event::action_t::HDLINK);
-							}
-						// Если функция обратного вызова не установлена
-						} else {
-							// Если мы детектировали событие изменения файла
-							if((ev.fflags & NOTE_WRITE) || (ev.fflags & NOTE_EXTEND)){
-								// Если событие изменения файла разрешено
-								if(fs->actions & ::action::CHANGE){
-									// Если функция обратного вызова для сигнализации изменения файла установлена
-									if(fs->callbacks.change != nullptr)
-										// Вызываем функцию обратного вызова
-										fs->callbacks.change(fs->id, event::action_t::CHANGE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-									// Если событие чтения разрешено
-									if(fs->actions & ::action::READ)
-										// Выполняем чтение данных из файла
-										return ::io::read(node, io, eth, addr, fmk, log);
-								}
-							// Если мы детектировали событие удаления файла
-							} else if(ev.fflags & NOTE_DELETE) {
-								// Если событие изменения файла разрешено
-								if((fs->actions & ::action::DELETE) && (fs->actions & ::action::CHANGE)){
-									// Если функция обратного вызова для сигнализации изменения файла установлена
-									if(fs->callbacks.change != nullptr)
-										// Вызываем функцию обратного вызова
-										fs->callbacks.change(fs->id, event::action_t::DELETE, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-								}
-								// Выполняем удаление узла
-								::io::destroy(node, eth, log);
-								// Пропускаем дальнейшую обработку события
-								return false;
+								// Если функция обратного вызова для сигнализации изменения жёсткой ссылки файла установлена
+								if(fs->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									fs->callbacks.vnode(fs->id, event::action_t::HDLINK, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
 							}
 						}
 					} break;
@@ -54292,6 +54338,74 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::error_t & 
 	}
 }
 /**
+ * @brief Методы установки функции обратного вызова на изменение события
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, const event::callback::vnode_t & cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является директорией
+				case static_cast <uint8_t> (event::node_t::DIR):
+					// Устанавливаем функцию обратного вызова на получение изменения каталога
+					awh_cast <::io::dir_t *> (i->second.get())->callbacks.vnode = ::move(cb);
+				break;
+				// Если узел является файловой системой
+				case static_cast <uint8_t> (event::node_t::FILE):
+					// Устанавливаем функцию обратного вызова на получение изменения файла
+					awh_cast <::io::file_t *> (i->second.get())->callbacks.vnode = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A change callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Методы установки функции обратного вызова на изменение статуса события
  *
  * @param id идентификатор события
@@ -54383,74 +54497,6 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::status_t &
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A status callback cannot be set for this event type", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
- * @brief Методы установки функции обратного вызова на изменение события
- *
- * @param id идентификатор события
- * @param cb функция обратного вызова
- */
-void awh::engine::IO::on(const event::id_t id, const event::callback::change_t & cb) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является директорией
-				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на получение изменения каталога
-					awh_cast <::io::dir_t *> (i->second.get())->callbacks.change = ::move(cb);
-				break;
-				// Если узел является файловой системой
-				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на получение изменения файла
-					awh_cast <::io::file_t *> (i->second.get())->callbacks.change = ::move(cb);
-				break;
-				// Для других типов узлов
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("A change callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

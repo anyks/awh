@@ -28,7 +28,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * @brief Метод обработки событий записи сообщений кластера
+ * @brief Метод обработки событий записи сообщений уведомителя
  *
  * @param eid  идентификатор события
  * @param size размер сообщения
@@ -40,7 +40,7 @@ void awh::unit::Notifier::write(const event::id_t eid, const size_t size) noexce
 		this->_callback.call <void (const event::id_t, const size_t)> ("trigger", eid, size);
 }
 /**
- * @brief Метод обработки событий чтения сообщений кластера
+ * @brief Метод обработки событий чтения сообщений уведомителя
  *
  * @param eid  идентификатор события
  * @param data данные сообщения
@@ -53,22 +53,22 @@ void awh::unit::Notifier::read(const event::id_t eid, const uint8_t * data, cons
 		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("notify", eid, data, size);
 }
 /**
- * @brief Метод обработки событий кластера
+ * @brief Метод обработки состояния уведомителя
  *
  * @param eid    идентификатор события
  * @param status статус события
  */
-void awh::unit::Notifier::status(const event::id_t eid, const event::status_t status) noexcept {
+void awh::unit::Notifier::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("state"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
- * @brief Метод обработки исключений событий кластера
+ * @brief Метод обработки исключений событий уведомителя
  *
- * @param eid идентификатор события
- * @param error тип ошибки
+ * @param eid     идентификатор события
+ * @param error   тип ошибки
  * @param message сообщение об ошибке
  */
 void awh::unit::Notifier::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
@@ -78,7 +78,7 @@ void awh::unit::Notifier::error(const event::id_t eid, const event::error_t erro
 		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
 }
 /**
- * @brief Метод обработки событий доступного размера очереди события кластера
+ * @brief Метод обработки событий доступного размера очереди события уведомителя
  *
  * @param eid    идентификатор события
  * @param status статус события
@@ -104,8 +104,8 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 		this->_io->on(result, static_cast <event::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие чтения сообщений
 		this->_io->on(result, static_cast <event::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения статуса
-		this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&notifier_t::status, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие изменения состояния
+		this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(result, static_cast <event::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
@@ -166,9 +166,9 @@ void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
  * @brief Метод триггера события уведомителя
  *
  * @param eid    идентификатор события уведомителя
- * @param buffer указатель на буфер данных
+ * @param buffer буфер данных для отправки
  * @param size   размер буфера данных
- * @return       количество обработанных событий
+ * @return       количество отправленных байт
  */
 size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Триггерим событие уведомителя

@@ -15,8 +15,8 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_TIMER__
-#define __AWH_TIMER__
+#ifndef __AWH_UNIT_TIMER__
+#define __AWH_UNIT_TIMER__
 
 /**
  * Стандартные модули
@@ -52,12 +52,12 @@ namespace awh {
 				unordered_set <event::id_t> _timers;
 			private:
 				/**
-				 * @brief Метод обновления статуса таймера
+				 * @brief Метод обновления состояния таймера
 				 *
 				 * @param eid    идентификатор таймера
 				 * @param status новый статус таймера
 				 */
-				void status(const event::id_t eid, const event::status_t status) noexcept;
+				void state(const event::id_t eid, const event::status_t status) noexcept;
 			public:
 				/**
 				 * @brief Метод очистки всех таймеров
@@ -102,4 +102,4 @@ namespace awh {
 	};
 };
 
-#endif // __AWH_TIMER__
+#endif // __AWH_UNIT_TIMER__
