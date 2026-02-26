@@ -2,33 +2,48 @@
 set -e
 
 # Аргументы
-FRAMEWORK_NAME="$1"      # awh
-BUILD_DIR="$2"           # build dir
-INSTALL_DIR="$3"         # build/dist
-SOURCE_INCLUDE_DIR="$4"  # include dir
+FRAMEWORK_NAME="$1"
+BUILD_DIR="$2"
+INSTALL_DIR="$3"
+SOURCE_INCLUDE_DIR="$4"
+LIB_FILES_INPUT="$5"  # Новый аргумент: список путей к .a файлам через пробел
 
-# Пути
 FRAMEWORK_PATH="${INSTALL_DIR}/${FRAMEWORK_NAME}.framework"
 VERSIONS_A_PATH="${FRAMEWORK_PATH}/Versions/A"
 
 echo "🔨 Building Framework: ${FRAMEWORK_NAME}"
 
-# 1. Полная очистка
+# 1. Очистка
 rm -rf "${FRAMEWORK_PATH}"
 mkdir -p "${VERSIONS_A_PATH}/Headers"
 mkdir -p "${VERSIONS_A_PATH}/Modules"
 mkdir -p "${VERSIONS_A_PATH}/Resources"
 
-# 2. Копирование библиотеки
-# Ищем .a файл (статическая библиотека)
-LIB_FILE=$(find "${BUILD_DIR}" -name "lib${FRAMEWORK_NAME}.a" -type f | head -n 1)
-if [ -z "$LIB_FILE" ]; then
-    echo "❌ Error: Library lib${FRAMEWORK_NAME}.a not found in ${BUILD_DIR}"
+# 2. Объединение библиотек
+COMBINED_LIB="${VERSIONS_A_PATH}/${FRAMEWORK_NAME}"
+
+if [ -z "$LIB_FILES_INPUT" ]; then
+    echo "❌ Error: No library files provided"
     exit 1
 fi
-cp "${LIB_FILE}" "${VERSIONS_A_PATH}/${FRAMEWORK_NAME}"
 
-# 3. Копирование заголовков
+# Преобразуем строку аргументов в массив
+read -ra LIB_ARRAY <<< "$LIB_FILES_INPUT"
+
+echo "📦 Merging ${#LIB_ARRAY[@]} libraries..."
+for lib in "${LIB_ARRAY[@]}"; do
+    if [ ! -f "$lib" ]; then
+        echo "❌ Error: Library not found: $lib"
+        exit 1
+    fi
+    echo "   - $lib"
+done
+
+# Используем libtool для объединения (стандарт для macOS)
+# Это корректно склеивает несколько .a в один бинарник
+libtool -static -o "${COMBINED_LIB}" ${LIB_ARRAY[@]}
+
+# 3. Заголовки
 if [ -d "${SOURCE_INCLUDE_DIR}" ]; then
     cp -R "${SOURCE_INCLUDE_DIR}/"* "${VERSIONS_A_PATH}/Headers/"
 fi
@@ -60,13 +75,11 @@ framework module ${FRAMEWORK_NAME} {
 }
 EOF
 
-# 6. Создание символических ссылок (Критично для macOS)
-# Ссылка Current -> A внутри папки Versions
+# 6. Символические ссылки
 cd "${FRAMEWORK_PATH}/Versions"
 ln -sf A Current
 cd - > /dev/null
 
-# Ссылки в корне фреймворка -> Versions/Current/...
 cd "${FRAMEWORK_PATH}"
 ln -sf Versions/Current/Headers Headers
 ln -sf Versions/Current/Modules Modules
@@ -74,8 +87,7 @@ ln -sf Versions/Current/Resources Resources
 ln -sf Versions/Current/${FRAMEWORK_NAME} ${FRAMEWORK_NAME}
 cd - > /dev/null
 
-# 7. Подпись кода (Ad-hoc)
-# --deep подписывает вложенные структуры, --force перезаписывает
+# 7. Подпись
 codesign --force --deep --sign - "${FRAMEWORK_PATH}"
 
 echo "✅ Framework built: ${FRAMEWORK_PATH}"
