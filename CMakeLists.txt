@@ -3325,3 +3325,33 @@ VERBATIM)
 
 # Устанавливаем сгенерированный CMAKE-файл
 install(FILES "${CMAKE_SOURCE_DIR}/third_party/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+
+# =============================================================================
+# === MACOS X FRAMEWORK TARGET (Аналогично make doc) ============================
+# =============================================================================
+if (APPLE AND NOT IOS)
+    # Создаем кастомную цель 'framework'
+    add_custom_target(framework
+        COMMAND ${CMAKE_COMMAND} -E echo "Building MacOS X Framework..."
+        # Запускаем наш скрипт сборки
+        COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_framework.sh" 
+            "${AWH_LIB_NAME}"                  # Имя библиотеки (awh)
+            "${CMAKE_BINARY_DIR}"              # Куда собралась .a библиотека
+            "${CMAKE_BINARY_DIR}/dist"         # Куда положить готовый .framework
+            "${CMAKE_SOURCE_DIR}/include"      # Откуда брать заголовки
+        # Зависимость: сначала должна собраться основная библиотека
+        DEPENDS ${AWH_LIB_NAME}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Packaging ${AWH_LIB_NAME} into MacOS X Framework"
+        VERBATIM
+    )
+
+    # Выводим сообщение об удачной сборке framework
+    message(STATUS "Target 'framework' added for MacOS X build")
+
+    # Устанавливаем сгенерированную версию framework
+    install(DIRECTORY "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+        USE_SOURCE_PERMISSIONS
+    )
+endif()
