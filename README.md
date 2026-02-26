@@ -111,6 +111,19 @@ $ make doc
 ```
 > Result in ./docs/html/index.html
 
+### Build MacOS X framework
+
+```bash
+$ cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+$ cd build && cmake --build . --target framework
+
+# Or
+
+$ cd build && make framework
+```
+> Result in ./build/dist/awh.framework
+
 ### Build on MacOS X, Linux, FreeBSD or Solaris without Unit-tests
 
 ```bash

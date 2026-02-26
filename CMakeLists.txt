@@ -3028,10 +3028,10 @@ if (NOT CMAKE_SHARED_BUILD_LIB)
             COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
         VERBATIM)
     # Если режим отладки активирован
-    else()
+    else(NOT CMAKE_BUILD_TYPE MATCHES Debug)
         # Выполняем установку библиотеки зависимостей
         install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-    endif()
+    endif(NOT CMAKE_BUILD_TYPE MATCHES Debug)
 endif()
 
 # Если необходимо собрать тесты
@@ -3330,25 +3330,28 @@ install(FILES "${CMAKE_SOURCE_DIR}/third_party/cmake/FindAWH.cmake" DESTINATION 
 # === MACOS X FRAMEWORK TARGET ==================================================
 # =============================================================================
 if (APPLE AND NOT IOS)
-    set(FRAMEWORK_OUTPUT_PATH "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework")
+    SET(FRAMEWORK_OUTPUT_PATH "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework")
 
     # 1. Формируем список библиотек для объединения
     # Основная библиотека awh
-    set(ALL_LIBS "$<TARGET_FILE:${AWH_LIB_NAME}>")
+    SET(ALL_LIBS "$<TARGET_FILE:${AWH_LIB_NAME}>")
     
-    # Добавляем библиотеку зависимостей, если она найдена
-    if(DEFINED DEPEND_LIBRARY AND EXISTS "${DEPEND_LIBRARY}")
-        list(APPEND ALL_LIBS "${DEPEND_LIBRARY}")
-        message(STATUS "Framework will include: ${AWH_LIB_NAME} + Dependence")
-    else()
-        message(WARNING "DEPEND_LIBRARY not found, framework will include only ${AWH_LIB_NAME}")
+    # Если режим отладки активирован
+    if (CMAKE_BUILD_TYPE MATCHES Debug)
+        # Добавляем библиотеку зависимостей, если она найдена
+        if(DEFINED DEPEND_LIBRARY AND EXISTS "${DEPEND_LIBRARY}")
+            list(APPEND ALL_LIBS "${DEPEND_LIBRARY}")
+            message(STATUS "Framework will include: ${AWH_LIB_NAME} + Dependence")
+        else()
+            message(WARNING "DEPEND_LIBRARY not found, framework will include only ${AWH_LIB_NAME}")
+        endif()
     endif()
 
     # 2. Преобразуем список CMake в строку для Bash (разделитель - пробел)
     string(REPLACE ";" " " ALL_LIBS_STR "${ALL_LIBS}")
 
     # 3. Файлы, которые будут созданы (для отслеживания изменений)
-    set(FRAMEWORK_BYPRODUCTS
+    SET(FRAMEWORK_BYPRODUCTS
         "${FRAMEWORK_OUTPUT_PATH}/Headers"
         "${FRAMEWORK_OUTPUT_PATH}/Modules"
         "${FRAMEWORK_OUTPUT_PATH}/Resources"
