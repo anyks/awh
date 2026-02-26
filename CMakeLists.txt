@@ -3330,19 +3330,25 @@ install(FILES "${CMAKE_SOURCE_DIR}/third_party/cmake/FindAWH.cmake" DESTINATION 
 # === MACOS X FRAMEWORK TARGET ==================================================
 # =============================================================================
 if (APPLE AND NOT IOS)
-    SET(FRAMEWORK_OUTPUT_PATH "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework")
+    set(FRAMEWORK_OUTPUT_PATH "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework")
 
-    # 1. Собираем список всех библиотек для объединения
-    # Основная библиотека + зависимости
-    SET(ALL_LIBS "$<TARGET_FILE:${AWH_LIB_NAME}>")
+    # 1. Формируем список библиотек для объединения
+    # Основная библиотека awh
+    set(ALL_LIBS "$<TARGET_FILE:${AWH_LIB_NAME}>")
+    
+    # Добавляем библиотеку зависимостей, если она найдена
     if(DEFINED DEPEND_LIBRARY AND EXISTS "${DEPEND_LIBRARY}")
         list(APPEND ALL_LIBS "${DEPEND_LIBRARY}")
+        message(STATUS "Framework will include: ${AWH_LIB_NAME} + Dependence")
+    else()
+        message(WARNING "DEPEND_LIBRARY not found, framework will include only ${AWH_LIB_NAME}")
     endif()
-    
-    # 2. Преобразуем список в строку для передачи в bash
+
+    # 2. Преобразуем список CMake в строку для Bash (разделитель - пробел)
     string(REPLACE ";" " " ALL_LIBS_STR "${ALL_LIBS}")
 
-    SET(FRAMEWORK_BYPRODUCTS
+    # 3. Файлы, которые будут созданы (для отслеживания изменений)
+    set(FRAMEWORK_BYPRODUCTS
         "${FRAMEWORK_OUTPUT_PATH}/Headers"
         "${FRAMEWORK_OUTPUT_PATH}/Modules"
         "${FRAMEWORK_OUTPUT_PATH}/Resources"
@@ -3350,23 +3356,24 @@ if (APPLE AND NOT IOS)
         "${FRAMEWORK_OUTPUT_PATH}/Versions/Current"
     )
 
+    # 4. Создаем цель 'framework'
     add_custom_target(framework
-        COMMAND ${CMAKE_COMMAND} -E echo "Building MacOS X Framework..."
+        COMMAND ${CMAKE_COMMAND} -E echo "📦 Building MacOS X Framework..."
         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_framework.sh" 
-            "${AWH_LIB_NAME}"          # Arg 1: Имя фреймворка
-            "${CMAKE_BINARY_DIR}"      # Arg 2: Build dir
-            "${CMAKE_BINARY_DIR}/dist" # Arg 3: Install dir
+            "${AWH_LIB_NAME}"             # Arg 1: Имя фреймворка
+            "${CMAKE_BINARY_DIR}"         # Arg 2: Build dir
+            "${CMAKE_BINARY_DIR}/dist"    # Arg 3: Install dir
             "${CMAKE_SOURCE_DIR}/include" # Arg 4: Include dir
-            "${ALL_LIBS_STR}"          # Arg 5: Список .a библиотек через пробел
+            "${ALL_LIBS_STR}"             # Arg 5: Список .a библиотек через пробел
         BYPRODUCTS ${FRAMEWORK_BYPRODUCTS}
         DEPENDS ${AWH_LIB_NAME}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Packaging ${AWH_LIB_NAME} into MacOS X Framework with dependencies"
+        COMMENT "Packaging ${AWH_LIB_NAME} into MacOS X Framework"
         VERBATIM
     )
 
     # Выводим сообщение об удачной сборке framework
-    message(STATUS "Target 'framework' added for MacOS X build")
+    message(STATUS "✅ Target 'framework' added for MacOS X build")
 
     # Устанавливаем сгенерированную версию framework
     install(DIRECTORY "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework"

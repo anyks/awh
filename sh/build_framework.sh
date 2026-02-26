@@ -6,7 +6,7 @@ FRAMEWORK_NAME="$1"
 BUILD_DIR="$2"
 INSTALL_DIR="$3"
 SOURCE_INCLUDE_DIR="$4"
-LIB_FILES_INPUT="$5"  # Новый аргумент: список путей к .a файлам через пробел
+LIB_FILES_INPUT="$5"  # Список путей к .a файлам через пробел
 
 FRAMEWORK_PATH="${INSTALL_DIR}/${FRAMEWORK_NAME}.framework"
 VERSIONS_A_PATH="${FRAMEWORK_PATH}/Versions/A"
@@ -27,7 +27,7 @@ if [ -z "$LIB_FILES_INPUT" ]; then
     exit 1
 fi
 
-# Преобразуем строку аргументов в массив
+# Преобразуем строку в массив
 read -ra LIB_ARRAY <<< "$LIB_FILES_INPUT"
 
 echo "📦 Merging ${#LIB_ARRAY[@]} libraries..."
@@ -40,7 +40,6 @@ for lib in "${LIB_ARRAY[@]}"; do
 done
 
 # Используем libtool для объединения (стандарт для macOS)
-# Это корректно склеивает несколько .a в один бинарник
 libtool -static -o "${COMBINED_LIB}" ${LIB_ARRAY[@]}
 
 # 3. Заголовки
