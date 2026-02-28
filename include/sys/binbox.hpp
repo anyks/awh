@@ -142,6 +142,9 @@ namespace awh {
 					explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept;
 			} iterator_t;
 		private:
+			// Название контейнера
+			string _name;
+		private:
 			// Объект работы с файловой системой
 			shared_ptr <fs_t> _fs;
 			// Объект работы с криптографией
@@ -176,6 +179,19 @@ namespace awh {
 			 * @return количество записей в контейнере
 			 */
 			size_t count() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения названия контейнера
+			 *
+			 * @return название контейнера
+			 */
+			string getName() const noexcept;
+			/**
+			 * @brief Метод установки названия контейнера
+			 *
+			 * @param name название контейнера
+			 */
+			void setName(string_view name) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления записи по ключу
