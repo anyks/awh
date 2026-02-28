@@ -21,6 +21,7 @@
 /**
  * Стандартные модули
  */
+#include <mutex>
 #include <queue>
 #include <chrono>
 #include <thread>

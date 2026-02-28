@@ -49,14 +49,6 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Crypto {
 		public:
 			/**
-			 * @brief Режимы событий
-			 *
-			 */
-			enum class mode_t : uint8_t {
-				ENABLED  = 0x00, // Режим включён
-				DISABLED = 0x01  // Режим отключён
-			};
-			/**
 			 * @brief События выполнения операции
 			 *
 			 */
@@ -127,6 +119,13 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 */
+			void threadSafety(const bool mode) noexcept;
+		public:
+			/**
 			 * @brief Метод установки количества раундов шифрования
 			 *
 			 * @param round количество раундов шифрования
@@ -147,13 +146,6 @@ namespace awh {
 			void password(const string & password) noexcept;
 		public:
 			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode режим безопасности потоков
-			 */
-			void threadSafety(const mode_t mode) noexcept;
-		public:
-			/**
 			 * @brief Метод преобразования 128-битного хэша в 64-битный
 			 *
 			 * @param hash 128-битный хэш
@@ -161,6 +153,19 @@ namespace awh {
 			 */
 			uint64_t hash128to64(const uint128_t & hash) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода хэширования текста
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста
+			 *
+			 * @param text текст для хэширования
+			 * @return     результат хэширования
+			 */
+			auto hash(string_view text) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода хэширования текста
 			 *
@@ -193,6 +198,20 @@ namespace awh {
 			/**
 			 * @brief Шаблон метода хэширования текста c ключом
 			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста c ключом
+			 *
+			 * @param text текст для хэширования
+			 * @param seed ключ для хэширования
+			 * @return     результат хэширования
+			 */
+			auto hashWithSeed(string_view text, const T seed) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста c ключом
+			 *
 			 * @tparam A тип возвращаемого результата
 			 * @tparam B тип буфера данных
 			 */
@@ -221,6 +240,21 @@ namespace awh {
 			 */
 			auto hashWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T;
 		public:
+			/**
+			 * @brief Шаблон метода хэширования текста c несколькими ключами
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста c несколькими ключами
+			 *
+			 * @param text  текст для хэширования
+			 * @param seed1 первый ключ для хэширования
+			 * @param seed2 второй ключ для хэширования
+			 * @return      результат хэширования
+			 */
+			auto hashWithSeeds(string_view text, const T seed1, const T seed2) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода хэширования текста c несколькими ключами
 			 *
@@ -257,6 +291,20 @@ namespace awh {
 			/**
 			 * @brief Шаблон метода хэширования текста
 			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста
+			 *
+			 * @param buffer буфер данных для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @return       результат хэширования
+			 */
+			auto hash(string_view buffer, const hash_t hash) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста
+			 *
 			 * @tparam A тип возвращаемого результата
 			 * @tparam B тип буфера данных
 			 */
@@ -270,6 +318,52 @@ namespace awh {
 			 */
 			auto hash(const B & buffer, const hash_t hash) const noexcept -> A;
 		public:
+			/**
+			 * @brief Шаблон метода хэширования текста с ключом
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста с ключом
+			 *
+			 * @param key    ключ для подписи
+			 * @param buffer буфер данных для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @return       результат хэширования
+			 */
+			auto hmac(string_view key, string_view buffer, const hash_t hash) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста с ключом
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод хэширования текста с ключом
+			 *
+			 * @param key    ключ для подписи
+			 * @param buffer буфер данных для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @return       результат хэширования
+			 */
+			auto hmac(const string & key, string_view buffer, const hash_t hash) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода хэширования текста с ключом
+			 *
+			 * @tparam A тип возвращаемого результата
+			 * @tparam B тип буфера данных
+			 */
+			template <typename A, typename B>
+			/**
+			 * @brief Метод хэширования текста с ключом
+			 *
+			 * @param key    ключ для подписи
+			 * @param buffer буфер данных для хэширования
+			 * @param hash   тип хэш-суммы
+			 * @return       результат хэширования
+			 */
+			auto hmac(string_view key, const B & buffer, const hash_t hash) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
 			 *
@@ -313,6 +407,21 @@ namespace awh {
 			/**
 			 * @brief Шаблон метода кодирования
 			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод кодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param hash   тип хэш-суммы
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto encrypt(string_view buffer, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
+			/**
+			 * @brief Шаблон метода кодирования
+			 *
 			 * @tparam A тип возвращаемого результата
 			 * @tparam B тип буфера данных
 			 */
@@ -343,6 +452,21 @@ namespace awh {
 			 */
 			auto encrypt(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
 		public:
+			/**
+			 * @brief Шаблон метода декодирования
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод декодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param hash   тип хэш-суммы
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto decrypt(string_view buffer, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода декодирования
 			 *

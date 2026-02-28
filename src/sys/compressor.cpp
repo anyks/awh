@@ -1312,32 +1312,32 @@ namespace driver {
 						result.insert(result.end(), data.get(), data.get() + output.pos);
 						// Выполняем удаление потока
 						::ZSTD_freeCStream(ctx);
-						/*
-						// Выполняем получение размер результирующего буфера
-						size_t actual = ::ZSTD_compressBound(size);
-						// Если размер выделен
-						if(actual == 0){
-							// Выполняем очистку результата
-							result.clear();
-							// Выходим из функции
-							return;
-						}
-						// Выделяем буфер памяти нужного нам размера
-						result.resize(actual, 0);
-						// Выполняем компрессию буфера данных
-						actual = ::ZSTD_compress(result.data(), actual, buffer, size, level);
-						// Если мы получили ошибку
-						if(::ZSTD_isError(actual)){
-							// Выполняем очистку результата
-							result.clear();
-							// Выводим сообщение об ошибке в лог
-							log->print("Zstandard: %s", awh::log_t::flag_t::WARNING, ::ZSTD_getErrorName(actual));
-							// Выходим из функции
-							return;
-						}
-						// Корректируем размер результирующего буфера
-						result.resize(actual);
-						*/
+						/**
+							// Выполняем получение размер результирующего буфера
+							size_t actual = ::ZSTD_compressBound(size);
+							// Если размер выделен
+							if(actual == 0){
+								// Выполняем очистку результата
+								result.clear();
+								// Выходим из функции
+								return;
+							}
+							// Выделяем буфер памяти нужного нам размера
+							result.resize(actual, 0);
+							// Выполняем компрессию буфера данных
+							actual = ::ZSTD_compress(result.data(), actual, buffer, size, level);
+							// Если мы получили ошибку
+							if(::ZSTD_isError(actual)){
+								// Выполняем очистку результата
+								result.clear();
+								// Выводим сообщение об ошибке в лог
+								log->print("Zstandard: %s", awh::log_t::flag_t::WARNING, ::ZSTD_getErrorName(actual));
+								// Выходим из функции
+								return;
+							}
+							// Корректируем размер результирующего буфера
+							result.resize(actual);
+						 */
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (awh::compressor_t::event_t::DECODE): {
@@ -1441,29 +1441,29 @@ namespace driver {
 						}
 						// Выполняем удаление потока
 						::ZSTD_freeDStream(ctx);
-						/*
-						// Получаем размер будущего фрейма (определяем размер контента)
-						size_t actual = ::ZSTD_getFrameContentSize(buffer, size);
-						// Если размер контента не получен или неизвестен
-						if((actual == 0) || (actual == ZSTD_CONTENTSIZE_UNKNOWN) || (actual == ZSTD_CONTENTSIZE_ERROR))
-							// Выполняем перерасчёт итогового размера
-							actual = (size * 5);
-						// Выделяем буфер памяти нужного нам размера
-						result.resize(actual, 0);
-						// Выполняем декомпрессию буфера данных
-						actual = ::ZSTD_decompress(result.data(), actual, buffer, size);
-						// Если мы получили ошибку
-						if(::ZSTD_isError(actual)){
-							// Выполняем очистку результата
-							result.clear();
-							// Выводим сообщение об ошибке в лог
-							log->print("Zstandard: %s", awh::log_t::flag_t::WARNING, ::ZSTD_getErrorName(actual));
-							// Выходим из функции
-							return;
-						}
-						// Корректируем размер результирующего буфера
-						result.resize(actual);
-						*/
+						/**
+							// Получаем размер будущего фрейма (определяем размер контента)
+							size_t actual = ::ZSTD_getFrameContentSize(buffer, size);
+							// Если размер контента не получен или неизвестен
+							if((actual == 0) || (actual == ZSTD_CONTENTSIZE_UNKNOWN) || (actual == ZSTD_CONTENTSIZE_ERROR))
+								// Выполняем перерасчёт итогового размера
+								actual = (size * 5);
+							// Выделяем буфер памяти нужного нам размера
+							result.resize(actual, 0);
+							// Выполняем декомпрессию буфера данных
+							actual = ::ZSTD_decompress(result.data(), actual, buffer, size);
+							// Если мы получили ошибку
+							if(::ZSTD_isError(actual)){
+								// Выполняем очистку результата
+								result.clear();
+								// Выводим сообщение об ошибке в лог
+								log->print("Zstandard: %s", awh::log_t::flag_t::WARNING, ::ZSTD_getErrorName(actual));
+								// Выходим из функции
+								return;
+							}
+							// Корректируем размер результирующего буфера
+							result.resize(actual);
+						 */
 					} break;
 				}
 			/**
@@ -2038,11 +2038,11 @@ void awh::Compressor::level(const level_t level) noexcept {
 /**
  * @brief Метод установки безопасности работы потоков
  *
- * @param mode режим безопасности потоков
+ * @param mode флаг режима безопасности потоков
  */
-void awh::Compressor::threadSafety(const mode_t mode) noexcept {
+void awh::Compressor::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
-	this->_mtx.enabled = (mode == mode_t::ENABLED);
+	this->_mtx.enabled = mode;
 }
 /**
  * @brief Метод установки размера скользящего окна
@@ -2193,6 +2193,44 @@ bool awh::Compressor::takeoverGZip(const event_t event, const bool flag) noexcep
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Шаблон метода компрессии данных
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод компрессии данных
+ *
+ * @param buffer буфер данных для компрессии
+ * @param method метод компрессии
+ * @return       результат компрессии
+ */
+auto awh::Compressor::compress(string_view buffer, const method_t method) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if(!buffer.empty())
+		// Выполняем кодирование
+		this->compress(buffer.data(), buffer.size(), method, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода компрессии данных из строки с выводом результата в строку
+ *
+ */
+template string awh::Compressor::compress(string_view, const method_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода компрессии данных из строки с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Compressor::compress(string_view, const method_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода компрессии данных из строки с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Compressor::compress(string_view, const method_t) const noexcept;
 /**
  * @brief Шаблон метода компрессии данных
  *
@@ -2557,6 +2595,44 @@ template void awh::Compressor::compress(const void *, const size_t, const method
  *
  */
 template void awh::Compressor::compress(const void *, const size_t, const method_t, vector <uint8_t> &) const noexcept;
+/**
+ * @brief Шаблон метода декомпрессии данных
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод декомпрессии данных
+ *
+ * @param buffer буфер данных для декомпрессии
+ * @param method метод компрессии
+ * @return       результат декомпрессии
+ */
+auto awh::Compressor::decompress(string_view buffer, const method_t method) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if(!buffer.empty())
+		// Выполняем декомпрессию
+		this->decompress(buffer.data(), buffer.size(), method, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в строку
+ *
+ */
+template string awh::Compressor::decompress(string_view, const method_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в буфер
+ *
+ */
+template vector <char> awh::Compressor::decompress(string_view, const method_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в бинарный буфер
+ *
+ */
+template vector <uint8_t> awh::Compressor::decompress(string_view, const method_t) const noexcept;
 /**
  * @brief Шаблон метода декомпрессии данных
  *

@@ -21,7 +21,6 @@
 /**
  * Стандартные модули
  */
-#include <any>
 #include <map>
 #include <mutex>
 #include <string>
@@ -85,40 +84,7 @@ namespace awh {
 			 * @brief Класс регулярного выражения
 			 *
 			 */
-			class __AWH_SHARED_EXPORT__ Expression {
-				private:
-					// Флаг инициализации
-					bool _mode;
-				public:
-					// Объект контекста регулярного выражения
-					std::any reg;
-				public:
-					/**
-					 * @brief Оператор проверки на инициализацию регулярного выражения
-					 *
-					 * @return результат проверки
-					 */
-					operator bool() const noexcept;
-				public:
-					/**
-					 * @brief Оператор установки флага инициализации
-					 *
-					 * @param mode флаг инициализации для установки
-					 * @return     текущий объект регулярного выражения
-					 */
-					Expression & operator = (const bool mode) noexcept;
-				public:
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Expression() noexcept;
-					/**
-					 * @brief Деструктор
-					 *
-					 */
-					~Expression() noexcept;
-			};
+			class __AWH_SHARED_EXPORT__ Expression;
 		public:
 			/**
 			 * Создаём новый тип данных регулярного выражения
@@ -147,6 +113,13 @@ namespace awh {
 			 * @return текст ошибки регулярного выражения
 			 */
 			const string & error() const noexcept;
+		public:
+			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 */
+			void threadSafety(const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки регулярного выражения

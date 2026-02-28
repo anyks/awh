@@ -48,14 +48,6 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Compressor {
 		public:
 			/**
-			 * @brief Режимы событий
-			 *
-			 */
-			enum class mode_t : uint8_t {
-				ENABLED  = 0x00, // Режим включён
-				DISABLED = 0x01  // Режим отключён
-			};
-			/**
 			 * @brief События выполнения операции
 			 *
 			 */
@@ -158,9 +150,9 @@ namespace awh {
 			/**
 			 * @brief Метод установки безопасности работы потоков
 			 *
-			 * @param mode режим безопасности потоков
+			 * @param mode флаг режима безопасности потоков
 			 */
-			void threadSafety(const mode_t mode) noexcept;
+			void threadSafety(const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод установки размера скользящего окна
@@ -178,6 +170,20 @@ namespace awh {
 			 */
 			bool takeoverGZip(const event_t event, const bool flag) noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода компрессии данных
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод компрессии данных
+			 *
+			 * @param buffer буфер данных для компрессии
+			 * @param method метод компрессии
+			 * @return       результат компрессии
+			 */
+			auto compress(string_view buffer, const method_t method) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода компрессии данных
 			 *
@@ -225,6 +231,20 @@ namespace awh {
 			 */
 			void compress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода декомпрессии данных
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод декомпрессии данных
+			 *
+			 * @param buffer буфер данных для декомпрессии
+			 * @param method метод компрессии
+			 * @return       результат декомпрессии
+			 */
+			auto decompress(string_view buffer, const method_t method) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода декомпрессии данных
 			 *

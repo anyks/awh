@@ -111,7 +111,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии HASH HMAC SHA256
 	cout << " ======== HASH HMAC SHA256 ======== " << endl;
 	// Выполняем кодирование текста
-	encoded = crypto.hmac <string> ("test", data, crypto_t::hash_t::SHA256);
+	encoded = crypto.hmac <string> (string_view{"test"}, data, crypto_t::hash_t::SHA256);
 	// Выводим результат хэширования
 	cout << "Encoded data SHA256: " << encoded << ", SIZE=" << encoded.size() << endl;
 	// Выводим пустую строку
@@ -119,7 +119,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим заголовок компрессии HASH HMAC MD5
 	cout << " ======== HASH HMAC MD5 ======== " << endl;
 	// Выполняем кодирование текста
-	encoded = crypto.hmac <string> ("test", data, crypto_t::hash_t::MD5);
+	encoded = crypto.hmac <string> (string_view{"test"}, data, crypto_t::hash_t::MD5);
 	// Выводим результат хэширования
 	cout << "Encoded data MD5: " << encoded << ", SIZE=" << encoded.size() << endl;
 	// Выводим пустую строку

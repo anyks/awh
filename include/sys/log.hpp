@@ -205,7 +205,7 @@ namespace awh {
 			mutable std::unordered_set <pid_t> _initialized;
 		private:
 			// Мютекс для блокировки потока
-			mutable lock_state_t <std::recursive_mutex> _mtx;
+			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;
@@ -570,6 +570,12 @@ namespace awh {
 			 * @param level уровень логирования для установки
 			 */
 			void level(const level_t level) noexcept;
+			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 */
+			void threadSafety(const bool mode) noexcept;
 			/**
 			 * @brief Метод установки разделителя сообщений логирования
 			 *

@@ -283,7 +283,7 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 		// Проверяем является ли это переводом строки
 		isEnd = ((payload.text.compare(AWH_STRING_BREAK) == 0) || (payload.text.compare(AWH_STRING_BREAK) == 0));
 	// Выполняем блокировку потока
-	const locker_t <recursive_mutex> lock(this->_mtx);
+	const locker_t <> lock(this->_mtx);
 	// Если функция подписки на логи установлена, выводим результат
 	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
 		// Выводим сообщение лога всем подписавшимся
@@ -508,7 +508,7 @@ void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept
 				// Если отправка сообщения в SysLog разрешёна
 				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
 					// Выполняем блокировку потока
-					const locker_t <recursive_mutex> lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Создаём список аргументов
 					va_list args;
 					// Запускаем инициализацию списка аргументов
@@ -659,7 +659,7 @@ void awh::Logging::print(const wstring & format, flag_t flag, ...) const noexcep
 				// Если отправка сообщения в SysLog разрешёна
 				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
 					// Выполняем блокировку потока
-					const locker_t <recursive_mutex> lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Создаём список аргументов
 					va_list args;
 					// Запускаем инициализацию списка аргументов
@@ -811,7 +811,7 @@ void awh::Logging::print(const string & format, flag_t flag, const vector <strin
 				// Если отправка сообщения в SysLog разрешёна
 				if((this->_mode.find(mode_t::SYSLOG) != this->_mode.end())){
 					// Выполняем блокировку потока
-					const locker_t <recursive_mutex> lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Открываем Syslog для нашего приложения
 					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
 					/**
@@ -908,7 +908,7 @@ void awh::Logging::print(const wstring & format, flag_t flag, const vector <wstr
 				// Если отправка сообщения в SysLog разрешёна
 				if(this->_mode.find(mode_t::SYSLOG) != this->_mode.end()){
 					// Выполняем блокировку потока
-					const locker_t <recursive_mutex> lock(this->_mtx);
+					const locker_t <> lock(this->_mtx);
 					// Открываем Syslog для нашего приложения
 					::openlog(!this->_name.empty() ? this->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
 					/**
@@ -1062,6 +1062,15 @@ void awh::Logging::level(const level_t level) noexcept {
 	this->_level = level;
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::Logging::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	this->_mtx.enabled = mode;
+}
+/**
  * @brief Метод установки разделителя сообщений логирования
  *
  * @param sep разделитель для установки
@@ -1101,6 +1110,8 @@ awh::Logging::Logging(const fmk_t * fmk, const string & filename) noexcept :
  _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = ::getpid();
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
 	// Выполняем разрешение на вывод всех видов логов
 	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::DEFERRED};
 }

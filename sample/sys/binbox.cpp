@@ -1,0 +1,96 @@
+/**
+ * @file: binbox.cpp
+ * @date: 2026-02-28
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Стандартные модули
+ */
+#include <iostream>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/binbox.hpp>
+
+/**
+ * Подписываемся на пространство имён AWH
+ */
+using namespace awh;
+
+/**
+ * @brief Главная функция приложения
+ *
+ * @param argc длина массива параметров
+ * @param argv массив параметров
+ * @return     код выхода из приложения
+ */
+int32_t main(int32_t argc, char * argv[]){
+	// Создаём объект фреймворка
+	fmk_t fmk;
+	// Создаём объект для работы с логами
+	log_t log(&fmk);
+	// Создаём объект для работы с бинарным контейнером
+	binbox_t binbox(&fmk, &log);
+	// Добавляем строковый тип данных в контейнер
+	binbox.add("Text", string{"Hello World!!!"});
+	// Добавляем бинарные данные в контейнер
+	binbox.add("Buffer", "Hello World!!!", 14);
+	// Добавляем простые типы данных в контейнер
+	binbox.add("Int", 123456789);
+	binbox.add("Float", 3.1415926f);
+	binbox.add("Double", 3.14159265358979323846);
+	binbox.add("Boolean", true);
+	// Проверяем все записи в контейнере
+	for(auto & record : binbox){
+		// Выводим размер данных
+		cout << "Size: " << record.size << endl;
+		// Если это текстовые данные
+		if(record.size == 14)
+			// Выводим данные в виде строки
+			cout << "Data: " << string(reinterpret_cast <const char *> (record.buffer.get()), record.size) << endl;
+	}
+	// Выводим разделитель
+	cout << "-----------------------------" << endl;
+	// Сохраняем контейнер в файл
+	binbox.save("binbox.dat");
+	// Загружаем контейнер из файла
+	binbox.load("binbox.dat");
+	// Проверяем все записи в контейнере
+	for(auto & record : binbox){
+		// Выводим размер данных
+		cout << "Size: " << record.size << endl;
+		// Если это текстовые данные
+		if(record.size == 14)
+			// Выводим данные в виде строки
+			cout << "Data: " << string(reinterpret_cast <const char *> (record.buffer.get()), record.size) << endl;
+	}
+	// Выводим разделитель
+	cout << "-----------------------------" << endl;
+	// Размер буфера данных
+	size_t size = 0;
+	// Буфер для извлечения бинарных данных
+	uint8_t * buffer = nullptr;
+	// Извлекаем бинарные данные из контейнера
+	binbox.get("Buffer", &buffer, &size);
+	// Выводим буфер данных в виде строки
+	cout << " Buffer: " << string(reinterpret_cast <const char *> (buffer), size) << endl;
+	// Выводим текст из контейнера
+	cout << " Text: " << binbox.get <string>("Text") << endl;
+	// Выводим простые типы данных из контейнера
+	cout << " Int: " << binbox.get <int> ("Int") << endl;
+	cout << " Float: " << binbox.get <float> ("Float") << endl;
+	cout << " Double: " << binbox.get <double> ("Double") << endl;
+	cout << " Boolean: " << binbox.get <bool> ("Boolean") << endl;
+	// Выводим результат
+	return EXIT_SUCCESS;
+}

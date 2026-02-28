@@ -330,9 +330,9 @@ namespace awh {
 			 * @brief Метод установки безопасности работы потоков
 			 *
 			 * @param id   идентификатор события
-			 * @param mode режим безопасности потоков
+			 * @param mode флаг режима безопасности потоков
 			 */
-			void threadSafety(const id_t id, const event::mode_t mode) noexcept;
+			void threadSafety(const id_t id, const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод установки алгоритмов шифрования

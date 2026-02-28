@@ -146,6 +146,17 @@ namespace awh {
 					 */
 					explicit Iterator(T * ptr) noexcept : _ptr(ptr) {}
 			};
+			/**
+			 * @brief Шаблон типа данных итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Создаём тип данных итератора
+			 *
+			 */
+			using iterator_t = Iterator <T>;
 		private:
 			// Объект диапазонов записей
 			range_t _range;
@@ -220,7 +231,7 @@ namespace awh {
 			 *
 			 * @return конечный итератор
 			 */
-			Iterator <T> end() noexcept;
+			iterator_t <T> end() noexcept;
 			/**
 			 * @brief Шаблон для метода получение начального итератора
 			 *
@@ -232,7 +243,7 @@ namespace awh {
 			 *
 			 * @return начальный итератор
 			 */
-			Iterator <T> begin() noexcept;
+			iterator_t <T> begin() noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода удаления верхних записей

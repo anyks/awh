@@ -467,6 +467,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/procre.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/binbox.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
@@ -582,6 +583,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
     option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
+
+    # Устанавливаем имя приложения работы с бинарным контейнером
+    SET(BINBOX_APP_SYS_NAME sys-binbox)
+    # Указываем что нужно собрать приложение работы с бинарным контейнером
+    option(CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE "Build BinBox app sample" ON)
 
     # Устанавливаем имя приложения работы с файловой системой
     SET(FILESYSTEM_APP_SYS_NAME sys-filesystem)
@@ -874,6 +880,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample DATE: No\n")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с бинарным контейнером
+    if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample BinBox: Yes\n")
+        # Выполняем создание приложения работы с бинарным контейнером
+        add_sample(${BINBOX_APP_SYS_NAME} sample/sys/binbox.cpp sys)
+    # Если не нужно собирать семплы для работы с бинарным контейнером
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample BinBox: No\n")
+    endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с файловой системой
     if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -1308,6 +1326,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с бинарным контейнером
+        if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с бинарным контейнером
+            target_link_libraries(
+                ${BINBOX_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с файловой системой
         if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -1852,6 +1881,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с бинарным контейнером
+        if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с бинарным контейнером
+            target_link_libraries(
+                ${BINBOX_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с файловой системой
         if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -2440,6 +2481,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с бинарным контейнером
+            if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения работы с бинарным контейнером
+                add_custom_command(TARGET "${BINBOX_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${BINBOX_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${BINBOX_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с файловой системой
             if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения файловой системы
@@ -2816,6 +2867,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${DATE_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с бинарным контейнером
+            if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения работы с бинарным контейнером
+                pvs_studio_add_target(TARGET ${BINBOX_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${BINBOX_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с файловой системой
             if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения файловой системы
@@ -3124,6 +3181,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с датой и временем
         install(TARGETS ${DATE_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с бинарным контейнером
+    if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с бинарным контейнером
+        install(TARGETS ${BINBOX_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с файловой системой
     if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})

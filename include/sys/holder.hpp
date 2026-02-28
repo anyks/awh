@@ -48,15 +48,6 @@ namespace awh {
 	 *
 	 */
 	class Holder {
-		public:
-			/**
-			 * @brief Режимы событий
-			 *
-			 */
-			enum class mode_t : uint8_t {
-				ENABLED  = 0x00, // Режим включён
-				DISABLED = 0x01  // Режим отключён
-			};
 		private:
 			// Флаг холдирования
 			std::atomic_bool _flag;
@@ -70,11 +61,11 @@ namespace awh {
 			/**
 			 * @brief Метод установки безопасности работы потоков
 			 *
-			 * @param mode режим безопасности потоков
+			 * @param mode флаг режима безопасности потоков
 			 */
-			void threadSafety(const mode_t mode) noexcept {
+			void threadSafety(const bool mode) noexcept {
 				// Устанавливаем режим безопасности потоков
-				this->_mtx.enabled = (mode == mode_t::ENABLED);
+				this->_mtx.enabled = mode;
 			}
 		public:
 			/**

@@ -52,14 +52,6 @@ namespace awh {
 	class Callback {
 		public:
 			/**
-			 * @brief Режимы событий
-			 *
-			 */
-			enum class mode_t : uint8_t {
-				ENABLED  = 0x00, // Режим включён
-				DISABLED = 0x01  // Режим отключён
-			};
-			/**
 			 * @brief Основные события для функций обратного вызова
 			 *
 			 */
@@ -186,8 +178,8 @@ namespace awh {
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 							/**
-							* Если режим отладки не включён
-							*/
+							 * Если режим отладки не включён
+							 */
 							#else
 								// Выводим сообщение об ошибке
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -256,7 +248,7 @@ namespace awh {
 			 * @param name название функции для генерации идентификатора
 			 * @return     сгенерированный идентификатор функции
 			 */
-			id_t id(const string & name) const noexcept {
+			id_t id(string_view name) const noexcept {
 				// Результат работы функции
 				id_t result = 0;
 				/**
@@ -264,7 +256,7 @@ namespace awh {
 				 */
 				try {
 					// Если название функции передано
-					if(!name.empty()){
+					if(!std::empty(name)){
 						// Если размер имени умещается в 4 байт
 						if(name.size() <= 4)
 							// Выполняем копирование данных имени
@@ -283,8 +275,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -309,11 +301,11 @@ namespace awh {
 			/**
 			 * @brief Метод установки безопасности работы потоков
 			 *
-			 * @param mode режим безопасности потоков
+			 * @param mode флаг режима безопасности потоков
 			 */
-			void threadSafety(const mode_t mode) noexcept {
+			void threadSafety(const bool mode) noexcept {
 				// Устанавливаем режим безопасности потоков
-				this->_mtx.enabled = (mode == mode_t::ENABLED);
+				this->_mtx.enabled = mode;
 			}
 		public:
 			/**
@@ -352,8 +344,8 @@ namespace awh {
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 						/**
-						* Если режим отладки не включён
-						*/
+						 * Если режим отладки не включён
+						 */
 						#else
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -386,8 +378,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -424,7 +416,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 */
-			bool is(const string & name) const noexcept {
+			bool is(string_view name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
 				return this->_is(this->id(name));
 			}
@@ -490,8 +482,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -515,7 +507,7 @@ namespace awh {
 			 *
 			 * @param name функция обратного вызова для удаления
 			 */
-			void erase(const string & name) noexcept {
+			void erase(string_view name) noexcept {
 				// Выполняем удаление функции обратного вызова
 				this->_erase(this->id(name));
 			}
@@ -575,8 +567,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -624,8 +616,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -660,8 +652,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -686,7 +678,7 @@ namespace awh {
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
 			 */
-			void swap(const string & name1, const string & name2) noexcept {
+			void swap(string_view name1, string_view name2) noexcept {
 				// Выполняем обмен функциями обратного вызова
 				this->_swap(this->id(name1), this->id(name2));
 			}
@@ -728,7 +720,7 @@ namespace awh {
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
-			void swap(const string & name1, const string & name2, Callback & storage) noexcept {
+			void swap(string_view name1, string_view name2, Callback & storage) noexcept {
 				// Выполняем обмен функциями обратного вызова
 				this->_swap(this->id(name1), this->id(name2), storage);
 			}
@@ -809,8 +801,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -877,8 +869,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -939,8 +931,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -968,9 +960,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const string & name, const Callback & storage) noexcept -> id_t {
+			auto set(string_view name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (!name.empty() ? this->_set(this->id(name), storage) : 0);
+				return (!std::empty(name) ? this->_set(this->id(name), storage) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции из одного хранилища в текущее
@@ -1013,9 +1005,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const string & name1, const string & name2, Callback & storage) noexcept -> id_t {
+			auto set(string_view name1, string_view name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return ((!name1.empty() && !name2.empty()) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+				return ((!std::empty(name1) && !std::empty(name2)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции из одного хранилища в текущее
@@ -1057,9 +1049,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const string & name, const fn_t & callback) noexcept -> id_t {
+			auto set(string_view name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (!name.empty() ? this->_set(this->id(name), callback) : 0);
+				return (!std::empty(name) ? this->_set(this->id(name), callback) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции обратного вызова в чистом виде
@@ -1130,8 +1122,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1169,7 +1161,7 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
-			auto get(const string & name) const noexcept -> function <T> {
+			auto get(string_view name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
 				return this->_get <T> (this->id(name));
 			}
@@ -1267,8 +1259,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, "Memory allocation error");
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
@@ -1286,8 +1278,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1339,9 +1331,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 */
-			id_t on(const string & name, Func && callback, Args &&... args) noexcept {
+			id_t on(string_view name, Func && callback, Args &&... args) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return (!name.empty() ? this->on <Signature> (name.c_str(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
+				return (!std::empty(name) ? this->on <Signature> (name.data(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1424,9 +1416,9 @@ namespace awh {
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			id_t on(const string & name, function <T> fn) noexcept {
+			id_t on(string_view name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return (!name.empty() ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+				return (!std::empty(name) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1554,8 +1546,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1645,9 +1637,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(const string & name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto call(string_view name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
-				return this->call <Signature> (name.c_str(), std::forward <Args> (args)...);
+				return this->call <Signature> (name.data(), std::forward <Args> (args)...);
 			}
 			/**
 			 * @brief Шаблон метода выполнения финкции обратного вызова
@@ -1747,8 +1739,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -1783,8 +1775,8 @@ namespace awh {
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
-					* Если режим отладки не включён
-					*/
+					 * Если режим отладки не включён
+					 */
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());

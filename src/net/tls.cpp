@@ -6522,17 +6522,21 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
  * @brief Метод установки безопасности работы потоков
  *
  * @param id   идентификатор события
- * @param mode режим безопасности потоков
+ * @param mode флаг режима безопасности потоков
  */
-void awh::Transport_Layer_Security::threadSafety(const id_t id, const event::mode_t mode) noexcept {
+void awh::Transport_Layer_Security::threadSafety(const id_t id, const bool mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
-			// Устанавливаем режим безопасности работы потоков
-			::threadSafety = mode;
+			// Если установлен флаг режима безопасности потоков
+			if(mode)
+				// Устанавливаем режим безопасности работы потоков
+				::threadSafety = event::mode_t::ENABLED;
+			// Снимаем флаг режима безопасности работы потоков
+			else ::threadSafety = event::mode_t::DISABLED;
 			// Устанавливаем глобальный режим безопасности потоков
 			::__awh_ssl_members_mtx__.enabled = (::threadSafety == event::mode_t::ENABLED);
 			/**
