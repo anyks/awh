@@ -469,7 +469,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 	// Результат работы функции
 	bool result = false;
 	// Если ключ аутентификации передан
-	if(!std::empty(key)){
+	if(!key.empty()){
 		// Получаем размер ключа аутентификации
 		const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.size());
 		// Выделяем память под ключ аутентификации

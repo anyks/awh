@@ -26377,7 +26377,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
  */
 bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value) noexcept {
 	// Если адрес для удаления передан
-	if(!std::empty(value)){
+	if(!value.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26663,7 +26663,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 	// Результат работы функции
 	bool result = false;
 	// Если адрес для удаления передан
-	if(!std::empty(value)){
+	if(!value.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -40554,7 +40554,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 	 */
 	try {
 		// Если мультикаст-группа передана
-		if(!std::empty(group) && !std::empty(source)){
+		if(!group.empty() && !source.empty()){
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению

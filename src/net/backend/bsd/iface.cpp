@@ -133,7 +133,7 @@ namespace iface {
 	 */
 	static awh::net::socket_t clonable(string_view driver, string & name, const awh::log_t * log) noexcept {
 		// Если название драйвера передано
-		if(!std::empty(driver)){
+		if(!driver.empty()){
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -243,7 +243,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -387,7 +387,7 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	 */
 	try {
 		// Если название сетевого интерфейса передано
-		if(!std::empty(name)){
+		if(!name.empty()){
 			// Получаем список сетевых интерфейсов
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
@@ -448,7 +448,7 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если имя интерфейса задано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -550,7 +550,7 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если имя интерфейса задано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1195,7 +1195,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
  */
 uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1283,7 +1283,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint16_t mtu) const noexce
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1386,7 +1386,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 	// Результат работы функции
 	unordered_set <event::eth_flag_t> result;
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1513,7 +1513,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1730,7 +1730,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	// Результат работы функции
 	unique_ptr <awh::net::addr_t> result = nullptr;
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name)){
+	if(!name.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1848,7 +1848,7 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адрес для установки переданы
-	if(!std::empty(name) && (ip != nullptr)){
+	if(!name.empty() && (ip != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2021,7 +2021,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!std::empty(name) && (ip != nullptr)){
+	if(!name.empty() && (ip != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2175,7 +2175,7 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адреса для установки переданы
-	if(!std::empty(name) && (ip != nullptr) && (peer != nullptr) && (ip->size == peer->size)){
+	if(!name.empty() && (ip != nullptr) && (peer != nullptr) && (ip->size == peer->size)){
 		/**
 		 * Выполняем перехват ошибок
 		 */

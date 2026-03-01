@@ -120,7 +120,7 @@ namespace driver {
 	 */
 	static void hash(const B & buffer, const awh::crypto_t::hash_t hash, A & result, const awh::log_t * log) noexcept {
 		// Если буфер для хэширования передан
-		if(!std::empty(buffer)){
+		if(!buffer.empty()){
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -289,7 +289,7 @@ namespace driver {
 	 */
 	static void hmac(const C & key, const B & buffer, const awh::crypto_t::hash_t hash, A & result, const awh::log_t * log) noexcept {
 		// Если ключ и текст для хэширования переданы
-		if(!std::empty(key) && !std::empty(buffer)){
+		if(!key.empty() && !buffer.empty()){
 			/**
 			 * Выполняем отлов ошибок
 			 */

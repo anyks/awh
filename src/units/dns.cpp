@@ -670,7 +670,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 										} break;
 									}
 									// Добавляем доменное имя в запись
-									if(!std::empty(domain))
+									if(!domain.empty())
 										// Добавляем новую запись в кэш доменных имён
 										::__awh_cache__.domains.emplace(domain, ::move(entry));
 								}
@@ -910,7 +910,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 	 */
 	try {
 		// Если доменное имя передано
-		if(!std::empty(domain) && (domain.front() != '-') && (domain.back() != '-')){
+		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -1004,7 +1004,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 	 */
 	try {
 		// Если доменное имя передано
-		if(!std::empty(domain) && (domain.front() != '-') && (domain.back() != '-')){
+		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -1133,7 +1133,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 		// Выполняем блокировку потокв для работы с кэшем
 		const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Если доменное имя передано
-		if(!std::empty(domain)){
+		if(!domain.empty()){
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
@@ -1410,7 +1410,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
  */
 void awh::unit::DNS::clearCache(string_view domain) noexcept {
 	// Если доменное имя передано
-	if(!std::empty(domain)){
+	if(!domain.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1509,7 +1509,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
  */
 void awh::unit::DNS::clearCache(const event::family_t family, string_view domain) noexcept {
 	// Если доменное имя передано
-	if(!std::empty(domain)){
+	if(!domain.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1641,7 +1641,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
  */
 string awh::unit::DNS::getFromCache(const event::family_t family, string_view domain) noexcept {
 	// Если доменное имя передано
-	if(!std::empty(domain)){
+	if(!domain.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1723,7 +1723,7 @@ bool awh::unit::DNS::getFromCache(const event::family_t family, string_view doma
 	// Результат работы функции
 	bool result = false;
 	// Если доменное имя передано
-	if(!std::empty(domain)){
+	if(!domain.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1806,7 +1806,7 @@ bool awh::unit::DNS::getFromCache(const event::family_t family, string_view doma
  */
 void awh::unit::DNS::addToCache(string_view domain, string_view ip, const uint32_t ttl) noexcept {
 	// Если доменное имя и IP-адрес переданы
-	if(!std::empty(domain) && !std::empty(ip)){
+	if(!domain.empty() && !ip.empty()){
 		// Выполняем блокировку потокв для парсинга IP-адреса
 		const locker_t <> lock(::__awh_mtx__);
 		// Выполняем парсинг IP-адреса
@@ -1827,7 +1827,7 @@ void awh::unit::DNS::addToCache(string_view domain, string_view ip, const uint32
  */
 void awh::unit::DNS::addToCache(string_view domain, const unique_ptr <net::addr_t> & ip, const uint32_t ttl) noexcept {
 	// Если доменное имя и IP-адрес переданы
-	if(!std::empty(domain) && (ip != nullptr)){
+	if(!domain.empty() && (ip != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2027,7 +2027,7 @@ void awh::unit::DNS::addToCache(string_view domain, const unique_ptr <net::addr_
  */
 void awh::unit::DNS::addToCache(const event::family_t family, string_view domain, string_view ip, const uint32_t ttl) noexcept {
 	// Если доменное имя и IP-адрес переданы
-	if(!std::empty(domain) && !std::empty(ip)){
+	if(!domain.empty() && !ip.empty()){
 		/**
 		 * Определяем семейство события
 		 */
@@ -2159,7 +2159,7 @@ bool awh::unit::DNS::hasInBlacklist(const event::family_t family, string_view ip
  */
 void awh::unit::DNS::setPrefixEnvironment(string_view prefix) noexcept {
 	// Если префикс переменной окружения передан
-	if(!std::empty(prefix)){
+	if(!prefix.empty()){
 		// Выполняем блокировку потокв для установки IP-адреса события
 		const locker_t <> lock(::__awh_resolver__.mtx);
 		// Устанавливаем префикс переменной окружения
@@ -2177,7 +2177,7 @@ void awh::unit::DNS::setFilenameHosts(string_view filename) noexcept {
 	 */
 	try {
 		// Если адрес файла дампа кэша передан
-		if(!std::empty(filename)){
+		if(!filename.empty()){
 			// Добавляем новое событие файла для мониторинга изменений в файле локальных хостов
 			::__awh_cache__.fid = this->_io->event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем функцию обратного вызова на чтение из события
@@ -2261,7 +2261,7 @@ void awh::unit::DNS::setFilenameDump(string_view filename, const uint32_t interv
 	 */
 	try {
 		// Если адрес файла дампа кэша передан
-		if(!std::empty(filename)){
+		if(!filename.empty()){
 			{
 				// Выполняем блокировку потокв для работы с бинарным контейнером
 				const locker_t <> lock(::__awh_mtx__);
@@ -2416,7 +2416,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, string_view server) noexce
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((eid > 0) && !std::empty(server)){
+		if((eid > 0) && !server.empty()){
 			// Выполняем блокировку потокв для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
@@ -2522,7 +2522,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const event::family_t fami
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((eid > 0) && !std::empty(server)){
+		if((eid > 0) && !server.empty()){
 			// Объект для хранения IP-адреса
 			unique_ptr <net::addr_t> ip = nullptr;
 			/**
@@ -2587,7 +2587,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((eid > 0) && !std::empty(source)){
+		if((eid > 0) && !source.empty()){
 			// Выполняем блокировку потокв для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
@@ -2709,7 +2709,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, const event::family_t fami
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((eid > 0) && !std::empty(source)){
+		if((eid > 0) && !source.empty()){
 			/**
 			 * Определяем семейство события
 			 */

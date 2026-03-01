@@ -178,7 +178,7 @@ namespace {
 				// Результат работы функции
 				string result = "";
 				// Если данные переданы на вход правильно
-				if(!std::empty(data) && !std::empty(from) && !std::empty(to)){
+				if(!data.empty() && !from.empty() && !to.empty()){
 					/**
 					 * Выполняем отлов ошибок
 					 */
@@ -1072,7 +1072,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 	// Выполняем удаление пробелов вокруг текста
 	this->transform(text, transform_t::TRIM);
 	// Если текст передан
-	if(!std::empty(text)){
+	if(!text.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1409,7 +1409,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 	// Выполняем удаление пробелов вокруг текста
 	this->transform(text, transform_t::TRIM);
 	// Если текст передан
-	if(!std::empty(text)){
+	if(!text.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1742,7 +1742,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
  */
 bool awh::Framework::compare(string_view first, string_view second) const noexcept {
 	// Если строки пришли не пустыми
-	if(!std::empty(first) && !std::empty(second)){
+	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
 		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
 			// Выполняем сравнение каждого символа
@@ -1776,7 +1776,7 @@ bool awh::Framework::compare(const char * first, const char * second) const noex
  */
 bool awh::Framework::compare(wstring_view first, wstring_view second) const noexcept {
 	// Если строки пришли не пустыми
-	if(!std::empty(first) && !std::empty(second)){
+	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
 		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
 			// Выполняем сравнение каждого символа
@@ -2627,7 +2627,7 @@ string awh::Framework::join(const vector <string> & items, string_view delim) co
 	// Результат работы функции
 	string result = "";
 	// Если список строк которые необходимо объединить переданы
-	if(!std::empty(items)){
+	if(!items.empty()){
 		// Выполняем перебор всего списка строк
 		for(auto & item : items){
 			// Если результат ещё не сформирован
@@ -2652,7 +2652,7 @@ wstring awh::Framework::join(const vector <wstring> & items, wstring_view delim)
 	// Результат работы функции
 	wstring result = L"";
 	// Если список строк которые необходимо объединить переданы
-	if(!std::empty(items)){
+	if(!items.empty()){
 		// Выполняем перебор всего списка строк
 		for(auto & item : items){
 			// Если результат ещё не сформирован
@@ -2702,7 +2702,7 @@ wstring awh::Framework::convert(string_view str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if(!std::empty(str)){
+		if(!str.empty()){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
@@ -2806,7 +2806,7 @@ string awh::Framework::convert(wstring_view str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if(!std::empty(str)){
+		if(!str.empty()){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
@@ -3801,7 +3801,7 @@ T awh::Framework::atoi(string_view value) const noexcept {
 		// Выводим значение по умолчанию
 		result = static_cast <T> (0);
 		// Если строка для конвертации не пуста
-		if(!std::empty(value)){
+		if(!value.empty()){
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку
@@ -4110,7 +4110,7 @@ template double awh::Framework::atoi <double> (const char *, const size_t, const
  */
 void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
-	if(!std::empty(value) && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
+	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
 		// Выполняем конвертацию строки числа в десятичную систему счисления
 		this->atoi(value.data(), value.size(), radix, buffer, size);
 }
@@ -4363,7 +4363,7 @@ T awh::Framework::atoi(wstring_view value) const noexcept {
 		// Выводим значение по умолчанию
 		result = static_cast <T> (0);
 		// Если строка для конвертации не пуста
-		if(!std::empty(value)){
+		if(!value.empty()){
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку
@@ -4672,7 +4672,7 @@ template double awh::Framework::atoi <double> (const wchar_t *, const size_t, co
  */
 void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
-	if(!std::empty(value) && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
+	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
 		// Выполняем конвертацию строки числа в десятичную систему счисления
 		this->atoi(value.data(), value.size(), radix, buffer, size);
 }
@@ -5231,7 +5231,7 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если слово передано
-	if(!std::empty(word)){
+	if(!word.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5479,7 +5479,7 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если слово передано
-	if(!std::empty(word)){
+	if(!word.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5798,7 +5798,7 @@ string awh::Framework::arabic2rome(string_view word) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если слово передано
-	if(!std::empty(word)){
+	if(!word.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5857,7 +5857,7 @@ wstring awh::Framework::arabic2rome(wstring_view word) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если слово передано
-	if(!std::empty(word)){
+	if(!word.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5917,7 +5917,7 @@ size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const
 	// Результат работы функции
 	size_t result = 0;
 	// Если слово и буква переданы
-	if(!std::empty(word) && (letter > 0)){
+	if(!word.empty() && (letter > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5984,7 +5984,7 @@ size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) cons
 	// Результат работы функции
 	size_t result = 0;
 	// Если слово и буква переданы
-	if(!std::empty(word) && (letter > 0)){
+	if(!word.empty() && (letter > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -6318,7 +6318,7 @@ string awh::Framework::format(string_view format, const vector <string> & items)
 	// Результат работы функции
 	string result(format);
 	// Если данные переданы
-	if(!std::empty(format) && !items.empty()){
+	if(!format.empty() && !items.empty()){
 		/**
 		 * @brief Функция заменты подстроки в строке
 		 *
@@ -6450,7 +6450,7 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
 	// Результат работы функции
 	wstring result(format);
 	// Если данные переданы
-	if(!std::empty(format) && !items.empty()){
+	if(!format.empty() && !items.empty()){
 		/**
 		 * @brief Функция заменты подстроки в строке
 		 *
@@ -6580,7 +6580,7 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
  */
 bool awh::Framework::exists(string_view word, string_view text) const noexcept {
 	// Если данные переданы верные
-	if(!std::empty(word) && !std::empty(text)){
+	if(!word.empty() && !text.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -6649,7 +6649,7 @@ bool awh::Framework::exists(string_view word, string_view text) const noexcept {
  */
 bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept {
 	// Если данные переданы верные
-	if(!std::empty(word) && !std::empty(text)){
+	if(!word.empty() && !text.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -6882,7 +6882,7 @@ std::unordered_map <string, string> awh::Framework::kv(string_view text, string_
 	// Результат работы функции
 	std::unordered_map <string, string> result;
 	// Если данные для обработки текста передан
-	if(!std::empty(text) && !std::empty(delim) && !std::empty(separator) && !escaping.empty()){
+	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7043,7 +7043,7 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstr
 	// Результат работы функции
 	std::unordered_map <wstring, wstring> result;
 	// Если данные для обработки текста передан
-	if(!std::empty(text) && !std::empty(delim) && !std::empty(separator) && !escaping.empty()){
+	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7199,7 +7199,7 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstr
  */
 void awh::Framework::domainZone(string_view zone) noexcept {
 	// Если зона передана, устанавливаем её
-	if(!std::empty(zone))
+	if(!zone.empty())
 		// Устанавливаем пользовательскую зону
 		this->_nwt.zone(zone);
 }
@@ -7230,7 +7230,7 @@ const std::unordered_set <string> & awh::Framework::domainZones() const noexcept
  */
 void awh::Framework::setLocale(string_view locale) noexcept {
 	// Устанавливаем локаль
-	if(!std::empty(locale)){
+	if(!locale.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7319,7 +7319,7 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const
 	// Результат работы функции
 	std::unordered_map <size_t, size_t> result;
 	// Если текст передан
-	if(!std::empty(text)){
+	if(!text.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7445,7 +7445,7 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 	// Размер количество байт
 	double result = 0.;
 	// Если строка передана и начинается с цифры
-	if(!std::empty(str) && std::isdigit(str[0])){
+	if(!str.empty() && std::isdigit(str[0])){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7655,7 +7655,7 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если строка передана и начинается с цифры
-	if(!std::empty(str) && std::isdigit(str[0])){
+	if(!str.empty() && std::isdigit(str[0])){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7786,7 +7786,7 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если строка передана и начинается с цифры
-	if(!std::empty(str) && std::isdigit(str[0])){
+	if(!str.empty() && std::isdigit(str[0])){
 		/**
 		 * Выполняем отлов ошибок
 		 */

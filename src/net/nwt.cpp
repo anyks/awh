@@ -628,7 +628,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 	// Результат работы функции
 	url_t result;
 	// Если текст передан
-	if(!std::empty(text)){
+	if(!text.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -642,7 +642,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 				// Результат работы функции
 				url_t result;
 				// Если текст передан
-				if(!std::empty(text)){
+				if(!text.empty()){
 					// Выполняем проверку электронной почты
 					const auto & match = this->_regexp.exec(text, this->_email);
 					// Если результат найден
@@ -671,7 +671,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 				// Результат работы функции
 				url_t result;
 				// Если текст передан
-				if(!std::empty(text)){
+				if(!text.empty()){
 					// Выполняем проверку URL адреса
 					const auto & match = this->_regexp.exec(text, this->_url);
 					// Если результат найден
@@ -726,7 +726,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 				// Результат работы функции
 				url_t result;
 				// Если текст передан
-				if(!std::empty(text)){
+				if(!text.empty()){
 					// Выполняем проверку IP адреса
 					const auto & match = this->_regexp.exec(text, this->_ip);
 					// Если результат найден
@@ -836,7 +836,7 @@ void awh::Network_Types::letters(string_view letters) noexcept {
 	 */
 	try {
 		// Если буквы переданы запоминаем их
-		if(!std::empty(letters))
+		if(!letters.empty())
 			// Устанавливаем буквы алфавита
 			this->_letters = string{letters};
 		// Устанавливаем регулярное выражение для проверки электронной почты

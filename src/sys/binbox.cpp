@@ -443,7 +443,7 @@ void awh::BinBox::setName(string_view name) noexcept {
  */
 bool awh::BinBox::erase(string_view key) noexcept {
 	// Если ключ передан
-	if(!std::empty(key))
+	if(!key.empty())
 		// Выполняем удаление указанной записи
 		return this->erase(this->idw(key));
 	// Выводим результат
@@ -489,7 +489,7 @@ awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
  */
 void awh::BinBox::load(string_view filename) noexcept {
 	// Если адрес файла передан и объект работы с файловой системой создан
-	if(!std::empty(filename) && (this->_fs != nullptr)){
+	if(!filename.empty() && (this->_fs != nullptr)){
 		// Создаём бинарный буфер данных для загрузки из файла
 		vector <uint8_t> buffer;
 		// Выполняем загрузку данных из файла
@@ -505,7 +505,7 @@ void awh::BinBox::load(string_view filename) noexcept {
  */
 void awh::BinBox::save(string_view filename) noexcept {
 	// Если адрес файла передан и объект работы с файловой системой создан
-	if(!std::empty(filename) && (this->_fs != nullptr)){
+	if(!filename.empty() && (this->_fs != nullptr)){
 		// Результат работы функции
 		vector <uint8_t> result;
 		// Выполняем дамп бинарного контейнера в бинарный буфер данных
@@ -532,7 +532,7 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
 		 */
 		try {
 			// Если название функции передано
-			if(!std::empty(key)){
+			if(!key.empty()){
 				// Если размер имени умещается в 8 байт
 				if(key.size() <= 8)
 					// Выполняем копирование данных имени
@@ -570,7 +570,7 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
  */
 bool awh::BinBox::has(string_view key) noexcept {
 	// Если ключ передан
-	if(!std::empty(key))
+	if(!key.empty())
 		// Выполняем проверку существования ключа
 		return this->has(this->idw(key));
 	// Выводим результат
@@ -838,7 +838,7 @@ template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (const uint64_t) n
  */
 bool awh::BinBox::get(string_view key, vector <uint8_t> & buffer) noexcept {
 	// Если ключ передан
-	if(!std::empty(key))
+	if(!key.empty())
 		// Выполняем извлечение запрошенной записи
 		return this->get(this->idw(key), buffer);
 	// Выводим результат
@@ -908,7 +908,7 @@ bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
  */
 bool awh::BinBox::get(string_view key, uint8_t ** buffer, size_t * size) noexcept {
 	// Если ключ передан
-	if(!std::empty(key))
+	if(!key.empty())
 		// Выполняем извлечение запрошенной записи
 		return this->get(this->idw(key), buffer, size);
 	// Выводим результат
@@ -1158,7 +1158,7 @@ template <typename T>
  */
 bool awh::BinBox::add(string_view key, const T value) noexcept {
 	// Если ключ записи передан и данные являются простыми
-	if(!std::empty(key))
+	if(!key.empty())
 		// Выполняем добавление данных
 		return this->add(this->idw(key), reinterpret_cast <const uint8_t *> (&value), sizeof(value));
 	// Выводим результат по умолчанию
@@ -1206,7 +1206,7 @@ template <typename T>
  */
 bool awh::BinBox::add(string_view key, const vector <T> & value) noexcept {
 	// Если ключ записи передан и данные являются массивом
-	if(!std::empty(key))
+	if(!key.empty())
 		// Выполняем добавление данных
 		return this->add(this->idw(key), value);
 	// Выводим результат по умолчанию
@@ -1247,7 +1247,7 @@ template bool awh::BinBox::add <double> (string_view, const vector <double> &) n
  */
 bool awh::BinBox::add(string_view key, const string & value) noexcept {
 	// Если ключ и данные для записи переданы
-	if(!std::empty(key) && !value.empty())
+	if(!key.empty() && !value.empty())
 		// Выполняем добавление записи в контейнер
 		return this->add(this->idw(key), value);
 	// Выводим результат
@@ -1263,7 +1263,7 @@ bool awh::BinBox::add(string_view key, const string & value) noexcept {
  */
 bool awh::BinBox::add(string_view key, const void * buffer, const size_t size) noexcept {
 	// Если ключ и данные для записи переданы
-	if(!std::empty(key) && (buffer != nullptr) && (size > 0))
+	if(!key.empty() && (buffer != nullptr) && (size > 0))
 		// Выполняем добавление записи в контейнер
 		return this->add(this->idw(key), buffer, size);
 	// Выводим результат
@@ -1310,7 +1310,7 @@ awh::BinBox::iterator_t awh::BinBox::begin() noexcept {
  */
 awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
 	// Если ключ для поиска передан
-	if(!std::empty(key)){
+	if(!key.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */

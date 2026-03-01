@@ -1330,7 +1330,7 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 	// Результат полученных данных
 	type_t result = type_t::NONE;
 	// Если хост передан
-	if(!std::empty(host)){
+	if(!host.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2318,7 +2318,7 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 	// Результат работы функции
 	uint8_t result = 0;
 	// Если маска сети передана
-	if(!std::empty(mask)){
+	if(!mask.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2495,7 +2495,7 @@ bool awh::Network_Address::range(const Network_Address & begin, const Network_Ad
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !std::empty(mask)){
+	if(!this->_buffer.empty() && !mask.empty()){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
@@ -2622,7 +2622,7 @@ bool awh::Network_Address::range(string_view begin, string_view end, string_view
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !std::empty(mask)){
+	if(!this->_buffer.empty() && !mask.empty()){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
@@ -2658,7 +2658,7 @@ bool awh::Network_Address::range(string_view begin, string_view end, const uint8
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует
-	if(!this->_buffer.empty() && !std::empty(begin) && !std::empty(end)){
+	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2742,7 +2742,7 @@ bool awh::Network_Address::mapping(string_view network, const type_t type) const
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
-	if((result = !std::empty(network))){
+	if((result = !network.empty())){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2855,7 +2855,7 @@ bool awh::Network_Address::mapping(const string_view network, const string_view 
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
-	if((result = (!std::empty(network) && !std::empty(mask)))){
+	if((result = (!network.empty() && !mask.empty()))){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку адреса соответствию сети
@@ -2891,7 +2891,7 @@ bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, co
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
-	if((result = (!std::empty(network) && (prefix > 0)))){
+	if((result = (!network.empty() && (prefix > 0)))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3167,7 +3167,7 @@ string awh::Network_Address::arpa() const noexcept {
  */
 bool awh::Network_Address::arpa(string_view addr) noexcept {
 	// Если запись передана
-	if(!std::empty(addr) && (addr.size() > 13)){
+	if(!addr.empty() && (addr.size() > 13)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3293,7 +3293,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
  */
 bool awh::Network_Address::parse(string_view addr) noexcept {
 	// Если адрес передан
-	if(!std::empty(addr)){
+	if(!addr.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3392,7 +3392,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
  */
 bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 	// Если адрес аппаратный или интернет подключения передан
-	if(!std::empty(addr) && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6))){
+	if(!addr.empty() && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6))){
 		/**
 		 * Выполняем отлов ошибок
 		 */

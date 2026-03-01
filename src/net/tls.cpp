@@ -579,7 +579,7 @@ namespace ssl {
 								// Добавляем информацию об ошибке в результат
 								result.append(fmk->format("%s: %s", state.c_str(), buffer));
 							// Если получено дополнительное сообщение
-							else if(!std::empty(message))
+							else if(!message.empty())
 								// Добавляем информацию об ошибке в результат
 								result.append(fmk->format("%s: %s", message.data(), buffer));
 							// Если не получено ни состояние SSL, ни дополнительное сообщение
@@ -589,7 +589,7 @@ namespace ssl {
 						 */
 						} while((error = ::ERR_get_error()));
 					// Если получено дополнительное сообщение
-					} else if(!std::empty(message))
+					} else if(!message.empty())
 						// Выводим сообщение об ошибка как оно передано
 						return string{message};
 				/**
@@ -599,7 +599,7 @@ namespace ssl {
 					// Получаем объект фреймворка
 					awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
 					// Если получено дополнительное сообщение
-					if(!std::empty(message))
+					if(!message.empty())
 						// Добавляем информацию об ошибке в результат
 						result.append(fmk->format("%s: %s", message.data(), error.what()));
 					// Если не получено ни состояние SSL, ни дополнительное сообщение
@@ -1353,7 +1353,7 @@ namespace ssl {
 			// Результат работы функции
 			bool result = false;
 			// Если объекты переданы верно
-			if((store != nullptr) && !std::empty(name)){
+			if((store != nullptr) && !name.empty()){
 				// Получаем данные системного стора
 				HCERTSTORE sys = ::CertOpenSystemStore(0, name.data());
 				// Если системный стор не получен
@@ -1875,7 +1875,7 @@ namespace verify {
 		// Результат работы функции
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
-		if(!std::empty(host) && (x509 != nullptr)){
+		if(!host.empty() && (x509 != nullptr)){
 			// Извлекаем SAN из сертификата
 			STACK_OF(GENERAL_NAME) * san = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (::X509_get_ext_d2i(const_cast <X509 *> (x509), NID_subject_alt_name, nullptr, nullptr));
 			// Если SAN присутствует
@@ -1929,7 +1929,7 @@ namespace verify {
 		// Результат работы функции
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
-		if(!std::empty(host) && (x509 != nullptr)){
+		if(!host.empty() && (x509 != nullptr)){
 			// Получаем индекс имени по "NID"
 			const int32_t cnl = ::X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (x509)), NID_commonName, -1);
 			// Если индекс не получен тогда выходим
@@ -1967,7 +1967,7 @@ namespace verify {
 		// Результат работы функции
 		status_t result = status_t::Error;
 		// Если данные переданы
-		if(!std::empty(host) && (x509 != nullptr)){
+		if(!host.empty() && (x509 != nullptr)){
 			// Выполняем проверку имени хоста по списку доменов у сертификата
 			result = ::verify::matchSubjectName(host, x509);
 			// Если у сертификата только один домен
@@ -4110,7 +4110,7 @@ void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname
 	 */
 	try {
 		// Если имя хоста сервера не пустое
-		if(!std::empty(hostname)){
+		if(!hostname.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -4237,7 +4237,7 @@ bool awh::Transport_Layer_Security::peer(const id_t id, string_view ip, const ui
 	 */
 	try {
 		// Если IP-адрес сервера не пустой и порт сервера задан верно
-		if((!std::empty(ip)) && (port > 0)){
+		if((!ip.empty()) && (port > 0)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -6893,7 +6893,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
-					if(!std::empty(filename)){
+					if(!filename.empty()){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7007,7 +7007,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
-					if(!std::empty(filename)){
+					if(!filename.empty()){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7126,7 +7126,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
-					if(!std::empty(file)){
+					if(!file.empty()){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7161,7 +7161,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 							return;
 						}
 						// Если каталог сертификатов передан
-						if(!std::empty(dir)){
+						if(!dir.empty()){
 							// Полный адрес файла центра сертификации
 							string filename = "";
 							// Если последний символ каталога является разделителем
@@ -7254,7 +7254,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
-					if(!std::empty(file)){
+					if(!file.empty()){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7289,7 +7289,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 							return;
 						}
 						// Если каталог сертификатов передан
-						if(!std::empty(dir)){
+						if(!dir.empty()){
 							// Полный адрес файла центра сертификации
 							string filename = "";
 							// Если последний символ каталога является разделителем
@@ -7406,7 +7406,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 	 */
 	try {
 		// Если адрес файла сертификата не пустой
-		if(!std::empty(filename)){
+		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -7672,7 +7672,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 	 */
 	try {
 		// Если адрес файла сертификата не пустой
-		if(!std::empty(filename)){
+		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -7936,7 +7936,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 	 */
 	try {
 		// Если адрес файла сертификата не пустой
-		if(!std::empty(filename)){
+		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**

@@ -530,7 +530,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr) const noexcept {
 	// Результат работы функции
 	type_t result = type_t::NONE;
 	// Если адрес директории или файла передан
-	if(!std::empty(addr)){
+	if(!addr.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -731,7 +731,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr) const noexcept {
  */
 void awh::Filesystem::symlink(string_view first, string_view second) const noexcept {
 	// Если адреса переданы
-	if(!std::empty(first) && !std::empty(second)){
+	if(!first.empty() && !second.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -854,7 +854,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
  */
 void awh::Filesystem::hardlink(string_view first, string_view second) const noexcept {
 	// Если адреса переданы
-	if(!std::empty(first) && !std::empty(second)){
+	if(!first.empty() && !second.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -924,7 +924,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 	// Результат работы функции
 	bool result = false;
 	// Если адрес передан
-	if(!std::empty(addr)){
+	if(!addr.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1231,7 +1231,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		 */
 		#else
 			// Если нужно выполнять резолвинг символьных ссылок
-			if(resolve && !std::empty(addr)){
+			if(resolve && !addr.empty()){
 				// Устанавливаем переданный путь адреса
 				result = addr.data();
 				// Создаём буфер данных для получения адреса
@@ -1363,7 +1363,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 	// Результат работы функции
 	uint32_t result = 0;
 	// Если путь к файлу или каталогу передан
-	if(!std::empty(addr) && (this->type(addr) != type_t::NONE)){
+	if(!addr.empty() && (this->type(addr) != type_t::NONE)){
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -1413,7 +1413,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 	// Результат работы функции
 	bool result = false;
 	// Если путь к файлу или каталогу передан
-	if(!std::empty(addr) && (this->type(addr) != type_t::NONE)){
+	if(!addr.empty() && (this->type(addr) != type_t::NONE)){
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -1461,13 +1461,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 	// Результат работы функции
 	bool result = false;
 	// Если путь передан
-	if(!std::empty(addr) && !std::empty(user) && (this->type(addr) != type_t::NONE)){
+	if(!addr.empty() && !user.empty() && (this->type(addr) != type_t::NONE)){
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Если группа пользователя передана
-			if(!std::empty(group)){
+			if(!group.empty()){
 				// Идентификатор пользователя
 				const uid_t uid = this->_os.uid(user.data());
 				// Идентификатор группы
@@ -1650,7 +1650,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если путь передан
-	if(!std::empty(addr)){
+	if(!addr.empty()){
 		// Проверяем существует ли нужный нам каталог
 		if((result = (this->type(addr) == type_t::NONE))){
 			/**
@@ -1912,7 +1912,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 	// Результат работы функции
 	uintmax_t result = 0;
 	// Если путь для подсчёта передан
-	if(!std::empty(addr)){
+	if(!addr.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2051,7 +2051,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 										// Если полный путь является файлом
 										case static_cast <uint8_t> (type_t::FILE): {
 											// Если расширение файла передано
-											if(!std::empty(ext)){
+											if(!ext.empty()){
 												// Получаем обёртку полученного пути
 												string_view path = address;
 												// Получаем расширение файла
@@ -2145,7 +2145,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 	// Результат работы функции
 	uintmax_t result = 0;
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(addr)){
+	if(!addr.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2225,7 +2225,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 									// Если путь принадлежит к другому типу
 									default: {
 										// Если расширение файла передано
-										if(!std::empty(ext)){
+										if(!ext.empty()){
 											// Получаем обёртку полученного пути
 											string_view path = address;
 											// Получаем расширение файла
@@ -2312,7 +2312,7 @@ template <typename T>
  */
 void awh::Filesystem::append(string_view filename, const T & buffer) const noexcept {
 	// Если буфер данных передан
-	if(!std::empty(filename)){
+	if(!filename.empty()){
 		// Если тип буфера является строкой
 		if constexpr (is_same_v <T, string>)
 			// Выполняем добавление в файл бинарных данных
@@ -2361,7 +2361,7 @@ template void awh::Filesystem::append(string_view, const vector <uint8_t> &) con
  */
 void awh::Filesystem::append(string_view filename, const char * buffer) const noexcept {
 	// Если буфер данных передан
-	if(!std::empty(filename) && (buffer != nullptr) && ((* buffer) != '\0'))
+	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != '\0'))
 		// Выполняем добавление в файл бинарных данных
 		this->append(filename, buffer, ::strlen(buffer));
 }
@@ -2373,7 +2373,7 @@ void awh::Filesystem::append(string_view filename, const char * buffer) const no
  */
 void awh::Filesystem::append(string_view filename, const wchar_t * buffer) const noexcept {
 	// Если буфер данных передан
-	if(!std::empty(filename) && (buffer != nullptr) && ((* buffer) != L'\0')){
+	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
 		const string & data = this->_fmk->convert(buffer);
 		// Выполняем добавление в файл бинарных данных
@@ -2478,7 +2478,7 @@ auto awh::Filesystem::read(string_view filename, const seek_t seek, const size_t
 	// Результат работы функции
 	T result;
 	// Если буфер данных передан
-	if(!std::empty(filename))
+	if(!filename.empty())
 		// Выполняем чтение данных из файла
 		this->read(filename, result, seek, offset);
 	// Выводим результат
@@ -2515,7 +2515,7 @@ template <typename T>
  */
 void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, const size_t offset) const noexcept {
 	// Если адрес файла передан и он существует
-	if(!std::empty(filename)){
+	if(!filename.empty()){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2754,7 +2754,7 @@ template <typename T>
  */
 void awh::Filesystem::write(string_view filename, const T & buffer, const seek_t seek, const size_t offset) const noexcept {
 	// Если буфер данных передан
-	if(!std::empty(filename)){
+	if(!filename.empty()){
 		// Если тип буфера является строкой
 		if constexpr (is_same_v <T, string>)
 			// Выполняем запись в файл бинарных данных
@@ -2805,7 +2805,7 @@ template void awh::Filesystem::write(string_view, const vector <uint8_t> &, cons
  */
 void awh::Filesystem::write(string_view filename, const char * buffer, const seek_t seek, const size_t offset) const noexcept {
 	// Если буфер данных передан
-	if(!std::empty(filename) && (buffer != nullptr) && ((* buffer) != '\0'))
+	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != '\0'))
 		// Выполняем запись в файл бинарных данных
 		this->write(filename, buffer, ::strlen(buffer), seek, offset);
 }
@@ -2819,7 +2819,7 @@ void awh::Filesystem::write(string_view filename, const char * buffer, const see
  */
 void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const seek_t seek, const size_t offset) const noexcept {
 	// Если буфер данных передан
-	if(!std::empty(filename) && (buffer != nullptr) && ((* buffer) != L'\0')){
+	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
 		const string & data = this->_fmk->convert(buffer);
 		// Выполняем запись в файл бинарных данных
@@ -2837,7 +2837,7 @@ void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const 
  */
 void awh::Filesystem::write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
-	if(!std::empty(filename) && (buffer != nullptr) && (size > 0)){
+	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2971,7 +2971,7 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
  */
 void awh::Filesystem::readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
-	if(!std::empty(filename) && (callback != nullptr)){
+	if(!filename.empty() && (callback != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3303,7 +3303,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
  */
 void awh::Filesystem::readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
-	if(!std::empty(filename) && (callback != nullptr)){
+	if(!filename.empty() && (callback != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3577,7 +3577,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
  */
 void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (callback != nullptr)){
+	if(!path.empty() && (callback != nullptr)){
 		/**
 		 * @brief Прототип функции запроса файлов в каталоге
 		 *
@@ -3675,7 +3675,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 									// Если полный путь является файлом
 									case static_cast <uint8_t> (type_t::FILE): {
 										// Если расширение файла передано
-										if(!std::empty(ext)){
+										if(!ext.empty()){
 											// Получаем путь до файла в нижнем регистре
 											string_view path = address;
 											// Получаем расширение файла
@@ -3767,7 +3767,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
  */
 void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (callback != nullptr)){
+	if(!path.empty() && (callback != nullptr)){
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
@@ -3785,7 +3785,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 						// Если полный путь является файлом
 						if(this->type(address) == type_t::FILE){
 							// Если расширение файла передано
-							if(!std::empty(ext)){
+							if(!ext.empty()){
 								// Получаем путь до файла в нижнем регистре
 								string_view path = address;
 								// Получаем расширение файла
@@ -3856,7 +3856,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
  */
 void awh::Filesystem::readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
-	if(!std::empty(path) && (callback != nullptr)){
+	if(!path.empty() && (callback != nullptr)){
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
@@ -3878,7 +3878,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 						// Если полный путь является файлом
 						if(this->type(address) == type_t::FILE){
 							// Если расширение файла передано
-							if(!std::empty(ext)){
+							if(!ext.empty()){
 								// Получаем путь до файла в нижнем регистре
 								string_view path = address;
 								// Получаем расширение файла

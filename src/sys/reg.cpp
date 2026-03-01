@@ -141,7 +141,7 @@ void awh::Regular_Expressions::threadSafety(const bool mode) noexcept {
  */
 bool awh::Regular_Expressions::test(string_view text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
-	if(!std::empty(text) && static_cast <bool> (exp))
+	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем проверку регулярного выражения
 		return this->test(text.data(), text.size(), exp);
 	// Выводим результат
@@ -233,7 +233,7 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
  */
 vector <string> awh::Regular_Expressions::exec(string_view text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
-	if(!std::empty(text) && static_cast <bool> (exp))
+	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем запуск регулярного выражения
 		return this->exec(text.data(), text.size(), exp);
 	// Выводим результат
@@ -372,7 +372,7 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
  */
 vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(string_view text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
-	if(!std::empty(text) && static_cast <bool> (exp))
+	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем выполнение регулярного выражения
 		return this->match(text.data(), text.size(), exp);
 	// Выводим результат
@@ -515,7 +515,7 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 	// Результат работы функции
 	exp_t result = nullptr;
 	// Если регулярное выражение передано
-	if(!std::empty(pattern)){
+	if(!pattern.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */

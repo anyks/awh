@@ -385,7 +385,7 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
-	if(!std::empty(ifname)){
+	if(!ifname.empty()){
 		/**
 		 * Определяем семейство события
 		 */
