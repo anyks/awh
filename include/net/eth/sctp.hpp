@@ -94,7 +94,7 @@ namespace awh {
 				 * @param key  ключ аутентификации
 				 * @return     результат работы функции
 				 */
-				bool authenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept;
+				bool authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) const noexcept;
 				/**
 				 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
 				 *

@@ -95,7 +95,7 @@ namespace awh {
 			 * @param name имя сетевого интерфейса для установки
 			 * @return     результат выполнения установки
 			 */
-			virtual bool setIface(const event::id_t id, const string & name) noexcept = 0;
+			virtual bool setIface(const event::id_t id, string_view name) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения MTU сетевого интерфейса
@@ -127,7 +127,7 @@ namespace awh {
 			 * @param target адрес хоста целевой машины
 			 * @return       результат выполнения установки
 			 */
-			virtual bool setTarget(const event::id_t id, const string & target) noexcept = 0;
+			virtual bool setTarget(const event::id_t id, string_view target) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины
@@ -162,7 +162,7 @@ namespace awh {
 			 * @param value   значение адреса события
 			 * @return        результат выполнения установки
 			 */
-			virtual bool setAddress(const event::id_t id, const event::address_t address, const string & value) noexcept = 0;
+			virtual bool setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса события
@@ -193,7 +193,7 @@ namespace awh {
 			 * @param port   порт мультикаст-группы с которого выполняется подписка
 			 * @return       результат выполнения установки
 			 */
-			virtual bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port = 0) noexcept = 0;
+			virtual bool membership(const event::id_t id, const event::mode_t mode, string_view group, string_view source, const uint16_t port = 0) noexcept = 0;
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы события
 			 *
@@ -369,7 +369,7 @@ namespace awh {
 			 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
 			 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
 			 */
-			virtual void bandwidth(const event::limiting_t limiting, const string & bandwidth) noexcept = 0;
+			virtual void bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept = 0;
 			/**
 			 * @brief Метод установки пропускной способности события для события
 			 *
@@ -378,7 +378,7 @@ namespace awh {
 			 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
 			 * @return          результат выполнения установки
 			 */
-			virtual bool bandwidth(const event::id_t id, const event::limiting_t limiting, const string & bandwidth) noexcept = 0;
+			virtual bool bandwidth(const event::id_t id, const event::limiting_t limiting, string_view bandwidth) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения режима трансляции пакетов для события

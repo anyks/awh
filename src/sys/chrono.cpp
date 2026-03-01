@@ -189,7 +189,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 				// Увеличиваем результат на один день
 				result += static_cast <uint64_t> (86400000);
 			// Увеличиваем смещение времени до указанного месяца
-			result += (static_cast <uint64_t> (params.daysInMonths.at(i)) * static_cast <uint64_t> (86400000));
+			result += (static_cast <uint64_t> (params.daysInMonths[i]) * static_cast <uint64_t> (86400000));
 		}
 		// Если дата нулевая
 		if(dt.date == 0)
@@ -268,7 +268,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 					// Увеличиваем номер месяца
 					dt.month = (i + 1);
 					// Получаем текущее количество дней с компенсацией високосного года
-					days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && dt.leap ? 1 : 0));
+					days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && dt.leap ? 1 : 0));
 					// Если мы не дошли до предела
 					if(dt.days >= (days + count))
 						// Увеличиваем количество прошедших дней
@@ -290,7 +290,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 				if(i != params.rateLeapYears.end()){
 					// Подробнее: https://habr.com/ru/articles/217389
 					// Устанавливаем день недели
-					dt.day = (((i->second + static_cast <uint8_t> (dt.year % 4) + params.rateMonths.at(dt.month - 1) + dt.date) - (((dt.month == 1) || (dt.month == 2)) && dt.leap ? 1 : 0)) % 7);
+					dt.day = (((i->second + static_cast <uint8_t> (dt.year % 4) + params.rateMonths[dt.month - 1] + dt.date) - (((dt.month == 1) || (dt.month == 2)) && dt.leap ? 1 : 0)) % 7);
 					// Если воскресенье установлен как нулевой
 					if(dt.day == 0)
 						// Выполняем компенсацию
@@ -340,7 +340,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
  * @param expression регулярное выражение для компиляции
  * @param format     формат к которому относится регулярное выражение
  */
-void awh::Chrono::compile(const string & expression, const format_t format) noexcept {
+void awh::Chrono::compile(string_view expression, const format_t format) noexcept {
 	// Если регулярное выражение передано
 	if(!expression.empty()){
 		// Выполняем поиск регулярного выражения
@@ -352,11 +352,11 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 			// Получаем объект регулярного выражения
 			regex_t & regex = std::any_cast <regex_t &> (ret.first->second);
 			// Выполняем компиляцию регулярного выражения
-			const int32_t error = ::pcre2_regcomp(&regex, expression.c_str(), REG_UTF);
+			const int32_t error = ::pcre2_regcomp(&regex, expression.data(), REG_UTF);
 			// Если возникла ошибка компиляции
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
-				char buffer[0xff];
+				char buffer[0xFF];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
@@ -392,7 +392,7 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
  * @param pos    начальная позиция в тексте
  * @return       конечная позиция обработанных данных в тексте
  */
-ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t format, const size_t pos) const noexcept {
+ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format, const size_t pos) const noexcept {
 	// Результат работы функции
 	ssize_t result = -1;
 	// Если данные переданы
@@ -450,7 +450,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 			// Создаём объект матчинга
 			regmatch_t match[regex.re_nsub + 1];
 			// Выполняем разбор регулярного выражения
-			const int32_t error = ::pcre2_regexec(&regex, text.c_str() + pos, regex.re_nsub + 1, match, REG_NOTEMPTY);
+			const int32_t error = ::pcre2_regexec(&regex, text.data() + pos, regex.re_nsub + 1, match, REG_NOTEMPTY);
 			// Если ошибок не получено
 			if(error == 0){
 				/**
@@ -490,7 +490,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 										// Если день установлен как нулевой
 										if(dt.day == 0)
 											// Устанавливаем номер дня недели
@@ -499,22 +499,22 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если мы определяем номер дня недели %W
 									case static_cast <uint8_t> (format_t::W):
 										// Устанавливаем количество недель прошедших с начала года
-										dt.weeks = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.weeks = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если мы определяем номер дня недели %j
 									case static_cast <uint8_t> (format_t::j):
 										// Устанавливаем номер дня недели
-										dt.days = (this->_fmk->atoi <uint16_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so) - 1);
+										dt.days = (this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so) - 1);
 									break;
 									// Если мы определяем номер дня недели %u
 									case static_cast <uint8_t> (format_t::u):
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %y
 									case static_cast <uint8_t> (format_t::y): {
 										// Получаем значение указанного года
-										const uint16_t num = this->_fmk->atoi <uint16_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 										// Устанавливаем год
 										dt.year = (2000 + num);
 										// Устанавливаем флаг високосного года
@@ -523,60 +523,60 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если формат получен как %Y
 									case static_cast <uint8_t> (format_t::Y): {
 										// Устанавливаем год
-										dt.year = this->_fmk->atoi <uint16_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 										// Устанавливаем флаг високосного года
 										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %d
 									case static_cast <uint8_t> (format_t::d):
 										// Устанавливаем число месяца
-										dt.date = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %m
 									case static_cast <uint8_t> (format_t::m):
 										// Получаем значение номера месяца
-										dt.month = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %I
 									case static_cast <uint8_t> (format_t::I):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %H
 									case static_cast <uint8_t> (format_t::H):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %M
 									case static_cast <uint8_t> (format_t::M):
 										// Устанавливаем значение указанного количества минут
-										dt.minutes = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %s
 									case static_cast <uint8_t> (format_t::s):
 										// Устанавливаем количество миллисекунд
-										dt.milliseconds = this->_fmk->atoi <uint32_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.milliseconds = this->_fmk->atoi <uint32_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %S
 									case static_cast <uint8_t> (format_t::S):
 										// Устанавливаем значение указанного количества секунд
-										dt.seconds = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									break;
 									// Если формат получен как %Z
 									case static_cast <uint8_t> (format_t::Z): {
 										// Выполняем матчинг временной зоны
-										dt.zone = this->matchTimeZone(string(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so));
+										dt.zone = this->matchTimeZone(string(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so));
 										// Получаем название временной зоны
 										dt.offset = this->getTimeZone(dt.zone);
 									} break;
 									// Если формат получен как %a
 									case static_cast <uint8_t> (format_t::a): {
 										// Получаем название дня недели
-										const string day(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 										// Выполняем перебор всего списка дней недели
 										for(size_t i = 0; i < params.nameDays.size(); i++){
 											// Если мы нашли нужный нам день недели
-											if(this->_fmk->compare(day, params.nameDays.at(i).first)){
+											if(this->_fmk->compare(day, params.nameDays[i].first)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -587,11 +587,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если формат получен как %A
 									case static_cast <uint8_t> (format_t::A): {
 										// Получаем название дня недели
-										const string day(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 										// Выполняем перебор всего списка дней недели
 										for(size_t i = 0; i < params.nameDays.size(); i++){
 											// Если мы нашли нужный нам день недели
-											if(this->_fmk->compare(day, params.nameDays.at(i).second)){
+											if(this->_fmk->compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -602,11 +602,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если формат получен как %b
 									case static_cast <uint8_t> (format_t::b): {
 										// Получаем название месяца
-										const string month(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 										// Выполняем перебор всего списка месяцев
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
 											// Если мы нашли нужный нам месяц
-											if(this->_fmk->compare(month, params.nameMonths.at(i).first)){
+											if(this->_fmk->compare(month, params.nameMonths[i].first)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -617,11 +617,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если формат получен как %B
 									case static_cast <uint8_t> (format_t::B): {
 										// Получаем название месяца
-										const string month(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 										// Выполняем перебор всего списка месяцев
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
 											// Если мы нашли нужный нам месяц
-											if(this->_fmk->compare(month, params.nameMonths.at(i).second)){
+											if(this->_fmk->compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -632,7 +632,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Если формат получен как %p
 									case static_cast <uint8_t> (format_t::p): {
 										// Получаем название времени суток
-										const string name(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string name(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 										// Определяем 12-и часовой формат времени
 										dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
 										// Если мы получили вечернее время
@@ -665,15 +665,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Получаем смещение в тексте
 									result = static_cast <ssize_t> (pos + match[j].rm_eo);
 								// Выполняем установку результата
-								data.at(j).assign(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+								data[j].assign(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 							}
 						}
 						// Если название временной зоны указано
-						if(!data.at(1).empty() && (dt.zone == zone_t::UTC))
+						if(!data[1].empty() && (dt.zone == zone_t::UTC))
 							// Выполняем установку временной зоны
 							dt.zone = zone_t::UTC;
 						// Получаем смещение времени
-						const string & offset = data.at(2);
+						const string & offset = data[2];
 						// Если полученное смещение является числом
 						if(this->_fmk->is(offset, fmk_t::check_t::NUMBER)){
 							// Если указано 4 символа
@@ -683,7 +683,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Получаем количество минут
 								const uint8_t minutes = this->_fmk->atoi <uint8_t> (offset.c_str() + 2, offset.length() - 2);
 								// Если смещение времени положительное
-								if(data.at(1).compare("+") == 0)
+								if(data[1].compare("+") == 0)
 									// Получаем время смещения
 									dt.offset += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
 								// Устанавливаем отрицательное смещение времени
@@ -691,20 +691,20 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 							// Если установлен всего один символ
 							} else {
 								// Если смещение времени положительное
-								if(data.at(1).compare("+") == 0)
+								if(data[1].compare("+") == 0)
 									// Получаем время смещения
 									dt.offset += (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
 								// Устанавливаем отрицательное смещение времени
 								else dt.offset -= (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
 							}
 						// Если получено время в формате часов
-						} else if((data.size() > 4) && !data.at(3).empty() && !data.at(4).empty()) {
+						} else if((data.size() > 4) && !data[3].empty() && !data[4].empty()) {
 							// Получаем количество часов
 							const uint8_t hour = this->_fmk->atoi <uint8_t> (data[3]);
 							// Получаем количество минут
 							const uint8_t minutes = this->_fmk->atoi <uint8_t> (data[4]);
 							// Если смещение времени положительное
-							if(data.at(1).compare("+") == 0)
+							if(data[1].compare("+") == 0)
 								// Получаем время смещения
 								dt.offset += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
 							// Устанавливаем отрицательное смещение времени
@@ -724,11 +724,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 							}
 						}
 					} break;
@@ -745,15 +745,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили номер месяца
 								else if(j == 1)
 									// Устанавливаем полученный номер месяца
-									dt.month = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили число месяца
 								else if(j == 2)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили год
 								else if(j == 3) {
 									// Получаем значение указанного года
-									const uint16_t num = this->_fmk->atoi <uint16_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									// Устанавливаем год
 									dt.year = (2000 + num);
 									// Устанавливаем флаг високосного года
@@ -775,17 +775,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили год
 								else if(j == 1) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								// Если мы получили номер месяца
 								} else if(j == 2)
 									// Получаем значение номера месяца
-									dt.month = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили число месяца
 								else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 							}
 						}
 					} break;
@@ -802,15 +802,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 							}
 						}
 					} break;
@@ -827,19 +827,19 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили метку времени
 								else if(j == 4) {
 									// Получаем название времени суток
-									const string name(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									const string name(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 									// Определяем 12-и часовой формат времени
 									dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
 									// Если мы получили вечернее время
@@ -867,11 +867,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили название дня недели
 								else if(j == 1) {
 									// Получаем название дня недели
-									const string day(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 									// Выполняем перебор всего списка дней недели
 									for(size_t i = 0; i < params.nameDays.size(); i++){
 										// Если мы нашли нужный нам день недели
-										if(this->_fmk->compare(day, params.nameDays.at(i).first)){
+										if(this->_fmk->compare(day, params.nameDays[i].first)){
 											// Устанавливаем день недели
 											dt.day = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -881,11 +881,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили название месяца
 								} else if(j == 2) {
 									// Получаем название месяца
-									const string month(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 									// Выполняем перебор всего списка месяцев
 									for(size_t i = 0; i < params.nameMonths.size(); i++){
 										// Если мы нашли нужный нам месяц
-										if(this->_fmk->compare(month, params.nameMonths.at(i).first)){
+										if(this->_fmk->compare(month, params.nameMonths[i].first)){
 											// Устанавливаем месяц
 											dt.month = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -895,23 +895,23 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 								// Если мы получили число месяца
 								} else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили час
 								else if(j == 4)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили минуты
 								else if(j == 5)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили секунды
 								else if(j == 6)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 								// Если мы получили год
 								else if(j == 7) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (text.c_str() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								}
@@ -1028,7 +1028,7 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 					// Выполняем перебор всех месяцев в году
 					for(size_t i = 0; i < params.daysInMonths.size(); i++)
 						// Увеличиваем количество дней в месяце
-						result += (static_cast <uint64_t> (params.daysInMonths.at(i)) * static_cast <uint64_t> (86400000));
+						result += (static_cast <uint64_t> (params.daysInMonths[i]) * static_cast <uint64_t> (86400000));
 					// Если год високосный
 					if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 						// Добавляем ещё один день
@@ -1057,7 +1057,7 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 						// Выполняем перебор всех дней месяца
 						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 							// Получаем текущее количество дней с компенсацией високосного года
-							days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 							// Если мы не дошли до предела
 							if(lastDays >= (days + count))
 								// Увеличиваем количество прошедших дней
@@ -1189,7 +1189,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 						// Выполняем перебор всех дней месяца
 						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 							// Получаем текущее количество дней с компенсацией високосного года
-							days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 							// Если мы не дошли до предела
 							if(lastDays >= (days + count))
 								// Увеличиваем количество прошедших дней
@@ -1228,7 +1228,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 							// Увеличиваем номер месяца
 							month = (i + 1);
 							// Получаем текущее количество дней с компенсацией високосного года
-							days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 							// Если мы не дошли до предела
 							if(lastDays >= (days + count))
 								// Увеличиваем количество прошедших дней
@@ -1248,7 +1248,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 						if(i != params.rateLeapYears.end()){
 							// Подробнее: https://habr.com/ru/articles/217389
 							// Устанавливаем день недели
-							uint8_t day = (((i->second + static_cast <uint8_t> (year % 4) + params.rateMonths.at(month - 1) + date) - (((month == 1) || (month == 2)) && leap ? 1 : 0)) % 7);
+							uint8_t day = (((i->second + static_cast <uint8_t> (year % 4) + params.rateMonths[month - 1] + date) - (((month == 1) || (month == 2)) && leap ? 1 : 0)) % 7);
 							// Если воскресенье установлен как нулевой
 							if(day == 0)
 								// Выполняем компенсацию
@@ -1375,7 +1375,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1626,7 +1626,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1639,13 +1639,13 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2)){
 											// Получаем количество недель в месяце
-											const uint8_t weeks = static_cast <uint8_t> (::ceil((params.daysInMonths.at(month - 1) + 1) / 7.));
+											const uint8_t weeks = static_cast <uint8_t> (::ceil((params.daysInMonths[month - 1] + 1) / 7.));
 											// Получаем количество оставшихся недель в месяце
 											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / 604800000.L)));
 										// Если год не високосный или месяц не февраль
 										} else {
 											// Получаем количество недель в месяце
-											const uint8_t weeks = static_cast <uint8_t> (::ceil(params.daysInMonths.at(month - 1) / 7.));
+											const uint8_t weeks = static_cast <uint8_t> (::ceil(params.daysInMonths[month - 1] / 7.));
 											// Получаем количество оставшихся недель в месяце
 											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / 604800000.L)));
 										}
@@ -1678,7 +1678,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1691,9 +1691,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся дней в месяце
-											result = static_cast <uint64_t> ((params.daysInMonths.at(month - 1) + 1) - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
+											result = static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
 										// Получаем количество оставшихся дней в месяце
-										else result = static_cast <uint64_t> (params.daysInMonths.at(month - 1) - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
+										else result = static_cast <uint64_t> (params.daysInMonths[month - 1] - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся часов
@@ -1723,7 +1723,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1736,9 +1736,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся часов в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths.at(month - 1) + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
+											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
 										// Получаем количество оставшихся часов в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths.at(month - 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
+										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся минут
@@ -1768,7 +1768,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1781,9 +1781,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся минут в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths.at(month - 1) + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 60000);
+											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 60000);
 										// Получаем количество оставшихся минут в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths.at(month - 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 60000);
+										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 60000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
@@ -1813,7 +1813,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1826,9 +1826,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся секунд в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths.at(month - 1) + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 1000);
+											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 1000);
 										// Получаем количество оставшихся секунд в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths.at(month - 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 1000);
+										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 1000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
@@ -1858,7 +1858,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -1871,9 +1871,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся миллисекунд в месяце
-											result = static_cast <uint64_t> (static_cast <uint32_t> ((params.daysInMonths.at(month - 1) + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth));
+											result = static_cast <uint64_t> (static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth));
 										// Получаем количество оставшихся миллисекунд в месяце
-										else result = static_cast <uint64_t> (static_cast <uint32_t> (params.daysInMonths.at(month - 1) * 86400000) - static_cast <uint32_t> (date - beginMonth));
+										else result = static_cast <uint64_t> (static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
@@ -1909,7 +1909,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Увеличиваем номер месяца
 												month = (i + 1);
 												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
 												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
@@ -1922,9 +1922,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Если год високосный и месяц февраль
 											if(leap && (month == 2))
 												// Получаем количество оставшихся микросекунд в месяце
-												result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths.at(month - 1) + 1) * 86400000000) - static_cast <uint64_t> (date - beginMonth));
+												result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * 86400000000) - static_cast <uint64_t> (date - beginMonth));
 											// Получаем количество оставшихся микросекунд в месяце
-											else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths.at(month - 1) * 86400000000) - static_cast <uint64_t> (date - beginMonth));
+											else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths[month - 1] * 86400000000) - static_cast <uint64_t> (date - beginMonth));
 										}
 									// Если текущее значение даты передано в других единицах
 									} else {
@@ -1967,7 +1967,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Увеличиваем номер месяца
 												month = (i + 1);
 												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
 												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
@@ -1980,9 +1980,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Если год високосный и месяц февраль
 											if(leap && (month == 2))
 												// Получаем количество оставшихся наносекунд в месяце
-												result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths.at(month - 1) + 1) * 86400000000000) - static_cast <uint64_t> (date - beginMonth));
+												result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * 86400000000000) - static_cast <uint64_t> (date - beginMonth));
 											// Получаем количество оставшихся наносекунд в месяце
-											else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths.at(month - 1) * 86400000000000) - static_cast <uint64_t> (date - beginMonth));
+											else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths[month - 1] * 86400000000000) - static_cast <uint64_t> (date - beginMonth));
 										}
 									// Если текущее значение даты передано в других единицах
 									} else {
@@ -2250,7 +2250,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2451,7 +2451,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2492,7 +2492,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2533,7 +2533,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2574,7 +2574,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2615,7 +2615,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2656,7 +2656,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Увеличиваем номер месяца
 											month = (i + 1);
 											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
 											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
@@ -2703,7 +2703,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Увеличиваем номер месяца
 												month = (i + 1);
 												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
 												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
@@ -2757,7 +2757,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Увеличиваем номер месяца
 												month = (i + 1);
 												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
 												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
@@ -3106,7 +3106,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 									// Увеличиваем номер месяца
 									month = (i + 1);
 									// Получаем текущее количество дней с компенсацией високосного года
-									days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+									days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 									// Если мы не дошли до предела
 									if(lastDays >= (days + count))
 										// Увеличиваем количество прошедших дней
@@ -3117,7 +3117,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Выполняем перебор всех месяцев
 								for(size_t i = 0; i < static_cast <size_t> (value); i++){
 									// Увеличиваем текущее значение месяца на указанное количество дней
-									result += (static_cast <uint64_t> (params.daysInMonths.at(month - 1)) * static_cast <uint64_t> (86400000));
+									result += (static_cast <uint64_t> (params.daysInMonths[month - 1]) * static_cast <uint64_t> (86400000));
 									// Если месяц февраль и год является високосным
 									if((month == 2) && this->leap(result))
 										// Увеличиваем текущее значение года на один день
@@ -3274,7 +3274,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 									// Увеличиваем номер месяца
 									month = (i + 1);
 									// Получаем текущее количество дней с компенсацией високосного года
-									days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+									days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 									// Если мы не дошли до предела
 									if(lastDays >= (days + count))
 										// Увеличиваем количество прошедших дней
@@ -3291,7 +3291,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 										// Выполняем сброс месяца на начало
 										month = 12;
 									// Уменьшаем текущее значение месяца на указанное количество дней
-									result -= (static_cast <uint64_t> (params.daysInMonths.at(month - 1)) * static_cast <uint64_t> (86400000));
+									result -= (static_cast <uint64_t> (params.daysInMonths[month - 1]) * static_cast <uint64_t> (86400000));
 									// Если месяц февраль и год является високосным
 									if((month == 2) && this->leap(result))
 										// Уменьшаем текущее значение года на один день
@@ -3525,7 +3525,7 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
  * @param value строка обозначения размерности (s, m, h, d, w, M, y)
  * @return      размер в секундах
  */
-double awh::Chrono::seconds(const string & value) const noexcept {
+double awh::Chrono::seconds(string_view value) const noexcept {
 	// Количество секунд
 	double result = 0.;
 	// Если строка с секундами передана
@@ -3545,7 +3545,7 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 				// Создаём объект матчинга
 				regmatch_t match[regex.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, value.c_str(), regex.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, value.data(), regex.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Обозначение размерности числа
@@ -3563,12 +3563,12 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 								// Если мы получили само число
 								case 1:
 									// Получаем значение числа
-									seconds = this->_fmk->atoi <double> (value.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									seconds = this->_fmk->atoi <double> (value.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 								break;
 								// Если мы получили размерность числа
 								case 2: {
 									// Получаем обозначение размерности числа
-									label.assign(value.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									label.assign(value.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 									// Если мы получили секунды
 									if(label.front() == 's')
 										// Выполняем установку множителя
@@ -3865,7 +3865,7 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 					// Увеличиваем номер месяца
 					month = (i + 1);
 					// Получаем текущее количество дней с компенсацией високосного года
-					days = (static_cast <uint16_t> (params.daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
+					days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
 					// Если мы не дошли до предела
 					if(lastDays >= (days + count))
 						// Увеличиваем количество прошедших дней
@@ -4071,7 +4071,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Выполняем перебор всего списка дней недели
 								for(size_t i = 0; i < params.nameDays.size(); i++){
 									// Получаем название дня
-									const auto & name = params.nameDays.at(i);
+									const auto & name = params.nameDays[i];
 									// Если мы нашли нужный нам день недели
 									if(this->_fmk->compare(* day, name.first) || this->_fmk->compare(* day, name.second)){
 										// Выполняем установку номера дня недели
@@ -4236,7 +4236,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Выполняем перебор всего списка месяцев
 								for(size_t i = 0; i < params.nameMonths.size(); i++){
 									// Получаем название месяца
-									const auto & name = params.nameMonths.at(i);
+									const auto & name = params.nameMonths[i];
 									// Если мы нашли нужный нам месяц
 									if(this->_fmk->compare(* month, name.first) || this->_fmk->compare(* month, name.second)){
 										// Устанавливаем месяц
@@ -4676,7 +4676,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Получаем результирующий буфер для получения результата
 							string * result = reinterpret_cast <string *> (buffer);
 							// Выполняем получение текущего дня недели
-							(* result) = params.nameDays.at(dt.day - 1).second;
+							(* result) = params.nameDays[dt.day - 1].second;
 						// Выполняем копирование текущего дня недели
 						} else ::memcpy(buffer, &dt.day, sizeof(dt.day));
 					}
@@ -4776,7 +4776,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Получаем результирующий буфер для получения результата
 							string * result = reinterpret_cast <string *> (buffer);
 							// Выполняем получение названия месяца
-							(* result) = params.nameMonths.at(dt.month - 1).second;
+							(* result) = params.nameMonths[dt.month - 1].second;
 						// Выполняем копирование текущего значения месяца
 						} else ::memcpy(buffer, &dt.month, sizeof(dt.month));
 					}
@@ -5001,7 +5001,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
 								// Выполняем получение номера текущего дня недели
-								(* result) = params.nameDays.at(this->_dt.day - 1).second;
+								(* result) = params.nameDays[this->_dt.day - 1].second;
 							break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -5010,7 +5010,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 								// Выполняем извлечение текущего дня недели
 								this->get(&day, sizeof(day), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение номера текущего дня недели
-								(* result) = params.nameDays.at(day - 1).second;
+								(* result) = params.nameDays[day - 1].second;
 							} break;
 						}
 					// Если данные переданы в виде числа
@@ -5278,7 +5278,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
 								// Выполняем получение названия месяца
-								(* result) = params.nameMonths.at(this->_dt.month - 1).second;
+								(* result) = params.nameMonths[this->_dt.month - 1].second;
 							break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -5287,7 +5287,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 								// Выполняем извлечение текущего значения месяца
 								this->get(&month, sizeof(month), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение названия месяца
-								(* result) = params.nameMonths.at(month - 1).second;
+								(* result) = params.nameMonths[month - 1].second;
 							} break;
 						}
 					// Если данные переданы в виде числа
@@ -5777,7 +5777,7 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
  *
  * @param zone временная зона для установки
  */
-void awh::Chrono::setTimeZone(const string & zone) noexcept {
+void awh::Chrono::setTimeZone(string_view zone) noexcept {
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
@@ -5793,7 +5793,7 @@ void awh::Chrono::setTimeZone(const string & zone) noexcept {
  * @param zone временная зона для конвертации
  * @return     определённая временная зона
  */
-awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexcept {
+awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept {
 	// Результат работы функции
 	zone_t result = zone_t::NONE;
 	// Если временная зона для матчинга передана
@@ -5813,7 +5813,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 				// Создаём объект матчинга
 				regmatch_t match[regex.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, zone.c_str(), regex.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Создаём массив собранных результатов
@@ -5823,7 +5823,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so)
 							// Выполняем установку результата
-							data.at(j).assign(zone.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+							data[j].assign(zone.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 					}
 					// Если временная зона извлечена
 					if(!data.empty() && !data.front().empty()){
@@ -7138,7 +7138,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
  * @param zone временная зона для конвертации
  * @return     смещение временной зоны в секундах
  */
-int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
+int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 	// Результат работы функции
 	int32_t result = this->_dt.offset;
 	// Если временная зона указана
@@ -7158,7 +7158,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 				// Создаём объект матчинга
 				regmatch_t match[regex.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, zone.c_str(), regex.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Создаём массив собранных результатов
@@ -7168,12 +7168,12 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so)
 							// Выполняем установку результата
-							data.at(j).assign(zone.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+							data[j].assign(zone.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 					}
 					// Если временная зона извлечена
 					if(!data.empty() && (data.size() > 1)){
 						// Получаем название временной зоны
-						string name = data.at(1);
+						string name = data[1];
 						// Выполняем поиск временной зоны в списке временных зон
 						auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
 						// Если временная зона найдена
@@ -7185,9 +7185,9 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 							// Если название временной зоны не получено
 							if(name.empty()){
 								// Если смещение времени указано
-								if((data.size() > 5) && !data.at(4).empty()){
+								if((data.size() > 5) && !data[4].empty()){
 									// Получаем смещение времени
-									const string & offset = data.at(4);
+									const string & offset = data[4];
 									// Если полученное смещение является числом
 									if(this->_fmk->is(offset, fmk_t::check_t::NUMBER)){
 										// Если указано 4 символа
@@ -7197,7 +7197,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 											// Получаем количество минут
 											const uint8_t minutes = this->_fmk->atoi <uint8_t> (offset.c_str() + 2, offset.length() - 2);
 											// Если смещение времени положительное
-											if(data.at(3).compare("+") == 0)
+											if(data[3].compare("+") == 0)
 												// Получаем время смещения
 												result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
 											// Устанавливаем отрицательное смещение времени
@@ -7205,20 +7205,20 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 										// Если установлен всего один символ
 										} else {
 											// Если смещение времени положительное
-											if(data.at(3).compare("+") == 0)
+											if(data[3].compare("+") == 0)
 												// Получаем время смещения
 												result += (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
 											// Устанавливаем отрицательное смещение времени
 											else result -= (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
 										}
 									// Если получено время в формате часов
-									} else if((data.size() > 6) && !data.at(5).empty() && !data.at(6).empty()) {
+									} else if((data.size() > 6) && !data[5].empty() && !data[6].empty()) {
 										// Получаем количество часов
 										const uint8_t hour = this->_fmk->atoi <uint8_t> (data[5]);
 										// Получаем количество минут
 										const uint8_t minutes = this->_fmk->atoi <uint8_t> (data[6]);
 										// Если смещение времени положительное
-										if(data.at(3).compare("+") == 0)
+										if(data[3].compare("+") == 0)
 											// Получаем время смещения
 											result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
 										// Устанавливаем отрицательное смещение времени
@@ -7968,9 +7968,9 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 									// Выполняем получение временной зоны
 									result = this->getTimeZone(zone_t::ULAST);
 								// Если смещение времени указано
-								if((data.size() > 5) && !data.at(4).empty()){
+								if((data.size() > 5) && !data[4].empty()){
 									// Получаем смещение времени
-									const string & offset = data.at(4);
+									const string & offset = data[4];
 									// Если полученное смещение является числом
 									if(this->_fmk->is(offset, fmk_t::check_t::NUMBER)){
 										// Если указано 4 символа
@@ -7980,7 +7980,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 											// Получаем количество минут
 											const uint8_t minutes = this->_fmk->atoi <uint8_t> (offset.c_str() + 2, offset.length() - 2);
 											// Если смещение времени положительное
-											if(data.at(3).compare("+") == 0)
+											if(data[3].compare("+") == 0)
 												// Получаем время смещения
 												result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
 											// Устанавливаем отрицательное смещение времени
@@ -7988,20 +7988,20 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 										// Если установлен всего один символ
 										} else {
 											// Если смещение времени положительное
-											if(data.at(3).compare("+") == 0)
+											if(data[3].compare("+") == 0)
 												// Получаем время смещения
 												result += (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
 											// Устанавливаем отрицательное смещение времени
 											else result -= (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
 										}
 									// Если получено время в формате часов
-									} else if((data.size() > 6) && !data.at(5).empty() && !data.at(6).empty()) {
+									} else if((data.size() > 6) && !data[5].empty() && !data[6].empty()) {
 										// Получаем количество часов
 										const uint8_t hour = this->_fmk->atoi <uint8_t> (data[5]);
 										// Получаем количество минут
 										const uint8_t minutes = this->_fmk->atoi <uint8_t> (data[6]);
 										// Если смещение времени положительное
-										if(data.at(3).compare("+") == 0)
+										if(data[3].compare("+") == 0)
 											// Получаем время смещения
 											result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
 										// Устанавливаем отрицательное смещение времени
@@ -8200,7 +8200,7 @@ void awh::Chrono::clearTimeZones() noexcept {
  * @param name   название временной зоны
  * @param offset смещение времени в секундах
  */
-void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcept {
+void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -8592,7 +8592,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
  * @param storage хранение значение времени
  * @return        дата в UnixTimestamp
  */
-uint64_t awh::Chrono::parse(const string & date, const string & format, const storage_t storage) noexcept {
+uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage) noexcept {
 	// Результат работы функции
 	uint64_t result = 0;
 	// Если дата для парсинга и формат переданы
@@ -8648,7 +8648,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 		// Выполняем перебор формата
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
-			letter = format.at(i);
+			letter = format[i];
 			/**
 			 * Определяем символ парсинга
 			 */
@@ -10165,7 +10165,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
  * @param format формат даты
  * @return       строка содержащая дату
  */
-string awh::Chrono::format(const dt_t & dt, const string & format) const noexcept {
+string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если формат даты передан
@@ -10177,7 +10177,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 		// Выполняем перебор формата
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
-			letter = format.at(i);
+			letter = format[i];
 			/**
 			 * Определяем символ парсинга
 			 */
@@ -10277,12 +10277,12 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 							// Если мы нашли переменную (h)
 							case 'h':
 								// Выполняем формирование названия месяца
-								result.append(params.nameMonths.at(dt.month - 1).first);
+								result.append(params.nameMonths[dt.month - 1].first);
 							break;
 							// Если мы нашли переменную (B)
 							case 'B':
 								// Выполняем формирование названия месяца
-								result.append(params.nameMonths.at(dt.month - 1).second);
+								result.append(params.nameMonths[dt.month - 1].second);
 							break;
 							// Если мы нашли переменную (m)
 							case 'm': {
@@ -10314,12 +10314,12 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 							// Если мы нашли переменную (a)
 							case 'a':
 								// Выполняем формирование названия дня недели
-								result.append(params.nameDays.at(dt.day - 1).first);
+								result.append(params.nameDays[dt.day - 1].first);
 							break;
 							// Если мы нашли переменную (A)
 							case 'A':
 								// Выполняем формирование названия дня недели
-								result.append(params.nameDays.at(dt.day - 1).second);
+								result.append(params.nameDays[dt.day - 1].second);
 							break;
 							// Если мы нашли переменную (u)
 							case 'u':
@@ -10579,11 +10579,11 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 							// Если мы нашли переменную (c)
 							case 'c': {
 								// Выполняем формирование названия дня недели
-								result.append(params.nameDays.at(dt.day - 1).first);
+								result.append(params.nameDays[dt.day - 1].first);
 								// Добавляем разделитель
 								result.append(1, ' ');
 								// Выполняем формирование названия месяца
-								result.append(params.nameMonths.at(dt.month - 1).first);
+								result.append(params.nameMonths[dt.month - 1].first);
 								// Добавляем разделитель
 								result.append(1, ' ');
 								// Добавляем полученный результат
@@ -10728,7 +10728,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
  * @param format формат даты
  * @return       строка содержащая дату
  */
-string awh::Chrono::format(const uint64_t date, const string & format) const noexcept {
+string awh::Chrono::format(const uint64_t date, string_view format) const noexcept {
 	// Если формат даты передан
 	if((date > 0) && !format.empty()){
 		// Создаем структуру времени
@@ -10758,7 +10758,7 @@ string awh::Chrono::format(const uint64_t date, const string & format) const noe
  * @param format формат даты
  * @return       строка содержащая дату
  */
-string awh::Chrono::format(const uint64_t date, const int32_t zone, const string & format) const noexcept {
+string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view format) const noexcept {
 	// Если формат даты передан
 	if((date > 0) && !format.empty()){
 		// Создаем структуру времени
@@ -10788,7 +10788,7 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, const string
  * @param format формат даты
  * @return       строка содержащая дату
  */
-string awh::Chrono::format(const uint64_t date, const zone_t zone, const string & format) const noexcept {
+string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view format) const noexcept {
 	// Если формат даты передан
 	if((date > 0) && !format.empty()){
 		// Создаем структуру времени
@@ -10820,7 +10820,7 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, const string 
  * @param format формат даты
  * @return       строка содержащая дату
  */
-string awh::Chrono::format(const uint64_t date, const string & zone, const string & format) const noexcept {
+string awh::Chrono::format(const uint64_t date, string_view zone, string_view format) const noexcept {
 	// Если формат даты передан
 	if((date > 0) && !format.empty()){
 		// Создаем структуру времени
@@ -10851,7 +10851,7 @@ string awh::Chrono::format(const uint64_t date, const string & zone, const strin
  * @param storage хранение значение времени
  * @return        строка содержащая дату
  */
-string awh::Chrono::format(const string & format, const storage_t storage) const noexcept {
+string awh::Chrono::format(string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
 		/**
@@ -10899,7 +10899,7 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
  * @param storage хранение значение времени
  * @return        строка содержащая дату
  */
-string awh::Chrono::format(const int32_t zone, const string & format, const storage_t storage) const noexcept {
+string awh::Chrono::format(const int32_t zone, string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
 		/**
@@ -10947,7 +10947,7 @@ string awh::Chrono::format(const int32_t zone, const string & format, const stor
  * @param storage хранение значение времени
  * @return        строка содержащая дату
  */
-string awh::Chrono::format(const zone_t zone, const string & format, const storage_t storage) const noexcept {
+string awh::Chrono::format(const zone_t zone, string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
 		/**
@@ -10999,7 +10999,7 @@ string awh::Chrono::format(const zone_t zone, const string & format, const stora
  * @param storage хранение значение времени
  * @return        строка содержащая дату
  */
-string awh::Chrono::format(const string & zone, const string & format, const storage_t storage) const noexcept {
+string awh::Chrono::format(string_view zone, string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
 		/**
@@ -11052,7 +11052,7 @@ string awh::Chrono::format(const string & zone, const string & format, const sto
  * @param storage хранение значение времени
  * @return        результат работы
  */
-string awh::Chrono::strip(const string & date, const string & format1, const string & format2, const storage_t storage) const noexcept {
+string awh::Chrono::strip(string_view date, string_view format1, string_view format2, const storage_t storage) const noexcept {
 	// Если данные переданы
 	if(!date.empty() && !format1.empty()){
 		/**

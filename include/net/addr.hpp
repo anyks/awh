@@ -185,7 +185,7 @@ namespace awh {
 			 *
 			 * @param zone зона IPv6 адреса для установки
 			 */
-			void zone(const string & zone) noexcept;
+			void zone(string_view zone) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения типа IP-адреса
@@ -206,7 +206,7 @@ namespace awh {
 			 * @param host хост для определения
 			 * @return     определённый тип хоста
 			 */
-			type_t host(const string & host) const noexcept;
+			type_t host(string_view host) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения аппаратного адреса в чистом виде
@@ -281,7 +281,7 @@ namespace awh {
 			 * @param mask маска сети для наложения
 			 * @param addr тип получаемого адреса
 			 */
-			void impose(const string & mask, const addr_t addr) noexcept;
+			void impose(string_view mask, const addr_t addr) noexcept;
 			/**
 			 * @brief Метод наложения маски сети
 			 *
@@ -289,7 +289,7 @@ namespace awh {
 			 * @param addr тип получаемого адреса
 			 * @param type тип адреса аппаратного или интернет подключения
 			 */
-			void impose(const string & mask, const addr_t addr, const type_t type) noexcept;
+			void impose(string_view mask, const addr_t addr, const type_t type) noexcept;
 		public:
 			/**
 			 * @brief Метод наложения префикса
@@ -313,7 +313,7 @@ namespace awh {
 			 * @param mask маска сети для перевода
 			 * @return     полученный префикс адреса
 			 */
-			uint8_t mask2Prefix(const string & mask) const noexcept;
+			uint8_t mask2Prefix(string_view mask) const noexcept;
 			/**
 			 * @brief Метод перевода маски сети в префикс адреса
 			 *
@@ -321,7 +321,7 @@ namespace awh {
 			 * @param type тип адреса аппаратного или интернет подключения
 			 * @return     полученный префикс адреса
 			 */
-			uint8_t mask2Prefix(const string & mask, const type_t type) const noexcept;
+			uint8_t mask2Prefix(string_view mask, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод преобразования префикса адреса в маску сети
@@ -347,7 +347,7 @@ namespace awh {
 			 * @param mask  маска сети для перевода
 			 * @return      результат првоерки
 			 */
-			bool range(const Network_Address & begin, const Network_Address & end, const string & mask) const noexcept;
+			bool range(const Network_Address & begin, const Network_Address & end, string_view mask) const noexcept;
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
 			 *
@@ -357,7 +357,7 @@ namespace awh {
 			 * @param type  тип адреса аппаратного или интернет подключения
 			 * @return      результат првоерки
 			 */
-			bool range(const Network_Address & begin, const Network_Address & end, const string & mask, const type_t type) const noexcept;
+			bool range(const Network_Address & begin, const Network_Address & end, string_view mask, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
@@ -387,7 +387,7 @@ namespace awh {
 			 * @param mask  маска сети для перевода
 			 * @return      результат првоерки
 			 */
-			bool range(const string & begin, const string & end, const string & mask) const noexcept;
+			bool range(string_view begin, string_view end, string_view mask) const noexcept;
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
 			 *
@@ -397,7 +397,7 @@ namespace awh {
 			 * @param type  тип адреса аппаратного или интернет подключения
 			 * @return      результат првоерки
 			 */
-			bool range(const string & begin, const string & end, const string & mask, const type_t type) const noexcept;
+			bool range(string_view begin, string_view end, string_view mask, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
@@ -407,7 +407,7 @@ namespace awh {
 			 * @param prefix префикс адреса для преобразования
 			 * @return       результат првоерки
 			 */
-			bool range(const string & begin, const string & end, const uint8_t prefix) const noexcept;
+			bool range(string_view begin, string_view end, const uint8_t prefix) const noexcept;
 			/**
 			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
 			 *
@@ -417,7 +417,7 @@ namespace awh {
 			 * @param type   тип адреса аппаратного или интернет подключения
 			 * @return       результат првоерки
 			 */
-			bool range(const string & begin, const string & end, const uint8_t prefix, const type_t type) const noexcept;
+			bool range(string_view begin, string_view end, const uint8_t prefix, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки соотвествия IP-адреса указанной сети
@@ -425,7 +425,7 @@ namespace awh {
 			 * @param network сеть для проверки соответствия
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network) const noexcept;
+			bool mapping(string_view network) const noexcept;
 			/**
 			 * @brief Метод проверки соотвествия IP-адреса указанной сети
 			 *
@@ -433,7 +433,7 @@ namespace awh {
 			 * @param type    тип адреса аппаратного или интернет подключения
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network, const type_t type) const noexcept;
+			bool mapping(string_view network, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки соотвествия IP-адреса указанной сети
@@ -443,7 +443,7 @@ namespace awh {
 			 * @param addr    тип получаемого адреса
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network, const string & mask, const addr_t addr) const noexcept;
+			bool mapping(string_view network, string_view mask, const addr_t addr) const noexcept;
 			/**
 			 * @brief Метод проверки соотвествия IP-адреса указанной сети
 			 *
@@ -453,7 +453,7 @@ namespace awh {
 			 * @param type    тип адреса аппаратного или интернет подключения
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network, const string & mask, const addr_t addr, const type_t type) const noexcept;
+			bool mapping(string_view network, string_view mask, const addr_t addr, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки соотвествия IP-адреса указанной сети
@@ -463,7 +463,7 @@ namespace awh {
 			 * @param addr    тип получаемого адреса
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept;
+			bool mapping(string_view network, const uint8_t prefix, const addr_t addr) const noexcept;
 			/**
 			 * @brief Метод проверки соотвествия IP-адреса указанной сети
 			 *
@@ -473,7 +473,7 @@ namespace awh {
 			 * @param type    тип адреса аппаратного или интернет подключения
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept;
+			bool mapping(string_view network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод определения принадлежности адреса
@@ -494,7 +494,7 @@ namespace awh {
 			 * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
 			 * @return     результат установки записи
 			 */
-			bool arpa(const string & addr) noexcept;
+			bool arpa(string_view addr) noexcept;
 		public:
 			/**
 			 * @brief Метод парсинга адреса
@@ -502,7 +502,7 @@ namespace awh {
 			 * @param addr адрес аппаратный или интернет подключения для парсинга
 			 * @return     результат работы парсинга
 			 */
-			bool parse(const string & addr) noexcept;
+			bool parse(string_view addr) noexcept;
 			/**
 			 * @brief Метод парсинга адреса
 			 *
@@ -510,7 +510,7 @@ namespace awh {
 			 * @param type тип адреса аппаратного или интернет подключения для парсинга
 			 * @return     результат работы парсинга
 			 */
-			bool parse(const string & addr, const type_t type) noexcept;
+			bool parse(string_view addr, const type_t type) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения данных IP-адреса
@@ -585,7 +585,7 @@ namespace awh {
 			 * @param ip адрес для присвоения
 			 * @return   текущий объект
 			 */
-			Network_Address & operator = (const string & ip) noexcept;
+			Network_Address & operator = (string_view ip) noexcept;
 			/**
 			 * @brief Оператор [=] установки типа IP-адреса
 			 *

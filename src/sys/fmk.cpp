@@ -174,17 +174,17 @@ namespace {
 			 * @param log  объект работы с логами
 			 * @return     получившееся в результате значение
 			 */
-			static string convertEncoding(const string & data, const string & from, const string & to, const awh::log_t * log){
+			static string convertEncoding(string_view data, string_view from, string_view to, const awh::log_t * log){
 				// Результат работы функции
 				string result = "";
 				// Если данные переданы на вход правильно
-				if(!data.empty() && !from.empty() && !to.empty()){
+				if(!std::empty(data) && !std::empty(from) && !std::empty(to)){
 					/**
 					 * Выполняем отлов ошибок
 					 */
 					try {
 						// Выполняем инициализацию конвертера
-						iconv_t convert = ::iconv_open(to.c_str(), from.c_str());
+						iconv_t convert = ::iconv_open(string{to}.c_str(), string{from}.c_str());
 						// Если инициализировать конвертер не вышло
 						if(convert == (iconv_t)(-1))
 							// Выполняем генерацию ошибки
@@ -192,7 +192,7 @@ namespace {
 						// Получаем размер входящей строки
 						size_t size = data.size();
 						// Выполняем получение указатель на входящую строку
-						char * ptr = const_cast <char *> (data.c_str());
+						char * ptr = const_cast <char *> (data.data());
 						// Выполняем создание буфера для получения результата
 						result.resize(6 * data.size(), 0);
 						// Выполняем получения указателя на результирующий буфер
@@ -277,7 +277,7 @@ namespace {
 	 * @param log       объект работы с логами
 	 * @return          контенер содержащий данные
 	 */
-	T & split(const string & str, const string & delim, T & container, const awh::log_t * log) noexcept {
+	T & split(string_view str, string_view delim, T & container, const awh::log_t * log) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -357,13 +357,13 @@ namespace {
 				// Вставляем полученный результат в контейнер
 				container.insert(container.end(), trimFn(result));
 				// Выполняем смещение в тексте
-				index = ++pos + (delim.length() - 1);
+				index = ++pos + (delim.size() - 1);
 				// Выполняем поиск разделителя в тексте
 				pos = str.find(delim, pos);
 				// Если мы дошли до конца текста
 				if(pos == string::npos){
 					// Получаем полученный текст
-					result = str.substr(index, str.length());
+					result = str.substr(index, str.size());
 					// Вставляем полученный результат в контейнер
 					container.insert(container.end(), trimFn(result));
 				}
@@ -429,7 +429,7 @@ namespace {
 	 * @param log       объект работы с логами
 	 * @return          контенер содержащий данные
 	 */
-	T & split(const wstring & str, const wstring & delim, T & container, const awh::log_t * log) noexcept {
+	T & split(wstring_view str, wstring_view delim, T & container, const awh::log_t * log) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -509,13 +509,13 @@ namespace {
 				// Вставляем полученный результат в контейнер
 				container.insert(container.end(), trimFn(result));
 				// Выполняем смещение в тексте
-				index = ++pos + (delim.length() - 1);
+				index = ++pos + (delim.size() - 1);
 				// Выполняем поиск разделителя в тексте
 				pos = str.find(delim, pos);
 				// Если мы дошли до конца текста
 				if(pos == wstring::npos){
 					// Получаем полученный текст
-					result = str.substr(index, str.length());
+					result = str.substr(index, str.size());
 					// Вставляем полученный результат в контейнер
 					container.insert(container.end(), trimFn(result));
 				}
@@ -1066,13 +1066,13 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
  * @param flag флаг проверки
  * @return     результат проверки
  */
-bool awh::Framework::is(const string & text, const check_t flag) const noexcept {
+bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Выполняем удаление пробелов вокруг текста
 	this->transform(text, transform_t::TRIM);
 	// Если текст передан
-	if(!text.empty()){
+	if(!std::empty(text)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1093,7 +1093,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Выполняем перебор всех символов строки
 					for(char letter : text){
 						// Выполняем проверку символа
-						result = (isprint(letter) != 0);
+						result = (::isprint(letter) != 0);
 						// Если символ не печатаемый
 						if(!result)
 							// Выходим из цикла
@@ -1139,7 +1139,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						/**
 						 * @brief Функция проверки на валидность символа
 						 *
@@ -1147,17 +1147,17 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 						 * @param index индекс буквы в слове
 						 * @return      результат проверки
 						 */
-						auto checkFn = [this](const string & text, const size_t index) noexcept -> bool {
+						auto checkFn = [this](string_view text, const size_t index) noexcept -> bool {
 							// Результат работы функции
 							bool result = false;
 							// Получаем текущую букву
-							const char letter = text.at(index);
+							const char letter = text[index];
 							// Если буква не первая и не последняя
-							if((index > 0) && (index < (text.length() - 1))){
+							if((index > 0) && (index < (text.size() - 1))){
 								// Получаем предыдущую букву
-								const char first = text.at(index - 1);
+								const char first = text[index - 1];
 								// Получаем следующую букву
-								const char second = text.at(index + 1);
+								const char second = text[index + 1];
 								// Если проверка не пройдена, проверяем на апостроф
 								if(!(result = (((letter == '-') && (first != '-') && (second != '-')) || ::isspace(letter)))){
 									// Выполняем проверку на апостроф
@@ -1178,7 +1178,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 						// Определяем конец текста
 						const uint8_t end = ((text.back() == '!') || (text.back() == '?') ? 2 : 1);
 						// Переходим по всем буквам слова
-						for(size_t i = 0, j = (text.length() - end); j > ((text.length() / 2) - end); i++, j--){
+						for(size_t i = 0, j = (text.size() - end); j > ((text.size() / 2) - end); i++, j--){
 							// Проверяем является ли слово латинским
 							result = (i == j ? checkFn(text, i) : checkFn(text, i) && checkFn(text, j));
 							// Если слово не соответствует тогда выходим
@@ -1196,7 +1196,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Номер позиции для сравнения
 					uint8_t num = 0;
 					// Получаем байты для сравнения
-					const u_char * bytes = reinterpret_cast <const u_char *> (text.c_str());
+					const u_char * bytes = reinterpret_cast <const u_char *> (text.data());
 					/**
 					 * Выполняем перебор всех символов
 					 */
@@ -1260,17 +1260,17 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						// Начальная позиция поиска
 						const uint8_t pos = ((text.front() == '-') || (text.front() == '+') ? 1 : 0);
 						// Переходим по всем буквам слова
-						for(size_t i = static_cast <size_t> (pos), j = (text.length() - 1); j > ((text.length() / 2) - 1); i++, j--){
+						for(size_t i = static_cast <size_t> (pos), j = (text.size() - 1); j > ((text.size() / 2) - 1); i++, j--){
 							// Проверяем является ли слово арабским числом
 							result = !(
 								(i == j) ?
-								!symbols.isArabic(text.at(i)) :
-								!symbols.isArabic(text.at(i)) ||
-								!symbols.isArabic(text.at(j))
+								!symbols.isArabic(text[i]) :
+								!symbols.isArabic(text[i]) ||
+								!symbols.isArabic(text[j])
 							);
 							// Если слово не соответствует тогда выходим
 							if(!result)
@@ -1283,17 +1283,17 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Если установлен флаг проверки на число с плавающей точкой
 				case static_cast <uint8_t> (check_t::DECIMAL): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						// Текущая буква
 						char letter = 0;
 						// Начальная позиция поиска
 						const uint8_t pos = ((text.front() == '-') || (text.front() == '+') ? 1 : 0);
 						// Переходим по всем символам слова
-						for(size_t i = static_cast <size_t> (pos); i < text.length(); i++){
+						for(size_t i = static_cast <size_t> (pos); i < text.size(); i++){
 							// Если позиция не первая
 							if(i > static_cast <size_t> (pos)){
 								// Получаем текущую букву
-								letter = text.at(i);
+								letter = text[i];
 								// Если плавающая точка найдена
 								if((letter == '.') || (letter == ',') || (letter == 'e')){
 									// Проверяем правые и левую части
@@ -1312,15 +1312,15 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Если установлен флаг проверки наличия латинских символов в строке
 				case static_cast <uint8_t> (check_t::PRESENCE_LATIAN): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						// Переходим по всем буквам слова
-						for(size_t i = 0, j = (text.length() - 1); j > ((text.length() / 2) - 1); i++, j--){
+						for(size_t i = 0, j = (text.size() - 1); j > ((text.size() / 2) - 1); i++, j--){
 							// Проверяем является ли слово латинским
 							result = (
 								(i == j) ?
-								symbols.isLetter(text.at(i)) :
-								symbols.isLetter(text.at(i)) ||
-								symbols.isLetter(text.at(j))
+								symbols.isLetter(text[i]) :
+								symbols.isLetter(text[i]) ||
+								symbols.isLetter(text[j])
 							);
 							// Если найдена хотя бы одна латинская буква тогда выходим
 							if(result)
@@ -1337,15 +1337,15 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 						// Проверяем являются ли первая и последняя буква слова, числом
 						result = (symbols.isArabic(text.front()) || symbols.isArabic(text.back()));
 						// Если оба варианта не сработали
-						if(!result && (text.length() > 2)){
+						if(!result && (text.size() > 2)){
 							// Переходим по всему списку
-							for(size_t i = 1, j = (text.length() - 2); j > ((text.length() / 2) - 1); i++, j--){
+							for(size_t i = 1, j = (text.size() - 2); j > ((text.size() / 2) - 1); i++, j--){
 								// Проверяем является ли слово арабским числом
 								result = (
 									(i == j) ?
-									symbols.isArabic(text.at(i)) :
-									symbols.isArabic(text.at(i)) ||
-									symbols.isArabic(text.at(j))
+									symbols.isArabic(text[i]) :
+									symbols.isArabic(text[i]) ||
+									symbols.isArabic(text[j])
 								);
 								// Если хоть один символ является числом, выходим
 								if(result)
@@ -1403,13 +1403,13 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
  * @param flag флаг проверки
  * @return     результат проверки
  */
-bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept {
+bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Выполняем удаление пробелов вокруг текста
 	this->transform(text, transform_t::TRIM);
 	// Если текст передан
-	if(!text.empty()){
+	if(!std::empty(text)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1476,7 +1476,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						/**
 						 * @brief Функция проверки на валидность символа
 						 *
@@ -1484,17 +1484,17 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 						 * @param index индекс буквы в слове
 						 * @return      результат проверки
 						 */
-						auto checkFn = [this](const wstring & text, const size_t index) noexcept -> bool {
+						auto checkFn = [this](wstring_view text, const size_t index) noexcept -> bool {
 							// Результат работы функции
 							bool result = false;
 							// Получаем текущую букву
-							const wchar_t letter = text.at(index);
+							const wchar_t letter = text[index];
 							// Если буква не первая и не последняя
-							if((index > 0) && (index < (text.length() - 1))){
+							if((index > 0) && (index < (text.size() - 1))){
 								// Получаем предыдущую букву
-								const wchar_t first = text.at(index - 1);
+								const wchar_t first = text[index - 1];
 								// Получаем следующую букву
-								const wchar_t second = text.at(index + 1);
+								const wchar_t second = text[index + 1];
 								// Если проверка не пройдена, проверяем на апостроф
 								if(!(result = (((letter == L'-') && (first != L'-') && (second != L'-')) || ::iswspace(letter)))){
 									// Выполняем проверку на апостроф
@@ -1515,7 +1515,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 						// Определяем конец текста
 						const uint8_t end = ((text.back() == L'!') || (text.back() == L'?') ? 2 : 1);
 						// Переходим по всем буквам слова
-						for(size_t i = 0, j = (text.length() - end); j > ((text.length() / 2) - end); i++, j--){
+						for(size_t i = 0, j = (text.size() - end); j > ((text.size() / 2) - end); i++, j--){
 							// Проверяем является ли слово латинским
 							result = (i == j ? checkFn(text, i) : checkFn(text, i) && checkFn(text, j));
 							// Если слово не соответствует тогда выходим
@@ -1533,7 +1533,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Номер позиции для сравнения
 					uint8_t num = 0;
 					// Получаем байты для сравнения
-					const wchar_t * bytes = reinterpret_cast <const wchar_t *> (text.c_str());
+					const wchar_t * bytes = reinterpret_cast <const wchar_t *> (text.data());
 					/**
 					 * Выполняем перебор всех символов
 					 */
@@ -1597,17 +1597,17 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						// Начальная позиция поиска
 						const uint8_t pos = ((text.front() == L'-') || (text.front() == L'+') ? 1 : 0);
 						// Переходим по всем буквам слова
-						for(size_t i = static_cast <size_t> (pos), j = (text.length() - 1); j > ((text.length() / 2) - 1); i++, j--){
+						for(size_t i = static_cast <size_t> (pos), j = (text.size() - 1); j > ((text.size() / 2) - 1); i++, j--){
 							// Проверяем является ли слово арабским числом
 							result = !(
 								(i == j) ?
-								!symbols.isArabic(text.at(i)) :
-								!symbols.isArabic(text.at(i)) ||
-								!symbols.isArabic(text.at(j))
+								!symbols.isArabic(text[i]) :
+								!symbols.isArabic(text[i]) ||
+								!symbols.isArabic(text[j])
 							);
 							// Если слово не соответствует тогда выходим
 							if(!result)
@@ -1620,17 +1620,17 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				// Если установлен флаг проверки на число с плавающей точкой
 				case static_cast <uint8_t> (check_t::DECIMAL): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						// Текущая буква
 						wchar_t letter = 0;
 						// Начальная позиция поиска
 						const uint8_t pos = ((text.front() == L'-') || (text.front() == L'+') ? 1 : 0);
 						// Переходим по всем символам слова
-						for(size_t i = static_cast <size_t> (pos); i < text.length(); i++){
+						for(size_t i = static_cast <size_t> (pos); i < text.size(); i++){
 							// Если позиция не первая
 							if(i > static_cast <size_t> (pos)){
 								// Получаем текущую букву
-								letter = text.at(i);
+								letter = text[i];
 								// Если плавающая точка найдена
 								if((letter == L'.') || (letter == L',') || (letter == L'e')){
 									// Проверяем правые и левую части
@@ -1649,15 +1649,15 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				// Если установлен флаг проверки наличия латинских символов в строке
 				case static_cast <uint8_t> (check_t::PRESENCE_LATIAN): {
 					// Если длина слова больше 1-го символа
-					if(text.length() > 1){
+					if(text.size() > 1){
 						// Переходим по всем буквам слова
-						for(size_t i = 0, j = (text.length() - 1); j > ((text.length() / 2) - 1); i++, j--){
+						for(size_t i = 0, j = (text.size() - 1); j > ((text.size() / 2) - 1); i++, j--){
 							// Проверяем является ли слово латинским
 							result = (
 								(i == j) ?
-								symbols.isLetter(text.at(i)) :
-								symbols.isLetter(text.at(i)) ||
-								symbols.isLetter(text.at(j))
+								symbols.isLetter(text[i]) :
+								symbols.isLetter(text[i]) ||
+								symbols.isLetter(text[j])
 							);
 							// Если найдена хотя бы одна латинская буква тогда выходим
 							if(result)
@@ -1674,15 +1674,15 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 						// Проверяем являются ли первая и последняя буква слова, числом
 						result = (symbols.isArabic(text.front()) || symbols.isArabic(text.back()));
 						// Если оба варианта не сработали
-						if(!result && (text.length() > 2)){
+						if(!result && (text.size() > 2)){
 							// Переходим по всему списку
-							for(size_t i = 1, j = (text.length() - 2); j > ((text.length() / 2) - 1); i++, j--){
+							for(size_t i = 1, j = (text.size() - 2); j > ((text.size() / 2) - 1); i++, j--){
 								// Проверяем является ли слово арабским числом
 								result = (
 									(i == j) ?
-									symbols.isArabic(text.at(i)) :
-									symbols.isArabic(text.at(i)) ||
-									symbols.isArabic(text.at(j))
+									symbols.isArabic(text[i]) :
+									symbols.isArabic(text[i]) ||
+									symbols.isArabic(text[j])
 								);
 								// Если хоть один символ является числом
 								if(result)
@@ -1740,6 +1740,25 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
  * @param second второе слово
  * @return       результат сравнения
  */
+bool awh::Framework::compare(string_view first, string_view second) const noexcept {
+	// Если строки пришли не пустыми
+	if(!std::empty(first) && !std::empty(second)){
+		// Выполняем перебор обоих строк
+		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+			// Выполняем сравнение каждого символа
+			return (::tolower(a) == ::tolower(b));
+		}) : false);
+	}
+	// Выводим результат по умолчанию
+	return (first.size() == second.size());
+}
+/**
+ * @brief Метод сравнения двух строк без учёта регистра
+ *
+ * @param first  первое слово
+ * @param second второе слово
+ * @return       результат сравнения
+ */
 bool awh::Framework::compare(const char * first, const char * second) const noexcept {
 	// Если данные для сравшнения не пришли пустыми
 	if((first != nullptr) && ((* first) != '\0') && (second != nullptr) && ((* second) != '\0'))
@@ -1755,17 +1774,17 @@ bool awh::Framework::compare(const char * first, const char * second) const noex
  * @param second второе слово
  * @return       результат сравнения
  */
-bool awh::Framework::compare(const string & first, const string & second) const noexcept {
+bool awh::Framework::compare(wstring_view first, wstring_view second) const noexcept {
 	// Если строки пришли не пустыми
-	if(!first.empty() && !second.empty()){
+	if(!std::empty(first) && !std::empty(second)){
 		// Выполняем перебор обоих строк
-		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
 			// Выполняем сравнение каждого символа
-			return (::tolower(a) == ::tolower(b));
+			return (::towlower(a) == ::towlower(b));
 		}) : false);
 	}
 	// Выводим результат по умолчанию
-	return (first.length() == second.length());
+	return (first.size() == second.size());
 }
 /**
  * @brief Метод сравнения двух строк без учёта регистра
@@ -1781,20 +1800,6 @@ bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) cons
 		return this->compare(wstring{first}, wstring{second});
 	// Выводим результат по умолчанию
 	return (first == second);
-}
-/**
- * @brief Метод сравнения двух строк без учёта регистра
- *
- * @param first  первое слово
- * @param second второе слово
- * @return       результат сравнения
- */
-bool awh::Framework::compare(const wstring & first, const wstring & second) const noexcept {
-	// Выполняем перебор обоих строк
-	return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
-		// Выполняем сравнение каждого символа
-		return (::towlower(a) == ::towlower(b));
-    }) : false);
 }
 /**
  * @brief Метод получения штампа времени в указанных единицах измерения
@@ -2136,7 +2141,7 @@ template string awh::Framework::timestamp <string> (const chrono_t) const noexce
  * @param codepage кодировка в которую необходимо сконвертировать текст
  * @return         сконвертированный текст в требуемой кодировке
  */
-string awh::Framework::transcode(const string & text, const codepage_t codepage) const noexcept {
+string awh::Framework::transcode(string_view text, const codepage_t codepage) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если текст передан
@@ -2165,13 +2170,13 @@ string awh::Framework::transcode(const string & text, const codepage_t codepage)
 					// Если требуется выполнить кодировку в UTF-8
 					case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
 						// Выполняем получение размера буфера данных
-						int32_t size = ::MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
+						int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
 						// Если размер буфера данных получен
 						if(size > 0){
 							// Создаём буфер данных
 							vector <wchar_t> buffer(static_cast <size_t> (size), 0);
 							// Если конвертация в CP1251 выполнена удачно
-							if(::MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
+							if(::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
 								// Получаем размер результирующего буфера данных в кодировке UTF-8
 								size = ::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
 								// Если размер буфера данных получен
@@ -2192,13 +2197,13 @@ string awh::Framework::transcode(const string & text, const codepage_t codepage)
 					// Если требуется выполнить кодировку в CP1251
 					case static_cast <uint8_t> (codepage_t::UTF8_CP1251): {
 						// Выполняем получение размера буфера данных
-						int32_t size = ::MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
+						int32_t size = ::MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
 						// Если размер буфера данных получен
 						if(size > 0){
 							// Создаём буфер данных
 							vector <wchar_t> buffer(static_cast <size_t> (size), 0);
 							// Если конвертация в UTF-8 выполнена удачно
-							if(::MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
+							if(::MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
 								// Получаем размер результирующего буфера данных в кодировке CP1251
 								size = ::WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
 								// Если размер буфера данных получен
@@ -2217,7 +2222,7 @@ string awh::Framework::transcode(const string & text, const codepage_t codepage)
 						}
 					} break;
 					// Если кодировка не установлена
-					default: return text;
+					default: return string{text};
 				}
 			/**
 			 * Для операционной системы не являющейся MS Windows
@@ -2249,14 +2254,14 @@ string awh::Framework::transcode(const string & text, const codepage_t codepage)
 							// Выполняем конвертирование строки из UTF-8 в CP1251
 							return ::convertEncoding(text, "UTF-8", "CP1251", this->_log);
 						// Если кодировка не установлена
-						default: return text;
+						default: return string{text};
 					}
 				/**
 				 * Выполняем работу для остальных условий
 				 */
 				#else
 					// Выводим текст как он есть
-					return text;
+					return string{text};
 				#endif
 			#endif
 		/**
@@ -2590,23 +2595,45 @@ const wstring & awh::Framework::transform(const wstring & text, const transform_
 	return this->transform(* const_cast <wstring *> (&text), flag);
 }
 /**
+ * @brief Метод трансформации строки
+ *
+ * @param text текст для трансформации
+ * @param flag флаг трансформации
+ * @return     трансформированная строка
+ */
+string awh::Framework::transform(string_view text, const transform_t flag) const noexcept {
+	// Выполняем трансформацию текста
+	return this->transform(string{text}, flag);
+}
+/**
+ * @brief Метод трансформации строки
+ *
+ * @param text текст для трансформации
+ * @param flag флаг трансформации
+ * @return     трансформированная строка
+ */
+wstring awh::Framework::transform(wstring_view text, const transform_t flag) const noexcept {
+	// Выполняем трансформацию текста
+	return this->transform(wstring{text}, flag);
+}
+/**
  * @brief Метод объединения списка строк в одну строку
  *
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
  */
-string awh::Framework::join(const vector <string> & items, const string & delim) const noexcept {
+string awh::Framework::join(const vector <string> & items, string_view delim) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если список строк которые необходимо объединить переданы
-	if(!items.empty()){
+	if(!std::empty(items)){
 		// Выполняем перебор всего списка строк
 		for(auto & item : items){
 			// Если результат ещё не сформирован
 			if(!result.empty())
 				// Выполняем добавление разделителя
-				result.append(delim);
+				result.append(delim.data(), delim.size());
 			// Выполняем добавление текущей строки
 			result.append(item);
 		}
@@ -2621,17 +2648,17 @@ string awh::Framework::join(const vector <string> & items, const string & delim)
  * @param delim разделитель
  * @return      строка полученная после объединения
  */
-wstring awh::Framework::join(const vector <wstring> & items, const wstring & delim) const noexcept {
+wstring awh::Framework::join(const vector <wstring> & items, wstring_view delim) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если список строк которые необходимо объединить переданы
-	if(!items.empty()){
+	if(!std::empty(items)){
 		// Выполняем перебор всего списка строк
 		for(auto & item : items){
 			// Если результат ещё не сформирован
 			if(!result.empty())
 				// Выполняем добавление разделителя
-				result.append(delim);
+				result.append(delim.data(), delim.size());
 			// Выполняем добавление текущей строки
 			result.append(item);
 		}
@@ -2646,7 +2673,7 @@ wstring awh::Framework::join(const vector <wstring> & items, const wstring & del
  * @param delim     разделитель
  * @param container результирующий вектор
  */
-vector <string> & awh::Framework::split(const string & text, const string & delim, vector <string> & container) const noexcept {
+vector <string> & awh::Framework::split(string_view text, string_view delim, vector <string> & container) const noexcept {
 	// Выполняем сплит текста
 	return ::split(text, delim, container, this->_log);
 }
@@ -2657,9 +2684,113 @@ vector <string> & awh::Framework::split(const string & text, const string & deli
  * @param delim     разделитель
  * @param container результирующий вектор
  */
-vector <wstring> & awh::Framework::split(const wstring & text, const wstring & delim, vector <wstring> & container) const noexcept {
+vector <wstring> & awh::Framework::split(wstring_view text, wstring_view delim, vector <wstring> & container) const noexcept {
 	// Выполняем сплит текста
 	return ::split(text, delim, container, this->_log);
+}
+/**
+ * @brief Метод конвертирования строки в строку utf-8
+ *
+ * @param str строка для конвертирования
+ * @return    строка в utf-8
+ */
+wstring awh::Framework::convert(string_view str) const noexcept {
+	// Результат работы функции
+	wstring result = L"";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если строка передана
+		if(!std::empty(str)){
+			// Если используется BOOST
+			#ifdef USE_BOOST_CONVERT
+				// Объявляем конвертер
+				using boost::locale::conv::utf_to_utf;
+				// Выполняем конвертирование в utf-8 строку
+				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
+			// Если нужно использовать стандартную библиотеку
+			#else
+				// Объявляем конвертер
+				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
+				// Выполняем конвертирование в utf-8 строку
+				result = conv.from_bytes(string{str});
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const range_error & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод конвертирования строки utf-8 в строку
@@ -2667,7 +2798,7 @@ vector <wstring> & awh::Framework::split(const wstring & text, const wstring & d
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
  */
-string awh::Framework::convert(const wstring & str) const noexcept {
+string awh::Framework::convert(wstring_view str) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2675,13 +2806,13 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if(!str.empty()){
+		if(!std::empty(str)){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
-				result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
+				result = utf_to_utf <char> (str, str + ::wcslen(str));
 			// Если нужно использовать стандартную библиотеку
 			#else
 				// Устанавливаем тип для конвертера UTF-8
@@ -2690,7 +2821,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 				wstring_convert <convert_type, wchar_t> conv;
 				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
 				// Выполняем конвертирование в utf-8 строку
-				result = conv.to_bytes(str);
+				result = conv.to_bytes(wstring{str});
 			#endif
 		}
 	/**
@@ -2773,7 +2904,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
  * @param str строка для конвертирования
  * @return    строка в utf-8
  */
-wstring awh::Framework::convert(const string & str) const noexcept {
+wstring awh::Framework::convert(const char * str) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	/**
@@ -2781,13 +2912,13 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if(!str.empty()){
+		if((str != nullptr) && ((* str) != '\0')){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
-				result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
+				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
 			// Если нужно использовать стандартную библиотеку
 			#else
 				// Объявляем конвертер
@@ -2983,7 +3114,7 @@ string awh::Framework::convert(const wchar_t * str) const noexcept {
  * @param str строка для конвертирования
  * @return    строка в utf-8
  */
-wstring awh::Framework::convert(const char * str) const noexcept {
+wstring awh::Framework::convert(const string & str) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	/**
@@ -2991,13 +3122,13 @@ wstring awh::Framework::convert(const char * str) const noexcept {
 	 */
 	try {
 		// Если строка передана
-		if((str != nullptr) && ((* str) != '\0')){
+		if(!str.empty()){
 			// Если используется BOOST
 			#ifdef USE_BOOST_CONVERT
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
-				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
+				result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
 			// Если нужно использовать стандартную библиотеку
 			#else
 				// Объявляем конвертер
@@ -3054,6 +3185,112 @@ wstring awh::Framework::convert(const char * str) const noexcept {
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод конвертирования строки utf-8 в строку
+ *
+ * @param str строка utf-8 для конвертирования
+ * @return    обычная строка
+ */
+string awh::Framework::convert(const wstring & str) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если строка передана
+		if(!str.empty()){
+			// Если используется BOOST
+			#ifdef USE_BOOST_CONVERT
+				// Объявляем конвертер
+				using boost::locale::conv::utf_to_utf;
+				// Выполняем конвертирование в utf-8 строку
+				result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
+			// Если нужно использовать стандартную библиотеку
+			#else
+				// Устанавливаем тип для конвертера UTF-8
+				using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
+				// Объявляем конвертер
+				wstring_convert <convert_type, wchar_t> conv;
+				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+				// Выполняем конвертирование в utf-8 строку
+				result = conv.to_bytes(str);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const range_error & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3556,6 +3793,58 @@ template <typename T>
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
  */
+T awh::Framework::atoi(string_view value) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если мы получили на вход число
+	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		// Выводим значение по умолчанию
+		result = static_cast <T> (0);
+		// Если строка для конвертации не пуста
+		if(!std::empty(value)){
+			// Вызываем метод конвертации
+			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			// Если мы получили ошибку
+			if (answer.ec != std::errc())
+				// Выводим значение по умолчанию
+				result = static_cast <T> (0);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (string_view) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (string_view) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (string_view) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (string_view) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (string_view) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (string_view) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (string_view) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (string_view) const noexcept;
+template float awh::Framework::atoi <float> (string_view) const noexcept;
+template double awh::Framework::atoi <double> (string_view) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (string_view) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (string_view) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value строковое представление числа
+ * @return      числовое значение в десятичной системе счисления
+ */
 T awh::Framework::atoi(const string & value) const noexcept {
 	// Результат работы функции
 	T result;
@@ -3566,7 +3855,7 @@ T awh::Framework::atoi(const string & value) const noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value.c_str(), value.c_str() + value.length(), result);
+			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку
 			if (answer.ec != std::errc())
 				// Выводим значение по умолчанию
@@ -3652,6 +3941,56 @@ template double awh::Framework::atoi <double> (const char *, const size_t) const
 #if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Framework::atoi <size_t> (const char *, const size_t) const noexcept;
 	template ssize_t awh::Framework::atoi <ssize_t> (const char *, const size_t) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value число в бинарном виде для конвертации в 10-ю систему
+ * @param radix система счисления
+ * @return      полученное значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(string_view value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->atoi(value, radix, &result, sizeof(result));
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (string_view, const uint8_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (string_view, const uint8_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (string_view, const uint8_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (string_view, const uint8_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (string_view, const uint8_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (string_view, const uint8_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (string_view, const uint8_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (string_view, const uint8_t) const noexcept;
+template float awh::Framework::atoi <float> (string_view, const uint8_t) const noexcept;
+template double awh::Framework::atoi <double> (string_view, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (string_view, const uint8_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (string_view, const uint8_t) const noexcept;
 #endif
 /**
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
@@ -3769,11 +4108,25 @@ template double awh::Framework::atoi <double> (const char *, const size_t, const
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
  */
+void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+	// Если данные для конвертации переданы
+	if(!std::empty(value) && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
+		// Выполняем конвертацию строки числа в десятичную систему счисления
+		this->atoi(value.data(), value.size(), radix, buffer, size);
+}
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  число в бинарном виде для конвертации в 10-ю систему
+ * @param radix  система счисления
+ * @param buffer бинарный буфер куда следует положить результат
+ * @param size   размер бинарного буфера куда следует положить результат
+ */
 void awh::Framework::atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
 	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
 		// Выполняем конвертацию строки числа в десятичную систему счисления
-		this->atoi(value.c_str(), value.length(), radix, buffer, size);
+		this->atoi(value.data(), value.size(), radix, buffer, size);
 }
 /**
  * @brief Метод конвертации строковых чисел в десятичную систему счисления
@@ -3819,7 +4172,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					// Выполняем перебор всех чисел
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number.at(i))) != string::npos)
+						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
 							result += static_cast <uint8_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
@@ -3835,7 +4188,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					// Выполняем перебор всех чисел
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number.at(i))) != string::npos)
+						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
 							result += static_cast <uint16_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
@@ -3851,7 +4204,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					// Выполняем перебор всех чисел
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number.at(i))) != string::npos)
+						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
 							result += static_cast <uint32_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
@@ -3867,7 +4220,569 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 					// Выполняем перебор всех чисел
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number.at(i))) != string::npos)
+						if((pos = digits.find(number[i])) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += static_cast <uint64_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Для всех остальных размеров
+				default: {
+					// Если запись в бинарном виде
+					if(radix == 2){
+						// Значение байта для установки
+						uint8_t byte = 0;
+						// Результат с которым будем работать
+						bitset <8> result(0);
+						// Получаем первоначальное значение индексов
+						size_t i = length, j = 0, offset = 0;
+						/**
+						 * Выполняем перебор всей строки
+						 */
+						while(i--){
+							// Если бит положительный
+							if(value[i] == '1')
+								// Устанавливаем бит результата
+								result.set(j);
+							// Если бит отрицательный, снимаем его
+							else result.reset(j);
+							// Увеличиваем смещение бит
+							j++;
+							// Если мы заполнили байт целиком
+							if((j % 8) == 0){
+								// Сбрасываем значение счётчика
+								j = 0;
+								// Выполняем получение числа
+								byte = static_cast <uint8_t> (result.to_ulong());
+								// Выполняем добавление байта в буфер
+								::memcpy(reinterpret_cast <uint8_t *> (buffer) + (offset / 8), &byte, sizeof(byte));
+								// Увеличиваем смещение в буфере
+								offset += 8;
+								// Сбрасываем результат
+								result.reset();
+							}
+						}
+					// Выводим сообщение об ошибке
+					} else {
+						// Сбрасываем полученный результат
+						::memset(buffer, 0, size);
+						// Если объект логирования установлен
+						if(this->_log != nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, length, static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							#endif
+						// Если объект логирования не установлен
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								::fprintf(stderr, "ERROR! %s\n\n", "Only binary number can be converted to binary buffer");
+							#endif
+						}
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Сбрасываем полученный результат
+			::memset(buffer, 0, size);
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, length, static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
+		}
+	}
+}
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value строковое представление числа
+ * @return      числовое значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(wstring_view value) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если мы получили на вход число
+	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		// Выводим значение по умолчанию
+		result = static_cast <T> (0);
+		// Если строка для конвертации не пуста
+		if(!std::empty(value)){
+			// Вызываем метод конвертации
+			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			// Если мы получили ошибку
+			if (answer.ec != std::errc())
+				// Выводим значение по умолчанию
+				result = static_cast <T> (0);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (wstring_view) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (wstring_view) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (wstring_view) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (wstring_view) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (wstring_view) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (wstring_view) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (wstring_view) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (wstring_view) const noexcept;
+template float awh::Framework::atoi <float> (wstring_view) const noexcept;
+template double awh::Framework::atoi <double> (wstring_view) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (wstring_view) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (wstring_view) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value строковое представление числа
+ * @return      числовое значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const wstring & value) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если мы получили на вход число
+	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		// Выводим значение по умолчанию
+		result = static_cast <T> (0);
+		// Если строка для конвертации не пуста
+		if(!value.empty()){
+			// Вызываем метод конвертации
+			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			// Если мы получили ошибку
+			if (answer.ec != std::errc())
+				// Выводим значение по умолчанию
+				result = static_cast <T> (0);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const wstring &) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const wstring &) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const wstring &) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const wstring &) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const wstring &) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const wstring &) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const wstring &) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const wstring &) const noexcept;
+template float awh::Framework::atoi <float> (const wstring &) const noexcept;
+template double awh::Framework::atoi <double> (const wstring &) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const wstring &) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const wstring &) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  строковое представление числа
+ * @param length длина строки
+ * @return       числовое значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const wchar_t * value, const size_t length) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные не переданы
+	if((value == nullptr) || (length == 0) || (* value == L'\0'))
+		// Выводим значение по умолчанию
+		return static_cast <T> (0);
+	// Если мы получили на вход строку
+	else {
+		// Если мы получили на вход число
+		if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+			// Выводим значение по умолчанию
+			result = static_cast <T> (0);
+			// Вызываем метод конвертации
+			auto answer = fast_float::from_chars(value, value + length, result);
+			// Если мы получили ошибку
+			if (answer.ec != std::errc())
+				// Выводим значение по умолчанию
+				result = static_cast <T> (0);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const wchar_t *, const size_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const wchar_t *, const size_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const wchar_t *, const size_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const wchar_t *, const size_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const wchar_t *, const size_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const wchar_t *, const size_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const wchar_t *, const size_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const wchar_t *, const size_t) const noexcept;
+template float awh::Framework::atoi <float> (const wchar_t *, const size_t) const noexcept;
+template double awh::Framework::atoi <double> (const wchar_t *, const size_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const wchar_t *, const size_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const wchar_t *, const size_t) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value число в бинарном виде для конвертации в 10-ю систему
+ * @param radix система счисления
+ * @return      полученное значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(wstring_view value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->atoi(value, radix, &result, sizeof(result));
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (wstring_view, const uint8_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (wstring_view, const uint8_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (wstring_view, const uint8_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (wstring_view, const uint8_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (wstring_view, const uint8_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (wstring_view, const uint8_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (wstring_view, const uint8_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (wstring_view, const uint8_t) const noexcept;
+template float awh::Framework::atoi <float> (wstring_view, const uint8_t) const noexcept;
+template double awh::Framework::atoi <double> (wstring_view, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (wstring_view, const uint8_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (wstring_view, const uint8_t) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value число в бинарном виде для конвертации в 10-ю систему
+ * @param radix система счисления
+ * @return      полученное значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const wstring & value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->atoi(value, radix, &result, sizeof(result));
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const wstring &, const uint8_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const wstring &, const uint8_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const wstring &, const uint8_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const wstring &, const uint8_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const wstring &, const uint8_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const wstring &, const uint8_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const wstring &, const uint8_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const wstring &, const uint8_t) const noexcept;
+template float awh::Framework::atoi <float> (const wstring &, const uint8_t) const noexcept;
+template double awh::Framework::atoi <double> (const wstring &, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const wstring &, const uint8_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const wstring &, const uint8_t) const noexcept;
+#endif
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  буфер числа в бинарном виде для конвертации в 10-ю систему
+ * @param length длина буфера числа в бинарном виде
+ * @param radix  система счисления
+ * @return       полученное значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const wchar_t * value, const size_t length, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные не переданы
+	if((value == nullptr) || (length == 0) || (* value == L'\0'))
+		// Выводим значение по умолчанию
+		return static_cast <T> (0);
+	// Если на вход переданы нужные нам данные
+	else {
+		// Если данные являются основными
+		if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+			// Буфер результата по умолчанию
+			uint8_t buffer[sizeof(T)];
+			// Заполняем нулями буфер данных
+			::memset(buffer, 0, sizeof(T));
+			// Выполняем установку результата по умолчанию
+			::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+		}
+		// Выполняем извлечение данных
+		this->atoi(value, length, radix, &result, sizeof(result));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template float awh::Framework::atoi <float> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+template double awh::Framework::atoi <double> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const wchar_t *, const size_t, const uint8_t) const noexcept;
+#endif
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  число в бинарном виде для конвертации в 10-ю систему
+ * @param radix  система счисления
+ * @param buffer бинарный буфер куда следует положить результат
+ * @param size   размер бинарного буфера куда следует положить результат
+ */
+void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+	// Если данные для конвертации переданы
+	if(!std::empty(value) && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
+		// Выполняем конвертацию строки числа в десятичную систему счисления
+		this->atoi(value.data(), value.size(), radix, buffer, size);
+}
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  число в бинарном виде для конвертации в 10-ю систему
+ * @param radix  система счисления
+ * @param buffer бинарный буфер куда следует положить результат
+ * @param size   размер бинарного буфера куда следует положить результат
+ */
+void awh::Framework::atoi(const wstring & value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+	// Если данные для конвертации переданы
+	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
+		// Выполняем конвертацию строки числа в десятичную систему счисления
+		this->atoi(value.data(), value.size(), radix, buffer, size);
+}
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  число в бинарном виде для конвертации в 10-ю систему
+ * @param length длина буфера числа в бинарном виде
+ * @param radix  система счисления
+ * @param buffer бинарный буфер куда следует положить результат
+ * @param size   размер бинарного буфера куда следует положить результат
+ */
+void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+	// Если данные для конвертации переданы
+	if((value != nullptr) && (length > 0) && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем перевод в верхний регистр
+			wstring number(value, length);
+			// Позиция в строке алфавита
+			size_t pos = wstring::npos;
+			// Устанавливаем числовые обозначения
+			const wstring digits = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			// Если запись в 16-м виде
+			if(radix == 16){
+				// Если первые два значения числа являются префиксом
+				if(number.compare(0, 2, L"0x") == 0)
+					// Удаляем первые два символа
+					number.erase(0, 2);
+			}
+			// Выполняем перевод число в верхний регистр
+			this->transform(number, transform_t::UPPER_CASE);
+			// Количество перебираемых элементов
+			const uint8_t count = static_cast <uint8_t> (number.length());
+			/**
+			 * Определяем размер данных для конвертации
+			 */
+			switch(size){
+				// Если это один байт
+				case 1: {
+					// Результат с которым будем работать
+					uint8_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = 0; i < count; i++){
+						// Если символ найден
+						if((pos = digits.find(number[i])) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += static_cast <uint8_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Если это два байта
+				case 2: {
+					// Результат с которым будем работать
+					uint16_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = 0; i < count; i++){
+						// Если символ найден
+						if((pos = digits.find(number[i])) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += static_cast <uint16_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Если это четыре байта
+				case 4: {
+					// Результат с которым будем работать
+					uint32_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = 0; i < count; i++){
+						// Если символ найден
+						if((pos = digits.find(number[i])) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += static_cast <uint32_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Если это восемь байт
+				case 8: {
+					// Результат с которым будем работать
+					uint64_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = 0; i < count; i++){
+						// Если символ найден
+						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
 							result += static_cast <uint64_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
@@ -4312,17 +5227,17 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
  * @param word римское число
  * @return     арабское число
  */
-uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
+uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если слово передано
-	if(!word.empty()){
+	if(!std::empty(word)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Получаем длину слова
-			const size_t length = word.length();
+			const size_t length = word.size();
 			// Если слово состоит всего из одной буквы
 			if((length == 0) || ((length == 1) && !symbols.isRome(word.front())))
 				// Выводим нулевой результат
@@ -4333,9 +5248,9 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 				for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
 					// Проверяем является ли слово римским числом
 					if(!((i == j) ?
-						symbols.isRome(word.at(i)) :
-						symbols.isRome(word.at(i)) &&
-						symbols.isRome(word.at(j))
+						symbols.isRome(word[i]) :
+						symbols.isRome(word[i]) &&
+						symbols.isRome(word[j])
 					)) return result;
 				}
 			}
@@ -4560,17 +5475,17 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
  * @param word римское число
  * @return     арабское число
  */
-uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
+uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Если слово передано
-	if(!word.empty()){
+	if(!std::empty(word)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Получаем длину слова
-			const size_t length = word.length();
+			const size_t length = word.size();
 			// Если слово состоит всего из одной буквы
 			if((length == 0) || ((length == 1) && !symbols.isRome(word.front())))
 				// Выводим нулевой результат
@@ -4581,9 +5496,9 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 				for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
 					// Проверяем является ли слово римским числом
 					if(!((i == j) ?
-						symbols.isRome(word.at(i)) :
-						symbols.isRome(word.at(i)) &&
-						symbols.isRome(word.at(j))
+						symbols.isRome(word[i]) :
+						symbols.isRome(word[i]) &&
+						symbols.isRome(word[j])
 					)) return result;
 				}
 			}
@@ -4879,11 +5794,11 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
  * @param word арабское число от 1 до 4999
  * @return     римское число
  */
-string awh::Framework::arabic2rome(const string & word) const noexcept {
+string awh::Framework::arabic2rome(string_view word) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если слово передано
-	if(!word.empty()){
+	if(!std::empty(word)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -4938,17 +5853,17 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
  * @param word арабское число от 1 до 4999
  * @return     римское число
  */
-wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
+wstring awh::Framework::arabic2rome(wstring_view word) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если слово передано
-	if(!word.empty()){
+	if(!std::empty(word)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Преобразуем слово в число
-			const uint32_t number = ::stoi(word);
+			const uint32_t number = ::stoi(wstring{word});
 			// Выполняем расчет
 			result = this->arabic2rome(number);
 		/**
@@ -4963,6 +5878,140 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод подсчёта количества указанной буквы в слове
+ *
+ * @param word   слово в котором нужно подсчитать букву
+ * @param letter букву которую нужно подсчитать
+ * @return       результат подсчёта
+ */
+size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если слово и буква переданы
+	if(!std::empty(word) && (letter > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Ищем нашу букву
+			size_t pos = 0;
+			/**
+			 * Выполняем подсчёт количества указанных букв в слове
+			 */
+			while((pos = word.find(letter, pos)) != string::npos){
+				// Считаем количество букв
+				result++;
+				// Увеличиваем позицию
+				pos++;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(word, letter), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод подсчёта количества указанной буквы в слове
+ *
+ * @param word   слово в котором нужно подсчитать букву
+ * @param letter букву которую нужно подсчитать
+ * @return       результат подсчёта
+ */
+size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если слово и буква переданы
+	if(!std::empty(word) && (letter > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Ищем нашу букву
+			size_t pos = 0;
+			/**
+			 * Выполняем подсчёт количества указанных букв в слове
+			 */
+			while((pos = word.find(letter, pos)) != wstring::npos){
+				// Считаем количество букв
+				result++;
+				// Увеличиваем позицию
+				pos++;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word), letter), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -5041,73 +6090,6 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод подсчёта количества указанной буквы в слове
- *
- * @param word   слово в котором нужно подсчитать букву
- * @param letter букву которую нужно подсчитать
- * @return       результат подсчёта
- */
-size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) const noexcept {
-	// Результат работы функции
-	size_t result = 0;
-	// Если слово и буква переданы
-	if(!word.empty() && (letter > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Ищем нашу букву
-			size_t pos = 0;
-			/**
-			 * Выполняем подсчёт количества указанных букв в слове
-			 */
-			while((pos = word.find(letter, pos)) != wstring::npos){
-				// Считаем количество букв
-				result++;
-				// Увеличиваем позицию
-				pos++;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->convert(word), letter), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
 		}
 	}
 	// Выводим результат
@@ -5332,11 +6314,11 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
  * @param items  список аргументов строки
  * @return       сформированная строка
  */
-string awh::Framework::format(const string & format, const vector <string> & items) const noexcept {
+string awh::Framework::format(string_view format, const vector <string> & items) const noexcept {
 	// Результат работы функции
-	string result = format;
+	string result(format);
 	// Если данные переданы
-	if(!format.empty() && !items.empty()){
+	if(!std::empty(format) && !items.empty()){
 		/**
 		 * @brief Функция заменты подстроки в строке
 		 *
@@ -5464,11 +6446,11 @@ string awh::Framework::format(const string & format, const vector <string> & ite
  * @param items  список аргументов строки
  * @return       сформированная строка
  */
-wstring awh::Framework::format(const wstring & format, const vector <wstring> & items) const noexcept {
+wstring awh::Framework::format(wstring_view format, const vector <wstring> & items) const noexcept {
 	// Результат работы функции
-	wstring result = format;
+	wstring result(format);
 	// Если данные переданы
-	if(!format.empty() && !items.empty()){
+	if(!std::empty(format) && !items.empty()){
 		/**
 		 * @brief Функция заменты подстроки в строке
 		 *
@@ -5596,9 +6578,9 @@ wstring awh::Framework::format(const wstring & format, const vector <wstring> & 
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
  */
-bool awh::Framework::exists(const string & word, const string & text) const noexcept {
+bool awh::Framework::exists(string_view word, string_view text) const noexcept {
 	// Если данные переданы верные
-	if(!word.empty() && !text.empty()){
+	if(!std::empty(word) && !std::empty(text)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5608,7 +6590,7 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
 			// Выполняем поиск слова в тексте
 			(void) find_if_not(text.begin(), text.end(), [&index, &word](char c) noexcept -> bool {
 				// Если символы в слове совпадают
-				if(::tolower(c) == ::tolower(word.at(index)))
+				if(::tolower(c) == ::tolower(word[index]))
 					// Увеличиваем значение индекса
 					index++;
 				// Если символы не совпадают, выполняем сброс индекса
@@ -5665,9 +6647,9 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
  */
-bool awh::Framework::exists(const wstring & word, const wstring & text) const noexcept {
+bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept {
 	// Если данные переданы верные
-	if(!word.empty() && !text.empty()){
+	if(!std::empty(word) && !std::empty(text)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5677,7 +6659,7 @@ bool awh::Framework::exists(const wstring & word, const wstring & text) const no
 			// Выполняем поиск слова в тексте
 			(void) find_if_not(text.begin(), text.end(), [&index, &word](wchar_t c) noexcept -> bool {
 				// Если символы в слове совпадают
-				if(::towlower(c) == ::towlower(word.at(index)))
+				if(::towlower(c) == ::towlower(word[index]))
 					// Увеличиваем значение индекса
 					index++;
 				// Если символы не совпадают, выполняем сброс индекса
@@ -5896,11 +6878,11 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-std::unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const vector <string> & escaping) const noexcept {
+std::unordered_map <string, string> awh::Framework::kv(string_view text, string_view delim, string_view separator, const vector <string> & escaping) const noexcept {
 	// Результат работы функции
 	std::unordered_map <string, string> result;
 	// Если данные для обработки текста передан
-	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
+	if(!std::empty(text) && !std::empty(delim) && !std::empty(separator) && !escaping.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5916,7 +6898,7 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 			/**
 			 * Выполняем парсинг текста
 			 */
-			while(keyBegin < text.length()){
+			while(keyBegin < text.size()){
 				// Выполняем поиск разделителя ключа и значения
 				keyEnd = text.find(separator, keyBegin);
 				// Если разделитель не найден, выходим
@@ -5924,13 +6906,13 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					// Выходим из цикла
 					break;
 				// Выполняем поиск позиции начала значения
-				valueBegin = (keyEnd + separator.length());
+				valueBegin = (keyEnd + separator.size());
 				// Выполняем поиск экранирования разделителя
 				const auto i = find_if(escaping.begin(), escaping.end(), [keyEnd, &separator, &text](const string & esc) noexcept -> bool {
 					// Выполняем проверку
 					return (
-						((keyEnd + esc.length() + separator.length()) < text.length()) &&
-						(std::strncmp(&text.data()[keyEnd + separator.length()], esc.data(), esc.length()) == 0)
+						((keyEnd + esc.size() + separator.size()) < text.size()) &&
+						(std::strncmp(&text.data()[keyEnd + separator.size()], esc.data(), esc.size()) == 0)
 					);
 				});
 				// Если экранирование найдено
@@ -5938,9 +6920,9 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					// Сбрасываем количество экранирований
 					escapingCount = 0;
 					// Получаем начало значения
-					valueBegin += i->length();
+					valueBegin += i->size();
 					// Получаем конец значения
-					valueEnd = (keyEnd + delim.length());
+					valueEnd = (keyEnd + delim.size());
 					/**
 					 * Выполняем поиск конца значения
 					 */
@@ -5948,13 +6930,13 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 						// Устанавливаем количество экранирований на одно значение
 						escapingCount = 1;
 						// Определяем конец значения
-						valueEnd = text.find(* i, valueEnd + i->length() + delim.length());
+						valueEnd = text.find(* i, valueEnd + i->size() + delim.size());
 						// Получаем позицию поиска экранирования
 						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
 						/**
 						 * Если мы нашли экранирование
 						 */
-						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == '\\'))
+						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text[escapingPosition] == '\\'))
 							// Получаем позицию поиска экранирования
 							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
 					/**
@@ -5964,7 +6946,7 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					// Если конец значения не найден
 					if(valueEnd == string::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = (text.length() - 1);
+						valueEnd = (text.size() - 1);
 				// Если экранирование не найдено
 				} else {
 					// Устанавливаем конец позиции значения как начало позиции
@@ -5990,7 +6972,7 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					// Если конца значения записи мы не нашли
 					if(valueEnd == string::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = text.length();
+						valueEnd = text.size();
 				}
 				// Если мы нашли и ключ и значение записи
 				if(valueBegin < valueEnd)
@@ -6000,14 +6982,13 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 						text.substr(valueBegin, valueEnd - valueBegin)
 					);
 				// Выполняем поиск следующей записи
-				keyBegin = (valueEnd + (i != escaping.end() ? i->length() : 0));
+				keyBegin = (valueEnd + (i != escaping.end() ? i->size() : 0));
 				/**
 				 * Выполняем поиск начало следующего ключа
 				 */
-				while(((keyBegin + delim.length()) < text.length()) &&
-				       (std::strncmp(&text.data()[keyBegin], delim.data(), delim.length()) == 0))
+				while(((keyBegin + delim.size()) < text.size()) && (std::strncmp(&text.data()[keyBegin], delim.data(), delim.size()) == 0))
 					// Выполняем установку начала следующего ключа
-					keyBegin += delim.length();
+					keyBegin += delim.size();
 			}
 		/**
 		 * Если возникает ошибка
@@ -6058,11 +7039,11 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const vector <wstring> & escaping) const noexcept {
+std::unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstring_view delim, wstring_view separator, const vector <wstring> & escaping) const noexcept {
 	// Результат работы функции
 	std::unordered_map <wstring, wstring> result;
 	// Если данные для обработки текста передан
-	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
+	if(!std::empty(text) && !std::empty(delim) && !std::empty(separator) && !escaping.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -6078,7 +7059,7 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 			/**
 			 * Выполняем парсинг текста
 			 */
-			while(keyBegin < text.length()){
+			while(keyBegin < text.size()){
 				// Выполняем поиск разделителя ключа и значения
 				keyEnd = text.find(separator, keyBegin);
 				// Если разделитель не найден, выходим
@@ -6086,13 +7067,13 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					// Выходим из цикла
 					break;
 				// Выполняем поиск позиции начала значения
-				valueBegin = (keyEnd + separator.length());
+				valueBegin = (keyEnd + separator.size());
 				// Выполняем поиск экранирования разделителя
 				const auto i = find_if(escaping.begin(), escaping.end(), [keyEnd, &separator, &text](const wstring & esc) noexcept -> bool {
 					// Выполняем проверку
 					return (
-						((keyEnd + esc.length() + separator.length()) < text.length()) &&
-						(std::wcsncmp(&text.data()[keyEnd + separator.length()], esc.data(), esc.length()) == 0)
+						((keyEnd + esc.size() + separator.size()) < text.size()) &&
+						(std::wcsncmp(&text.data()[keyEnd + separator.size()], esc.data(), esc.size()) == 0)
 					);
 				});
 				// Если экранирование найдено
@@ -6100,9 +7081,9 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					// Сбрасываем количество экранирований
 					escapingCount = 0;
 					// Получаем начало значения
-					valueBegin += i->length();
+					valueBegin += i->size();
 					// Получаем конец значения
-					valueEnd = (keyEnd + delim.length());
+					valueEnd = (keyEnd + delim.size());
 					/**
 					 * Выполняем поиск конца значения
 					 */
@@ -6110,13 +7091,13 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 						// Устанавливаем количество экранирований на одно значение
 						escapingCount = 1;
 						// Определяем конец значения
-						valueEnd = text.find(* i, valueEnd + i->length() + delim.length());
+						valueEnd = text.find(* i, valueEnd + i->size() + delim.size());
 						// Получаем позицию поиска экранирования
 						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
 						/**
 						 * Если мы нашли экранирование
 						 */
-						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == '\\'))
+						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text[escapingPosition] == '\\'))
 							// Получаем позицию поиска экранирования
 							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
 					/**
@@ -6126,7 +7107,7 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					// Если конец значения не найден
 					if(valueEnd == wstring::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = (text.length() - 1);
+						valueEnd = (text.size() - 1);
 				// Если экранирование не найдено
 				} else {
 					// Устанавливаем конец позиции значения как начало позиции
@@ -6152,7 +7133,7 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					// Если конца значения записи мы не нашли
 					if(valueEnd == wstring::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = text.length();
+						valueEnd = text.size();
 				}
 				// Если мы нашли и ключ и значение записи
 				if(valueBegin < valueEnd)
@@ -6162,14 +7143,14 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 						text.substr(valueBegin, valueEnd - valueBegin)
 					);
 				// Выполняем поиск следующей записи
-				keyBegin = (valueEnd + (i != escaping.end() ? i->length() : 0));
+				keyBegin = (valueEnd + (i != escaping.end() ? i->size() : 0));
 				/**
 				 * Выполняем поиск начало следующего ключа
 				 */
-				while(((keyBegin + delim.length()) < text.length()) &&
-				       (std::wcsncmp(&text.data()[keyBegin], delim.data(), delim.length()) == 0))
+				while(((keyBegin + delim.size()) < text.size()) &&
+				       (std::wcsncmp(&text.data()[keyBegin], delim.data(), delim.size()) == 0))
 					// Выполняем установку начала следующего ключа
-					keyBegin += delim.length();
+					keyBegin += delim.size();
 			}
 		/**
 		 * Если возникает ошибка
@@ -6216,9 +7197,9 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
  *
  * @param zone пользовательская зона
  */
-void awh::Framework::domainZone(const string & zone) noexcept {
+void awh::Framework::domainZone(string_view zone) noexcept {
 	// Если зона передана, устанавливаем её
-	if(!zone.empty())
+	if(!std::empty(zone))
 		// Устанавливаем пользовательскую зону
 		this->_nwt.zone(zone);
 }
@@ -6247,22 +7228,22 @@ const std::unordered_set <string> & awh::Framework::domainZones() const noexcept
  *
  * @param locale локализация приложения
  */
-void awh::Framework::setLocale(const string & locale) noexcept {
+void awh::Framework::setLocale(string_view locale) noexcept {
 	// Устанавливаем локаль
-	if(!locale.empty()){
+	if(!std::empty(locale)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Создаём новую локаль
-			// ::locale loc(locale.c_str());
+			// ::locale loc(locale.data());
 			// Устанавливапм локализацию приложения
-			::setlocale(LC_ALL, locale.c_str());
-			::setlocale(LC_CTYPE, locale.c_str());
-			::setlocale(LC_COLLATE, locale.c_str());
+			::setlocale(LC_ALL, locale.data());
+			::setlocale(LC_CTYPE, locale.data());
+			::setlocale(LC_COLLATE, locale.data());
 			// Устанавливаем локаль системы
 			// this->_locale = ::locale::global(loc);
-			this->_locale = ::locale(locale.c_str());
+			this->_locale = ::locale(locale.data());
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -6316,13 +7297,13 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.c_str());
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.data());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "ERROR! %s (%s)\n\n", error.what(), locale.c_str());
+					::fprintf(stderr, "ERROR! %s (%s)\n\n", error.what(), locale.data());
 				#endif
 			}
 		}
@@ -6334,11 +7315,11 @@ void awh::Framework::setLocale(const string & locale) noexcept {
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
-std::unordered_map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
+std::unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noexcept {
 	// Результат работы функции
 	std::unordered_map <size_t, size_t> result;
 	// Если текст передан
-	if(!text.empty()){
+	if(!std::empty(text)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -6348,7 +7329,7 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(const string & text) co
 			/**
 			 * Выполням поиск ссылок в тексте
 			 */
-			while(pos < text.length()){
+			while(pos < text.size()){
 				// Выполняем парсинг nwt адреса
 				auto resUri = const_cast <fmk_t *> (this)->_nwt.parse(text.substr(pos));
 				// Если ссылка найдена
@@ -6488,9 +7469,9 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение рзамерности данных
-						result = this->atoi <double> (str.substr(0, stop).data());
+						result = this->atoi <double> (str.substr(0, stop));
 					// Если позиция конца значения не установлена, извлекаем значение рзамерности данных до текущей позиции
-					else result = this->atoi <double> (str.substr(0, i).data());
+					else result = this->atoi <double> (str.substr(0, i));
 					// Обозначение рзамерности данных
 					string_view handle = "";
 					// Если позиция начала значения установлена
@@ -6502,23 +7483,23 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 					// Размерность объема данных
 					double dimension = 1.;
 					// Если это размерность в килобайтах
-					if(this->compare("Kb", handle.data()))
+					if(this->compare("Kb", handle))
 						// Выполняем установку множителя
 						dimension = 1024.;
 					// Если это размерность в мегабайтах
-					else if(this->compare("Mb", handle.data()))
+					else if(this->compare("Mb", handle))
 						// Выполняем установку множителя
 						dimension = 1048576.;
 					// Если это размерность в гигабайтах
-					else if(this->compare("Gb", handle.data()))
+					else if(this->compare("Gb", handle))
 						// Выполняем установку множителя
 						dimension = 1073741824.;
 					// Если это размерность в терабайтах
-					else if(this->compare("Tb", handle.data()))
+					else if(this->compare("Tb", handle))
 						// Выполняем установку множителя
 						dimension = 1099511627776.;
 					// Если это байты
-					else if(this->compare("b", handle.data()) || this->compare("bytes", handle.data()))
+					else if(this->compare("b", handle) || this->compare("bytes", handle))
 						// Выполняем установку множителя
 						dimension = 1.;
 					// Если размерность установлена тогда расчитываем количество байт
@@ -6700,9 +7681,9 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение скорости
-						speed = this->atoi <float> (str.substr(0, stop).data());
+						speed = this->atoi <float> (str.substr(0, stop));
 					// Если позиция конца значения не установлена, извлекаем значение скорости до текущей позиции
-					else speed = this->atoi <float> (str.substr(0, i).data());
+					else speed = this->atoi <float> (str.substr(0, i));
 					// Обозначение размерности скорости
 					string_view handle = "";
 					// Если позиция начала значения установлена
@@ -6714,19 +7695,19 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 					// Размерность скорости
 					float dimension = .0f;
 					// Если это биты
-					if(this->compare("bps", handle.data()))
+					if(this->compare("bps", handle))
 						// Выполняем установку множителя
 						dimension = 1.f;
 					// Если это размерность в киллобитах
-					else if(this->compare("kbps", handle.data()))
+					else if(this->compare("kbps", handle))
 						// Выполняем установку множителя
 						dimension = 1000.f;
 					// Если это размерность в мегабитах
-					else if(this->compare("Mbps", handle.data()))
+					else if(this->compare("Mbps", handle))
 						// Выполняем установку множителя
 						dimension = 1000000.f;
 					// Если это размерность в гигабитах
-					else if(this->compare("Gbps", handle.data()))
+					else if(this->compare("Gbps", handle))
 						// Выполняем установку множителя
 						dimension = 1000000000.f;
 					// Выполняем получение размера в байтах
@@ -6831,9 +7812,9 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение скорости
-						speed = this->atoi <float> (str.substr(0, stop).data());
+						speed = this->atoi <float> (str.substr(0, stop));
 					// Если позиция конца значения не установлена, извлекаем значение скорости до текущей позиции
-					else speed = this->atoi <float> (str.substr(0, i).data());
+					else speed = this->atoi <float> (str.substr(0, i));
 					// Обозначение размерности скорости
 					string_view handle = "";
 					// Если позиция начала значения установлена
@@ -6847,19 +7828,19 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 					// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 					const bool bytes = !::fmod(speed / 8.f, 2.f);
 					// Если это биты
-					if(this->compare("bps", handle.data()))
+					if(this->compare("bps", handle))
 						// Выполняем установку множителя
 						dimension = 1.f;
 					// Если это размерность в киллобитах
-					else if(this->compare("kbps", handle.data()))
+					else if(this->compare("kbps", handle))
 						// Выполняем установку множителя
 						dimension = (bytes ? 1000.f : 1024.f);
 					// Если это размерность в мегабитах
-					else if(this->compare("Mbps", handle.data()))
+					else if(this->compare("Mbps", handle))
 						// Выполняем установку множителя
 						dimension = (bytes ? 1000000.f : 1024000.f);
 					// Если это размерность в гигабитах
-					else if(this->compare("Gbps", handle.data()))
+					else if(this->compare("Gbps", handle))
 						// Выполняем установку множителя
 						dimension = (bytes ? 1000000000.f : 1024000000.f);
 					// Выполняем получение размера в байтах
@@ -6932,7 +7913,7 @@ awh::Framework::Framework() noexcept : _nwt(nullptr), _log(nullptr) {
  *
  * @param locale локализация приложения
  */
-awh::Framework::Framework(const string & locale) noexcept : _nwt(nullptr), _log(nullptr) {
+awh::Framework::Framework(string_view locale) noexcept : _nwt(nullptr), _log(nullptr) {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
 }

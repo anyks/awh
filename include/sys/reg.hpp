@@ -128,7 +128,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат проверки регулярного выражения
 			 */
-			bool test(const string & text, const exp_t & exp) const noexcept;
+			bool test(string_view text, const exp_t & exp) const noexcept;
 			/**
 			 * @brief Метод проверки регулярного выражения
 			 *
@@ -146,7 +146,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <string> exec(const string & text, const exp_t & exp) const noexcept;
+			vector <string> exec(string_view text, const exp_t & exp) const noexcept;
 			/**
 			 * @brief Метод запуска регулярного выражения
 			 *
@@ -164,7 +164,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <std::pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
+			vector <std::pair <size_t, size_t>> match(string_view text, const exp_t & exp) const noexcept;
 			/**
 			 * @brief Метод выполнения регулярного выражения
 			 *
@@ -182,7 +182,7 @@ namespace awh {
 			 * @param options список опций для сборки регулярного выражения
 			 * @return        результат собранного регулярного выражения
 			 */
-			exp_t build(const string & pattern, const vector <option_t> & options = {}) const noexcept;
+			exp_t build(string_view pattern, const vector <option_t> & options = {}) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта логирования

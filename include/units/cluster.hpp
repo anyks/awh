@@ -229,7 +229,7 @@ namespace awh {
 				 *
 				 * @param name название кластера для установки
 				 */
-				void name(const string & name) noexcept;
+				void name(string_view name) noexcept;
 			public:
 				/**
 				 * @brief Метод получения максимального количества процессов

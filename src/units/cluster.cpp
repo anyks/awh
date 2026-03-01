@@ -1261,7 +1261,7 @@ void awh::unit::Cluster::rebirth(const bool mode) noexcept {
  *
  * @param name название кластера для установки
  */
-void awh::unit::Cluster::name(const string & name) noexcept {
+void awh::unit::Cluster::name(string_view name) noexcept {
 	// Устанавливаем название кластера
 	this->_name = name;
 }

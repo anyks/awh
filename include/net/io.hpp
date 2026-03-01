@@ -126,7 +126,7 @@ namespace awh {
 					 * @param key ключ аутентификации
 					 * @return    результат работы функции
 					 */
-					bool authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept;
+					bool authenticateKey(const event::id_t id, const uint16_t num, string_view key) noexcept;
 					/**
 					 * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
 					 *
@@ -230,7 +230,7 @@ namespace awh {
 						 * @param value значение адреса события
 						 * @return      результат выполнения установки
 						 */
-						bool add(const event::id_t id, const string & value) noexcept;
+						bool add(const event::id_t id, string_view value) noexcept;
 						/**
 						 * @brief Метод удаления адреса из белого списка события
 						 *
@@ -238,7 +238,7 @@ namespace awh {
 						 * @param value адрес для удаления из белого списка
 						 * @return      результат выполнения удаления
 						 */
-						bool remove(const event::id_t id, const string & value) noexcept;
+						bool remove(const event::id_t id, string_view value) noexcept;
 						/**
 						 * @brief Метод получения белого списка события
 						 *
@@ -303,7 +303,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса для установки
 				 * @return     результат выполнения установки
 				 */
-				bool setIface(const event::id_t id, const string & name) noexcept;
+				bool setIface(const event::id_t id, string_view name) noexcept;
 			public:
 				/**
 				 * @brief Метод получения MTU сетевого интерфейса
@@ -335,7 +335,7 @@ namespace awh {
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
 				 */
-				bool setTarget(const event::id_t id, const string & target) noexcept;
+				bool setTarget(const event::id_t id, string_view target) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины
@@ -370,7 +370,7 @@ namespace awh {
 				 * @param value   значение адреса события
 				 * @return        результат выполнения установки
 				 */
-				bool setAddress(const event::id_t id, const event::address_t address, const string & value) noexcept;
+				bool setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса события
@@ -401,7 +401,7 @@ namespace awh {
 				 * @param port   порт мультикаст-группы с которого выполняется подписка
 				 * @return       результат выполнения установки
 				 */
-				bool membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port = 0) noexcept;
+				bool membership(const event::id_t id, const event::mode_t mode, string_view group, string_view source, const uint16_t port = 0) noexcept;
 				/**
 				 * @brief Метод активации/деактивации мультикаст группы события
 				 *
@@ -593,7 +593,7 @@ namespace awh {
 				 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
 				 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
 				 */
-				void bandwidth(const event::limiting_t limiting, const string & bandwidth) noexcept;
+				void bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
 				/**
 				 * @brief Метод установки пропускной способности события для события
 				 *
@@ -602,7 +602,7 @@ namespace awh {
 				 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
 				 * @return          результат выполнения установки
 				 */
-				bool bandwidth(const event::id_t id, const event::limiting_t limiting, const string & bandwidth) noexcept;
+				bool bandwidth(const event::id_t id, const event::limiting_t limiting, string_view bandwidth) noexcept;
 			public:
 				/**
 				 * @brief Метод получения режима трансляции пакетов для события

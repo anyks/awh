@@ -1594,7 +1594,7 @@ namespace driver {
 							// Устанавливаем буфер входящих данных
 							zs.next_in = reinterpret_cast <Bytef *> (const_cast <char *> (buffer));
 							// Буфер для извлечённых данных
-							vector <uint8_t> output(::max <size_t>(0xff, size * 2));
+							vector <uint8_t> output(::max <size_t>(0xFF, size * 2));
 							// Результат проверки декомпрессии
 							int32_t ret = Z_OK;
 							// Переменная подсчёта сжатых данных
@@ -1729,7 +1729,7 @@ namespace driver {
 				// Создаем поток Zip
 				z_stream * zs = (streaming ? &stream : &local);
 				// Создаём выходной буфер с запасом по памяти
-				vector <Bytef> output(::max <size_t> (0xff, size * 2));
+				vector <Bytef> output(::max <size_t> (0xFF, size * 2));
 				// Результат проверки декомпрессии
 				int32_t ret = Z_OK;
 				/**

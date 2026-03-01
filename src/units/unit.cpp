@@ -451,6 +451,46 @@ void awh::unit::Unit::start() noexcept {
 	}
 }
 /**
+ * @brief Метод получения типа события
+ *
+ * @param eid идентификатор события
+ * @return    тип события
+ */
+awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
+	// Выводим тип события
+	return ::__awh_event_base__->type(eid);
+}
+/**
+ * @brief Метод получения типа узла события
+ *
+ * @param eid идентификатор события
+ * @return    тип узла события
+ */
+awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
+	// Выводим тип узла события
+	return ::__awh_event_base__->node(eid);
+}
+/**
+ * @brief Метод получения семейства события
+ *
+ * @param eid идентификатор события
+ * @return    семейство события
+ */
+awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexcept {
+	// Выводим семейство события
+	return ::__awh_event_base__->family(eid);
+}
+/**
+ * @brief Метод получения статуса события
+ *
+ * @param eid идентификатор события
+ * @return    статус события
+ */
+awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexcept {
+	// Выводим статус события
+	return ::__awh_event_base__->status(eid);
+}
+/**
  * @brief Метод установки времени блокировки базы событий в ожидании событий
  *
  * @param timeout время ожидания событий в миллисекундах

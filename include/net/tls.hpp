@@ -247,7 +247,7 @@ namespace awh {
 			 * @param id       идентификатор события
 			 * @param hostname имя хоста сервера
 			 */
-			void hostname(const id_t id, const string & hostname) noexcept;
+			void hostname(const id_t id, string_view hostname) noexcept;
 		public:
 			/**
 			 * @brief Метод установки адреса и порта отдалённого узла
@@ -257,7 +257,7 @@ namespace awh {
 			 * @param port порт отдалённого узла
 			 * @return     результат выполнения установки
 			 */
-			bool peer(const id_t id, const string & ip, const uint16_t port) noexcept;
+			bool peer(const id_t id, string_view ip, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления контекста TLS
@@ -363,7 +363,7 @@ namespace awh {
 			 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
 			 * @param filename адрес файла сертификата доверенных центров сертификации
 			 */
-			void ca(const id_t id, const string & filename) noexcept;
+			void ca(const id_t id, string_view filename) noexcept;
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации
 			 *
@@ -371,7 +371,7 @@ namespace awh {
 			 * @param dir  адрес директории с сертификатами доверенных центров сертификации
 			 * @param file адрес файла сертификата доверенного центра сертификации
 			 */
-			void ca(const id_t id, const string & dir, const string & file = "") noexcept;
+			void ca(const id_t id, string_view dir, string_view file = "") noexcept;
 		public:
 			/**
 			 * @brief Метод установки списка отзыва сертификатов
@@ -379,7 +379,7 @@ namespace awh {
 			 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
 			 * @param filename адрес файла списка отзыва сертификатов
 			 */
-			void certificateRevocationList(const id_t id, const string & filename) noexcept;
+			void certificateRevocationList(const id_t id, string_view filename) noexcept;
 			/**
 			 * @brief Метод установки приватного ключа клиента
 			 *
@@ -387,7 +387,7 @@ namespace awh {
 			 * @param filename адрес файла приватного ключа клиента
 			 * @param type     тип файла приватного ключа клиента
 			 */
-			void privateKey(const id_t id, const string & filename, const type_t type = type_t::PEM) noexcept;
+			void privateKey(const id_t id, string_view filename, const type_t type = type_t::PEM) noexcept;
 			/**
 			 * @brief Метод установки клиентского сертификата
 			 *
@@ -395,7 +395,7 @@ namespace awh {
 			 * @param filename адрес файла клиентского сертификата
 			 * @param type     тип файла клиентского сертификата
 			 */
-			void certificate(const id_t id, const string & filename, const type_t type = type_t::PEM) noexcept;
+			void certificate(const id_t id, string_view filename, const type_t type = type_t::PEM) noexcept;
 		public:
 			/**
 			 * @brief Метод установки функции обратного вызова получения данных

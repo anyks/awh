@@ -450,7 +450,7 @@ namespace awh {
 			 * @param expression регулярное выражение для компиляции
 			 * @param format     формат к которому относится регулярное выражение
 			 */
-			void compile(const string & expression, const format_t format) noexcept;
+			void compile(string_view expression, const format_t format) noexcept;
 		private:
 			/**
 			 * @brief Функция заполнения объекта даты и времени
@@ -461,7 +461,7 @@ namespace awh {
 			 * @param pos    начальная позиция в тексте
 			 * @return       конечная позиция обработанных данных в тексте
 			 */
-			ssize_t prepare(dt_t & dt, const string & text, const format_t format, const size_t pos = 0) const noexcept;
+			ssize_t prepare(dt_t & dt, string_view text, const format_t format, const size_t pos = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод перевода времени в аббревиатуру
@@ -560,7 +560,7 @@ namespace awh {
 			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return      размер в секундах
 			 */
-			double seconds(const string & value) const noexcept;
+			double seconds(string_view value) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения статуса 12-и часового формата времени
@@ -731,7 +731,7 @@ namespace awh {
 			 *
 			 * @param zone временная зона для установки
 			 */
-			void setTimeZone(const string & zone) noexcept;
+			void setTimeZone(string_view zone) noexcept;
 		public:
 			/**
 			 * @brief Метод выполнения матчинга временной зоны
@@ -739,7 +739,7 @@ namespace awh {
 			 * @param zone временная зона для конвертации
 			 * @return     определённая временная зона
 			 */
-			zone_t matchTimeZone(const string & zone) const noexcept;
+			zone_t matchTimeZone(string_view zone) const noexcept;
 			/**
 			 * @brief Метод выполнения матчинга временной зоны
 			 *
@@ -761,7 +761,7 @@ namespace awh {
 			 * @param zone временная зона для конвертации
 			 * @return     смещение временной зоны в секундах
 			 */
-			int32_t getTimeZone(const string & zone) const noexcept;
+			int32_t getTimeZone(string_view zone) const noexcept;
 		public:
 			/**
 			 * @brief Метод определения текущей временной зоны относительно летнего времени
@@ -791,7 +791,7 @@ namespace awh {
 			 * @param name   название временной зоны
 			 * @param offset смещение времени в секундах
 			 */
-			void addTimeZone(const string & name, const int32_t offset) noexcept;
+			void addTimeZone(string_view name, const int32_t offset) noexcept;
 			/**
 			 * @brief Метод установки своего списка временных зон
 			 *
@@ -823,7 +823,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        дата в UnixTimestamp
 			 */
-			uint64_t parse(const string & date, const string & format, const storage_t storage = storage_t::GLOBAL) noexcept;
+			uint64_t parse(string_view date, string_view format, const storage_t storage = storage_t::GLOBAL) noexcept;
 		public:
 			/**
 			 * @brief Метод форматирования временной зоны
@@ -847,7 +847,7 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string format(const dt_t & dt, const string & format) const noexcept;
+			string format(const dt_t & dt, string_view format) const noexcept;
 		public:
 			/**
 			 * @brief Метод формирования UnixTimestamp без учёта временной зоны
@@ -856,7 +856,7 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string format(const uint64_t date, const string & format) const noexcept;
+			string format(const uint64_t date, string_view format) const noexcept;
 			/**
 			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
 			 *
@@ -865,7 +865,7 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string format(const uint64_t date, const int32_t zone, const string & format) const noexcept;
+			string format(const uint64_t date, const int32_t zone, string_view format) const noexcept;
 			/**
 			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
 			 *
@@ -874,7 +874,7 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string format(const uint64_t date, const zone_t zone, const string & format) const noexcept;
+			string format(const uint64_t date, const zone_t zone, string_view format) const noexcept;
 			/**
 			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
 			 *
@@ -883,7 +883,7 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string format(const uint64_t date, const string & zone, const string & format) const noexcept;
+			string format(const uint64_t date, string_view zone, string_view format) const noexcept;
 		public:
 			/**
 			 * @brief Метод формирования текущей даты без учёта временной зоны
@@ -892,7 +892,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        строка содержащая дату
 			 */
-			string format(const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
+			string format(string_view format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
 			 * @brief Метод формирования текущей даты с учётом временной зоны
 			 *
@@ -901,7 +901,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        строка содержащая дату
 			 */
-			string format(const int32_t zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
+			string format(const int32_t zone, string_view format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
 			 * @brief Метод формирования текущей даты с учётом временной зоны
 			 *
@@ -910,7 +910,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        строка содержащая дату
 			 */
-			string format(const zone_t zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
+			string format(const zone_t zone, string_view format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
 			 * @brief Метод формирования текущей даты с учётом временной зоны
 			 *
@@ -919,7 +919,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        строка содержащая дату
 			 */
-			string format(const string & zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
+			string format(string_view zone, string_view format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
 			 * @brief Метод преобразования даты из оного формата в другой
@@ -930,7 +930,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        результат работы
 			 */
-			string strip(const string & date, const string & format1, const string & format2, const storage_t storage = storage_t::GLOBAL) const noexcept;
+			string strip(string_view date, string_view format1, string_view format2, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор

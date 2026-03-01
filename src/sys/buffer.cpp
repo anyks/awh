@@ -870,6 +870,20 @@ bool awh::Buffer::push(const char * text) noexcept {
  * @param text текст для добавления
  * @return     результат добавления данных
  */
+bool awh::Buffer::push(string_view text) noexcept {
+	// Если текст передан не пустой
+	if(!text.empty())
+		// Выполняем добавление текста
+		return this->push(text.data(), text.size());
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод добавления текста в буфер
+ *
+ * @param text текст для добавления
+ * @return     результат добавления данных
+ */
 bool awh::Buffer::push(const string & text) noexcept {
 	// Если текст передан не пустой
 	if(!text.empty())

@@ -137,13 +137,13 @@ namespace awh {
 			 *
 			 * @param salt соль для шифрования
 			 */
-			void salt(const string & salt) noexcept;
+			void salt(string_view salt) noexcept;
 			/**
 			 * @brief Метод установки пароля шифрования
 			 *
 			 * @param password пароль шифрования
 			 */
-			void password(const string & password) noexcept;
+			void password(string_view password) noexcept;
 		public:
 			/**
 			 * @brief Метод преобразования 128-битного хэша в 64-битный
@@ -520,7 +520,7 @@ namespace awh {
 			 * @param key публичный ключ RSA
 			 * @return    результат установки ключа
 			 */
-			bool setPublicKeyRSA(const string & key) noexcept;
+			bool setPublicKeyRSA(string_view key) noexcept;
 		public:
 			/**
 			 * @brief Метод установки приватного ключа RSA
@@ -528,7 +528,7 @@ namespace awh {
 			 * @param key приватный ключ RSA
 			 * @return    результат установки ключа
 			 */
-			bool setPrivateKeyRSA(const string & key) noexcept;
+			bool setPrivateKeyRSA(string_view key) noexcept;
 			/**
 			 * @brief Метод получения приватного ключа RSA
 			 *
@@ -543,14 +543,14 @@ namespace awh {
 			 * @param path путь к файлу с публичным ключом
 			 * @return     результат загрузки ключа
 			 */
-			bool loadPublicKeyRSA(const string & path) noexcept;
+			bool loadPublicKeyRSA(string_view path) noexcept;
 			/**
 			 * @brief Метод загрузки приватного ключа RSA из файла
 			 *
 			 * @param path путь к файлу с приватным ключом
 			 * @return     результат загрузки ключа
 			 */
-			bool loadPrivateKeyRSA(const string & path) noexcept;
+			bool loadPrivateKeyRSA(string_view path) noexcept;
 		public:
 			/**
 			 * @brief Метод сохранения публичного ключа RSA в файл
@@ -558,7 +558,7 @@ namespace awh {
 			 * @param path путь к файлу для сохранения публичного ключа
 			 * @return     результат сохранения ключа
 			 */
-			bool savePublicKeyRSA(const string & path) const noexcept;
+			bool savePublicKeyRSA(string_view path) const noexcept;
 			/**
 			 * @brief Метод сохранения приватного ключа RSA в файл
 			 *
@@ -566,7 +566,7 @@ namespace awh {
 			 * @param cipher тип шифрования приватного ключа
 			 * @return       результат сохранения ключа
 			 */
-			bool savePrivateKeyRSA(const string & path, const cipher_t cipher = cipher_t::NONE) const noexcept;
+			bool savePrivateKeyRSA(string_view path, const cipher_t cipher = cipher_t::NONE) const noexcept;
 		public:
 			/**
 			 * @brief Метод шифрования данных публичным ключом RSA

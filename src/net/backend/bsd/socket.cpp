@@ -381,11 +381,11 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
  * @param ifname имя сетевого интерфейса
  * @return       результат работы функции
  */
-bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::family_t family, const string & ifname) const noexcept {
+bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
-	if(!ifname.empty()){
+	if(!std::empty(ifname)){
 		/**
 		 * Определяем семейство события
 		 */
@@ -472,7 +472,7 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Получаем индекс сетевого интерфейса по его имени
-				const uint32_t index = ::if_nametoindex(ifname.c_str());
+				const uint32_t index = ::if_nametoindex(ifname.data());
 				// Устанавливаем сетевой интерфейс для multicast пакетов
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &index, sizeof(index))))){
 					/**

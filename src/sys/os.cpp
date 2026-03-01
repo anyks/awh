@@ -213,7 +213,7 @@ using namespace std;
 	 * @param name   название записи для получения настроек
 	 * @param buffer бинарный буфер с извлечёнными значениями
 	 */
-	static void sysctl(const string & name, vector <char> & buffer) noexcept {
+	static void sysctl(string_view name, vector <char> & buffer) noexcept {
 		// Если название параметра и тип извлекаемого значения переданы
 		if(!name.empty()){
 			// Выполняем очистку буфера данных
@@ -225,11 +225,11 @@ using namespace std;
 				// Получаем размер буфера
 				size_t length = 0;
 				// Если размеры удачно получены
-				if(::sysctlbyname(name.c_str(), nullptr, &length, nullptr, 0) == 0){
+				if(::sysctlbyname(name.data(), nullptr, &length, nullptr, 0) == 0){
 					// Выделяем в буфере нужное количество памяти
 					buffer.resize(length, 0);
 					// Запрашиваем искомые данные
-					if(::sysctlbyname(name.c_str(), buffer.data(), &length, nullptr, 0) < 0)
+					if(::sysctlbyname(name.data(), buffer.data(), &length, nullptr, 0) < 0)
 						// Выполняем очистку буфера данных
 						buffer.clear();
 				}
@@ -359,7 +359,7 @@ using namespace std;
 	 * @param size   размер буфера данных
 	 * @return       результат выполнения установки
 	 */
-	static bool sysctl(const string & name, const void * buffer, const size_t size) noexcept {
+	static bool sysctl(string_view name, const void * buffer, const size_t size) noexcept {
 		// Если название параметра передано
 		if(!name.empty() && (buffer != nullptr) && (size > 0)){
 			/**
@@ -367,7 +367,7 @@ using namespace std;
 			 */
 			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Устанавливаем новые параметры настройки ядра
-				return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
+				return (::sysctlbyname(name.data(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
 			/**
 			 * Операционной системой является Linux
 			 */
@@ -379,7 +379,7 @@ using namespace std;
 				// Добавляем разделитель
 				command.append(1, ' ');
 				// Добавляем название параметра
-				command.append(name);
+				command.append(name.data(), name.size());
 				// Добавляем разделитель
 				command.append(1, '=');
 				// Добавляем параметр для установки
@@ -401,7 +401,7 @@ using namespace std;
 	 * @param text текст для конвертации
 	 * @return     результат проверки
 	 */
-	static string convert(const wstring & text) noexcept {
+	static string convert(wstring_view text) noexcept {
 		// Результат работы функции
 		string result = "";
 		// Если текст для конвертации передан
@@ -430,7 +430,7 @@ using namespace std;
 	 * @param text текст для конвертации
 	 * @return     результат проверки
 	 */
-	static wstring convert(const string & text) noexcept {
+	static wstring convert(string_view text) noexcept {
 		// Результат работы функции
 		wstring result = L"";
 		// Если текст для конвертации передан
@@ -654,9 +654,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						// Выполняем извлечение данных текущего процесса
 						if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
 							// Создаём буфер сообщения ошибки
-							wchar_t message[0xff] = {0};
+							wchar_t message[0xFF] = {0};
 							// Выполняем формирование текста ошибки
-							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 							/**
 							 * Если включён режим отладки
 							 */
@@ -844,9 +844,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					// Выполняем извлечение данных текущего процесса
 					if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
 						// Создаём буфер сообщения ошибки
-						wchar_t message[0xff] = {0};
+						wchar_t message[0xFF] = {0};
 						// Выполняем формирование текста ошибки
-						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1391,7 +1391,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name название группы пользователя
 	 * @return     идентификатор группы пользователя
 	 */
-	gid_t awh::Operating_System::group(const string & name) const noexcept {
+	gid_t awh::Operating_System::group(string_view name) const noexcept {
 		// Если название группы пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
@@ -1401,7 +1401,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Извлечённые данные группы пользователя
 			struct group * data = nullptr;
 			// Выполняем извлечение данных группы пользователя
-			if((::getgrnam_r(name.c_str(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+			if((::getgrnam_r(name.data(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
 				// Выводим идентификатор группы пользователя
 				return grp.gr_gid;
 			// Если данные группы пользователя не извлечены
@@ -1430,7 +1430,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name имя пользователя
 	 * @return     полученный идентификатор пользователя
 	 */
-	uid_t awh::Operating_System::uid(const string & name) const noexcept {
+	uid_t awh::Operating_System::uid(string_view name) const noexcept {
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
@@ -1440,7 +1440,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(name.c_str(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+			if((::getpwnam_r(name.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
 				// Выводим идентификатор пользователя
 				return pwd.pw_uid;
 			// Если данные пользователя не извлечены
@@ -1469,7 +1469,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name имя пользователя
 	 * @return     полученный идентификатор группы пользователя
 	 */
-	gid_t awh::Operating_System::gid(const string & name) const noexcept {
+	gid_t awh::Operating_System::gid(string_view name) const noexcept {
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
@@ -1479,7 +1479,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(name.c_str(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+			if((::getpwnam_r(name.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
 				// Выводим идентификатор группы пользователя
 				return pwd.pw_gid;
 			// Если данные пользователя не извлечены
@@ -1508,7 +1508,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param user имя пользователя чьи группы следует получить
 	 * @return     список групп пользователя
 	 */
-	vector <gid_t> awh::Operating_System::groups(const string & user) const noexcept {
+	vector <gid_t> awh::Operating_System::groups(string_view user) const noexcept {
 		// Результат работы функции
 		vector <gid_t> result;
 		// Если имя пользователя передано
@@ -1520,7 +1520,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(user.c_str(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
+			if((::getpwnam_r(user.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
 				/**
 				 * Для операционной системы MacOS X, FreeBSD или Sun Solaris
 				 */
@@ -1558,11 +1558,11 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					// Количество групп пользователя
 					int32_t count = 0;
 					// Первый вызов: нам необходимо определить количетсво групп пользователя
-					::getgrouplist(user.c_str(), pwd.pw_gid, nullptr, &count);
+					::getgrouplist(user.data(), pwd.pw_gid, nullptr, &count);
 					// Увеличиваем список групп пользователя
 					result.resize(static_cast <size_t> (count));
 					// Второй вызов: пробуем получить список групп пользователя
-					if(::getgrouplist(user.c_str(), pwd.pw_gid, reinterpret_cast <gid_t *> (result.data()), &count) == -1){
+					if(::getgrouplist(user.data(), pwd.pw_gid, reinterpret_cast <gid_t *> (result.data()), &count) == -1){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1688,7 +1688,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param group название группы пользователя
 	 * @return      результат выполнения операции
 	 */
-	bool awh::Operating_System::chown(const string & user, const string & group) const noexcept {
+	bool awh::Operating_System::chown(string_view user, string_view group) const noexcept {
 		// Если имя пользователя и название группы пользователя переданы
 		if(!user.empty() && !group.empty()){
 			// Буфер данных для извлечения данных
@@ -1698,13 +1698,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(user.c_str(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
+			if((::getpwnam_r(user.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
 				// Объект параметров группы пользователя
 				struct group grp;
 				// Извлечённые данные группы пользователя
 				struct group * data = nullptr;
 				// Выполняем извлечение данных группы пользователя
-				if((::getgrnam_r(group.c_str(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+				if((::getgrnam_r(group.data(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
 					// Выводим установку права доступа
 					return this->chown(pwd.pw_uid, grp.gr_gid);
 				// Если данные группы пользователя не извлечены
@@ -1748,7 +1748,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
  */
 #else
 	/**
-	 * @brief Метод получения идентификатора текущего пользвоателя
+	 * @brief Метод получения идентификатора текущего пользователя
 	 *
 	 * @return идентификатор текущего пользователя
 	 */
@@ -1762,9 +1762,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1793,9 +1793,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1822,9 +1822,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1880,9 +1880,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1911,9 +1911,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1940,9 +1940,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1992,7 +1992,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param sid идентификатор пользователя/группы
 	 * @return    имя запрашиваемого пользователя/группы
 	 */
-	string awh::Operating_System::account(const wstring & sid) const noexcept {
+	string awh::Operating_System::account(wstring_view sid) const noexcept {
 		// Результат работы функции
 		string result = "";
 		// Если идентификатор пользователя передан
@@ -2000,7 +2000,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Объект идентификатора пользователя
 			PSID pSid = nullptr;
 			// Выполняем идентификатор пользователя
-			if(::ConvertStringSidToSidW(sid.c_str(), &pSid)){
+			if(::ConvertStringSidToSidW(sid.data(), &pSid)){
 				// Тип SID-а
 				SID_NAME_USE sidType;
 				// Размер имени пользователя и домена пользователя
@@ -2010,9 +2010,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получиши ошибку извлечения размеров буфера
 				if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[0xff] = {0};
+					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2051,9 +2051,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[0xff] = {0};
+					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2079,7 +2079,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name название пользователя/группы
 	 * @return     полученный идентификатор пользователя/группы
 	 */
-	wstring awh::Operating_System::account(const string & name) const noexcept {
+	wstring awh::Operating_System::account(string_view name) const noexcept {
 		// Результат работы функции
 		wstring result = L"";
 		// Если имя пользователя/группы передано
@@ -2104,9 +2104,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2153,7 +2153,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param user имя пользователя чьи группы следует получить
 	 * @return     список групп пользователя
 	 */
-	vector <wstring> awh::Operating_System::groups(const string & user) const noexcept {
+	vector <wstring> awh::Operating_System::groups(string_view user) const noexcept {
 		// Результат работы функции
 		vector <wstring> result;
 		// Если имя пользователя передано
@@ -2169,9 +2169,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[0xff] = {0};
+				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2211,9 +2211,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[0xff] = {0};
+					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2242,9 +2242,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[0xff] = {0};
+					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2273,9 +2273,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[0xff] = {0};
+					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2341,7 +2341,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name название записи для получения настроек
 	 * @return     полученное значение записи
 	 */
-	T awh::Operating_System::sysctl(const string & name) const noexcept {
+	T awh::Operating_System::sysctl(string_view name) const noexcept {
 		// Результат работы функции
 		T result;
 		// Если данные являются основными
@@ -2373,44 +2373,44 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Объявляем прототипы для извлечения значений настроек ядра операционной системы
 	 */
-	template int8_t awh::Operating_System::sysctl <int8_t> (const string &) const noexcept;
-	template uint8_t awh::Operating_System::sysctl <uint8_t> (const string &) const noexcept;
-	template int16_t awh::Operating_System::sysctl <int16_t> (const string &) const noexcept;
-	template uint16_t awh::Operating_System::sysctl <uint16_t> (const string &) const noexcept;
-	template int32_t awh::Operating_System::sysctl <int32_t> (const string &) const noexcept;
-	template uint32_t awh::Operating_System::sysctl <uint32_t> (const string &) const noexcept;
-	template int64_t awh::Operating_System::sysctl <int64_t> (const string &) const noexcept;
-	template uint64_t awh::Operating_System::sysctl <uint64_t> (const string &) const noexcept;
-	template float awh::Operating_System::sysctl <float> (const string &) const noexcept;
-	template double awh::Operating_System::sysctl <double> (const string &) const noexcept;
-	template string awh::Operating_System::sysctl <string> (const string &) const noexcept;
+	template int8_t awh::Operating_System::sysctl <int8_t> (string_view) const noexcept;
+	template uint8_t awh::Operating_System::sysctl <uint8_t> (string_view) const noexcept;
+	template int16_t awh::Operating_System::sysctl <int16_t> (string_view) const noexcept;
+	template uint16_t awh::Operating_System::sysctl <uint16_t> (string_view) const noexcept;
+	template int32_t awh::Operating_System::sysctl <int32_t> (string_view) const noexcept;
+	template uint32_t awh::Operating_System::sysctl <uint32_t> (string_view) const noexcept;
+	template int64_t awh::Operating_System::sysctl <int64_t> (string_view) const noexcept;
+	template uint64_t awh::Operating_System::sysctl <uint64_t> (string_view) const noexcept;
+	template float awh::Operating_System::sysctl <float> (string_view) const noexcept;
+	template double awh::Operating_System::sysctl <double> (string_view) const noexcept;
+	template string awh::Operating_System::sysctl <string> (string_view) const noexcept;
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __Linux__
-		template size_t awh::Operating_System::sysctl <size_t> (const string &) const noexcept;
-		template ssize_t awh::Operating_System::sysctl <ssize_t> (const string &) const noexcept;
+		template size_t awh::Operating_System::sysctl <size_t> (string_view) const noexcept;
+		template ssize_t awh::Operating_System::sysctl <ssize_t> (string_view) const noexcept;
 	#endif
 	/**
 	 * Объявляем прототипы для извлечения списка значений настроек ядра операционной системы
 	 */
-	template vector <int8_t> awh::Operating_System::sysctl <vector <int8_t>> (const string &) const noexcept;
-	template vector <uint8_t> awh::Operating_System::sysctl <vector <uint8_t>> (const string &) const noexcept;
-	template vector <int16_t> awh::Operating_System::sysctl <vector <int16_t>> (const string &) const noexcept;
-	template vector <uint16_t> awh::Operating_System::sysctl <vector <uint16_t>> (const string &) const noexcept;
-	template vector <int32_t> awh::Operating_System::sysctl <vector <int32_t>> (const string &) const noexcept;
-	template vector <uint32_t> awh::Operating_System::sysctl <vector <uint32_t>> (const string &) const noexcept;
-	template vector <int64_t> awh::Operating_System::sysctl <vector <int64_t>> (const string &) const noexcept;
-	template vector <uint64_t> awh::Operating_System::sysctl <vector <uint64_t>> (const string &) const noexcept;
-	template vector <float> awh::Operating_System::sysctl <vector <float>> (const string &) const noexcept;
-	template vector <double> awh::Operating_System::sysctl <vector <double>> (const string &) const noexcept;
-	template vector <string> awh::Operating_System::sysctl <vector <string>> (const string &) const noexcept;
+	template vector <int8_t> awh::Operating_System::sysctl <vector <int8_t>> (string_view) const noexcept;
+	template vector <uint8_t> awh::Operating_System::sysctl <vector <uint8_t>> (string_view) const noexcept;
+	template vector <int16_t> awh::Operating_System::sysctl <vector <int16_t>> (string_view) const noexcept;
+	template vector <uint16_t> awh::Operating_System::sysctl <vector <uint16_t>> (string_view) const noexcept;
+	template vector <int32_t> awh::Operating_System::sysctl <vector <int32_t>> (string_view) const noexcept;
+	template vector <uint32_t> awh::Operating_System::sysctl <vector <uint32_t>> (string_view) const noexcept;
+	template vector <int64_t> awh::Operating_System::sysctl <vector <int64_t>> (string_view) const noexcept;
+	template vector <uint64_t> awh::Operating_System::sysctl <vector <uint64_t>> (string_view) const noexcept;
+	template vector <float> awh::Operating_System::sysctl <vector <float>> (string_view) const noexcept;
+	template vector <double> awh::Operating_System::sysctl <vector <double>> (string_view) const noexcept;
+	template vector <string> awh::Operating_System::sysctl <vector <string>> (string_view) const noexcept;
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __Linux__
-		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (const string &) const noexcept;
-		template vector <ssize_t> awh::Operating_System::sysctl <vector <ssize_t>> (const string &) const noexcept;
+		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (string_view) const noexcept;
+		template vector <ssize_t> awh::Operating_System::sysctl <vector <ssize_t>> (string_view) const noexcept;
 	#endif
 	/**
 	 * @brief Шаблон метода установки настроек ядра операционной системы
@@ -2425,7 +2425,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 */
-	bool awh::Operating_System::sysctl(const string & name, const T value) const noexcept {
+	bool awh::Operating_System::sysctl(string_view name, const T value) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
 			/**
@@ -2454,22 +2454,22 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Объявляем прототипы для установки значений настроек ядра операционной системы
 	 */
-	template bool awh::Operating_System::sysctl <int8_t> (const string &, const int8_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint8_t> (const string &, const uint8_t) const noexcept;
-	template bool awh::Operating_System::sysctl <int16_t> (const string &, const int16_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint16_t> (const string &, const uint16_t) const noexcept;
-	template bool awh::Operating_System::sysctl <int32_t> (const string &, const int32_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint32_t> (const string &, const uint32_t) const noexcept;
-	template bool awh::Operating_System::sysctl <int64_t> (const string &, const int64_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint64_t> (const string &, const uint64_t) const noexcept;
-	template bool awh::Operating_System::sysctl <float> (const string &, const float) const noexcept;
-	template bool awh::Operating_System::sysctl <double> (const string &, const double) const noexcept;
+	template bool awh::Operating_System::sysctl <int8_t> (string_view, const int8_t) const noexcept;
+	template bool awh::Operating_System::sysctl <uint8_t> (string_view, const uint8_t) const noexcept;
+	template bool awh::Operating_System::sysctl <int16_t> (string_view, const int16_t) const noexcept;
+	template bool awh::Operating_System::sysctl <uint16_t> (string_view, const uint16_t) const noexcept;
+	template bool awh::Operating_System::sysctl <int32_t> (string_view, const int32_t) const noexcept;
+	template bool awh::Operating_System::sysctl <uint32_t> (string_view, const uint32_t) const noexcept;
+	template bool awh::Operating_System::sysctl <int64_t> (string_view, const int64_t) const noexcept;
+	template bool awh::Operating_System::sysctl <uint64_t> (string_view, const uint64_t) const noexcept;
+	template bool awh::Operating_System::sysctl <float> (string_view, const float) const noexcept;
+	template bool awh::Operating_System::sysctl <double> (string_view, const double) const noexcept;
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __Linux__
-		template bool awh::Operating_System::sysctl <size_t> (const string &, const size_t) const noexcept;
-		template bool awh::Operating_System::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
+		template bool awh::Operating_System::sysctl <size_t> (string_view, const size_t) const noexcept;
+		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const ssize_t) const noexcept;
 	#endif
 	/**
 	 * @brief Метод установки настроек ядра операционной системы
@@ -2478,11 +2478,11 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 */
-	bool awh::Operating_System::sysctl(const string & name, const string & value) const noexcept {
+	bool awh::Operating_System::sysctl(string_view name, string_view value) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty())
 			// Выполняем установку буфера бинарных данных
-			return ::sysctl(name, value.c_str(), value.size());
+			return ::sysctl(name, value.data(), value.size());
 		// Сообщаем, что ничего не установленно
 		return false;
 	}
@@ -2493,7 +2493,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 */
-	bool awh::Operating_System::sysctl(const string & name, const char * value) const noexcept {
+	bool awh::Operating_System::sysctl(string_view name, const char * value) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty())
 			// Выполняем установку буфера бинарных данных
@@ -2514,7 +2514,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 */
-	bool awh::Operating_System::sysctl(const string & name, const vector <T> & items) const noexcept {
+	bool awh::Operating_System::sysctl(string_view name, const vector <T> & items) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
 			/**
@@ -2559,22 +2559,22 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Объявляем прототипы для установки списка значений настроек ядра операционной системы
 	 */
-	template bool awh::Operating_System::sysctl <int8_t> (const string &, const vector <int8_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint8_t> (const string &, const vector <uint8_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <int16_t> (const string &, const vector <int16_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint16_t> (const string &, const vector <uint16_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <int32_t> (const string &, const vector <int32_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint32_t> (const string &, const vector <uint32_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <int64_t> (const string &, const vector <int64_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint64_t> (const string &, const vector <uint64_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <float> (const string &, const vector <float> &) const noexcept;
-	template bool awh::Operating_System::sysctl <double> (const string &, const vector <double> &) const noexcept;
+	template bool awh::Operating_System::sysctl <int8_t> (string_view, const vector <int8_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <uint8_t> (string_view, const vector <uint8_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <int16_t> (string_view, const vector <int16_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <uint16_t> (string_view, const vector <uint16_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <int32_t> (string_view, const vector <int32_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <uint32_t> (string_view, const vector <uint32_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <int64_t> (string_view, const vector <int64_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <uint64_t> (string_view, const vector <uint64_t> &) const noexcept;
+	template bool awh::Operating_System::sysctl <float> (string_view, const vector <float> &) const noexcept;
+	template bool awh::Operating_System::sysctl <double> (string_view, const vector <double> &) const noexcept;
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __Linux__
-		template bool awh::Operating_System::sysctl <size_t> (const string &, const vector <size_t> &) const noexcept;
-		template bool awh::Operating_System::sysctl <ssize_t> (const string &, const vector <ssize_t> &) const noexcept;
+		template bool awh::Operating_System::sysctl <size_t> (string_view, const vector <size_t> &) const noexcept;
+		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const vector <ssize_t> &) const noexcept;
 	#endif
 	/**
 	 * @brief Метод установки настроек ядра операционной системы
@@ -2583,7 +2583,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 */
-	bool awh::Operating_System::sysctl(const string & name, const vector <string> & items) const noexcept {
+	bool awh::Operating_System::sysctl(string_view name, const vector <string> & items) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку
@@ -2610,7 +2610,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 */
-	bool awh::Operating_System::sysctl(const string & name, const vector <const char *> & items) const noexcept {
+	bool awh::Operating_System::sysctl(string_view name, const vector <const char *> & items) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку
@@ -2637,7 +2637,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
  * @param cmd       команда запуска
  * @param multiline данные должны вернутся многострочные
  */
-string awh::Operating_System::exec(const string & cmd, const bool multiline) const noexcept {
+string awh::Operating_System::exec(string_view cmd, const bool multiline) const noexcept {
 	// Полученный результат
 	string result = "";
 	// Если комманда запуска приложения передана правильно
@@ -2649,7 +2649,7 @@ string awh::Operating_System::exec(const string & cmd, const bool multiline) con
 			// Создаем буфер для чтения результата
 			char buffer[128];
 			// Создаем пайп для чтения результата работы Operating_System
-			FILE * stream = ::popen(cmd.c_str(), "r");
+			FILE * stream = ::popen(cmd.data(), "r");
 			// Если пайп открыт
 			if(stream != nullptr){
 				/**

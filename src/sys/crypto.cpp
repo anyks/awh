@@ -919,7 +919,7 @@ void awh::Crypto::roundAES(const int32_t round) noexcept {
  *
  * @param salt соль для шифрования
  */
-void awh::Crypto::salt(const string & salt) noexcept {
+void awh::Crypto::salt(string_view salt) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -954,7 +954,7 @@ void awh::Crypto::salt(const string & salt) noexcept {
  *
  * @param password пароль шифрования
  */
-void awh::Crypto::password(const string & password) noexcept {
+void awh::Crypto::password(string_view password) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2953,7 +2953,7 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
  * @param key публичный ключ RSA
  * @return    результат установки ключа
  */
-bool awh::Crypto::setPublicKeyRSA(const string & key) noexcept {
+bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если публичный ключ передан
@@ -2963,7 +2963,7 @@ bool awh::Crypto::setPublicKeyRSA(const string & key) noexcept {
 		 */
 		try {
 			// Выполняем парсинг ключа
-			BIO * bio = ::BIO_new_mem_buf(key.c_str(), static_cast <int32_t> (key.size()));
+			BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
 			// Если объект BIO создан успешно
 			if(bio != nullptr){
 				// Читаем публичный ключ из буфера
@@ -3046,7 +3046,7 @@ bool awh::Crypto::setPublicKeyRSA(const string & key) noexcept {
  * @param key приватный ключ RSA
  * @return    результат установки ключа
  */
-bool awh::Crypto::setPrivateKeyRSA(const string & key) noexcept {
+bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если приватный ключ передан
@@ -3056,7 +3056,7 @@ bool awh::Crypto::setPrivateKeyRSA(const string & key) noexcept {
 		 */
 		try {
 			// Выполняем парсинг ключа
-			BIO * bio = ::BIO_new_mem_buf(key.c_str(), static_cast <int32_t> (key.size()));
+			BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
 			// Если объект BIO создан успешно
 			if(bio != nullptr){
 				// Читаем приватный ключ из буфера
@@ -3301,7 +3301,7 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
  * @param path путь к файлу с публичным ключом
  * @return     результат загрузки ключа
  */
-bool awh::Crypto::loadPublicKeyRSA(const string & path) noexcept {
+bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -3375,7 +3375,7 @@ bool awh::Crypto::loadPublicKeyRSA(const string & path) noexcept {
 			 */
 			#else
 				// Открываем файл с публичным ключом
-				FILE * file = ::fopen(path.c_str(), "rb");
+				FILE * file = ::fopen(path.data(), "rb");
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Читаем публичный ключ из файла
@@ -3474,7 +3474,7 @@ bool awh::Crypto::loadPublicKeyRSA(const string & path) noexcept {
  * @param path путь к файлу с приватным ключом
  * @return     результат загрузки ключа
  */
-bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
+bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -3548,7 +3548,7 @@ bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
 			 */
 			#else
 				// Открываем файл с приватным ключом
-				FILE * file = ::fopen(path.c_str(), "rb");
+				FILE * file = ::fopen(path.data(), "rb");
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Читаем приватный ключ из файла
@@ -3647,7 +3647,7 @@ bool awh::Crypto::loadPrivateKeyRSA(const string & path) noexcept {
  * @param path путь к файлу для сохранения публичного ключа
  * @return     результат сохранения ключа
  */
-bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
+bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -3707,7 +3707,7 @@ bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
 			 */
 			#else
 				// Сохраняем публичный ключ
-				FILE * file = ::fopen(path.c_str(), "wb");
+				FILE * file = ::fopen(path.data(), "wb");
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Выполняем блокировку потоков
@@ -3791,7 +3791,7 @@ bool awh::Crypto::savePublicKeyRSA(const string & path) const noexcept {
  * @param cipher тип шифрования приватного ключа
  * @return       результат сохранения ключа
  */
-bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) const noexcept {
+bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -3895,7 +3895,7 @@ bool awh::Crypto::savePrivateKeyRSA(const string & path, const cipher_t cipher) 
 				 */
 				#else
 					// Сохраняем приватный ключ
-					FILE * file = ::fopen(path.c_str(), "wb");
+					FILE * file = ::fopen(path.data(), "wb");
 					// Если файл открыт удачно
 					if(file != nullptr){
 						// Выполняем блокировку потоков

@@ -56,7 +56,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса
 				 * @return     результат удаления сетевого интерфейса
 				 */
-				bool destroy(const string & name) const noexcept;
+				bool destroy(string_view name) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения списка сетевых интерфейсов системы
@@ -71,7 +71,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса
 				 * @return     результат проверки доступности сетевого интерфейса
 				 */
-				bool isAvailable(const string & name) const noexcept;
+				bool isAvailable(string_view name) const noexcept;
 			public:
 				/**
 				 * @brief Метод проверки туннельного сетевого интерфейса
@@ -79,7 +79,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса
 				 * @return     результат проверки туннельного сетевого интерфейса
 				 */
-				bool isTunnel(const string & name) const noexcept;
+				bool isTunnel(string_view name) const noexcept;
 				/**
 				 * @brief Метод проверки туннельного сетевого интерфейса по адресу
 				 *
@@ -94,7 +94,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса
 				 * @return     результат проверки виртуального сетевого интерфейса
 				 */
-				bool isVirtual(const string & name) const noexcept;
+				bool isVirtual(string_view name) const noexcept;
 				/**
 				 * @brief Метод проверки виртуального сетевого интерфейса по адресу
 				 *
@@ -126,7 +126,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса
 				 * @return     MTU сетевого интерфейса
 				 */
-				uint16_t mtu(const string & name) const noexcept;
+				uint16_t mtu(string_view name) const noexcept;
 				/**
 				 * @brief Метод установки MTU сетевого интерфейса
 				 *
@@ -134,7 +134,7 @@ namespace awh {
 				 * @param mtu  размер MTU интерфейса
 				 * @return     результат установки MTU сетевого интерфейса
 				 */
-				bool mtu(const string & name, const uint16_t mtu) const noexcept;
+				bool mtu(string_view name, const uint16_t mtu) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения установленных флагов сетевого интерфейса
@@ -142,7 +142,7 @@ namespace awh {
 				 * @param name имя сетевого интерфейса
 				 * @return     флаги сетевого интерфейса
 				 */
-				unordered_set <event::eth_flag_t> flags(const string & name) const noexcept;
+				unordered_set <event::eth_flag_t> flags(string_view name) const noexcept;
 				/**
 				 * @brief Метод установки флага сетевого интерфейса
 				 *
@@ -151,7 +151,7 @@ namespace awh {
 				 * @param mode режим включения/выключения флага
 				 * @return     результат установки флага сетевого интерфейса
 				 */
-				bool flag(const string & name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept;
+				bool flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения IP-адреса сетевого интерфейса
@@ -160,7 +160,7 @@ namespace awh {
 				 * @param family семейство протоколов (IPv4 или IPv6)
 				 * @return       IP-адрес сетевого интерфейса
 				 */
-				unique_ptr <net::addr_t> getAddress(const string & name, const event::family_t family) const noexcept;
+				unique_ptr <net::addr_t> getAddress(string_view name, const event::family_t family) const noexcept;
 				/**
 				 * @brief Метод установки IP-адреса на сетевой интерфейс
 				 *
@@ -170,7 +170,7 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат установки IP-адреса
 				 */
-				bool setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept;
+				bool setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept;
 			public:
 				/**
 				 * @brief Метод изменения параметров сетевого интерфейса точка-точка
@@ -181,7 +181,7 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат изменения параметров сетевого интерфейса точка-точка
 				 */
-				bool getAddress(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
+				bool getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
 				/**
 				 * @brief Метод установки параметров сетевого интерфейса точка-точка
 				 *
@@ -191,7 +191,7 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат установки параметров сетевого интерфейса точка-точка
 				 */
-				bool setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
+				bool setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

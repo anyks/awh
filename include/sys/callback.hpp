@@ -406,9 +406,9 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 */
-			bool is(const char * name) const noexcept {
+			bool is(string_view name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
-				return (name != nullptr ? this->_is(this->id(name)) : false);
+				return this->_is(this->id(name));
 			}
 			/**
 			 * @brief Метод проверки наличия функции обратного вызова
@@ -416,9 +416,19 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 */
-			bool is(string_view name) const noexcept {
+			bool is(const string & name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
 				return this->_is(this->id(name));
+			}
+			/**
+			 * @brief Метод проверки наличия функции обратного вызова
+			 *
+			 * @param name название функции обратного вызова
+			 * @return     результат проверки
+			 */
+			bool is(const char * name) const noexcept {
+				// Выполняем првоерку существования функции обратного вызова
+				return (name != nullptr ? this->_is(this->id(name)) : false);
 			}
 			/**
 			 * @brief Шаблон метода проверки наличия функции обратного вызова
@@ -496,20 +506,29 @@ namespace awh {
 			 *
 			 * @param name функция обратного вызова для удаления
 			 */
-			void erase(const char * name) noexcept {
-				// Если название функции обратного вызова передано
-				if(name != nullptr)
-					// Выполняем удаление функции обратного вызова
-					this->_erase(this->id(name));
+			void erase(string_view name) noexcept {
+				// Выполняем удаление функции обратного вызова
+				this->_erase(this->id(name));
 			}
 			/**
 			 * @brief Метод удаления функции обратного вызова
 			 *
 			 * @param name функция обратного вызова для удаления
 			 */
-			void erase(string_view name) noexcept {
+			void erase(const string & name) noexcept {
 				// Выполняем удаление функции обратного вызова
 				this->_erase(this->id(name));
+			}
+			/**
+			 * @brief Метод удаления функции обратного вызова
+			 *
+			 * @param name функция обратного вызова для удаления
+			 */
+			void erase(const char * name) noexcept {
+				// Если название функции обратного вызова передано
+				if(name != nullptr)
+					// Выполняем удаление функции обратного вызова
+					this->_erase(this->id(name));
 			}
 			/**
 			 * @brief Шаблон метода удаления функции обратного вызова
@@ -666,11 +685,9 @@ namespace awh {
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
 			 */
-			void swap(const char * name1, const char * name2) noexcept {
-				// Если названия переданы
-				if((name1 != nullptr) && (name2 != nullptr))
-					// Выполняем обмен функциями обратного вызова
-					this->_swap(this->id(name1), this->id(name2));
+			void swap(string_view name1, string_view name2) noexcept {
+				// Выполняем обмен функциями обратного вызова
+				this->_swap(this->id(name1), this->id(name2));
 			}
 			/**
 			 * @brief Метод обмена функциями
@@ -678,9 +695,21 @@ namespace awh {
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
 			 */
-			void swap(string_view name1, string_view name2) noexcept {
+			void swap(const string & name1, const string & name2) noexcept {
 				// Выполняем обмен функциями обратного вызова
 				this->_swap(this->id(name1), this->id(name2));
+			}
+			/**
+			 * @brief Метод обмена функциями
+			 *
+			 * @param name1 название первой функции
+			 * @param name2 название второй функции
+			 */
+			void swap(const char * name1, const char * name2) noexcept {
+				// Если названия переданы
+				if((name1 != nullptr) && (name2 != nullptr))
+					// Выполняем обмен функциями обратного вызова
+					this->_swap(this->id(name1), this->id(name2));
 			}
 			/**
 			 * @brief Шаблон метода обмена функциями
@@ -707,11 +736,9 @@ namespace awh {
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
-			void swap(const char * name1, const char * name2, Callback & storage) noexcept {
-				// Если названия переданы
-				if((name1 != nullptr) && (name2 != nullptr) && !storage.empty())
-					// Выполняем обмен функциями обратного вызова
-					this->_swap(this->id(name1), this->id(name2), storage);
+			void swap(string_view name1, string_view name2, Callback & storage) noexcept {
+				// Выполняем обмен функциями обратного вызова
+				this->_swap(this->id(name1), this->id(name2), storage);
 			}
 			/**
 			 * @brief Метод обмена функциями
@@ -720,9 +747,22 @@ namespace awh {
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
-			void swap(string_view name1, string_view name2, Callback & storage) noexcept {
+			void swap(const string & name1, const string & name2, Callback & storage) noexcept {
 				// Выполняем обмен функциями обратного вызова
 				this->_swap(this->id(name1), this->id(name2), storage);
+			}
+			/**
+			 * @brief Метод обмена функциями
+			 *
+			 * @param name1   название первой функции
+			 * @param name2   название второй функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 */
+			void swap(const char * name1, const char * name2, Callback & storage) noexcept {
+				// Если названия переданы
+				if((name1 != nullptr) && (name2 != nullptr) && !storage.empty())
+					// Выполняем обмен функциями обратного вызова
+					this->_swap(this->id(name1), this->id(name2), storage);
 			}
 			/**
 			 * @brief Шаблон метода обмена функциями
@@ -949,9 +989,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const char * name, const Callback & storage) noexcept -> id_t {
+			auto set(string_view name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return ((name != nullptr) ? this->_set(this->id(name), storage) : 0);
+				return (!std::empty(name) ? this->_set(this->id(name), storage) : 0);
 			}
 			/**
 			 * @brief Метод установки функции из одного хранилища в текущее
@@ -960,9 +1000,20 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(string_view name, const Callback & storage) noexcept -> id_t {
+			auto set(const string & name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (!std::empty(name) ? this->_set(this->id(name), storage) : 0);
+				return (!name.empty() ? this->_set(this->id(name), storage) : 0);
+			}
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param name    название первой функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const char * name, const Callback & storage) noexcept -> id_t {
+				// Выполняем установку функции обратного вызова
+				return ((name != nullptr) ? this->_set(this->id(name), storage) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции из одного хранилища в текущее
@@ -993,9 +1044,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const char * name1, const char * name2, Callback & storage) noexcept -> id_t {
+			auto set(string_view name1, string_view name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (((name1 != nullptr) && (name2 != nullptr)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+				return ((!std::empty(name1) && !std::empty(name2)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
 			}
 			/**
 			 * @brief Метод установки функции из одного хранилища в текущее
@@ -1005,9 +1056,21 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			auto set(string_view name1, string_view name2, Callback & storage) noexcept -> id_t {
+			auto set(const string & name1, const string & name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return ((!std::empty(name1) && !std::empty(name2)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+				return ((!name1.empty() && !name2.empty()) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+			}
+			/**
+			 * @brief Метод установки функции из одного хранилища в текущее
+			 *
+			 * @param name1   название копируемой функции
+			 * @param name2   новое название полученной функции
+			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const char * name1, const char * name2, Callback & storage) noexcept -> id_t {
+				// Выполняем установку функции обратного вызова
+				return (((name1 != nullptr) && (name2 != nullptr)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции из одного хранилища в текущее
@@ -1038,9 +1101,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			auto set(const char * name, const fn_t & callback) noexcept -> id_t {
+			auto set(string_view name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return ((name != nullptr) ? this->_set(this->id(name), callback) : 0);
+				return (!std::empty(name) ? this->_set(this->id(name), callback) : 0);
 			}
 			/**
 			 * @brief Метод установки функции обратного вызова в чистом виде
@@ -1049,9 +1112,20 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			auto set(string_view name, const fn_t & callback) noexcept -> id_t {
+			auto set(const string & name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (!std::empty(name) ? this->_set(this->id(name), callback) : 0);
+				return (!name.empty() ? this->_set(this->id(name), callback) : 0);
+			}
+			/**
+			 * @brief Метод установки функции обратного вызова в чистом виде
+			 *
+			 * @param name     название устанавливаемой функции
+			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
+			 */
+			auto set(const char * name, const fn_t & callback) noexcept -> id_t {
+				// Выполняем установку функции обратного вызова
+				return ((name != nullptr) ? this->_set(this->id(name), callback) : 0);
 			}
 			/**
 			 * @brief Шаблон метода установки функции обратного вызова в чистом виде
@@ -1145,9 +1219,9 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
-			auto get(const char * name) const noexcept -> function <T> {
+			auto get(string_view name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
-				return ((name != nullptr) ? this->_get <T> (this->id(name)) : function <T> {});
+				return this->_get <T> (this->id(name));
 			}
 			/**
 			 * @brief Шаблон метода извлечения функции обратного вызова
@@ -1161,9 +1235,25 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
-			auto get(string_view name) const noexcept -> function <T> {
+			auto get(const string & name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
 				return this->_get <T> (this->id(name));
+			}
+			/**
+			 * @brief Шаблон метода извлечения функции обратного вызова
+			 *
+			 * @tparam T тип сигнатуры функции
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод извлечения функции обратного вызова
+			 *
+			 * @param name название функкции обратного вызова
+			 * @return     запрашиваемая функция обратного вызова
+			 */
+			auto get(const char * name) const noexcept -> function <T> {
+				// Выполняем получение функции обратного вызова
+				return ((name != nullptr) ? this->_get <T> (this->id(name)) : function <T> {});
 			}
 			/**
 			 * @brief Шаблон метода извлечения функции обратного вызова
@@ -1305,15 +1395,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 */
-			id_t on(const char * name, Func && callback, Args &&... args) noexcept {
-				// Если название функции обратного вызова не передано
-				if(name == nullptr)
-					// Выходим из функции
-					return 0;
-				// Формируем функцию обратного вызова для подключения
-				function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+			id_t on(string_view name, Func && callback, Args &&... args) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return this->_on <Signature> (this->id(name), std::move(fn));
+				return (!std::empty(name) ? this->on <Signature> (name.data(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1331,9 +1415,35 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 */
-			id_t on(string_view name, Func && callback, Args &&... args) noexcept {
+			id_t on(const string & name, Func && callback, Args &&... args) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return (!std::empty(name) ? this->on <Signature> (name.data(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
+				return (!name.empty() ? this->on <Signature> (name.data(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Func      функция обратного вызова для установки
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename Func, typename... Args>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 *
+			 * @param name     название функции обратного вызова
+			 * @param callback функция обратного вызова для подключения
+			 * @param args     аргументы фукнции обратного вызова
+			 * @return         идентификатор подключённо функции обратного вызова
+			 */
+			id_t on(const char * name, Func && callback, Args &&... args) noexcept {
+				// Если название функции обратного вызова не передано
+				if(name == nullptr)
+					// Выходим из функции
+					return 0;
+				// Формируем функцию обратного вызова для подключения
+				function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+				// Выполняем подключение функции обратного вызова
+				return this->_on <Signature> (this->id(name), std::move(fn));
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1399,9 +1509,9 @@ namespace awh {
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			id_t on(const char * name, function <T> fn) noexcept {
+			id_t on(string_view name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return ((name != nullptr) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+				return (!std::empty(name) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1416,9 +1526,26 @@ namespace awh {
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
 			 */
-			id_t on(string_view name, function <T> fn) noexcept {
+			id_t on(const string & name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return (!std::empty(name) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+				return (!name.empty() ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+			}
+			/**
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T тип функции обратного вызова
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод подключения финкции обратного вызова
+			 *
+			 * @param name название функкции обратного вызова
+			 * @param fn   функция обратного вызова для добавления
+			 * @return     идентификатор добавленной функции обратного вызова
+			 */
+			id_t on(const char * name, function <T> fn) noexcept {
+				// Выполняем подключение функции обратного вызова
+				return ((name != nullptr) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1608,20 +1735,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(const char * name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
-				// Формируем тип данных результата выполнения функции обратного вызова
-				using Result = invoke_result_t <function <Signature>, Args...>;
-				// Если название функции обратного вызова не передано
-				if(name == nullptr){
-					// Если результат функции обратного вызова не возвращается
-					if constexpr (is_void_v <Result>)
-						// Завершаем работу функции обратного вызова
-						return;
-					// Выводим пустое значение функции обратного вызова
-					else return Result{};
-				}
+			auto call(string_view name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
-				return this->_call <Signature> (this->id(name), std::forward <Args> (args)...);
+				return this->call <Signature> (name.data(), std::forward <Args> (args)...);
 			}
 			/**
 			 * @brief Шаблон метода выполнения финкции обратного вызова
@@ -1637,9 +1753,38 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(string_view name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto call(const string & name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
-				return this->call <Signature> (name.data(), std::forward <Args> (args)...);
+				return this->call <Signature> (name.c_str(), std::forward <Args> (args)...);
+			}
+			/**
+			 * @brief Шаблон метода выполнения финкции обратного вызова
+			 *
+			 * @tparam Signature сигнатура функции обратного вызова
+			 * @tparam Args      аргументы функции обратного вызова
+			 */
+			template <typename Signature, typename... Args>
+			/**
+			 * @brief Метод выполнения функции обратного вызова
+			 *
+			 * @param name название функции обратного вызова
+			 * @param args аргументы функции обратного вызова
+			 * @return     результат выполнения функции обратного вызова
+			 */
+			auto call(const char * name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+				// Формируем тип данных результата выполнения функции обратного вызова
+				using Result = invoke_result_t <function <Signature>, Args...>;
+				// Если название функции обратного вызова не передано
+				if(name == nullptr){
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (is_void_v <Result>)
+						// Завершаем работу функции обратного вызова
+						return;
+					// Выводим пустое значение функции обратного вызова
+					else return Result{};
+				}
+				// Выполняем функцию обратного вызова
+				return this->_call <Signature> (this->id(name), std::forward <Args> (args)...);
 			}
 			/**
 			 * @brief Шаблон метода выполнения финкции обратного вызова

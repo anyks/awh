@@ -1276,7 +1276,7 @@ const string & awh::Network_Address::zone() const noexcept {
  *
  * @param zone зона IPv6 адреса для установки
  */
-void awh::Network_Address::zone(const string & zone) noexcept {
+void awh::Network_Address::zone(string_view zone) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1326,11 +1326,11 @@ void awh::Network_Address::type(const type_t type) noexcept {
  * @param host хост для определения
  * @return     определённый тип хоста
  */
-awh::Network_Address::type_t awh::Network_Address::host(const string & host) const noexcept {
+awh::Network_Address::type_t awh::Network_Address::host(string_view host) const noexcept {
 	// Результат полученных данных
 	type_t result = type_t::NONE;
 	// Если хост передан
-	if(!host.empty()){
+	if(!std::empty(host)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2100,7 +2100,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
  * @param mask маска сети для наложения
  * @param addr тип получаемого адреса
  */
-void awh::Network_Address::impose(const string & mask, const addr_t addr) noexcept {
+void awh::Network_Address::impose(string_view mask, const addr_t addr) noexcept {
 	// Выполняем наложение маски сети
 	this->impose(mask, addr, this->_type);
 }
@@ -2111,7 +2111,7 @@ void awh::Network_Address::impose(const string & mask, const addr_t addr) noexce
  * @param addr тип получаемого адреса
  * @param type тип адреса аппаратного или интернет подключения
  */
-void awh::Network_Address::impose(const string & mask, const addr_t addr, const type_t type) noexcept {
+void awh::Network_Address::impose(string_view mask, const addr_t addr, const type_t type) noexcept {
 	// Если бинарный буфер данных существует и маска передана
 	if(!this->_buffer.empty() && !mask.empty()){
 		// Получаем префикс сети
@@ -2303,7 +2303,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
  * @param mask маска сети для перевода
  * @return     полученный префикс адреса
  */
-uint8_t awh::Network_Address::mask2Prefix(const string & mask) const noexcept {
+uint8_t awh::Network_Address::mask2Prefix(string_view mask) const noexcept {
 	// Выполняем преобразование маски сети в префикс адреса
 	return this->mask2Prefix(mask, this->_type);
 }
@@ -2314,11 +2314,11 @@ uint8_t awh::Network_Address::mask2Prefix(const string & mask) const noexcept {
  * @param type тип адреса аппаратного или интернет подключения
  * @return     полученный префикс адреса
  */
-uint8_t awh::Network_Address::mask2Prefix(const string & mask, const type_t type) const noexcept {
+uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) const noexcept {
 	// Результат работы функции
 	uint8_t result = 0;
 	// Если маска сети передана
-	if(!mask.empty()){
+	if(!std::empty(mask)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2478,7 +2478,7 @@ string awh::Network_Address::prefix2Mask(const uint8_t prefix, const type_t type
  * @param mask  маска сети для перевода
  * @return      результат првоерки
  */
-bool awh::Network_Address::range(const Network_Address & begin, const Network_Address & end, const string & mask) const noexcept {
+bool awh::Network_Address::range(const Network_Address & begin, const Network_Address & end, string_view mask) const noexcept {
 	// Выполняем проверку вхождения IP-адреса в диапазон адресов
 	return this->range(begin, end, mask, this->_type);
 }
@@ -2491,11 +2491,11 @@ bool awh::Network_Address::range(const Network_Address & begin, const Network_Ad
  * @param type  тип адреса аппаратного или интернет подключения
  * @return      результат првоерки
  */
-bool awh::Network_Address::range(const Network_Address & begin, const Network_Address & end, const string & mask, const type_t type) const noexcept {
+bool awh::Network_Address::range(const Network_Address & begin, const Network_Address & end, string_view mask, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !mask.empty()){
+	if(!this->_buffer.empty() && !std::empty(mask)){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
@@ -2605,7 +2605,7 @@ bool awh::Network_Address::range(const Network_Address & begin, const Network_Ad
  * @param mask  маска сети для перевода
  * @return      результат првоерки
  */
-bool awh::Network_Address::range(const string & begin, const string & end, const string & mask) const noexcept {
+bool awh::Network_Address::range(string_view begin, string_view end, string_view mask) const noexcept {
 	// Выполняем проверку вхождения IP-адреса в диапазон адресов
 	return this->range(begin, end, mask, this->_type);
 }
@@ -2618,11 +2618,11 @@ bool awh::Network_Address::range(const string & begin, const string & end, const
  * @param type  тип адреса аппаратного или интернет подключения
  * @return      результат првоерки
  */
-bool awh::Network_Address::range(const string & begin, const string & end, const string & mask, const type_t type) const noexcept {
+bool awh::Network_Address::range(string_view begin, string_view end, string_view mask, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !mask.empty()){
+	if(!this->_buffer.empty() && !std::empty(mask)){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
@@ -2641,7 +2641,7 @@ bool awh::Network_Address::range(const string & begin, const string & end, const
  * @param prefix префикс адреса для преобразования
  * @return       результат првоерки
  */
-bool awh::Network_Address::range(const string & begin, const string & end, const uint8_t prefix) const noexcept {
+bool awh::Network_Address::range(string_view begin, string_view end, const uint8_t prefix) const noexcept {
 	// Выполняем проверку вхождения IP-адреса в диапазон адресов
 	return this->range(begin, end, prefix, this->_type);
 }
@@ -2654,11 +2654,11 @@ bool awh::Network_Address::range(const string & begin, const string & end, const
  * @param type   тип адреса аппаратного или интернет подключения
  * @return       результат првоерки
  */
-bool awh::Network_Address::range(const string & begin, const string & end, const uint8_t prefix, const type_t type) const noexcept {
+bool awh::Network_Address::range(string_view begin, string_view end, const uint8_t prefix, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует
-	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
+	if(!this->_buffer.empty() && !std::empty(begin) && !std::empty(end)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2727,7 +2727,7 @@ bool awh::Network_Address::range(const string & begin, const string & end, const
  * @param network сеть для проверки соответствия
  * @return        результат проверки
  */
-bool awh::Network_Address::mapping(const string & network) const noexcept {
+bool awh::Network_Address::mapping(string_view network) const noexcept {
 	// Выполняем проверку соответствия IP-адреса указанной сети
 	return this->mapping(network, this->_type);
 }
@@ -2738,11 +2738,11 @@ bool awh::Network_Address::mapping(const string & network) const noexcept {
  * @param type    тип адреса аппаратного или интернет подключения
  * @return        результат проверки
  */
-bool awh::Network_Address::mapping(const string & network, const type_t type) const noexcept {
+bool awh::Network_Address::mapping(string_view network, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
-	if((result = !network.empty())){
+	if((result = !std::empty(network))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2838,7 +2838,7 @@ bool awh::Network_Address::mapping(const string & network, const type_t type) co
  * @param addr    тип получаемого адреса
  * @return        результат проверки
  */
-bool awh::Network_Address::mapping(const string & network, const string & mask, const addr_t addr) const noexcept {
+bool awh::Network_Address::mapping(string_view network, string_view mask, const addr_t addr) const noexcept {
 	// Выполняем проверку соответствия IP-адреса указанной сети
 	return this->mapping(network, mask, addr, this->_type);
 }
@@ -2851,11 +2851,11 @@ bool awh::Network_Address::mapping(const string & network, const string & mask, 
  * @param type    тип адреса аппаратного или интернет подключения
  * @return        результат проверки
  */
-bool awh::Network_Address::mapping(const string & network, const string & mask, const addr_t addr, const type_t type) const noexcept {
+bool awh::Network_Address::mapping(const string_view network, const string_view mask, const addr_t addr, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
-	if((result = (!network.empty() && !mask.empty()))){
+	if((result = (!std::empty(network) && !std::empty(mask)))){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку адреса соответствию сети
@@ -2874,7 +2874,7 @@ bool awh::Network_Address::mapping(const string & network, const string & mask, 
  * @param addr    тип получаемого адреса
  * @return        результат проверки
  */
-bool awh::Network_Address::mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept {
+bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, const addr_t addr) const noexcept {
 	// Выполняем проверку соответствия IP-адреса указанной сети
 	return this->mapping(network, prefix, addr, this->_type);
 }
@@ -2887,11 +2887,11 @@ bool awh::Network_Address::mapping(const string & network, const uint8_t prefix,
  * @param type    тип адреса аппаратного или интернет подключения
  * @return        результат проверки
  */
-bool awh::Network_Address::mapping(const string & network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept {
+bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
-	if((result = (!network.empty() && (prefix > 0)))){
+	if((result = (!std::empty(network) && (prefix > 0)))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3165,9 +3165,9 @@ string awh::Network_Address::arpa() const noexcept {
  * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
  * @return     результат установки записи
  */
-bool awh::Network_Address::arpa(const string & addr) noexcept {
+bool awh::Network_Address::arpa(string_view addr) noexcept {
 	// Если запись передана
-	if(!addr.empty() && (addr.length() > 13)){
+	if(!std::empty(addr) && (addr.size() > 13)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3181,7 +3181,7 @@ bool awh::Network_Address::arpa(const string & addr) noexcept {
 				// Если точка найдена
 				if(pos != string::npos){
 					// Если мы нашли суффикс IPv4
-					if(::strncmp(".in-addr.arpa", addr.c_str() + pos, 14) == 0){
+					if(::strncmp(".in-addr.arpa", addr.data() + pos, 14) == 0){
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем инициализацию буфера
@@ -3197,7 +3197,7 @@ bool awh::Network_Address::arpa(const string & addr) noexcept {
 							 */
 							if((addr[i] == '.') || (i == pos)){
 								// Извлекаем полученное число
-								this->_buffer[index] = this->_fmk->atoi <uint8_t> (addr.c_str() + begin, i - begin);
+								this->_buffer[index] = this->_fmk->atoi <uint8_t> (addr.data() + begin, i - begin);
 								// Выполняем смещение
 								begin = (i + 1);
 								// Уменьшаем смещение индекса
@@ -3209,7 +3209,7 @@ bool awh::Network_Address::arpa(const string & addr) noexcept {
 						// Выводим положительный результат
 						return true;
 					// Если мы нашли суффикс IPv6
-					} else if(::strncmp(".ip6.arpa", addr.c_str() + pos, 10) == 0){
+					} else if(::strncmp(".ip6.arpa", addr.data() + pos, 10) == 0){
 						// Извлекаем основную часть (без ".ip6.arpa")
 						string_view data(addr.data(), addr.size() - 9);
 						// Должно быть ровно 63 символа: 32 hex + 31 точка
@@ -3291,9 +3291,9 @@ bool awh::Network_Address::arpa(const string & addr) noexcept {
  * @param addr адрес аппаратный или интернет подключения для парсинга
  * @return     результат работы парсинга
  */
-bool awh::Network_Address::parse(const string & addr) noexcept {
+bool awh::Network_Address::parse(string_view addr) noexcept {
 	// Если адрес передан
-	if(!addr.empty()){
+	if(!std::empty(addr)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3344,7 +3344,7 @@ bool awh::Network_Address::parse(const string & addr) noexcept {
 						this->_buffer.resize(6, 0);
 						// Выполняем парсинг MAC адреса
 						const int32_t pos = ::sscanf(
-							addr.c_str(),
+							addr.data(),
 							"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
 							&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
 							&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
@@ -3390,9 +3390,9 @@ bool awh::Network_Address::parse(const string & addr) noexcept {
  * @param type тип адреса аппаратного или интернет подключения для парсинга
  * @return     результат работы парсинга
  */
-bool awh::Network_Address::parse(const string & addr, const type_t type) noexcept {
+bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 	// Если адрес аппаратный или интернет подключения передан
-	if(!addr.empty() && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6))){
+	if(!std::empty(addr) && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3441,7 +3441,7 @@ bool awh::Network_Address::parse(const string & addr, const type_t type) noexcep
 					this->_buffer.resize(6, 0);
 					// Выполняем парсинг MAC адреса
 					const int32_t pos = ::sscanf(
-						addr.c_str(),
+						addr.data(),
 						"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
 						&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
 						&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
@@ -5472,7 +5472,7 @@ awh::Network_Address & awh::Network_Address::operator = (const net_addr_t & addr
  * @param ip адрес для присвоения
  * @return   текущий объект
  */
-awh::Network_Address & awh::Network_Address::operator = (const string & ip) noexcept {
+awh::Network_Address & awh::Network_Address::operator = (string_view ip) noexcept {
 	// Выполняем установку IP-адреса
 	this->parse(ip);
 	// Выводим текущий объект

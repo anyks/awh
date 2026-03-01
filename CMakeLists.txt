@@ -555,6 +555,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с юнитом файловой системы
     option(CMAKE_BUILD_UNIT_FS_APP_SAMPLE "Build Unit Filesystem app sample" ON)
 
+    # Устанавливаем имя приложения работы с юнитом резолвером доменных имён
+    SET(UNIT_APP_DNS_NAME unit-dns)
+    # Указываем что нужно собрать приложение работы с юнитом резолвером доменных имён
+    option(CMAKE_BUILD_UNIT_DNS_APP_SAMPLE "Build Unit DNS app sample" ON)
+
     # Устанавливаем имя приложения работы с юнитом таймера
     SET(UNIT_APP_TIMER_NAME unit-timer)
     # Указываем что нужно собрать приложение работы с юнитом таймера
@@ -833,6 +838,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Filesystem: No\n")
     endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом резолвером доменных имён
+    if (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT DNS: Yes\n")
+        # Выполняем создание приложения работы с юнитом резолвером доменных имён
+        add_sample(${UNIT_APP_DNS_NAME} sample/units/dns.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом резолвером доменных имён
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT DNS: No\n")
+    endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -1261,6 +1278,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом резолвером доменных имён
+        if (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом резолвером доменных имён
+            target_link_libraries(
+                ${UNIT_APP_DNS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом таймера
         if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -1810,6 +1838,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом резолвером доменных имён
+        if (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом резолвером доменных имён
+            target_link_libraries(
+                ${UNIT_APP_DNS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом таймера
         if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -2422,6 +2462,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом резолвером доменных имён
+            if (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом резолвером доменных имён
+                add_custom_command(TARGET "${UNIT_APP_DNS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_DNS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${UNIT_APP_DNS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом таймера
             if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
                 # Выполняем сборку приложения работы с юнитом таймера
@@ -2832,6 +2882,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${UNIT_APP_FS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_FS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом резолвером доменных имён
+            if (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом резолвером доменных имён
+                pvs_studio_add_target(TARGET ${UNIT_APP_DNS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_DNS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом таймера
             if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом таймера
@@ -3146,6 +3202,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с юнитом файловой системы
         install(TARGETS ${UNIT_APP_FS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом резолвером доменных имён
+    if (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом резолвером доменных имён
+        install(TARGETS ${UNIT_APP_DNS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})

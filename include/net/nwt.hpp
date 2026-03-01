@@ -163,7 +163,7 @@ namespace awh {
 			 *
 			 * @param zone пользовательская зона
 			 */
-			void zone(const string & zone) noexcept;
+			void zone(string_view zone) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения списка пользовательских зон интернета
@@ -183,7 +183,7 @@ namespace awh {
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
 			 */
-			url_t parse(const string & text) noexcept;
+			url_t parse(string_view text) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки результатов парсинга
@@ -195,7 +195,7 @@ namespace awh {
 			 *
 			 * @param letters список букв алфавита
 			 */
-			void letters(const string & letters = "") noexcept;
+			void letters(string_view letters = "") noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта логирования
@@ -221,7 +221,7 @@ namespace awh {
 			 * @param letters список букв алфавита
 			 * @param log     объект для работы с логами
 			 */
-			explicit Network_Types(const string & letters, const Logging * log) noexcept;
+			explicit Network_Types(string_view letters, const Logging * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

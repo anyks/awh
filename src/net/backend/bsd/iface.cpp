@@ -131,9 +131,9 @@ namespace iface {
 	 * @param log    объект работы с логами
 	 * @return       дескриптор созданного сетевого интерфейса
 	 */
-	static awh::net::socket_t clonable(const string & driver, string & name, const awh::log_t * log) noexcept {
+	static awh::net::socket_t clonable(string_view driver, string & name, const awh::log_t * log) noexcept {
 		// Если название драйвера передано
-		if(!driver.empty()){
+		if(!std::empty(driver)){
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -193,7 +193,7 @@ namespace iface {
 					 */
 					for(size_t i = 0; i < 128; ++i){
 						// Формируем имя интерфейса
-						::snprintf(ifr.ifr_name, IFNAMSIZ, "%s%zu", driver.c_str(), i);
+						::snprintf(ifr.ifr_name, IFNAMSIZ, "%s%zu", driver.data(), i);
 						// Пытаемся создать интерфейс
 						if(::ioctl(sock, SIOCIFCREATE, &ifr) == 0){
 							// Сохраняем имя
@@ -239,11 +239,11 @@ namespace iface {
  * @param name имя сетевого интерфейса
  * @return     результат удаления сетевого интерфейса
  */
-bool awh::eth::Interface::destroy(const string & name) const noexcept {
+bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -271,7 +271,7 @@ bool awh::eth::Interface::destroy(const string & name) const noexcept {
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
 			// Устанавливаем завершающий ноль
 			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 			// Удаляем интерфейс
@@ -379,7 +379,7 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
  * @param name имя сетевого интерфейса
  * @return     результат проверки доступности сетевого интерфейса
  */
-bool awh::eth::Interface::isAvailable(const string & name) const noexcept {
+bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -387,7 +387,7 @@ bool awh::eth::Interface::isAvailable(const string & name) const noexcept {
 	 */
 	try {
 		// Если название сетевого интерфейса передано
-		if(!name.empty()){
+		if(!std::empty(name)){
 			// Получаем список сетевых интерфейсов
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
@@ -444,11 +444,11 @@ bool awh::eth::Interface::isAvailable(const string & name) const noexcept {
  * @param name имя сетевого интерфейса
  * @return     результат проверки туннельного сетевого интерфейса
  */
-bool awh::eth::Interface::isTunnel(const string & name) const noexcept {
+bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если имя интерфейса задано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -546,11 +546,11 @@ bool awh::eth::Interface::isTunnel(const unique_ptr <net::addr_t> & addr) const 
  * @param name имя сетевого интерфейса
  * @return     результат проверки виртуального сетевого интерфейса
  */
-bool awh::eth::Interface::isVirtual(const string & name) const noexcept {
+bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если имя интерфейса задано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1193,9 +1193,9 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
  * @param name имя сетевого интерфейса
  * @return     MTU сетевого интерфейса
  */
-uint16_t awh::eth::Interface::mtu(const string & name) const noexcept {
+uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	// Если название сетевого интерфейса передано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1223,7 +1223,7 @@ uint16_t awh::eth::Interface::mtu(const string & name) const noexcept {
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
 			// Устанавливаем завершающий ноль
 			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 			// Извлекаем MTU из интерфейса
@@ -1279,11 +1279,11 @@ uint16_t awh::eth::Interface::mtu(const string & name) const noexcept {
  * @param mtu  размер MTU интерфейса
  * @return     результат установки MTU сетевого интерфейса
  */
-bool awh::eth::Interface::mtu(const string & name, const uint16_t mtu) const noexcept {
+bool awh::eth::Interface::mtu(string_view name, const uint16_t mtu) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1311,7 +1311,7 @@ bool awh::eth::Interface::mtu(const string & name, const uint16_t mtu) const noe
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
 			// Устанавливаем завершающий ноль
 			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 			// Если не удалось получить флаги интерфейса
@@ -1382,11 +1382,11 @@ bool awh::eth::Interface::mtu(const string & name, const uint16_t mtu) const noe
  * @param name имя сетевого интерфейса
  * @return     флаги сетевого интерфейса
  */
-unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(const string & name) const noexcept {
+unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view name) const noexcept {
 	// Результат работы функции
 	unordered_set <event::eth_flag_t> result;
 	// Если название сетевого интерфейса передано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1414,7 +1414,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(const string &
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
 			// Устанавливаем завершающий ноль
 			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 			// Если не удалось получить флаги интерфейса
@@ -1509,11 +1509,11 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(const string &
  * @param mode режим включения/выключения флага
  * @return     результат установки флага сетевого интерфейса
  */
-bool awh::eth::Interface::flag(const string & name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
+bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1541,7 +1541,7 @@ bool awh::eth::Interface::flag(const string & name, const event::eth_flag_t flag
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
 			// Устанавливаем завершающий ноль
 			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 			// Если не удалось получить флаги интерфейса
@@ -1726,11 +1726,11 @@ bool awh::eth::Interface::flag(const string & name, const event::eth_flag_t flag
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       IP-адрес сетевого интерфейса
  */
-unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(const string & name, const event::family_t family) const noexcept {
+unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, const event::family_t family) const noexcept {
 	// Результат работы функции
 	unique_ptr <awh::net::addr_t> result = nullptr;
 	// Если название сетевого интерфейса передано
-	if(!name.empty()){
+	if(!std::empty(name)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1844,11 +1844,11 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(const string & nam
  * @param prefix префикс подсети
  * @return       результат установки IP-адреса
  */
-bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept {
+bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адрес для установки переданы
-	if(!name.empty() && (ip != nullptr)){
+	if(!std::empty(name) && (ip != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1882,7 +1882,7 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
 					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
 					struct in_aliasreq ifra = {0};
 					// Копируем имя сетевого интерфейса
-					::strncpy(ifra.ifra_name, name.c_str(), IFNAMSIZ - 1);
+					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
 					// Устанавливаем семейство адресов IPv4
 					ifra.ifra_addr.sin_family = AF_INET;
 					// Устанавливаем длину структуры
@@ -1927,7 +1927,7 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
 					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
 					struct in6_aliasreq ifra6 = {0};
 					// Копируем имя сетевого интерфейса
-					::strncpy(ifra6.ifra_name, name.c_str(), IFNAMSIZ - 1);
+					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
 					// Устанавливаем семейство адресов IPv6
 					ifra6.ifra_addr.sin6_family = AF_INET6;
 					// Устанавливаем длину структуры
@@ -2017,11 +2017,11 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
  * @param prefix префикс подсети
  * @return       результат изменения параметров сетевого интерфейса точка-точка
  */
-bool awh::eth::Interface::getAddress(const string & name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса передано
-	if(!name.empty() && (ip != nullptr)){
+	if(!std::empty(name) && (ip != nullptr)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2171,11 +2171,11 @@ bool awh::eth::Interface::getAddress(const string & name, unique_ptr <net::addr_
  * @param prefix префикс подсети
  * @return       результат установки параметров сетевого интерфейса точка-точка
  */
-bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
+bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса и адреса для установки переданы
-	if(!name.empty() && (ip != nullptr) && (peer != nullptr) && (ip->size == peer->size)){
+	if(!std::empty(name) && (ip != nullptr) && (peer != nullptr) && (ip->size == peer->size)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -2209,7 +2209,7 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
 					// Объект запроса псевдонима интерфейса
 					struct in_aliasreq ifra = {0};
 					// Копируем имя сетевого интерфейса
-					::strncpy(ifra.ifra_name, name.c_str(), IFNAMSIZ - 1);
+					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
 					// Устанавливаем семейство адресов IPv4
 					ifra.ifra_addr.sin_family = AF_INET;
 					// Устанавливаем длину структуры
@@ -2254,7 +2254,7 @@ bool awh::eth::Interface::setAddress(const string & name, const unique_ptr <net:
 					// Объект запроса псевдонима интерфейса
 					struct in6_aliasreq ifra6 = {0};
 					// Копируем имя сетевого интерфейса
-					::strncpy(ifra6.ifra_name, name.c_str(), IFNAMSIZ - 1);
+					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
 					// Устанавливаем семейство адресов IPv6
 					ifra6.ifra_addr.sin6_family = AF_INET6;
 					// Устанавливаем длину структуры

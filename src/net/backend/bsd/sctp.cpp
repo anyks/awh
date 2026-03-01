@@ -465,13 +465,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
  * @param key  ключ аутентификации
  * @return     результат работы функции
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const uint16_t num, const string & key) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если ключ аутентификации передан
-	if(!key.empty()){
+	if(!std::empty(key)){
 		// Получаем размер ключа аутентификации
-		const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.length());
+		const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.size());
 		// Выделяем память под ключ аутентификации
 		struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
 		// Устанавливаем идентификатор ассоциации
@@ -479,9 +479,9 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 		// Устанавливаем номер ключа аутентификации
 		authkey->sca_keynumber = num;
 		// Устанавливаем размер ключа аутентификации
-		authkey->sca_keylength = static_cast <uint16_t> (key.length());
+		authkey->sca_keylength = static_cast <uint16_t> (key.size());
 		// Копируем ключ аутентификации в структуру
-		::memcpy(authkey->sca_key, key.c_str(), key.length());
+		::memcpy(authkey->sca_key, key.data(), key.size());
 		// Устанавливаем ключ аутентификации SCTP сокета
 		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
 			/**

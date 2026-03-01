@@ -25393,7 +25393,7 @@ namespace sctp {
 	 * @param key ключ аутентификации
 	 * @return    результат работы функции
 	 */
-	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateKey(const event::id_t id, const uint16_t num, const string & key) noexcept {
+	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateKey(const event::id_t id, const uint16_t num, string_view key) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26375,9 +26375,9 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
  * @param value значение адреса события
  * @return      результат выполнения установки
  */
-bool awh::engine::IO::Control_List::add(const event::id_t id, const string & value) noexcept {
+bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value) noexcept {
 	// Если адрес для удаления передан
-	if(!value.empty()){
+	if(!std::empty(value)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26411,7 +26411,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, const string & val
 										// Если адрес соответствует адресу файловой системы
 										if(this->_addr.check(value, net_addr_t::type_t::FS))
 											// Выполняем добавление нового адреса в чёрный список
-											return server->blacklist.emplace(value, server->state.address).second;
+											return server->blacklist.emplace(value.data(), server->state.address).second;
 										// Если адрес не принадлежит к адресу файловой системы
 										else {
 											// Если установлена функция обратного вызова
@@ -26659,11 +26659,11 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, const string & val
  * @param value адрес для удаления из белого списка
  * @return      результат выполнения удаления
  */
-bool awh::engine::IO::Control_List::remove(const event::id_t id, const string & value) noexcept {
+bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес для удаления передан
-	if(!value.empty()){
+	if(!std::empty(value)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26697,7 +26697,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, const string & 
 										// Если тип адреса принадлежит к Unix Domain Socket
 										case static_cast <uint8_t> (event::address_t::UDS): {
 											// Выполняем поиск указанного адреса
-											auto i = server->blacklist.find(value);
+											auto i = server->blacklist.find(string{value});
 											// Если адрес найден, удаляем его
 											if((result = (i != server->blacklist.end())))
 												// Выполняем удаление указанного адреса
@@ -26728,7 +26728,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, const string & 
 										// Если тип адреса принадлежит к Unix Domain Socket
 										case static_cast <uint8_t> (event::address_t::UDS): {
 											// Выполняем поиск указанного адреса
-											auto i = server->whitelist.find(value);
+											auto i = server->whitelist.find(string{value});
 											// Если адрес найден, удаляем его
 											if((result = (i != server->whitelist.end())))
 												// Выполняем удаление указанного адреса
@@ -30891,7 +30891,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
  */
-bool awh::engine::IO::setIface(const event::id_t id, const string & name) noexcept {
+bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept {
 	// Результат выполнения функции
 	bool result = false;
 	/**
@@ -32314,7 +32314,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
  */
-bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noexcept {
+bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -32348,7 +32348,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 									// Устанавливаем тип адреса как файл в файловой системе
 									fs->state.address = event::address_t::FS;
 								// Устанавливаем адрес файловой системы
-								awh_cast <net::addr_fs_t *> (fs->path.get())->address = target;
+								awh_cast <net::addr_fs_t *> (fs->path.get())->address = string{target};
 								// Выводим результат работы функции
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
@@ -32358,7 +32358,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 									// Вызываем функцию обратного вызова об ошибке отказа
 									fs->callbacks.status(fs->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.data());
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32389,7 +32389,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 								// Вызываем функцию обратного вызова об ошибке отказа
 								fs->callbacks.status(fs->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", target.c_str());
+							const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", target.data());
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -32429,7 +32429,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 									// Устанавливаем тип адреса как файл в файловой системе
 									fs->state.address = event::address_t::FS;
 								// Устанавливаем адрес файловой системы
-								awh_cast <net::addr_fs_t *> (fs->path.get())->address = target;
+								awh_cast <net::addr_fs_t *> (fs->path.get())->address = string{target};
 								// Выводим результат работы функции
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
@@ -32439,7 +32439,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 									// Вызываем функцию обратного вызова об ошибке отказа
 									fs->callbacks.status(fs->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+								const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.data());
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32470,7 +32470,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 								// Вызываем функцию обратного вызова об ошибке отказа
 								fs->callbacks.status(fs->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", target.c_str());
+							const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to filesystem address", target.data());
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
@@ -32520,7 +32520,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.data());
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32562,7 +32562,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.data());
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32614,7 +32614,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.data());
 									// Если установлена функция обратного вызова
 									if(mediator->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32656,7 +32656,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.data());
 									// Если установлена функция обратного вызова
 									if(mediator->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32702,7 +32702,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Устанавливаем тип адреса как файловая система
 										client->state.address = event::address_t::UDS;
 									// Устанавливаем адрес uinix-доменного сокета
-									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = target;
+									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = string{target};
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
@@ -32712,7 +32712,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.data());
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32758,7 +32758,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.data());
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32804,7 +32804,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.data());
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32850,7 +32850,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Устанавливаем тип адреса как файловая система
 										server->state.address = event::address_t::UDS;
 									// Устанавливаем адрес uinix-доменного сокета
-									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = target;
+									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = string{target};
 									// Выводим результат работы функции
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
@@ -32860,7 +32860,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", target.data());
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32906,7 +32906,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", target.data());
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -32952,7 +32952,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const string & target) noe
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.c_str());
+									const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", target.data());
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -35573,7 +35573,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
  * @param value   значение адреса события
  * @return        результат выполнения установки
  */
-bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, const string & value) noexcept {
+bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -35634,7 +35634,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							break;
 						}
 						// Устанавливаем текст ошибки
-						const string error = this->_fmk->format("Unable to set this address \"%s\" type", value.c_str());
+						const string error = this->_fmk->format("Unable to set this address \"%s\" type", value.data());
 						// Если установлена функция обратного вызова
 						if(callback != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
@@ -35687,7 +35687,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											fs->callbacks.status(fs->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.data());
 										// Если установлена функция обратного вызова
 										if(fs->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -35716,7 +35716,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										fs->callbacks.status(fs->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.data());
 									// Если установлена функция обратного вызова
 									if(fs->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -35764,7 +35764,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											fs->callbacks.status(fs->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.data());
 										// Если установлена функция обратного вызова
 										if(fs->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -35793,7 +35793,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										fs->callbacks.status(fs->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to file system address", value.data());
 									// Если установлена функция обратного вызова
 									if(fs->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -35823,13 +35823,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+									this->_log->debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" can only be set for node", log_t::flag_t::WARNING, value.c_str());
+									this->_log->print("Address \"%s\" can only be set for node", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
 						}
@@ -35897,7 +35897,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															// Вызываем функцию обратного вызова об ошибке отказа
 															client->callbacks.status(client->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.data());
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -35948,7 +35948,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															// Вызываем функцию обратного вызова об ошибке отказа
 															client->callbacks.status(client->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.data());
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -35979,7 +35979,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												client->callbacks.status(client->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a MAC-address", value.c_str());
+											const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a MAC-address", value.data());
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -36041,7 +36041,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															// Вызываем функцию обратного вызова об ошибке отказа
 															server->callbacks.status(server->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.data());
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -36093,7 +36093,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															// Вызываем функцию обратного вызова об ошибке отказа
 															server->callbacks.status(server->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.c_str());
+														const string error = this->_fmk->format("MAC-address \"%s\" is not found", value.data());
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -36124,7 +36124,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a MAC-address", value.c_str());
+											const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a MAC-address", value.data());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -36156,13 +36156,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("MAC-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+									this->_log->debug("MAC-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("MAC-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.c_str());
+									this->_log->print("MAC-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
 						}
@@ -36199,7 +36199,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
 												}
 												// Устанавливаем адрес в UNIX-домене
-												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = value;
+												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = string{value};
 												// Возвращаем результат работы функции
 												return true;
 											// Если адрес не принадлежит к адресу файловой системы
@@ -36209,7 +36209,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+												const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.data());
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -36248,7 +36248,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
 												}
 												// Устанавливаем адрес в UNIX-домене
-												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = value;
+												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = string{value};
 												// Возвращаем результат работы функции
 												return true;
 											// Если адрес не принадлежит к адресу файловой системы
@@ -36258,7 +36258,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													server->callbacks.status(server->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.c_str());
+												const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a filesystem address", value.data());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -36290,13 +36290,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Unix socket address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+										this->_log->debug("Unix socket address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Unix socket address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.c_str());
+										this->_log->print("Unix socket address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 									#endif
 								}
 							}
@@ -36307,13 +36307,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("You cannot set address \"%s\" because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+								this->_log->debug("You cannot set address \"%s\" because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("You cannot set address \"%s\" because event family does not belong to unix domain socket", log_t::flag_t::WARNING, value.c_str());
+								this->_log->print("You cannot set address \"%s\" because event family does not belong to unix domain socket", log_t::flag_t::WARNING, value.data());
 							#endif
 						}
 					} break;
@@ -36342,7 +36342,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.data());
 										// Если установлена функция обратного вызова
 										if(tunnel->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -36371,7 +36371,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.data());
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -36413,7 +36413,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.data());
 										// Если установлена функция обратного вызова
 										if(mediator->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -36442,7 +36442,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.data());
 									// Если установлена функция обратного вызова
 									if(mediator->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -36520,7 +36520,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												client->callbacks.status(client->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.c_str());
+											const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.data());
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -36549,7 +36549,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											client->callbacks.status(client->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.data());
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -36578,7 +36578,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.data());
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -36654,7 +36654,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													server->callbacks.status(server->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.c_str());
+												const string error = this->_fmk->format("IPv4-address \"%s\" is not found", value.data());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -36684,7 +36684,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv4-address", value.data());
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -36713,7 +36713,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.data());
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -36743,13 +36743,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("IP-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.c_str());
+									this->_log->print("IP-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
 						}
@@ -36779,7 +36779,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", value.data());
 										// Если установлена функция обратного вызова
 										if(tunnel->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -36808,7 +36808,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv6-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv6-address", value.data());
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -36850,7 +36850,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", value.c_str());
+										const string error = this->_fmk->format("Address \"%s\" you are trying to add is not a IPv6-address", value.data());
 										// Если установлена функция обратного вызова
 										if(mediator->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -36879,7 +36879,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv6-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv6-address", value.data());
 									// Если установлена функция обратного вызова
 									if(mediator->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -36957,7 +36957,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												client->callbacks.status(client->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.c_str());
+											const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.data());
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -36986,7 +36986,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											client->callbacks.status(client->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"[%s]\" you are trying to add is not a IPv6-address", value.c_str());
+										const string error = this->_fmk->format("Address \"[%s]\" you are trying to add is not a IPv6-address", value.data());
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -37015,7 +37015,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										client->callbacks.status(client->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.data());
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -37091,7 +37091,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													server->callbacks.status(server->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.c_str());
+												const string error = this->_fmk->format("IPv6-address \"[%s]\" is not found", value.data());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -37121,7 +37121,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = this->_fmk->format("Address \"[%s]\" you are trying to add is not a IPv6-address", value.c_str());
+										const string error = this->_fmk->format("Address \"[%s]\" you are trying to add is not a IPv6-address", value.data());
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -37150,7 +37150,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
 									// Устанавливаем текст ошибки
-									const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+									const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.data());
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
@@ -37180,13 +37180,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("IP-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.c_str());
+									this->_log->print("IP-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
 						}
@@ -37204,9 +37204,9 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						// Если разделитель найден
 						if(pos != string::npos){
 							// Получаем значение IP-адреса сети
-							ip = ::move(value.substr(0, pos));
+							ip = value.substr(0, pos);
 							// Получаем значение маски сети
-							mask = ::move(value.substr(pos + 1));
+							mask = value.substr(pos + 1);
 						// Если разделитель не найден
 						} else ip = value;
 						/**
@@ -37299,7 +37299,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Network address \"%s\" is not found", value.c_str());
+												const string error = this->_fmk->format("Network address \"%s\" is not found", value.data());
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -37328,7 +37328,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												client->callbacks.status(client->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+											const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.data());
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -37397,7 +37397,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													client->callbacks.status(client->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Network address \"[%s]\" is not found", value.c_str());
+												const string error = this->_fmk->format("Network address \"[%s]\" is not found", value.data());
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -37426,7 +37426,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												client->callbacks.status(client->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+											const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.data());
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -37529,7 +37529,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													server->callbacks.status(server->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Network address \"%s\" is not found", value.c_str());
+												const string error = this->_fmk->format("Network address \"%s\" is not found", value.data());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -37558,7 +37558,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.c_str());
+											const string error = this->_fmk->format("You cannot set address \"%s\" because event family does not belong to IPv4-address", value.data());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -37628,7 +37628,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Вызываем функцию обратного вызова об ошибке отказа
 													server->callbacks.status(server->id, event::status_t::FAILURE);
 												// Устанавливаем текст ошибки
-												const string error = this->_fmk->format("Network address \"[%s]\" is not found", value.c_str());
+												const string error = this->_fmk->format("Network address \"[%s]\" is not found", value.data());
 												// Если установлена функция обратного вызова
 												if(server->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
@@ -37657,7 +37657,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
 											// Устанавливаем текст ошибки
-											const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.c_str());
+											const string error = this->_fmk->format("You cannot set address \"[%s]\" because event family does not belong to IPv6-address", value.data());
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -37689,13 +37689,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Network-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+									this->_log->debug("Network-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("Network-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.c_str());
+									this->_log->print("Network-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
 						}
@@ -37707,13 +37707,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Unsupported address \"%s\" type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.c_str());
+							this->_log->debug("Unsupported address \"%s\" type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("Unsupported address \"%s\" type cannot be set", log_t::flag_t::WARNING, value.c_str());
+							this->_log->print("Unsupported address \"%s\" type cannot be set", log_t::flag_t::WARNING, value.data());
 						#endif
 					}
 				}
@@ -40548,13 +40548,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
  */
-bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, const string & group, const string & source, const uint16_t port) noexcept {
+bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если мультикаст-группа передана
-		if(!group.empty() && !source.empty()){
+		if(!std::empty(group) && !std::empty(source)){
 			// Выполняем поиск идентификатора события
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
@@ -48448,7 +48448,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
  * @param limiting  режим ограничения пропускной способности события (egress или ingress)
  * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  */
-void awh::engine::IO::bandwidth(const event::limiting_t limiting, const string & bandwidth) noexcept {
+void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -48503,7 +48503,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, const string &
  * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
  */
-bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t limiting, const string & bandwidth) noexcept {
+bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

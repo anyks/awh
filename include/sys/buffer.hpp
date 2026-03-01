@@ -370,6 +370,13 @@ namespace awh {
 			 * @param text текст для добавления
 			 * @return     результат добавления данных
 			 */
+			bool push(string_view text) noexcept;
+			/**
+			 * @brief Метод добавления текста в буфер
+			 *
+			 * @param text текст для добавления
+			 * @return     результат добавления данных
+			 */
 			bool push(const string & text) noexcept;
 			/**
 			 * @brief Метод добавления бинарного буфера данных в буфер

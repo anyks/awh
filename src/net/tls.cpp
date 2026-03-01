@@ -531,7 +531,7 @@ namespace ssl {
 	 * @param message дополнительное сообщение
 	 * @return        сформированное сообщение об ошибке
 	 */
-	static string error(const tls_t::id_t id, const string & message = "") noexcept {
+	static string error(const tls_t::id_t id, string_view message = "") noexcept {
 		// Результат работы функции
 		string result = "";
 		/**
@@ -541,7 +541,7 @@ namespace ssl {
 			// Если уровень является шаблонным контекстом безопасности
 			case static_cast <uint8_t> (layer_t::CTS):
 				// Выводим сообщение об ошибка как оно передано
-				return message;
+				return string{message};
 			// Если уровень является транспортной передачей данных
 			case static_cast <uint8_t> (layer_t::CTL): {
 				// Выполняем извлечение объекта транспортного уровня передачи
@@ -559,7 +559,7 @@ namespace ssl {
 					// Если ошибка получена
 					if(error != 0){
 						// Буфер данных для получения сообщения об ошибке
-						char buffer[0xff];
+						char buffer[0xFF];
 						// Получаем текст общего сообщения
 						const string state = ::SSL_state_string(member->ssl);
 						/**
@@ -579,9 +579,9 @@ namespace ssl {
 								// Добавляем информацию об ошибке в результат
 								result.append(fmk->format("%s: %s", state.c_str(), buffer));
 							// Если получено дополнительное сообщение
-							else if(!message.empty())
+							else if(!std::empty(message))
 								// Добавляем информацию об ошибке в результат
-								result.append(fmk->format("%s: %s", message.c_str(), buffer));
+								result.append(fmk->format("%s: %s", message.data(), buffer));
 							// Если не получено ни состояние SSL, ни дополнительное сообщение
 							else result.append(buffer);
 						/**
@@ -589,9 +589,9 @@ namespace ssl {
 						 */
 						} while((error = ::ERR_get_error()));
 					// Если получено дополнительное сообщение
-					} else if(!message.empty())
+					} else if(!std::empty(message))
 						// Выводим сообщение об ошибка как оно передано
-						return message;
+						return string{message};
 				/**
 				 * Если возникает ошибка
 				 */
@@ -599,9 +599,9 @@ namespace ssl {
 					// Получаем объект фреймворка
 					awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_get_ex_data(member->ssl, ::__awh_ssl_index__[1]));
 					// Если получено дополнительное сообщение
-					if(!message.empty())
+					if(!std::empty(message))
 						// Добавляем информацию об ошибке в результат
-						result.append(fmk->format("%s: %s", message.c_str(), error.what()));
+						result.append(fmk->format("%s: %s", message.data(), error.what()));
 					// Если не получено ни состояние SSL, ни дополнительное сообщение
 					else result.append(error.what());
 				}
@@ -1349,13 +1349,13 @@ namespace ssl {
 		 * @param log   объект для работы с логами
 		 * @return      результат проверки
 		 */
-		static bool addCertToStore(X509_STORE * store, const string & name, const awh::log_t * log) noexcept {
+		static bool addCertToStore(X509_STORE * store, string_view name, const awh::log_t * log) noexcept {
 			// Результат работы функции
 			bool result = false;
 			// Если объекты переданы верно
-			if((store != nullptr) && !name.empty()){
+			if((store != nullptr) && !std::empty(name)){
 				// Получаем данные системного стора
-				HCERTSTORE sys = ::CertOpenSystemStore(0, name.c_str());
+				HCERTSTORE sys = ::CertOpenSystemStore(0, name.data());
 				// Если системный стор не получен
 				if(!(result = (sys != nullptr))){
 					/**
@@ -1871,11 +1871,11 @@ namespace verify {
 	 * @param x509 сертификат
 	 * @return     результат проверки
 	 */
-	static status_t matchSubjectName(const string & host, const X509 * x509) noexcept {
+	static status_t matchSubjectName(string_view host, const X509 * x509) noexcept {
 		// Результат работы функции
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
-		if(!host.empty() && (x509 != nullptr)){
+		if(!std::empty(host) && (x509 != nullptr)){
 			// Извлекаем SAN из сертификата
 			STACK_OF(GENERAL_NAME) * san = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (::X509_get_ext_d2i(const_cast <X509 *> (x509), NID_subject_alt_name, nullptr, nullptr));
 			// Если SAN присутствует
@@ -1904,7 +1904,7 @@ namespace verify {
 			// Если SAN отсутствует или имя не совпало
 			} else {
 				// Буфер данных для получения данных
-				char buffer[0xff];
+				char buffer[0xFF];
 				// Fallback на Common Name (устаревшее, но иногда нужно)
 				X509_NAME * subject = ::X509_get_subject_name(x509);
 				// Если удалось получить Common Name
@@ -1925,11 +1925,11 @@ namespace verify {
 	 * @param x509 сертификат
 	 * @return     результат проверки
 	 */
-	static status_t matchesCommonName(const string & host, const X509 * x509) noexcept {
+	static status_t matchesCommonName(string_view host, const X509 * x509) noexcept {
 		// Результат работы функции
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
-		if(!host.empty() && (x509 != nullptr)){
+		if(!std::empty(host) && (x509 != nullptr)){
 			// Получаем индекс имени по "NID"
 			const int32_t cnl = ::X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (x509)), NID_commonName, -1);
 			// Если индекс не получен тогда выходим
@@ -1963,11 +1963,11 @@ namespace verify {
 	 * @param x509 сертификат
 	 * @return     результат проверки
 	 */
-	static status_t validateHostname(const string & host, const X509 * x509) noexcept {
+	static status_t validateHostname(string_view host, const X509 * x509) noexcept {
 		// Результат работы функции
 		status_t result = status_t::Error;
 		// Если данные переданы
-		if(!host.empty() && (x509 != nullptr)){
+		if(!std::empty(host) && (x509 != nullptr)){
 			// Выполняем проверку имени хоста по списку доменов у сертификата
 			result = ::verify::matchSubjectName(host, x509);
 			// Если у сертификата только один домен
@@ -1997,7 +1997,7 @@ namespace verify {
 				// Если сертификат получен
 				if(x509 != nullptr){
 					// Буфер данных для получения данных
-					char buffer[0xff];
+					char buffer[0xFF];
 					// Выводим начальный разделитель
 					printf("------------------------------------------------------------\n\n");
 					// Выводим заголовок
@@ -2131,7 +2131,7 @@ namespace verify {
 						// Если имя эмитента получено
 						} else {
 							// Буфер доменного имени
-							char fqdn[0xff];
+							char fqdn[0xFF];
 							// Заполняем буфер нулями
 							::memset(fqdn, 0, sizeof(fqdn));
 							// Запрашиваем имя домена
@@ -2321,7 +2321,7 @@ string awh::Transport_Layer_Security::info(const id_t id) const noexcept {
 					// Если сертификат сервера получен
 					if(x509 != nullptr){
 						// Буфер данных для получения данных
-						char buffer[0xff];
+						char buffer[0xFF];
 						// Если всё хорошо, формируем версию OpenSSL
 						result.append(this->_fmk->format("Using %s\n\n", ::OpenSSL_version(OPENSSL_VERSION)));
 						// Добавляем заголовок цепочки сертификатов
@@ -2794,7 +2794,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Буфер данных для получения данных
-								char buffer[0xff];
+								char buffer[0xFF];
 								// Выполняем получение сертификата сервера
 								X509 * x509 = ::SSL_get_certificate(member->ssl);
 								// Если сертификат сервера получен
@@ -2835,7 +2835,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 								// Если сертификат сервера получен
 								if(x509 != nullptr){
 									// Буфер данных для получения данных
-									char buffer[0xff];
+									char buffer[0xFF];
 									// Получаем название сертификата
 									::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
@@ -3105,7 +3105,7 @@ string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexc
 							// Если сертификат получен
 							if(x509 != nullptr){
 								// Буфер данных для получения данных
-								char buffer[0xff];
+								char buffer[0xFF];
 								// Получаем название сертификата
 								::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
@@ -3125,7 +3125,7 @@ string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexc
 							// Если сертификат сервера получен
 							if(x509 != nullptr){
 								// Буфер данных для получения данных
-								char buffer[0xff];
+								char buffer[0xFF];
 								// Получаем название сертификата
 								::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
@@ -3734,7 +3734,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 					// Если SAN отсутствует или имя не совпало
 					} else {
 						// Буфер данных для получения данных
-						char buffer[0xff];
+						char buffer[0xFF];
 						// Fallback на Common Name (устаревшее, но иногда нужно)
 						X509_NAME * subject = ::X509_get_subject_name(x509);
 						// Если удалось получить Common Name
@@ -4104,13 +4104,13 @@ string awh::Transport_Layer_Security::hostname(const id_t id) const noexcept {
  * @param id       идентификатор события
  * @param hostname имя хоста сервера
  */
-void awh::Transport_Layer_Security::hostname(const id_t id, const string & hostname) noexcept {
+void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если имя хоста сервера не пустое
-		if(!hostname.empty()){
+		if(!std::empty(hostname)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -4158,16 +4158,16 @@ void awh::Transport_Layer_Security::hostname(const id_t id, const string & hostn
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
 							// Устанавливаем имя хоста для SNI расширения
-							::SSL_set_tlsext_host_name(member->ssl, hostname.c_str());
+							::SSL_set_tlsext_host_name(member->ssl, hostname.data());
 							/**
 							 * Если версия OpenSSL соответствует или выше версии 1.1.1
 							 */
 							#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 								// Устанавливаем имя хоста для проверки
-								::SSL_set1_host(member->ssl, hostname.c_str());
+								::SSL_set1_host(member->ssl, hostname.data());
 							#endif
 							// Активируем верификацию доменного имени
-							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), hostname.c_str(), 0) != 1){
+							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), hostname.data(), 0) != 1){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -4231,13 +4231,13 @@ void awh::Transport_Layer_Security::hostname(const id_t id, const string & hostn
  * @param port порт отдалённого узла
  * @return     результат выполнения установки
  */
-bool awh::Transport_Layer_Security::peer(const id_t id, const string & ip, const uint16_t port) noexcept {
+bool awh::Transport_Layer_Security::peer(const id_t id, string_view ip, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если IP-адрес сервера не пустой и порт сервера задан верно
-		if((!ip.empty()) && (port > 0)){
+		if((!std::empty(ip)) && (port > 0)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -6873,7 +6873,7 @@ void awh::Transport_Layer_Security::alpn(const id_t id, const vector <alpn_t> & 
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename адрес файла сертификата доверенных центров сертификации
  */
-void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) noexcept {
+void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6893,7 +6893,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
-					if(!filename.empty()){
+					if(!std::empty(filename)){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -6928,7 +6928,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
 							return;
 						}
 						// Загружаем местоположение центра сертификации
-						if(::X509_STORE_load_locations(store, filename.c_str(), nullptr) != 1){
+						if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -6961,7 +6961,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
 						// Если узел является сервером
 						if(member->node == event::node_t::SERVER){
 							// Загружаем список сертификатов центра сертификации
-							STACK_OF(X509_NAME) * cert = ::SSL_load_client_CA_file(filename.c_str());
+							STACK_OF(X509_NAME) * cert = ::SSL_load_client_CA_file(filename.data());
 							// Если список сертификатов загружен успешно
 							if(cert != nullptr)
 								// Выполняем установку CRL-файла сертификата
@@ -7007,7 +7007,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
-					if(!filename.empty()){
+					if(!std::empty(filename)){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7042,7 +7042,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
 							return;
 						}
 						// Загружаем местоположение центра сертификации
-						if(::X509_STORE_load_locations(store, filename.c_str(), nullptr) != 1){
+						if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -7075,7 +7075,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
 						// Если узел является сервером
 						if(member->node == event::node_t::SERVER)
 							// Выполняем установку CRL-файла сертификата
-							::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(filename.c_str()));
+							::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(filename.data()));
 					}
 				} break;
 			}
@@ -7106,7 +7106,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & filename) n
  * @param dir  адрес директории с сертификатами доверенных центров сертификации
  * @param file адрес файла сертификата доверенного центра сертификации
  */
-void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const string & file) noexcept {
+void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_view file) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7126,7 +7126,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
-					if(!file.empty()){
+					if(!std::empty(file)){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7161,17 +7161,17 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 							return;
 						}
 						// Если каталог сертификатов передан
-						if(!dir.empty()){
+						if(!std::empty(dir)){
 							// Полный адрес файла центра сертификации
 							string filename = "";
 							// Если последний символ каталога является разделителем
 							if(dir.back() == AWH_FS_SEPARATOR[0])
 								// Формируем полный адрес файла центра сертификации
-								filename = ::move(this->_fmk->format("%s%s", dir.c_str(), file.c_str()));
+								filename = ::move(this->_fmk->format("%s%s", dir.data(), file.data()));
 							// Формируем полный адрес файла центра сертификации
-							else filename = ::move(this->_fmk->format("%s%s%s", dir.c_str(), AWH_FS_SEPARATOR, file.c_str()));
+							else filename = ::move(this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data()));
 							// Загружаем местоположение центра сертификации
-							if(::X509_STORE_load_locations(store, filename.c_str(), nullptr) != 1){
+							if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -7204,11 +7204,11 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 							// Если узел является сервером
 							if(member->node == event::node_t::SERVER)
 								// Выполняем установку CRL-файла сертификата
-								::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.c_str()));
+								::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(filename.data()));
 						// Если каталог сертификатов не передан
 						} else {
 							// Загружаем местоположение центра сертификации
-							if(::X509_STORE_load_locations(store, file.c_str(), nullptr) != 1){
+							if(::X509_STORE_load_locations(store, file.data(), nullptr) != 1){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -7241,7 +7241,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 							// Если узел является сервером
 							if(member->node == event::node_t::SERVER)
 								// Выполняем установку CRL-файла сертификата
-								::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(file.c_str()));
+								::SSL_CTX_set_client_CA_list(member->ctx, ::SSL_load_client_CA_file(file.data()));
 						}
 					}
 				} break;
@@ -7254,7 +7254,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
-					if(!file.empty()){
+					if(!std::empty(file)){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 						// Если хранилище не создано
@@ -7289,17 +7289,17 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 							return;
 						}
 						// Если каталог сертификатов передан
-						if(!dir.empty()){
+						if(!std::empty(dir)){
 							// Полный адрес файла центра сертификации
 							string filename = "";
 							// Если последний символ каталога является разделителем
 							if(dir.back() == AWH_FS_SEPARATOR[0])
 								// Формируем полный адрес файла центра сертификации
-								filename = ::move(this->_fmk->format("%s%s", dir.c_str(), file.c_str()));
+								filename = ::move(this->_fmk->format("%s%s", dir.data(), file.data()));
 							// Формируем полный адрес файла центра сертификации
-							else filename = ::move(this->_fmk->format("%s%s%s", dir.c_str(), AWH_FS_SEPARATOR, file.c_str()));
+							else filename = ::move(this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data()));
 							// Загружаем местоположение центра сертификации
-							if(::X509_STORE_load_locations(store, filename.c_str(), nullptr) != 1){
+							if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -7332,11 +7332,11 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 							// Если узел является сервером
 							if(member->node == event::node_t::SERVER)
 								// Выполняем установку CRL-файла сертификата
-								::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(filename.c_str()));
+								::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(filename.data()));
 						// Если каталог сертификатов не передан
 						} else {
 							// Загружаем местоположение центра сертификации
-							if(::X509_STORE_load_locations(store, file.c_str(), nullptr) != 1){
+							if(::X509_STORE_load_locations(store, file.data(), nullptr) != 1){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -7369,7 +7369,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
 							// Если узел является сервером
 							if(member->node == event::node_t::SERVER)
 								// Выполняем установку CRL-файла сертификата
-								::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(file.c_str()));
+								::SSL_set_client_CA_list(member->ssl, ::SSL_load_client_CA_file(file.data()));
 						}
 					}
 				} break;
@@ -7400,13 +7400,13 @@ void awh::Transport_Layer_Security::ca(const id_t id, const string & dir, const 
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename адрес файла списка отзыва сертификатов
  */
-void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, const string & filename) noexcept {
+void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если адрес файла сертификата не пустой
-		if(!filename.empty()){
+		if(!std::empty(filename)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -7459,7 +7459,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, con
 							return;
 						}
 						// Выполняем чтение CRL-файла сертификата
-						if(BIO_read_filename(bio, filename.c_str()) <= 0){
+						if(BIO_read_filename(bio, filename.data()) <= 0){
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -7571,7 +7571,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, con
 							return;
 						}
 						// Выполняем чтение CRL-файла сертификата
-						if(BIO_read_filename(bio, filename.c_str()) <= 0){
+						if(BIO_read_filename(bio, filename.data()) <= 0){
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -7666,13 +7666,13 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, con
  * @param filename адрес файла приватного ключа клиента
  * @param type     тип файла приватного ключа клиента
  */
-void awh::Transport_Layer_Security::privateKey(const id_t id, const string & filename, const type_t type) noexcept {
+void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если адрес файла сертификата не пустой
-		if(!filename.empty()){
+		if(!std::empty(filename)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -7694,7 +7694,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, const string & fil
 							// PEM-файл приватного ключа клиента
 							case static_cast <uint8_t> (type_t::PEM): {
 								// Если приватный ключ не может быть установлен
-								if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+								if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.data(), SSL_FILETYPE_PEM) != 1){
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
@@ -7728,7 +7728,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, const string & fil
 							// ASN1-файл приватного ключа клиента
 							case static_cast <uint8_t> (type_t::ASN1): {
 								// Если приватный ключ не может быть установлен
-								if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.c_str(), SSL_FILETYPE_ASN1) != 1){
+								if(::SSL_CTX_use_PrivateKey_file(member->ctx, filename.data(), SSL_FILETYPE_ASN1) != 1){
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
@@ -7805,7 +7805,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, const string & fil
 							// PEM-файл приватного ключа клиента
 							case static_cast <uint8_t> (type_t::PEM): {
 								// Если приватный ключ не может быть установлен
-								if(::SSL_use_PrivateKey_file(member->ssl, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+								if(::SSL_use_PrivateKey_file(member->ssl, filename.data(), SSL_FILETYPE_PEM) != 1){
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
@@ -7839,7 +7839,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, const string & fil
 							// ASN1-файл приватного ключа клиента
 							case static_cast <uint8_t> (type_t::ASN1): {
 								// Если приватный ключ не может быть установлен
-								if(::SSL_use_PrivateKey_file(member->ssl, filename.c_str(), SSL_FILETYPE_ASN1) != 1){
+								if(::SSL_use_PrivateKey_file(member->ssl, filename.data(), SSL_FILETYPE_ASN1) != 1){
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
@@ -7930,13 +7930,13 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, const string & fil
  * @param filename адрес файла клиентского сертификата
  * @param type     тип файла приватного ключа клиента
  */
-void awh::Transport_Layer_Security::certificate(const id_t id, const string & filename, const type_t type) noexcept {
+void awh::Transport_Layer_Security::certificate(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если адрес файла сертификата не пустой
-		if(!filename.empty()){
+		if(!std::empty(filename)){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -7964,7 +7964,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// PEM-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::PEM): {
 										// Если сертификат не устанавливается
-										if(::SSL_CTX_use_certificate_file(member->ctx, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+										if(::SSL_CTX_use_certificate_file(member->ctx, filename.data(), SSL_FILETYPE_PEM) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -7996,7 +7996,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// ASN1-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::ASN1): {
 										// Если сертификат не устанавливается
-										if(::SSL_CTX_use_certificate_file(member->ctx, filename.c_str(), SSL_FILETYPE_ASN1) != 1){
+										if(::SSL_CTX_use_certificate_file(member->ctx, filename.data(), SSL_FILETYPE_ASN1) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -8036,7 +8036,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// PEM-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::PEM): {
 										// Если сертификат не устанавливается
-										if(::SSL_CTX_use_certificate_chain_file(member->ctx, filename.c_str()) != 1){
+										if(::SSL_CTX_use_certificate_chain_file(member->ctx, filename.data()) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -8068,7 +8068,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// ASN1-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::ASN1): {
 										// Если сертификат не устанавливается
-										if(::SSL_CTX_use_certificate_file(member->ctx, filename.c_str(), SSL_FILETYPE_ASN1) != 1){
+										if(::SSL_CTX_use_certificate_file(member->ctx, filename.data(), SSL_FILETYPE_ASN1) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -8122,7 +8122,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// PEM-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::PEM): {
 										// Если сертификат не устанавливается
-										if(::SSL_use_certificate_file(member->ssl, filename.c_str(), SSL_FILETYPE_PEM) != 1){
+										if(::SSL_use_certificate_file(member->ssl, filename.data(), SSL_FILETYPE_PEM) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -8154,7 +8154,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// ASN1-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::ASN1): {
 										// Если сертификат не устанавливается
-										if(::SSL_use_certificate_file(member->ssl, filename.c_str(), SSL_FILETYPE_ASN1) != 1){
+										if(::SSL_use_certificate_file(member->ssl, filename.data(), SSL_FILETYPE_ASN1) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -8194,7 +8194,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// PEM-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::PEM): {
 										// Если сертификат не устанавливается
-										if(::SSL_use_certificate_chain_file(member->ssl, filename.c_str()) != 1){
+										if(::SSL_use_certificate_chain_file(member->ssl, filename.data()) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -8226,7 +8226,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, const string & fi
 									// ASN1-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::ASN1): {
 										// Если сертификат не устанавливается
-										if(::SSL_use_certificate_file(member->ssl, filename.c_str(), SSL_FILETYPE_ASN1) != 1){
+										if(::SSL_use_certificate_file(member->ssl, filename.data(), SSL_FILETYPE_ASN1) != 1){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния

@@ -135,6 +135,35 @@ namespace awh {
 				virtual void start() noexcept;
 			public:
 				/**
+				 * @brief Метод получения типа события
+				 *
+				 * @param eid идентификатор события
+				 * @return    тип события
+				 */
+				event::type_t type(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод получения типа узла события
+				 *
+				 * @param eid идентификатор события
+				 * @return    тип узла события
+				 */
+				event::node_t node(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод получения семейства события
+				 *
+				 * @param eid идентификатор события
+				 * @return    семейство события
+				 */
+				event::family_t family(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод получения статуса события
+				 *
+				 * @param eid идентификатор события
+				 * @return    статус события
+				 */
+				event::status_t status(const event::id_t eid) const noexcept;
+			public:
+				/**
 				 * @brief Метод установки времени блокировки базы событий в ожидании событий
 				 *
 				 * @param timeout время ожидания событий в миллисекундах
@@ -184,7 +213,7 @@ namespace awh {
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				auto on(const string & name, Args... args) noexcept -> uint32_t {
+				auto on(string_view name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
 					if(!name.empty())
 						// Выполняем установку функции обратного вызова

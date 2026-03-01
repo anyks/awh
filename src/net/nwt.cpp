@@ -543,15 +543,17 @@ void awh::Network_Types::init() noexcept {
  *
  * @param zone пользовательская зона
  */
-void awh::Network_Types::zone(const string & zone) noexcept {
+void awh::Network_Types::zone(string_view zone) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Получаем домен верхнего уровня
+		string dom{zone};
 		// Если зона передана и она не существует
-		if(!zone.empty() && (this->_national.find(zone) == this->_national.end()) && (this->_general.find(zone) == this->_general.end()))
+		if(!dom.empty() && (this->_national.find(dom) == this->_national.end()) && (this->_general.find(dom) == this->_general.end()))
 			// Добавляем зону в список
-			this->_user.emplace(zone);
+			this->_user.emplace(dom);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -622,11 +624,11 @@ void awh::Network_Types::clear() noexcept {
  * @param text текст для парсинга
  * @return     параметры полученные в результате парсинга
  */
-awh::Network_Types::url_t awh::Network_Types::parse(const string & text) noexcept {
+awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 	// Результат работы функции
 	url_t result;
 	// Если текст передан
-	if(!text.empty()){
+	if(!std::empty(text)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -636,11 +638,11 @@ awh::Network_Types::url_t awh::Network_Types::parse(const string & text) noexcep
 			 *
 			 * @param text текст для парсинга
 			 */
-			auto emailFn = [this](const string & text) noexcept -> url_t {
+			auto emailFn = [this](string_view text) noexcept -> url_t {
 				// Результат работы функции
 				url_t result;
 				// Если текст передан
-				if(!text.empty()){
+				if(!std::empty(text)){
 					// Выполняем проверку электронной почты
 					const auto & match = this->_regexp.exec(text, this->_email);
 					// Если результат найден
@@ -665,11 +667,11 @@ awh::Network_Types::url_t awh::Network_Types::parse(const string & text) noexcep
 			 *
 			 * @param text текст для парсинга
 			 */
-			auto urlFn = [this](const string & text) noexcept -> url_t {
+			auto urlFn = [this](string_view text) noexcept -> url_t {
 				// Результат работы функции
 				url_t result;
 				// Если текст передан
-				if(!text.empty()){
+				if(!std::empty(text)){
 					// Выполняем проверку URL адреса
 					const auto & match = this->_regexp.exec(text, this->_url);
 					// Если результат найден
@@ -720,11 +722,11 @@ awh::Network_Types::url_t awh::Network_Types::parse(const string & text) noexcep
 			 *
 			 * @param text текст для парсинга
 			 */
-			auto ipFn = [this](const string & text) noexcept -> url_t {
+			auto ipFn = [this](string_view text) noexcept -> url_t {
 				// Результат работы функции
 				url_t result;
 				// Если текст передан
-				if(!text.empty()){
+				if(!std::empty(text)){
 					// Выполняем проверку IP адреса
 					const auto & match = this->_regexp.exec(text, this->_ip);
 					// Если результат найден
@@ -828,15 +830,15 @@ awh::Network_Types::url_t awh::Network_Types::parse(const string & text) noexcep
  *
  * @param letters список букв алфавита
  */
-void awh::Network_Types::letters(const string & letters) noexcept {
+void awh::Network_Types::letters(string_view letters) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Если буквы переданы запоминаем их
-		if(!letters.empty())
+		if(!std::empty(letters))
 			// Устанавливаем буквы алфавита
-			this->_letters = letters;
+			this->_letters = string{letters};
 		// Устанавливаем регулярное выражение для проверки электронной почты
 		this->_email = this->_regexp.build(
 			"((?:([\\w\\-"
@@ -920,7 +922,8 @@ void awh::Network_Types::setLogger(const log_t * log) noexcept {
  * @brief Конструктор
  *
  */
-awh::Network_Types::Network_Types() noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _log(nullptr) {
+awh::Network_Types::Network_Types() noexcept :
+ _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _log(nullptr) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их
@@ -931,7 +934,8 @@ awh::Network_Types::Network_Types() noexcept : _letters("абвгдеёжзий�
  *
  * @param log объект для работы с логами
  */
-awh::Network_Types::Network_Types(const log_t * log) noexcept : _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _regexp(log), _log(log) {
+awh::Network_Types::Network_Types(const log_t * log) noexcept :
+ _letters("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"), _regexp(log), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их
@@ -943,7 +947,8 @@ awh::Network_Types::Network_Types(const log_t * log) noexcept : _letters("абв
  * @param letters список букв алфавита
  * @param log     объект для работы с логами
  */
-awh::Network_Types::Network_Types(const string & letters, const log_t * log) noexcept : _letters{letters}, _regexp(log), _log(log) {
+awh::Network_Types::Network_Types(string_view letters, const log_t * log) noexcept :
+ _letters{letters}, _regexp(log), _log(log) {
 	// Выполняем инициализацию модуля
 	this->init();
 	// Если буквы переданы запоминаем их

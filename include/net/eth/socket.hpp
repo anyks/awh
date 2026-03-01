@@ -94,7 +94,7 @@ namespace awh {
 				 * @param ifname имя сетевого интерфейса
 				 * @return       результат работы функции
 				 */
-				bool multicastIface(const net::socket_t sock, const event::family_t family, const string & ifname) const noexcept;
+				bool multicastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept;
 			public:
 				/**
 				 * @brief Метод устанавливает постоянное подключение на сокет

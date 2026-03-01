@@ -22,6 +22,7 @@
  * Наши модули
  */
 #include "unit.hpp"
+#include "../sys/binbox.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -45,6 +46,32 @@ namespace awh {
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
+				// Бинарный контейнер для хранения кэша доменных имён
+				binbox_t _binbox;
+			private:
+				/**
+				 * @brief Метод обработки событий дампинга DNS-кэша
+				 *
+				 * @param        идентификатор таймера DNS-резолвера
+				 * @param status статус события таймера DNS-резолвера
+				 */
+				void dumping(const event::id_t, const event::status_t status) noexcept;
+				/**
+				 * @brief Метод обработки событий загрузки локальных хостов
+				 *
+				 * @param      идентификатор события загрузки локальных хостов
+				 * @param data данные события загрузки локальных хостов
+				 * @param size размер данных события загрузки локальных хостов
+				 */
+				void hosts(const event::id_t, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * @brief Метод обработки ошибок событий DNS-резолвера
+				 *
+				 * @param eid         идентификатор события DNS-резолвера
+				 * @param error       код ошибки события DNS-резолвера
+				 * @param description описание ошибки события DNS-резолвера
+				 */
+				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			public:
 				/**
 				 * @brief Метод уничтожения события DNS-резолвера
@@ -188,102 +215,99 @@ namespace awh {
 				/**
 				 * @brief Метод очистки чёрного списка
 				 *
-				 * @param domain доменное имя для которого очищается чёрный список
 				 */
-				void clearBlacklist(string_view domain) noexcept;
+				void clearBlacklist() noexcept;
 				/**
 				 * @brief Метод очистки чёрного списка
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param domain доменное имя для которого очищается чёрный список
 				 */
-				void clearBlacklist(const event::family_t family, string_view domain) noexcept;
+				void clearBlacklist(const event::family_t family) noexcept;
 			public:
 				/**
 				 * @brief Метод удаления IP-адреса из чёрного списока
 				 *
-				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для удаления из чёрного списка
+				 * @param ip адрес для удаления из чёрного списка
 				 */
-				void delInBlacklist(string_view domain, string_view ip) noexcept;
+				void delInBlacklist(string_view ip) noexcept;
 				/**
 				 * @brief Метод удаления IP-адреса из чёрного списока
 				 *
-				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для удаления из чёрного списка
+				 * @param ip адрес для удаления из чёрного списка
 				 */
-				void delInBlacklist(string_view domain, const unique_ptr <net::addr_t> & ip) noexcept;
+				void delInBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
 				/**
 				 * @brief Метод удаления IP-адреса из чёрного списока
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для удаления из чёрного списка
 				 */
-				void delInBlacklist(const event::family_t family, string_view domain, string_view ip) noexcept;
+				void delInBlacklist(const event::family_t family, string_view ip) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
-				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для добавления в чёрный список
+				 * @param ip адрес для добавления в чёрный список
 				 */
-				void addToBlacklist(string_view domain, string_view ip) noexcept;
+				void addToBlacklist(string_view ip) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
-				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для добавления в чёрный список
+				 * @param ip адрес для добавления в чёрный список
 				 */
-				void addToBlacklist(string_view domain, const unique_ptr <net::addr_t> & ip) noexcept;
+				void addToBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в чёрный список
 				 */
-				void addToBlacklist(const event::family_t family, string_view domain, string_view ip) noexcept;
+				void addToBlacklist(const event::family_t family, string_view ip) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки наличия IP-адреса в чёрном списке
 				 *
-				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для проверки наличия в чёрном списке
-				 * @return       результат проверки наличия IP-адреса в чёрном списке
+				 * @param ip адрес для проверки наличия в чёрном списке
+				 * @return   результат проверки наличия IP-адреса в чёрном списке
 				 */
-				bool hasInBlacklist(string_view domain, string_view ip) const noexcept;
+				bool hasInBlacklist(string_view ip) const noexcept;
 				/**
 				 * @brief Метод проверки наличия IP-адреса в чёрном списке
 				 *
-				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для проверки наличия в чёрном списке
-				 * @return       результат проверки наличия IP-адреса в чёрном списке
+				 * @param ip адрес для проверки наличия в чёрном списке
+				 * @return   результат проверки наличия IP-адреса в чёрном списке
 				 */
-				bool hasInBlacklist(string_view domain, const unique_ptr <net::addr_t> & ip) const noexcept;
+				bool hasInBlacklist(const unique_ptr <net::addr_t> & ip) const noexcept;
 				/**
 				 * @brief Метод проверки наличия IP-адреса в чёрном списке
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для проверки наличия в чёрном списке
 				 * @return       результат проверки наличия IP-адреса в чёрном списке
 				 */
-				bool hasInBlacklist(const event::family_t family, string_view domain, string_view ip) const noexcept;
-			public:
-				/**
-				 * @brief Метод установки фдреса файла локальных хостов
-				 *
-				 * @param filename адрес файла для установки
-				 */
-				void setHostsFilename(string_view filename) noexcept;
+				bool hasInBlacklist(const event::family_t family, string_view ip) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки префикса переменной окружения
 				 *
 				 * @param prefix префикс переменной окружения для установки
 				 */
-				void setPrefixSnvironment(string_view prefix) noexcept;
+				void setPrefixEnvironment(string_view prefix) noexcept;
+			public:
+				/**
+				 * @brief Метод установки фдреса файла локальных хостов
+				 *
+				 * @param filename адрес файла для установки
+				 */
+				void setFilenameHosts(string_view filename) noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса файла дампа кэша
+				 *
+				 * @param filename адрес файла для установки
+				 * @param interval интервал сохранения дампа кэша в миллисекундах
+				 */
+				void setFilenameDump(string_view filename, const uint32_t interval) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления сервера DNS
