@@ -350,10 +350,13 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 						}
 					}
 				}
-				// Добавляем в контейнер количество доменных имён с IP-адресами
-				this->_binbox.add("COUNT", count);
-				// Сохраняем кэш доменных имён в файл
-				this->_binbox.save(::__awh_cache__.filename);
+				// Если есть записи для сохранения в кэше
+				if(count > 0){
+					// Добавляем в контейнер количество доменных имён с IP-адресами
+					this->_binbox.add("COUNT", count);
+					// Сохраняем кэш доменных имён в файл
+					this->_binbox.save(::__awh_cache__.filename);
+				}
 			}
 		/**
 		 * Если возникает ошибка
