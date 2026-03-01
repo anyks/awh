@@ -356,7 +356,7 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 			// Если возникла ошибка компиляции
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
-				char buffer[256];
+				char buffer[0xff];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки

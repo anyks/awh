@@ -173,7 +173,7 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
 			// Если возникла ошибка
 			if(!(result = (error == 0))){
 				// Создаём буфер данных для извлечения данных ошибки
-				char buffer[256];
+				char buffer[0xff];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
@@ -265,7 +265,7 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 			// Если возникла ошибка
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
-				char buffer[256];
+				char buffer[0xff];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
@@ -404,7 +404,7 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 			// Если возникла ошибка
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
-				char buffer[256];
+				char buffer[0xff];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
@@ -595,7 +595,7 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(const string & p
 				// Если возникла ошибка компиляции
 				if(!((* result.get()) = static_cast <bool> (error == 0))){
 					// Создаём буфер данных для извлечения данных ошибки
-					char buffer[256];
+					char buffer[0xff];
 					// Выполняем заполнение нулями буфер данных
 					::memset(buffer, '\0', sizeof(buffer));
 					// Выполняем извлечение текста ошибки

@@ -75,6 +75,11 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Прототип класса участника уровня защищённых сокетов
 	 *
 	 */
@@ -106,15 +111,20 @@ namespace {
 	 */
 	bool __awh_ssl_initialized__ = false;
 	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
+	/**
 	 * @brief Мьютекс для синхронизации потоков сплайса контекстов TLS
 	 *
 	 */
-	awh::lock_state_t <mutex> __awh_ssl_splice_mtx__;
+	lock_state_t <std::mutex> __awh_ssl_splice_mtx__;
 	/**
 	 * @brief Мьютекс для синхронизации потоков участников
 	 *
 	 */
-	awh::lock_state_t <mutex> __awh_ssl_members_mtx__;
+	lock_state_t <std::mutex> __awh_ssl_members_mtx__;
 	/**
 	 * @brief Глобальный набор идентификаторов контекстов TLS
 	 *
@@ -124,17 +134,12 @@ namespace {
 	 * @brief Глобальная карта сплайса контекстов TLS
 	 *
 	 */
-	map <pair <awh::event::protocol_t, string>, awh::tls_t::id_t> __awh_ssl_splice_map__;
+	map <pair <event::protocol_t, string>, tls_t::id_t> __awh_ssl_splice_map__;
 	/**
 	 * @brief Индексы для хранения состояний проверки куков
 	 *
 	 */
 	int32_t __awh_ssl_index__[6] = {-1, -1, -1, -1, -1, -1};
-	/**
-	 * @brief Режим безопасности работы потоков
-	 *
-	 */
-	static awh::event::mode_t threadSafety = awh::event::mode_t::DISABLED;
 };
 
 /**
@@ -554,7 +559,7 @@ namespace ssl {
 					// Если ошибка получена
 					if(error != 0){
 						// Буфер данных для получения сообщения об ошибке
-						char buffer[256];
+						char buffer[0xff];
 						// Получаем текст общего сообщения
 						const string state = ::SSL_state_string(member->ssl);
 						/**
@@ -1899,7 +1904,7 @@ namespace verify {
 			// Если SAN отсутствует или имя не совпало
 			} else {
 				// Буфер данных для получения данных
-				char buffer[256];
+				char buffer[0xff];
 				// Fallback на Common Name (устаревшее, но иногда нужно)
 				X509_NAME * subject = ::X509_get_subject_name(x509);
 				// Если удалось получить Common Name
@@ -1992,7 +1997,7 @@ namespace verify {
 				// Если сертификат получен
 				if(x509 != nullptr){
 					// Буфер данных для получения данных
-					char buffer[256];
+					char buffer[0xff];
 					// Выводим начальный разделитель
 					printf("------------------------------------------------------------\n\n");
 					// Выводим заголовок
@@ -2126,7 +2131,7 @@ namespace verify {
 						// Если имя эмитента получено
 						} else {
 							// Буфер доменного имени
-							char fqdn[256];
+							char fqdn[0xff];
 							// Заполняем буфер нулями
 							::memset(fqdn, 0, sizeof(fqdn));
 							// Запрашиваем имя домена
@@ -2316,7 +2321,7 @@ string awh::Transport_Layer_Security::info(const id_t id) const noexcept {
 					// Если сертификат сервера получен
 					if(x509 != nullptr){
 						// Буфер данных для получения данных
-						char buffer[256];
+						char buffer[0xff];
 						// Если всё хорошо, формируем версию OpenSSL
 						result.append(this->_fmk->format("Using %s\n\n", ::OpenSSL_version(OPENSSL_VERSION)));
 						// Добавляем заголовок цепочки сертификатов
@@ -2789,7 +2794,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Буфер данных для получения данных
-								char buffer[256];
+								char buffer[0xff];
 								// Выполняем получение сертификата сервера
 								X509 * x509 = ::SSL_get_certificate(member->ssl);
 								// Если сертификат сервера получен
@@ -2830,7 +2835,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 								// Если сертификат сервера получен
 								if(x509 != nullptr){
 									// Буфер данных для получения данных
-									char buffer[256];
+									char buffer[0xff];
 									// Получаем название сертификата
 									::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
@@ -3100,7 +3105,7 @@ string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexc
 							// Если сертификат получен
 							if(x509 != nullptr){
 								// Буфер данных для получения данных
-								char buffer[256];
+								char buffer[0xff];
 								// Получаем название сертификата
 								::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
@@ -3120,7 +3125,7 @@ string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexc
 							// Если сертификат сервера получен
 							if(x509 != nullptr){
 								// Буфер данных для получения данных
-								char buffer[256];
+								char buffer[0xff];
 								// Получаем название сертификата
 								::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
@@ -3729,7 +3734,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 					// Если SAN отсутствует или имя не совпало
 					} else {
 						// Буфер данных для получения данных
-						char buffer[256];
+						char buffer[0xff];
 						// Fallback на Common Name (устаревшее, но иногда нужно)
 						X509_NAME * subject = ::X509_get_subject_name(x509);
 						// Если удалось получить Common Name
@@ -4953,7 +4958,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
 						// Отключаем режим безопасности потоков по умолчанию
-						member->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
+						member->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 						// Выполняем получение идентификатора контекста TLS
 						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
@@ -5138,7 +5143,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
 						// Отключаем режим безопасности потоков по умолчанию
-						member->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
+						member->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 						// Выполняем получение идентификатора контекста TLS
 						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
@@ -5349,7 +5354,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 		// Устанавливаем режим проверки сертификата
 		member->state |= state::CERTIFICATE_VERIFY;
 		// Отключаем режим безопасности потоков по умолчанию
-		member->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
+		member->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 		// Выполняем получение идентификатора контекста TLS
 		result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 		/**
@@ -6531,14 +6536,10 @@ void awh::Transport_Layer_Security::threadSafety(const id_t id, const bool mode)
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
-			// Если установлен флаг режима безопасности потоков
-			if(mode)
-				// Устанавливаем режим безопасности работы потоков
-				::threadSafety = event::mode_t::ENABLED;
-			// Снимаем флаг режима безопасности работы потоков
-			else ::threadSafety = event::mode_t::DISABLED;
+			// Устанавливаем режим безопасности работы потоков
+			::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 			// Устанавливаем глобальный режим безопасности потоков
-			::__awh_ssl_members_mtx__.enabled = (::threadSafety == event::mode_t::ENABLED);
+			::__awh_ssl_members_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -6546,12 +6547,12 @@ void awh::Transport_Layer_Security::threadSafety(const id_t id, const bool mode)
 				// Если уровень является шаблонным контекстом безопасности
 				case static_cast <uint8_t> (layer_t::CTS):
 					// Устанавливаем режим безопасности потоков
-					reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
+					reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 				break;
 				// Если уровень является транспортной передачей данных
 				case static_cast <uint8_t> (layer_t::CTL):
 					// Устанавливаем режим безопасности потоков
-					reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::threadSafety == event::mode_t::ENABLED);
+					reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 				break;
 			}
 		}
@@ -8670,7 +8671,7 @@ awh::Transport_Layer_Security::Transport_Layer_Security(const fmk_t * fmk, const
 			::exit(EXIT_FAILURE);
 		}
 		// Деактивируем мьютекс глобального режим безопасности потоков
-		::__awh_ssl_members_mtx__.enabled = (::threadSafety == event::mode_t::ENABLED);
+		::__awh_ssl_members_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
 		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL

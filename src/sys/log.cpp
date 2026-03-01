@@ -177,9 +177,9 @@ void awh::Logging::rotate() const noexcept {
 						// Если произошла ошибка
 						} else {
 							// Создаём буфер сообщения ошибки
-							wchar_t message[256] = {0};
+							wchar_t message[0xff] = {0};
 							// Выполняем формирование текста ошибки
-							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 							// Выводим текст полученной ошибки
 							::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", this->_fmk->convert(message).c_str());
 						}

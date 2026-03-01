@@ -1509,9 +1509,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1562,9 +1562,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Получаем текущий DACL файла
 			if(::GetNamedSecurityInfoW(fileName.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &pOldDACL, nullptr, &sd) != ERROR_SUCCESS){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1586,9 +1586,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Создаем новый DACL с добавленной записью
 			if(::SetEntriesInAclW(1, &ea, pOldDACL, &pNewDACL) != ERROR_SUCCESS){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1612,9 +1612,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Применяем новый DACL к файлу
 			if(!(result = (::SetNamedSecurityInfoW(reinterpret_cast <LPWSTR> (fileName.data()), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, pNewDACL, nullptr) == ERROR_SUCCESS))){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1942,9 +1942,9 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 								// Получаем размер файла
 								if(!::GetFileSizeEx(file, &size)){
 									// Создаём буфер сообщения ошибки
-									wchar_t message[256] = {0};
+									wchar_t message[0xff] = {0};
 									// Выполняем формирование текста ошибки
-									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 									/**
 									 * Если включён режим отладки
 									 */
@@ -2575,9 +2575,9 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							// Выполняем чтение из файла в буфер данные
 							if(!::ReadFile(file, static_cast <LPVOID> (&result[0]), static_cast <DWORD> (size), 0, nullptr)){
 								// Создаём буфер сообщения ошибки
-								wchar_t message[256] = {0};
+								wchar_t message[0xff] = {0};
 								// Выполняем формирование текста ошибки
-								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3076,9 +3076,9 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 							// Получаем размер файла
 							if(!::GetFileSizeEx(file, &length)){
 								// Создаём буфер сообщения ошибки
-								wchar_t message[256] = {0};
+								wchar_t message[0xff] = {0};
 								// Выполняем формирование текста ошибки
-								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3114,9 +3114,9 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								// Выполняем чтение части файла в буфер
 								if(!::ReadFile(file, buffer.data(), static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
 									// Создаём буфер сообщения ошибки
-									wchar_t message[256] = {0};
+									wchar_t message[0xff] = {0};
 									// Выполняем формирование текста ошибки
-									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 									/**
 									 * Если включён режим отладки
 									 */
@@ -3361,9 +3361,9 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 							// Получаем размер файла
 							if(!::GetFileSizeEx(file, &length)){
 								// Создаём буфер сообщения ошибки
-								wchar_t message[256] = {0};
+								wchar_t message[0xff] = {0};
 								// Выполняем формирование текста ошибки
-								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -3399,9 +3399,9 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								// Выполняем чтение части файла в буфер
 								if(!::ReadFile(file, buffer.data(), static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
 									// Создаём буфер сообщения ошибки
-									wchar_t message[256] = {0};
+									wchar_t message[0xff] = {0};
 									// Выполняем формирование текста ошибки
-									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 									/**
 									 * Если включён режим отладки
 									 */

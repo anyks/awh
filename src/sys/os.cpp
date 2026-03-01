@@ -654,9 +654,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						// Выполняем извлечение данных текущего процесса
 						if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
 							// Создаём буфер сообщения ошибки
-							wchar_t message[256] = {0};
+							wchar_t message[0xff] = {0};
 							// Выполняем формирование текста ошибки
-							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 							/**
 							 * Если включён режим отладки
 							 */
@@ -844,9 +844,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					// Выполняем извлечение данных текущего процесса
 					if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
 						// Создаём буфер сообщения ошибки
-						wchar_t message[256] = {0};
+						wchar_t message[0xff] = {0};
 						// Выполняем формирование текста ошибки
-						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1762,9 +1762,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1793,9 +1793,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1822,9 +1822,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1880,9 +1880,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1911,9 +1911,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1940,9 +1940,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получили ошибку
 			if(::GetLastError() != 0){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2010,9 +2010,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получиши ошибку извлечения размеров буфера
 				if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[256] = {0};
+					wchar_t message[0xff] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2051,9 +2051,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[256] = {0};
+					wchar_t message[0xff] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2104,9 +2104,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2169,9 +2169,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
-				wchar_t message[256] = {0};
+				wchar_t message[0xff] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2211,9 +2211,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[256] = {0};
+					wchar_t message[0xff] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2242,9 +2242,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[256] = {0};
+					wchar_t message[0xff] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2273,9 +2273,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Если мы получили ошибку
 				if(::GetLastError() != 0){
 					// Создаём буфер сообщения ошибки
-					wchar_t message[256] = {0};
+					wchar_t message[0xff] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xff, 0);
 					/**
 					 * Если включён режим отладки
 					 */

@@ -478,6 +478,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/fs.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
