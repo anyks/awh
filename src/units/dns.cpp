@@ -19,6 +19,7 @@
 #include <vector>
 #include <random>
 #include <cerrno>
+#include <unordered_set>
 #include <unordered_map>
 
 /**
@@ -159,7 +160,7 @@ namespace {
 	};
 
 	/**
-	 * @brief Хэш-функция для IPv6 ключа
+	 * @brief Структура хэш-функции для IPv6 ключа
 	 *
 	 * Использует FNV-1a алгоритм — быстрый и с хорошим распределением
 	 */
@@ -186,7 +187,7 @@ namespace {
 	};
 
 	/**
-	 * @brief Хэш-функция для ключа доменного имени
+	 * @brief Структура хэш-функции для ключа доменного имени
 	 *
 	 * Использует FNV-1a алгоритм — быстрый и с хорошим распределением
 	 */
@@ -213,6 +214,19 @@ namespace {
 			return result;
 		}
 	};
+
+	/**
+	 * @brief Объект работы с чёрным списком
+	 *
+	 */
+	struct Blacklist {
+		// Мютекс для блокировки потока
+		lock_state_t <std::shared_mutex> mtx;
+		// Чёрный список для блокировки IPv4-адресов
+		unordered_set <uint32_t> ipv4;
+		// Чёрный список для блокировки IPv6-адресов
+		unordered_set <array <uint8_t, 16>, IpV6Hash> ipv6;
+	} __awh_blacklist__;
 
 	/**
 	 * @brief Объект работы с кэшированием
@@ -243,7 +257,7 @@ namespace {
 	} __awh_cache__;
 
 	/**
-	 * @brief Структура резолвера DNS
+	 * @brief Объект работы резолвера DNS
 	 *
 	 */
 	struct Resolver {
@@ -895,6 +909,8 @@ void awh::unit::DNS::threadSafety(const bool mode) noexcept {
 	::__awh_cache__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с резолвером
 	::__awh_resolver__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с чёрным списком
+	::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Метод кодирования интернационального доменного имени
@@ -2064,7 +2080,42 @@ void awh::unit::DNS::addToCache(const event::family_t family, string_view domain
  *
  */
 void awh::unit::DNS::clearBlacklist() noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если чёрный список IPv4 адресов не пустой
+		if(!::__awh_blacklist__.ipv4.empty()){
+			// Выполняем блокировку потокв для работы с чёрным списком
+			const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Очищаем чёрный список
+			::__awh_blacklist__.ipv4.clear();
+		}
+		// Если чёрный список IPv6 адресов не пустой
+		if(!::__awh_blacklist__.ipv6.empty()){
+			// Выполняем блокировку потокв для работы с чёрным списком
+			const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Очищаем чёрный список
+			::__awh_blacklist__.ipv6.clear();
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод очистки чёрного списка
@@ -2072,7 +2123,53 @@ void awh::unit::DNS::clearBlacklist() noexcept {
  * @param family семейстов IP-адресов IPv4/IPv6
  */
 void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
-
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Если чёрный список IPv4 адресов не пустой
+				if(!::__awh_blacklist__.ipv4.empty()){
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Очищаем чёрный список
+					::__awh_blacklist__.ipv4.clear();
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Если чёрный список IPv6 адресов не пустой
+				if(!::__awh_blacklist__.ipv6.empty()){
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Очищаем чёрный список
+					::__awh_blacklist__.ipv6.clear();
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод удаления IP-адреса из чёрного списока
@@ -2080,7 +2177,65 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
  * @param ip адрес для удаления из чёрного списка
  */
 void awh::unit::DNS::delInBlacklist(string_view ip) noexcept {
-
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем блокировку потокв для парсинга IP-адреса
+			const locker_t <> lock(::__awh_mtx__);
+			// Выполняем парсинг IP-адреса
+			if(this->_addr.parse(ip)){
+				// Получаем IP-адрес в исходном виде
+				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				/**
+				 * Определяем тип IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.type())){
+					// Если адрес является IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Выполняем поиск IP-адреса в чёрном списке
+						auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+						// Если IP-адрес найден в чёрном списке
+						if(i != ::__awh_blacklist__.ipv4.end())
+							// Удаляем IP-адрес из чёрного списка
+							::__awh_blacklist__.ipv4.erase(i);
+					} break;
+					// Если адрес является IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Выполняем поиск IP-адреса в чёрном списке
+						auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+						// Если IP-адрес найден в чёрном списке
+						if(i != ::__awh_blacklist__.ipv6.end())
+							// Удаляем IP-адрес из чёрного списка
+							::__awh_blacklist__.ipv6.erase(i);
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод удаления IP-адреса из чёрного списока
@@ -2088,7 +2243,58 @@ void awh::unit::DNS::delInBlacklist(string_view ip) noexcept {
  * @param ip адрес для удаления из чёрного списка
  */
 void awh::unit::DNS::delInBlacklist(const unique_ptr <net::addr_t> & ip) noexcept {
-
+	// Если IP-адрес передан
+	if(ip != nullptr){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(ip->size){
+				// Если адрес является IPv4
+				case 4: {
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем поиск IP-адреса в чёрном списке
+					auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+					// Если IP-адрес найден в чёрном списке
+					if(i != ::__awh_blacklist__.ipv4.end())
+						// Удаляем IP-адрес из чёрного списка
+						::__awh_blacklist__.ipv4.erase(i);
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем поиск IP-адреса в чёрном списке
+					auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+					// Если IP-адрес найден в чёрном списке
+					if(i != ::__awh_blacklist__.ipv6.end())
+						// Удаляем IP-адрес из чёрного списка
+						::__awh_blacklist__.ipv6.erase(i);
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод удаления IP-адреса из чёрного списока
@@ -2097,7 +2303,72 @@ void awh::unit::DNS::delInBlacklist(const unique_ptr <net::addr_t> & ip) noexcep
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::unit::DNS::delInBlacklist(const event::family_t family, string_view ip) noexcept {
-
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем семейство события
+			 */
+			switch(static_cast <uint8_t> (family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Выполняем блокировку потокв для парсинга IP-адреса
+					const locker_t <> lock(::__awh_mtx__);
+					// Выполняем парсинг IPv4-адреса
+					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Получаем IP-адрес в исходном виде
+						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						// Выполняем поиск IP-адреса в чёрном списке
+						auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+						// Если IP-адрес найден в чёрном списке
+						if(i != ::__awh_blacklist__.ipv4.end())
+							// Удаляем IP-адрес из чёрного списка
+							::__awh_blacklist__.ipv4.erase(i);
+					}
+				} break;
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Выполняем блокировку потокв для парсинга IP-адреса
+					const locker_t <> lock(::__awh_mtx__);
+					// Выполняем парсинг IPv6-адреса
+					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Получаем IP-адрес в исходном виде
+						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						// Выполняем поиск IP-адреса в чёрном списке
+						auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+						// Если IP-адрес найден в чёрном списке
+						if(i != ::__awh_blacklist__.ipv6.end())
+							// Удаляем IP-адрес из чёрного списка
+							::__awh_blacklist__.ipv6.erase(i);
+					}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод добавления IP-адреса в чёрный список
@@ -2105,7 +2376,55 @@ void awh::unit::DNS::delInBlacklist(const event::family_t family, string_view ip
  * @param ip адрес для добавления в чёрный список
  */
 void awh::unit::DNS::addToBlacklist(string_view ip) noexcept {
-
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем блокировку потокв для парсинга IP-адреса
+			const locker_t <> lock(::__awh_mtx__);
+			// Выполняем парсинг IP-адреса
+			if(this->_addr.parse(ip)){
+				// Выполняем блокировку потокв для работы с чёрным списком
+				const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Получаем IP-адрес в исходном виде
+				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				/**
+				 * Определяем тип IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.type())){
+					// Если адрес является IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+						// Выполняем добавление IP-адреса в чёрный список
+						::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+					break;
+					// Если адрес является IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+						// Выполняем добавление IP-адреса в чёрный список
+						::__awh_blacklist__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+					break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод добавления IP-адреса в чёрный список
@@ -2113,7 +2432,50 @@ void awh::unit::DNS::addToBlacklist(string_view ip) noexcept {
  * @param ip адрес для добавления в чёрный список
  */
 void awh::unit::DNS::addToBlacklist(const unique_ptr <net::addr_t> & ip) noexcept {
-
+	// Если IP-адрес передан
+	if(ip != nullptr){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(ip->size){
+				// Если адрес является IPv4
+				case 4: {
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем добавление IP-адреса в чёрный список
+					::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем добавление IP-адреса в чёрный список
+					::__awh_blacklist__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод добавления IP-адреса в чёрный список
@@ -2122,7 +2484,64 @@ void awh::unit::DNS::addToBlacklist(const unique_ptr <net::addr_t> & ip) noexcep
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::unit::DNS::addToBlacklist(const event::family_t family, string_view ip) noexcept {
-
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем семейство события
+			 */
+			switch(static_cast <uint8_t> (family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Выполняем блокировку потокв для парсинга IP-адреса
+					const locker_t <> lock(::__awh_mtx__);
+					// Выполняем парсинг IPv4-адреса
+					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Получаем IP-адрес в исходном виде
+						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						// Выполняем добавление IP-адреса в чёрный список
+						::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+					}
+				} break;
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Выполняем блокировку потокв для парсинга IP-адреса
+					const locker_t <> lock(::__awh_mtx__);
+					// Выполняем парсинг IPv6-адреса
+					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Получаем IP-адрес в исходном виде
+						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						// Выполняем добавление IP-адреса в чёрный список
+						::__awh_blacklist__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+					}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод проверки наличия IP-адреса в чёрном списке
@@ -2131,7 +2550,55 @@ void awh::unit::DNS::addToBlacklist(const event::family_t family, string_view ip
  * @return   результат проверки наличия IP-адреса в чёрном списке
  */
 bool awh::unit::DNS::hasInBlacklist(string_view ip) const noexcept {
-
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем блокировку потокв для парсинга IP-адреса
+			const locker_t <> lock(::__awh_mtx__);
+			// Выполняем парсинг IP-адреса
+			if(const_cast <dns_t *> (this)->_addr.parse(ip)){
+				// Выполняем блокировку потокв для работы с чёрным списком
+				const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Получаем IP-адрес в исходном виде
+				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				/**
+				 * Определяем тип IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.type())){
+					// Если адрес является IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+						// Выполняем поиск IP-адреса в чёрном списке
+						return (::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address) != ::__awh_blacklist__.ipv4.end());
+					// Если адрес является IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+						// Выполняем поиск IP-адреса в чёрном списке
+						return (::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address) != ::__awh_blacklist__.ipv6.end());
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод проверки наличия IP-адреса в чёрном списке
@@ -2140,7 +2607,52 @@ bool awh::unit::DNS::hasInBlacklist(string_view ip) const noexcept {
  * @return   результат проверки наличия IP-адреса в чёрном списке
  */
 bool awh::unit::DNS::hasInBlacklist(const unique_ptr <net::addr_t> & ip) const noexcept {
-
+	// Если IP-адрес передан
+	if(ip != nullptr){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(ip->size){
+				// Если адрес является IPv4
+				case 4: {
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Выполняем поиск IP-адреса в чёрном списке
+					return (::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address) != ::__awh_blacklist__.ipv4.end());
+				}
+				// Если адрес является IPv6
+				case 16: {
+					// Выполняем блокировку потокв для работы с чёрным списком
+					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Выполняем поиск IP-адреса в чёрном списке
+					return (::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address) != ::__awh_blacklist__.ipv6.end());
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод проверки наличия IP-адреса в чёрном списке
@@ -2150,7 +2662,66 @@ bool awh::unit::DNS::hasInBlacklist(const unique_ptr <net::addr_t> & ip) const n
  * @return       результат проверки наличия IP-адреса в чёрном списке
  */
 bool awh::unit::DNS::hasInBlacklist(const event::family_t family, string_view ip) const noexcept {
-
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Определяем семейство события
+			 */
+			switch(static_cast <uint8_t> (family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Выполняем блокировку потокв для парсинга IP-адреса
+					const locker_t <> lock(::__awh_mtx__);
+					// Выполняем парсинг IPv4-адреса
+					if(const_cast <dns_t *> (this)->_addr.parse(ip, net_addr_t::type_t::IPV4)){
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Получаем IP-адрес в исходном виде
+						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						// Выполняем поиск IP-адреса в чёрном списке
+						return (::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address) != ::__awh_blacklist__.ipv4.end());
+					}
+				} break;
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Выполняем блокировку потокв для парсинга IP-адреса
+					const locker_t <> lock(::__awh_mtx__);
+					// Выполняем парсинг IPv6-адреса
+					if(const_cast <dns_t *> (this)->_addr.parse(ip, net_addr_t::type_t::IPV6)){
+						// Выполняем блокировку потокв для работы с чёрным списком
+						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Получаем IP-адрес в исходном виде
+						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						// Выполняем поиск IP-адреса в чёрном списке
+						return (::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address) != ::__awh_blacklist__.ipv6.end());
+					}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод установки префикса переменной окружения
@@ -2881,6 +3452,8 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
 	::__awh_cache__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с резолвером
 	::__awh_resolver__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с чёрным списком
+	::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Деструктор
