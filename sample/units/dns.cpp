@@ -52,6 +52,17 @@ int32_t main(int32_t argc, char * argv[]){
 	dns.setDumpAddress("../dump.adb", 60000);
 	// Создаём новое событие DNS-резолвера для IPv4
 	const event::id_t eid = dns.create(event::family_t::IPV4);
+	// Устанавливаем количество попыток резолвинга доменного имени
+	dns.setAttempts(10);
+	// Устанавливаем таймаут ожидания ответа от DNS-сервера в миллисекундах
+	dns.setTimeout(eid, 3000);
+	// Добавляем DNS-сервер для резолвинга доменных имён (фейковый)
+	// dns.addServer(eid, "127.0.0.1");
+	// Устанавливаем функцию обратного вызова на событие количества попыток резолвинга доменного имени
+	dns.on <void (const event::id_t, const uint8_t)> ("attempts", [&log](const event::id_t eid, const uint8_t attempts) noexcept -> void {
+		// Выводим количество попыток резолвинга доменного имени
+		log.print("Количество попыток резолвинга доменного имени: %d", log_t::flag_t::INFO, attempts);
+	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие таймера
 	dns.on <void (const event::status_t)> ("status", [eid, &dns, &log](const event::status_t status) noexcept -> void {
 		/**

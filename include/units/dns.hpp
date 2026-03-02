@@ -96,6 +96,13 @@ namespace awh {
 				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
+				 * @brief Метод установки количества попыток резолвинга доменного имени
+				 *
+				 * @param attempts количество попыток резолвинга доменного имени
+				 */
+				void setAttempts(const uint8_t attempts) noexcept;
+			public:
+				/**
 				 * @brief Метод кодирования интернационального доменного имени
 				 *
 				 * @param domain доменное имя для кодирования
