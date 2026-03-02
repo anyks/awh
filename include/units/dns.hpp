@@ -57,6 +57,13 @@ namespace awh {
 				 */
 				void dumping(const event::id_t, const event::status_t status) noexcept;
 				/**
+				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
+				 *
+				 * @param eid    идентификатор таймера DNS-резолвера
+				 * @param status статус события таймера DNS-резолвера
+				 */
+				void timeout(const event::id_t eid, const event::status_t status) noexcept;
+				/**
 				 * @brief Метод обработки событий загрузки локальных хостов
 				 *
 				 * @param      идентификатор события загрузки локальных хостов
@@ -65,6 +72,14 @@ namespace awh {
 				 */
 				void hosts(const event::id_t, const uint8_t * data, const size_t size) noexcept;
 				/**
+				 * @brief Метод обработки событий чтения из DNS-резолвера
+				 *
+				 * @param eid  идентификатор события чтения из DNS-резолвера
+				 * @param data данные события чтения из DNS-резолвера
+				 * @param size размер данных события чтения из DNS-резолвера
+				 */
+				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				/**
 				 * @brief Метод обработки ошибок событий DNS-резолвера
 				 *
 				 * @param eid         идентификатор события DNS-резолвера
@@ -72,21 +87,6 @@ namespace awh {
 				 * @param description описание ошибки события DNS-резолвера
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
-			public:
-				/**
-				 * @brief Метод уничтожения события DNS-резолвера
-				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 */
-				void destroy(const event::id_t eid) noexcept;
-			public:
-				/**
-				 * @brief Метод создания события DNS-резолвера
-				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @return       идентификатор события DNS-резолвера
-				 */
-				event::id_t create(const event::family_t family) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков
@@ -111,36 +111,87 @@ namespace awh {
 				string decode(string_view domain) const noexcept;
 			public:
 				/**
-				 * @brief Метод получения порта события
-				 *
-				 * @param eid идентификатор события
-				 * @return    порт события
-				 */
-				uint16_t getPort(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки порта события
-				 *
-				 * @param eid  идентификатор события
-				 * @param port порт события
-				 * @return     результат выполнения установки
-				 */
-				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
-			public:
-				/**
-				 * @brief Метод установки времени ожидания выполнения запроса
-				 *
-				 * @param eid     идентификатор события DNS-резолвера
-				 * @param timeout значение таймаута в миллисекундах
-				 */
-				void setTimeout(const event::id_t eid, const uint32_t timeout) noexcept;
-			public:
-				/**
 				 * @brief Метод пересортировки адресов в кэше для доменного имени
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
 				 */
 				void shuffle(const event::family_t family, string_view domain) noexcept;
+			public:
+				/**
+				 * @brief Метод очистки чёрного списка
+				 *
+				 */
+				void clearBlacklist() noexcept;
+				/**
+				 * @brief Метод очистки чёрного списка
+				 *
+				 * @param family семейстов IP-адресов IPv4/IPv6
+				 */
+				void clearBlacklist(const event::family_t family) noexcept;
+			public:
+				/**
+				 * @brief Метод удаления IP-адреса из чёрного списка
+				 *
+				 * @param ip адрес для удаления из чёрного списка
+				 */
+				void removeAddressInBlacklist(string_view ip) noexcept;
+				/**
+				 * @brief Метод удаления IP-адреса из чёрного списка
+				 *
+				 * @param ip адрес для удаления из чёрного списка
+				 */
+				void removeAddressInBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
+				/**
+				 * @brief Метод удаления IP-адреса из чёрного списка
+				 *
+				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param ip     адрес для удаления из чёрного списка
+				 */
+				void removeAddressInBlacklist(const event::family_t family, string_view ip) noexcept;
+			public:
+				/**
+				 * @brief Метод добавления IP-адреса в чёрный список
+				 *
+				 * @param ip адрес для добавления в чёрный список
+				 */
+				void pushAddressToBlacklist(string_view ip) noexcept;
+				/**
+				 * @brief Метод добавления IP-адреса в чёрный список
+				 *
+				 * @param ip адрес для добавления в чёрный список
+				 */
+				void pushAddressToBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
+				/**
+				 * @brief Метод добавления IP-адреса в чёрный список
+				 *
+				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param ip     адрес для добавления в чёрный список
+				 */
+				void pushAddressToBlacklist(const event::family_t family, string_view ip) noexcept;
+			public:
+				/**
+				 * @brief Метод проверки наличия IP-адреса в чёрном списке
+				 *
+				 * @param ip адрес для проверки наличия в чёрном списке
+				 * @return   результат проверки наличия IP-адреса в чёрном списке
+				 */
+				bool checkAddressInBlacklist(string_view ip) const noexcept;
+				/**
+				 * @brief Метод проверки наличия IP-адреса в чёрном списке
+				 *
+				 * @param ip адрес для проверки наличия в чёрном списке
+				 * @return   результат проверки наличия IP-адреса в чёрном списке
+				 */
+				bool checkAddressInBlacklist(const unique_ptr <net::addr_t> & ip) const noexcept;
+				/**
+				 * @brief Метод проверки наличия IP-адреса в чёрном списке
+				 *
+				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param ip     адрес для проверки наличия в чёрном списке
+				 * @return       результат проверки наличия IP-адреса в чёрном списке
+				 */
+				bool checkAddressInBlacklist(const event::family_t family, string_view ip) const noexcept;
 			public:
 				/**
 				 * @brief Метод очистки кэша
@@ -175,7 +226,7 @@ namespace awh {
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @return       IP-адрес находящийся в кэше
 				 */
-				string getFromCache(const event::family_t family, string_view domain) noexcept;
+				string extractAddressFromCache(const event::family_t family, string_view domain) noexcept;
 				/**
 				 * @brief Метод получения IP-адреса из кэша
 				 *
@@ -184,108 +235,33 @@ namespace awh {
 				 * @param value  IP-адрес находящийся в кэше
 				 * @return       результат выполнения операции
 				 */
-				bool getFromCache(const event::family_t family, string_view domain, unique_ptr <net::addr_t> & value) noexcept;
+				bool extractAddressFromCache(const event::family_t family, string_view domain, unique_ptr <net::addr_t> & value) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления IP-адреса в кэш
 				 *
 				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для добавления к кэш
+				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
 				 */
-				void addToCache(string_view domain, string_view ip, const uint32_t ttl) noexcept;
+				void pushAddressToCache(string_view domain, string_view ip, const uint32_t ttl) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в кэш
 				 *
 				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для добавления к кэш
+				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
 				 */
-				void addToCache(string_view domain, const unique_ptr <net::addr_t> & ip, const uint32_t ttl) noexcept;
+				void pushAddressToCache(string_view domain, const unique_ptr <net::addr_t> & ip, const uint32_t ttl) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в кэш
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
-				 * @param ip     адрес для добавления к кэш
+				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
 				 */
-				void addToCache(const event::family_t family, string_view domain, string_view ip, const uint32_t ttl) noexcept;
-			public:
-				/**
-				 * @brief Метод очистки чёрного списка
-				 *
-				 */
-				void clearBlacklist() noexcept;
-				/**
-				 * @brief Метод очистки чёрного списка
-				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
-				 */
-				void clearBlacklist(const event::family_t family) noexcept;
-			public:
-				/**
-				 * @brief Метод удаления IP-адреса из чёрного списока
-				 *
-				 * @param ip адрес для удаления из чёрного списка
-				 */
-				void delInBlacklist(string_view ip) noexcept;
-				/**
-				 * @brief Метод удаления IP-адреса из чёрного списока
-				 *
-				 * @param ip адрес для удаления из чёрного списка
-				 */
-				void delInBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
-				/**
-				 * @brief Метод удаления IP-адреса из чёрного списока
-				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param ip     адрес для удаления из чёрного списка
-				 */
-				void delInBlacklist(const event::family_t family, string_view ip) noexcept;
-			public:
-				/**
-				 * @brief Метод добавления IP-адреса в чёрный список
-				 *
-				 * @param ip адрес для добавления в чёрный список
-				 */
-				void addToBlacklist(string_view ip) noexcept;
-				/**
-				 * @brief Метод добавления IP-адреса в чёрный список
-				 *
-				 * @param ip адрес для добавления в чёрный список
-				 */
-				void addToBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
-				/**
-				 * @brief Метод добавления IP-адреса в чёрный список
-				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param ip     адрес для добавления в чёрный список
-				 */
-				void addToBlacklist(const event::family_t family, string_view ip) noexcept;
-			public:
-				/**
-				 * @brief Метод проверки наличия IP-адреса в чёрном списке
-				 *
-				 * @param ip адрес для проверки наличия в чёрном списке
-				 * @return   результат проверки наличия IP-адреса в чёрном списке
-				 */
-				bool hasInBlacklist(string_view ip) const noexcept;
-				/**
-				 * @brief Метод проверки наличия IP-адреса в чёрном списке
-				 *
-				 * @param ip адрес для проверки наличия в чёрном списке
-				 * @return   результат проверки наличия IP-адреса в чёрном списке
-				 */
-				bool hasInBlacklist(const unique_ptr <net::addr_t> & ip) const noexcept;
-				/**
-				 * @brief Метод проверки наличия IP-адреса в чёрном списке
-				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param ip     адрес для проверки наличия в чёрном списке
-				 * @return       результат проверки наличия IP-адреса в чёрном списке
-				 */
-				bool hasInBlacklist(const event::family_t family, string_view ip) const noexcept;
+				void pushAddressToCache(const event::family_t family, string_view domain, string_view ip, const uint32_t ttl) noexcept;
 			public:
 				/**
 				 * @brief Метод установки префикса переменной окружения
@@ -295,19 +271,74 @@ namespace awh {
 				void setPrefixEnvironment(string_view prefix) noexcept;
 			public:
 				/**
-				 * @brief Метод установки фдреса файла локальных хостов
+				 * @brief Метод установки адреса файла локальных хостов
 				 *
 				 * @param filename адрес файла для установки
 				 */
-				void setFilenameHosts(string_view filename) noexcept;
+				void setHostsAddress(string_view filename) noexcept;
 			public:
 				/**
-				 * @brief Метод установки адреса файла дампа кэша
+				 * @brief Метод установки адреса файлового дампа кэша
 				 *
 				 * @param filename адрес файла для установки
 				 * @param interval интервал сохранения дампа кэша в миллисекундах
 				 */
-				void setFilenameDump(string_view filename, const uint32_t interval) noexcept;
+				void setDumpAddress(string_view filename, const uint32_t interval) noexcept;
+			public:
+				/**
+				 * @brief Метод фиксации параметров события
+				 *
+				 * @param eid идентификатор события DNS-резолвера
+				 * @return    результат выполнения фиксации
+				 */
+				bool commit(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод уничтожения события DNS-резолвера
+				 *
+				 * @param eid идентификатор события DNS-резолвера
+				 */
+				void destroy(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод создания события DNS-резолвера
+				 *
+				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @return       идентификатор события DNS-резолвера
+				 */
+				event::id_t create(const event::family_t family) noexcept;
+			public:
+				/**
+				 * @brief Метод получения порта события
+				 *
+				 * @param eid идентификатор события DNS-резолвера
+				 * @return    порт события
+				 */
+				uint16_t getPort(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки порта события
+				 *
+				 * @param eid  идентификатор события DNS-резолвера
+				 * @param port порт события
+				 * @return     результат выполнения установки
+				 */
+				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
+			public:
+				/**
+				 * @brief Метод получения таймаута события
+				 *
+				 * @param eid    идентификатор события DNS-резолвера
+				 * @param action тип действия события
+				 * @return       значение таймаута в миллисекундах
+				 */
+				uint32_t getTimeout(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки времени ожидания выполнения запроса
+				 *
+				 * @param eid     идентификатор события DNS-резолвера
+				 * @param timeout значение таймаута в миллисекундах
+				 */
+				void setTimeout(const event::id_t eid, const uint32_t timeout) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления сервера DNS
@@ -356,92 +387,48 @@ namespace awh {
 				void addSource(const event::id_t eid, const event::family_t family, string_view source) noexcept;
 			public:
 				/**
-				 * @brief Метод обратного запроса доменного имени соответствующего IP-адресу
+				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
 				 * @param eid идентификатор события DNS-резолвера
 				 * @param ip  адрес для поиска доменного имени
-				 * @return    результат выполнения запроса
+				 * @return    результат выполнения операции
 				 */
-				bool reverse(const event::id_t eid, string_view ip) noexcept;
+				bool search(const event::id_t eid, string_view ip) noexcept;
 				/**
-				 * @brief Метод обратного запроса доменного имени соответствующего IP-адресу
+				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
 				 * @param eid идентификатор события DNS-резолвера
 				 * @param ip  адрес для поиска доменного имени
-				 * @return    результат выполнения запроса
+				 * @return    результат выполнения операции
 				 */
-				bool reverse(const event::id_t eid, const unique_ptr <net::addr_t> & ip) noexcept;
+				bool search(const event::id_t eid, const unique_ptr <net::addr_t> & ip) noexcept;
 				/**
-				 * @brief Метод обратного запроса доменного имени соответствующего IP-адресу
+				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param eid     идентификатор события DNS-резолвера
+				 * @param eid    идентификатор события DNS-резолвера
 				 * @param family тип интернет-протокола IPv4/IPv6
 				 * @param ip     адрес для поиска доменного имени
-				 * @return       результат выполнения запроса
+				 * @return       результат выполнения операции
 				 */
-				bool reverse(const event::id_t eid, const event::family_t family, string_view ip) noexcept;
-			public:
-				/**
-				 * @brief Метод поиска доменного имени соответствующего IP-адресу
-				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 * @param ip  адрес для поиска доменного имени
-				 * @return    список найденных доменных имён
-				 */
-				vector <string> search(const event::id_t eid, string_view ip) noexcept;
-				/**
-				 * @brief Метод поиска доменного имени соответствующего IP-адресу
-				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 * @param ip  адрес для поиска доменного имени
-				 * @return    список найденных доменных имён
-				 */
-				vector <string> search(const event::id_t eid, const unique_ptr <net::addr_t> & ip) noexcept;
-				/**
-				 * @brief Метод поиска доменного имени соответствующего IP-адресу
-				 *
-				 * @param eid     идентификатор события DNS-резолвера
-				 * @param family тип интернет-протокола IPv4/IPv6
-				 * @param ip     адрес для поиска доменного имени
-				 * @return       список найденных доменных имён
-				 */
-				vector <string> search(const event::id_t eid, const event::family_t family, string_view ip) noexcept;
+				bool search(const event::id_t eid, const event::family_t family, string_view ip) noexcept;
 			public:
 				/**
 				 * @brief Метод ресолвинга домена
 				 *
 				 * @param eid    идентификатор события DNS-резолвера
 				 * @param domain доменное имя сервера
-				 * @return       полученный IP-адрес
+				 * @return       результат выполнения операции
 				 */
-				bool request(const event::id_t eid, string_view domain) noexcept;
+				bool resolve(const event::id_t eid, string_view domain) noexcept;
 				/**
 				 * @brief Метод ресолвинга домена
 				 *
 				 * @param eid    идентификатор события DNS-резолвера
 				 * @param family тип интернет-протокола IPv4/IPv6
 				 * @param domain доменное имя сервера
-				 * @return       полученный IP-адрес
+				 * @return       результат выполнения операции
 				 */
-				bool request(const event::id_t eid, const event::family_t family, string_view domain) noexcept;
-			public:
-				/**
-				 * @brief Метод ресолвинга домена
-				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param domain доменное имя сервера
-				 * @return       полученный IP-адрес
-				 */
-				string resolve(const event::id_t eid, string_view domain) noexcept;
-				/**
-				 * @brief Метод ресолвинга домена
-				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param family тип интернет-протокола IPv4/IPv6
-				 * @param domain доменное имя сервера
-				 * @return       полученный IP-адрес
-				 */
-				string resolve(const event::id_t eid, const event::family_t family, string_view domain) noexcept;
+				bool resolve(const event::id_t eid, const event::family_t family, string_view domain) noexcept;
 			public:
 				/**
 				 * @brief Конструктор
