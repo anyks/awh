@@ -16,6 +16,7 @@
  * Стандартные модули
  */
 #include <array>
+#include <cstdint>
 #include <vector>
 #include <random>
 #include <cerrno>
@@ -300,76 +301,223 @@ namespace {
 };
 
 /**
- * Инкапсулируем структуры таймаута DNS в собственное пространство имён
- */
-namespace timeout {
-	/**
-	 * Подписываемся на пространство имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Структура для запроса DNS-резолвера
-	 *
-	 */
-	typedef struct Request {
-		// Доменное имя для резолвинга
-		string domain;
-		// Количество попыток резолвинга
-		uint8_t attempts;
-		// Семейство IP-адресов для резолвинга (IPv4/IPv6)
-		event::family_t family;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Request() noexcept :
-		 domain{""}, attempts(1),
-		 family(event::family_t::NONE) {}
-	} request_t;
-
-	/**
-	 * @brief Количество попыток резолвинга для событий DNS-резолвера
-	 *
-	 */
-	static uint8_t attempts = 3;
-	/**
-	 * @brief Мютекс для блокировки потока
-	 *
-	 */
-	static lock_state_t <std::shared_mutex> mtx;
-	/**
-	 * @brief Список запросов для событий DNS-резолвера
-	 *
-	 */
-	static unordered_map <event::id_t, request_t> requests;
-	/**
-	 * @brief Список таймаутов для событий DNS-резолвера
-	 *
-	 */
-	static unordered_map <event::id_t, event::id_t> timers;
-	/**
-	 * @brief Список обратных связей для таймаутов событий DNS-резолвера
-	 *
-	 */
-	static unordered_map <event::id_t, event::id_t> reverse;
-};
-
-/**
  * Инкапсулируем структуры протокола DNS в собственное пространство имён
  */
 namespace dns {
 	/**
-	 * @brief Бинарный буфер запроса или ответа DNS
+	 * @brief Бинарный буфер запроса DNS
 	 *
 	 */
-	static uint8_t buffer[0x1000];
+	thread_local uint8_t buffer[0x1000];
 
 	/**
-	 * @brief Мютекс для блокировки потока
+	 * @brief Типы DNS-записей
 	 *
 	 */
-	static lock_state_t <std::mutex> mtx;
+	enum class type_t : uint8_t {
+		A     = 0x01, // IPv4-адрес
+		NS    = 0x02, // Доменное имя авторитетного сервера имён
+		CNAME = 0x05, // Каноническое имя (псевдоним для другого доменного имени)
+		SOA   = 0x06, // Информация об авторитете зоны (Start of Authority)
+		PTR   = 0x0C, // Доменное имя, на которое указывает PTR-запись (обычно используется для обратного DNS)
+		MX    = 0x0F, // Почтовый обмен (Mail Exchange) - указывает на почтовый сервер для домена
+		TXT   = 0x10, // Текстовая запись - содержит произвольные текстовые данные, связанные с доменом
+		AAAA  = 0x1C, // IPv6-адрес
+		ANY   = 0xFF  // Любой тип записи (используется для запроса всех типов записей для домена)
+	};
+
+	/**
+	 * @brief Структура A-записи DNS
+	 *
+	 */
+	typedef struct ARecord {
+		// Доменное имя, связанное с этим A-записью
+		string name;
+		// IPv4-адрес в виде 32-битного целого числа
+		uint32_t ip;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit ARecord() noexcept : name{""}, ip(0), ttl(0) {}
+	} a_record_t;
+	
+	/**
+	 * @brief Структура AAAA-записи DNS
+	 *
+	 */
+	typedef struct AAAARecord {
+		// Доменное имя, связанное с этим AAAA-записью
+		string name;
+		// IPv6-адрес в виде массива из 16 байт
+		array <uint8_t, 16> ip;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit AAAARecord() noexcept : name{""}, ip{0}, ttl(0) {}
+	} aaaa_record_t;
+
+	/**
+	 * @brief Структура NS-записи DNS
+	 *
+	 */
+	typedef struct NSRecord {
+		// Доменное имя, связанное с этой NS-записью
+		string name;
+		// Доменное имя сервера имён, который авторитетен для данного домена
+		string server;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit NSRecord() noexcept : name{""}, server{""}, ttl(0) {}
+	} ns_record_t;
+
+	/**
+	 * @brief Структура CNAME-записи DNS
+	 *
+	 */
+	typedef struct CNAMERecord {
+		// Доменное имя, связанное с этой CNAME-записью
+		string name;
+		// Каноническое имя, связанное с этой CNAME-записью
+		string canonical;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit CNAMERecord() noexcept : name{""}, canonical{""}, ttl(0) {}
+	} cname_record_t;
+
+	/**
+	 * @brief Структура MX-записи DNS
+	 *
+	 */
+	typedef struct MXRecord {
+		// Доменное имя, связанное с этой MX-записью
+		string name;
+		// Доменное имя почтового сервера, который обрабатывает почту для данного домена
+		string server;
+		// Приоритет почтового сервера (меньшее значение означает более высокий приоритет)
+		uint16_t preference;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit MXRecord() noexcept : name{""}, server{""}, preference(0), ttl(0) {}
+	} mx_record_t;
+
+	/**
+	 * @brief Структура TXT-записи DNS
+	 *
+	 */
+	typedef struct TXTRecord {
+		// Доменное имя, связанное с этой TXT-записью
+		string name;
+		// Список текстовых строк, связанных с этой TXT-записью (может содержать несколько строк)
+		vector <string> texts;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit TXTRecord() noexcept : name{""}, texts{}, ttl(0) {}
+	} txt_record_t;
+
+	/**
+	 * @brief Структура SOA-записи DNS
+	 *
+	 */
+	typedef struct SOARecord {
+		// Доменное имя, связанное с этой SOA-записью
+		string name;
+		// Доменное имя главного сервера имён для данного домена
+		string mname;
+		// Доменное имя ответственного лица за зону (обычно email-адрес, где "@" заменён на ".")
+		string rname;
+		// Серийный номер зоны, который должен увеличиваться при каждом изменении данных зоны
+		uint32_t retry;
+		// Время в секундах, через которое вторичные серверы должны повторить попытку получения данных зоны после неудачной попытки
+		uint32_t expire;
+		// Серийный номер зоны, который должен увеличиваться при каждом изменении данных зоны (обычно в формате YYYYMMDDnn, где nn — порядковый номер изменений в течение дня)
+		uint32_t serial;
+		// Время в секундах, через которое вторичные серверы должны обновить данные зоны, даже если серийный номер не изменился (для обеспечения актуальности данных на вторичных серверах)
+		uint32_t refresh;
+		// Время в секундах, которое вторичные серверы должны использовать в качестве минимального TTL для всех записей в зоне, если не указано другое значение (для обеспечения кэширования данных на вторичных серверах)
+		uint32_t minimum;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit SOARecord() noexcept :
+		 name{""}, mname{""}, rname{""},
+		 retry(0), expire(0), serial(0),
+		 refresh(0), minimum(0), ttl(0) {}
+	} soa_record_t;
+
+	/**
+	 * @brief Структура PTR-записи DNS
+	 *
+	 */
+	typedef struct PTRRecord {
+		// Доменное имя, связанное с этой PTR-записью
+		string name;
+		// Доменное имя, на которое указывает эта PTR-запись
+		string domain;
+		// Время жизни в секундах
+		uint32_t ttl;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit PTRRecord() noexcept : name{""}, domain{""}, ttl(0) {}
+	} ptr_record_t;
+
+	/**
+	 * @brief Структура для хранения результатов DNS-запросов
+	 *
+	 */
+	typedef struct DNSResult {
+		// Список A-записей
+		vector <a_record_t> a;
+		// Список AAAA-записей
+		vector <aaaa_record_t> aaaa;
+		// Список NS-записей
+		vector <ns_record_t> ns;
+		// Список MX-записей
+		vector <mx_record_t> mx;
+		// Список TXT-записей
+		vector <txt_record_t> txt;
+		// Список SOA-записей
+		vector <soa_record_t> soa;
+		// Список PTR-записей
+		vector <ptr_record_t> ptr;
+		// Список CNAME-записей
+		vector <cname_record_t> cname;
+		/**
+		 * @brief Метод очистки перед повторным использованием
+		 *
+		 */
+		void clear() noexcept {
+			// Очищаем все списки записей
+			a.clear(); aaaa.clear(); ns.clear(); cname.clear();
+			mx.clear(); txt.clear(); soa.clear(); ptr.clear();
+		}
+	} dns_result_t;
 
 	/**
 	 * @brief Структура заголовка DNS
@@ -411,23 +559,98 @@ namespace dns {
 		 */
 		explicit Q_Flags() noexcept : type(0), cls(0) {}
 	} __attribute__((packed)) q_flags_t;
+};
+
+/**
+ * Инкапсулируем структуры таймаута DNS в собственное пространство имён
+ */
+namespace timeout {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
 
 	/**
-	 * @brief Структура флагов DNS RRs
+	 * @brief Структура для запроса DNS-резолвера
 	 *
 	 */
-	typedef struct RR_Flags {
-		uint16_t type;   // Тип записи
-		uint16_t cls;    // Класс записи
-		uint32_t ttl;    // Время обновления
-		uint16_t length; // Длина записи
+	typedef struct Request {
+		// Доменное имя для резолвинга
+		string domain;
+		// Количество попыток резолвинга
+		uint8_t attempts;
+		// Тип DNS-записи для резолвинга
+		::dns::type_t type;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit RR_Flags() noexcept :
-		 type(0), cls(0), ttl(0), length(0) {}
-	} __attribute__((packed)) rr_flags_t;
+		explicit Request() noexcept :
+		 domain{""}, attempts(1),
+		 type(::dns::type_t::A) {}
+	} request_t;
+
+	/**
+	 * @brief Количество попыток резолвинга для событий DNS-резолвера
+	 *
+	 */
+	static uint8_t attempts = 3;
+	/**
+	 * @brief Мютекс для блокировки потока
+	 *
+	 */
+	static lock_state_t <std::shared_mutex> mtx;
+	/**
+	 * @brief Список запросов для событий DNS-резолвера
+	 *
+	 */
+	static unordered_map <event::id_t, request_t> requests;
+	/**
+	 * @brief Список таймаутов для событий DNS-резолвера
+	 *
+	 */
+	static unordered_map <event::id_t, event::id_t> timers;
+	/**
+	 * @brief Список обратных связей для таймаутов событий DNS-резолвера
+	 *
+	 */
+	static unordered_map <event::id_t, event::id_t> reverse;
+};
+
+/**
+ * Инкапсулируем вспомогательные функции протокола DNS в собственное пространство имён
+ */
+namespace dns {
+	/**
+	 * @brief Бинарный буфер парсинга доменного имени в формате DNS
+	 *
+	 */
+	thread_local char fqdn[0xFF];
+
+	/**
+	 * @brief Функция чтения 16-битного целого числа из буфера данных в сетевом порядке (big-endian)
+	 *
+	 * @param p буфер данных, из которого необходимо прочитать 16-битное число
+	 * @return  16-битное число, прочитанное из буфера данных
+	 */
+	inline uint16_t readU16(const uint8_t * p) noexcept {
+		// Читаем 16-битное число из буфера данных в сетевом порядке (big-endian)
+		return ((static_cast <uint16_t> (p[0]) << 8) | p[1]);
+	}
+	/**
+	 * @brief Функция чтения 32-битного целого числа из буфера данных в сетевом порядке (big-endian)
+	 *
+	 * @param p буфер данных, из которого необходимо прочитать 32-битное число
+	 * @return  32-битное число, прочитанное из буфера данных
+	 */
+	inline uint32_t readU32(const uint8_t * p) noexcept {
+		// Читаем 32-битное число из буфера данных в сетевом порядке (big-endian)
+		return (
+			(static_cast <uint32_t> (p[0]) << 24) |
+			(static_cast <uint32_t> (p[1]) << 16) |
+			(static_cast <uint32_t> (p[2]) << 8) | p[3]
+		);
+	}
 
 	/**
 	 * @brief Функция кодирования доменного имени в формат DNS (length-prefixed labels)
@@ -481,25 +704,456 @@ namespace dns {
 		// Выводим результат
 		return result;
 	}
+
+	/**
+	 * @brief Функция декодирования DNS-формата в строку
+	 *
+	 * @param buffer бинарный буфер данных в формате DNS
+	 * @param size   размер буфера данных
+	 * @param offset количество прочитанных байт (output)
+	 * @return       доменное имя или пустая строка при ошибке
+	 */
+	static string decodeDomainName(const uint8_t * buffer, const size_t size, size_t & offset) noexcept {
+		// Результат работы функции
+		string result = "";
+		// Текущая позиция в буфере данных
+		size_t pos = 0;
+		// Длина текущего лейбла
+		uint8_t length = 0;
+		/**
+		 * Перебираем лейблы в буфере данных
+		 */
+		while(pos < size){
+			// Получаем длину текущего лейбла
+			length = buffer[pos];
+			// Нулевой байт — конец имени
+			if(length == 0){
+				// Выполняем смещение на 1 байт для учёта нулевого байта
+				++pos;
+				// Выходим из цикла, так как достигнут конец доменного имени
+				break;
+			}
+			// Проверка на сжатие (pointer) — первые 2 бита = 11
+			if((length & 0xC0) == 0xC0)
+				// Это pointer (сжатие), для простоты не обрабатываем
+				// В полном парсере нужно следовать по указателю
+				break;
+			// Проверка: лейбл не больше 63 байт
+			if(length > 63)
+				// Ошибка: слишком длинный лейбл
+				return "";
+			// Проверка: хватает ли данных
+			if((pos + 1 + static_cast <size_t> (length)) > size)
+				// Ошибка: недостаточно данных для чтения лейбла
+				return "";
+			// Добавляем точку между лейблами
+			if(!result.empty())
+				// Добавляем точку между лейблами
+				result.push_back('.');
+			// Добавляем лейбл
+			result.append(reinterpret_cast <const char *> (buffer + pos + 1), length);
+			// Переходим к следующему лейблу
+			pos += (static_cast <size_t> (length) + 1);
+		}
+		// Устанавливаем количество прочитанных байт
+		offset = pos;
+		// Выводим результат
+		return result;
+	}
+
+	/**
+	 * @brief Функция декодирования DNS-формата в строку с поддержкой сжатия (pointer)
+	 *
+	 * @param packet буфер данных всего DNS-пакета для поддержки сжатия
+	 * @param length размер буфера данных всего DNS-пакета
+	 * @param offset количество прочитанных байт (output)
+	 * @param buffer буфер для записи декодированного доменного имени
+	 * @param size   размер буфера для записи декодированного доменного имени
+	 * @return       результ декодирования (true при успешном декодировании, false при ошибке)
+	 */
+	static bool decodeDomainName(const uint8_t * packet, const size_t length, size_t & offset, char * buffer, const size_t size) noexcept {
+		// Текущая позиция в буфере данных
+		size_t pos = 0;
+		// Смещение для обработки сжатия (pointer)
+		uint16_t ptr = 0;
+		// Длина текущего лейбла
+		uint8_t labelSize = 0;
+		// Максимальное количество прыжков по указателям, чтобы избежать бесконечных циклов при повреждённых данных
+		size_t maxJumps = 10;
+		// Сохраняем начальное смещение для корректного обновления offset после декодирования
+		size_t originalOffset = offset;
+		// Флаг, указывающий, был ли уже выполнен прыжок по указателю (для обработки сжатия)
+		bool jumped = false;
+		/**
+		 * Перебираем лейблы в буфере данных
+		 */
+		while((offset < length) && (pos < size - 1)){
+			// Получаем длину текущего лейбла
+			labelSize = packet[offset];
+			// Нулевой байт — конец имени
+			if(labelSize == 0){
+				// Выполняем смещение на 1 байт для учёта нулевого байта
+				if(!jumped)
+					// Если мы не прыгали по указателю, то обновляем offset на позицию после нулевого байта
+					offset++;
+				// Выходим из цикла, так как достигнут конец доменного имени
+				break;
+			}
+			// Проверяем на сжатие (pointer) — первые 2 бита = 11
+			if((labelSize & 0xC0) == 0xC0){
+				// Если это pointer (сжатие), то извлекаем смещение из двух байт
+				if((offset + 1) >= length)
+					// Ошибка: недостаточно данных для чтения указателя
+					return false;
+				// Извлекаем смещение из двух байт (убирая флаги сжатия)
+				ptr = (((labelSize & 0x3F) << 8) | packet[offset + 1]);
+				// Если смещение выходит за пределы буфера данных, то это ошибка
+				if(maxJumps-- == 0)
+					// Ошибка: слишком много прыжков по указателям, возможно повреждённые данные
+					return false;
+				// Если мы ещё не прыгали по указателю, сохраняем текущее смещение для корректного обновления offset после декодирования
+				if(!jumped){
+					// Устанавливаем флаг, что мы уже прыгали по указателю, чтобы не обновлять offset несколько раз
+					jumped = true;
+					// Сохраняем начальное смещение для корректного обновления offset после декодирования
+					originalOffset = (offset + 2);
+				}
+				// Устанавливаем смещение на позицию, указанную в pointer для продолжения декодирования
+				offset = ptr;
+				// Продолжаем обработку с нового смещения
+				continue;
+			}
+			// Проверка: лейбл не больше 63 байт
+			if(labelSize > 63)
+				// Ошибка: слишком длинный лейбл
+				return false;
+			// Проверка: хватает ли данных для чтения лейбла
+			if((offset + 1 + static_cast <size_t> (labelSize)) > length)
+				// Ошибка: недостаточно данных для чтения лейбла
+				return false;
+			// Если это не первый лейбл, добавляем точку между лейблами
+			if((pos > 0) && (pos < (size - 1)))
+				// Добавляем точку между лейблами
+				buffer[pos++] = '.';
+			// Добавляем лейбл в результирующий буфер данных
+			::memcpy(buffer + pos, packet + offset + 1, labelSize);
+			// Переходим к следующему лейблу
+			pos += static_cast <size_t> (labelSize);
+			// Выполняем смещение на следующий лейбл
+			offset += (static_cast <size_t> (labelSize) + 1);
+		}
+		// Завершаем строку нулевым байтом
+		buffer[pos] = '\0';
+		// Если мы прыгали по указателю
+		if(jumped)
+			// Устанавливаем смещение на позицию после указателя, если мы прыгали по указателю
+			offset = originalOffset;
+		// Выводим результат
+		return true;
+	}
+	/**
+	 * @brief Функция парсинга DNS-ответа из бинарного буфера данных
+	 *
+	 * @param buffer бинарный буфер данных, содержащий DNS-ответ
+	 * @param size   размер буфера данных
+	 * @param result структура для хранения результатов парсинга DNS-ответа
+	 * @return       true при успешном парсинге, false при ошибке
+	 */
+	static bool parse(const uint8_t * buffer, const size_t size, dns_result_t & result) noexcept {
+		// Очищаем результат перед заполнением новыми данными
+		result.clear();
+		// Проверяем, что буфер данных достаточно велик для чтения заголовка DNS (12 байт)
+		if(size < 12)
+			// Ошибка: недостаточно данных для чтения заголовка DNS
+			return false;
+		/**
+		 * Читаем заголовок DNS из буфера данных
+		 */
+		const uint16_t qdcount = readU16(buffer + 4);
+		const uint16_t ancount = readU16(buffer + 6);
+		const uint16_t nscount = readU16(buffer + 8);
+		const uint16_t arcount = readU16(buffer + 10);
+		// Начальное смещение для чтения секций DNS после заголовка
+		size_t offset = 12;
+		/**
+		 * Пропускаем Question section
+		 */
+		for(uint16_t i = 0; i < qdcount; ++i){
+			// Читаем доменное имя в секции Question
+			if(!decodeDomainName(buffer, size, offset, fqdn, sizeof(fqdn)))
+				// Ошибка: не удалось декодировать доменное имя в секции Question
+				return false;
+			// Устанавливаем смещение на следующий Question (QTYPE + QCLASS)
+			offset += 4;
+		}
+		// Время жизни для записей DNS (TTL)
+		uint32_t ttl = 0;
+		// Смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+		size_t rdataOffset = 0;
+		// Временные переменные для чтения полей RR
+		uint16_t type = 0, rdlength = 0;
+		// Общее количество записей в секциях Answer, Authority и Additional
+		const uint16_t total = (ancount + nscount + arcount);
+		/**
+		 * Перебираем все записи в секциях Answer, Authority и Additional
+		 * И распределяем их по типам (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
+		 * Сохраняем результаты в результирующем объекте
+		 */
+		for(uint16_t i = 0; i < total; ++i){
+			// Читаем имя записи
+			if(!decodeDomainName(buffer, size, offset, fqdn, sizeof(fqdn)))
+				// Ошибка: не удалось декодировать доменное имя в записи DNS
+				return false;
+			// Проверяем, что достаточно данных для чтения TYPE, CLASS, TTL и RDLENGTH (10 байт)
+			if((offset + 10) > size)
+				// Ошибка: недостаточно данных для чтения полей записи DNS
+				return false;
+			// Читаем заголовок RR
+			type = readU16(buffer + offset);
+			// Устанавливаем смещение на следующие поля после TYPE (CLASS, TTL, RDLENGTH)
+			offset += 2;
+			// Устанавливаем смещение на следующие поля после CLASS (TTL, RDLENGTH)
+			offset += 2;
+			// Читаем TTL из буфера данных
+			ttl = readU32(buffer + offset);
+			// Устанавливаем смещение на следующие поля после TTL (RDLENGTH)
+			offset += 4;
+			// Читаем RDLENGTH из буфера данных
+			rdlength = readU16(buffer + offset);
+			// Устанавливаем смещение на RDATA после RDLENGTH
+			offset += 2;
+			// Проверяем, что достаточно данных для чтения RDATA в соответствии с RDLENGTH
+			if((offset + static_cast <size_t> (rdlength)) > size)
+				// Ошибка: недостаточно данных для чтения RDATA в записи DNS
+				return false;
+			// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+			rdataOffset = offset;
+			/**
+			 * В зависимости от типа записи (TYPE) выполняем соответствующий парсинг RDATA и сохраняем результат в результирующем объекте
+			 * Поддерживаем следующие типы записей: A (1), AAAA (28), NS (2), CNAME (5), MX (15), TXT (16), SOA (6), PTR (12)
+			 * Для каждого типа выполняем проверку на корректность RDLENGTH и парсим RDATA в соответствии с форматом данного типа записи
+			 * Сохраняем результаты в соответствующих списках в результирующем объекте (a, aaaa, ns, cname, mx, txt, soa, ptr)
+			 * Если тип записи не поддерживается, пропускаем её без сохранения
+			 */
+			switch(type){
+				// A-запись (IPv4)
+				case 1: {
+					// Проверяем, что RDLENGTH для A-записи соответствует 4 байтам (размер IPv4-адреса)
+					if(rdlength == 4){
+						// Объект для хранения A-записи
+						a_record_t record;
+						// Устанавливаем TTL для A-записи
+						record.ttl = ttl;
+						// Копируем 4 байта IPv4-адреса из RDATA в структуру A-записи
+						::memcpy(&record.ip, buffer + rdataOffset, 4);
+						// Устанавливаем доменное имя для A-записи
+						record.name = fqdn;
+						// Добавляем A-запись в список A-записей в результирующем объекте
+						result.a.push_back(record);
+					}
+				} break;
+				// AAAA-запись (IPv6)
+				case 28: {
+					// Проверяем, что RDLENGTH для AAAA-записи соответствует 16 байтам (размер IPv6-адреса)
+					if(rdlength == 16){
+						// Объект для хранения данных AAAA-записи
+						aaaa_record_t record;
+						// Устанавливаем TTL для AAAA-записи
+						record.ttl = ttl;
+						// Копируем 16 байт IPv6-адреса из RDATA в структуру AAAA-записи
+						::memcpy(&record.ip[0], buffer + rdataOffset, 16);
+						// Устанавливаем доменное имя для AAAA-записи
+						record.name = fqdn;
+						// Добавляем AAAA-запись в список AAAA-записей в результирующем объекте
+						result.aaaa.push_back(record);
+					}
+				} break;
+				// NS-запись (Name Server)
+				case 2: {
+					// Декодируем доменное имя сервера из RDATA для NS-записи и сохраняем его в результирующем объекте
+					char name[0xFF];
+					// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+					size_t offset = rdataOffset;
+					// Декодируем доменное имя сервера из RDATA для NS-записи и сохраняем его в результирующем объекте
+					if(decodeDomainName(buffer, size, offset, name, sizeof(name))){
+						// Объект для хранения данных NS-записи
+						ns_record_t record;
+						// Устанавливаем TTL для NS-записи
+						record.ttl = ttl;
+						// Устанавливаем сервер для NS-записи
+						record.server = name;
+						// Устанавливаем доменное имя для NS-записи
+						record.name = fqdn;
+						// Добавляем NS-запись в список NS-записей в результирующем объекте
+						result.ns.push_back(record);
+					}
+				} break;
+				// CNAME-запись (Canonical Name)
+				case 5: {
+					// Декодируем каноническое имя из RDATA для CNAME-записи и сохраняем его в результирующем объекте
+					char cname[0xFF];
+					// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+					size_t offset = rdataOffset;
+					// Декодируем каноническое имя из RDATA для CNAME-записи и сохраняем его в результирующем объекте
+					if(decodeDomainName(buffer, size, offset, cname, sizeof(cname))){
+						// Объект для хранения данных CNAME-записи
+						cname_record_t record;
+						// Устанавливаем TTL для CNAME-записи
+						record.ttl = ttl;
+						// Устанавливаем доменное имя для CNAME-записи
+						record.name = fqdn;
+						// Устанавливаем каноническое имя для CNAME-записи
+						record.canonical = cname;
+						// Добавляем CNAME-запись в список CNAME-записей в результирующем объекте
+						result.cname.push_back(record);
+					}
+				} break;
+				// MX-запись (Mail Exchange)
+				case 15: {
+					// Проверяем, что RDLENGTH для MX-записи соответствует минимум 3 байтам (2 байта для приоритета + минимум 1 байт для имени сервера)
+					if(rdlength >= 3){
+						// Декодируем имя почтового сервера из RDATA для MX-записи и сохраняем его в результирующем объекте
+						char name[0xFF];
+						// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+						size_t offset = (rdataOffset + 2);
+						// Читаем приоритет почтового сервера из первых 2 байт RDATA для MX-записи
+						const uint16_t pref = readU16(buffer + rdataOffset);
+						// Декодируем имя почтового сервера из RDATA для MX-записи и сохраняем его в результирующем объекте
+						if(decodeDomainName(buffer, size, offset, name, sizeof(name))){
+							// Объект для хранения данных MX-записи
+							mx_record_t record;
+							// Устанавливаем TTL для MX-записи
+							record.ttl = ttl;
+							// Устанавливаем доменное имя для MX-записи
+							record.name = fqdn;
+							// Устанавливаем сервер для MX-записи
+							record.server = name;
+							// Устанавливаем приоритет для MX-записи
+							record.preference = pref;
+							// Добавляем MX-запись в список MX-записей в результирующем объекте
+							result.mx.push_back(record);
+						}
+					}
+				} break;
+				// TXT-запись (Text)
+				case 16: {
+					// Объект для хранения данных TXT-записи
+					txt_record_t record;
+					// Устанавливаем TTL для TXT-записи
+					record.ttl = ttl;
+					// Устанавливаем доменное имя для TXT-записи
+					record.name = fqdn;
+					// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+					size_t offset = rdataOffset;
+					// Устанавливаем конец RDATA для TXT-записи, чтобы не выходить за пределы данных при чтении текстовых строк
+					size_t end = (rdataOffset + rdlength);
+					/**
+					 * В TXT-записи RDATA может содержать одну или несколько текстовых строк, каждая из которых начинается с байта длины, за которым следует текстовая строка.
+					 * Читаем все текстовые строки, пока не достигнем конца RDATA для TXT-записи
+					 */
+					while(offset < end){
+						// Получаем длину текущей текстовой строки из первого байта
+						uint8_t length = buffer[offset++];
+						// Проверяем, что длина текстовой строки не превышает оставшийся размер RDATA для TXT-записи
+						if((offset + static_cast <size_t> (length)) > end)
+							// Ошибка: недостаточно данных для чтения текстовой строки в RDATA для TXT-записи
+							break;
+						// Добавляем текстовую строку в список текстов для TXT-записи в результирующем объекте
+						record.texts.emplace_back(reinterpret_cast <const char *> (buffer + offset), length);
+						// Выполняем смещение на следующую текстовую строку в RDATA для TXT-записи
+						offset += length;
+					}
+					// Если удалось прочитать хотя бы одну текстовую строку
+					if(!record.texts.empty())
+						// Добавляем TXT-запись в список TXT-записей в результирующем объекте
+						result.txt.push_back(record);
+				} break;
+				// SOA-запись (Start of Authority)
+				case 6: {
+					// Декодируем имя главного сервера (MNAME) и имя администратора (RNAME) из RDATA для SOA-записи и сохраняем их в результирующем объекте
+					char mname[256], rname[256];
+					// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+					size_t offset = rdataOffset;
+					// Проверяем, что RDLENGTH для SOA-записи соответствует минимум 20 байтам (минимальный размер RDATA для SOA-записи с пустыми именами)
+					if(decodeDomainName(buffer, size, offset, mname, sizeof(mname)) &&
+					   decodeDomainName(buffer, size, offset, rname, sizeof(rname)) && ((offset + 20) <= (rdataOffset + rdlength))){
+						// Объект для хранения данных SOA-записи
+						soa_record_t record;
+						// Устанавливаем TTL для SOA-записи
+						record.ttl = ttl;
+						// Устанавливаем имя главного сервера (MNAME) для SOA-записи
+						record.mname = mname;
+						// Устанавливаем имя администратора (RNAME) для SOA-записи
+						record.rname = rname;
+						// Читаем поле SERIAL для SOA-записи из RDATA и сохраняем его в результирующем объекте
+						record.serial = readU32(buffer + offset);
+						// Устанавливаем смещение на следующие поля после SERIAL (REFRESH, RETRY, EXPIRE, MINIMUM)
+						offset += 4;
+						// Читаем поле REFRESH для SOA-записи из RDATA и сохраняем его в результирующем объекте
+						record.refresh = readU32(buffer + offset);
+						// Устанавливаем смещение на следующие поля после REFRESH (RETRY, EXPIRE, MINIMUM)
+						offset += 4;
+						// Читаем поле RETRY для SOA-записи из RDATA и сохраняем его в результирующем объекте
+						record.retry = readU32(buffer + offset);
+						// Устанавливаем смещение на следующие поля после RETRY (EXPIRE, MINIMUM)
+						offset += 4;
+						// Читаем поле EXPIRE для SOA-записи из RDATA и сохраняем его в результирующем объекте
+						record.expire  = readU32(buffer + offset);
+						// Устанавливаем смещение на следующие поля после EXPIRE (MINIMUM)
+						offset += 4;
+						// Читаем поле MINIMUM для SOA-записи из RDATA и сохраняем его в результирующем объекте
+						record.minimum = readU32(buffer + offset);
+						// Устанавливаем доменное имя для SOA-записи
+						record.name = fqdn;
+						// Добавляем SOA-запись в список SOA-записей в результирующем объекте
+						result.soa.push_back(record);
+					}
+				} break;
+				// PTR-запись (Pointer)
+				case 12: {
+					// Декодируем доменное имя из RDATA для PTR-записи и сохраняем его в результирующем объекте
+					char name[256];
+					// Устанавливаем смещение для чтения RDATA в каждой записи DNS после чтения заголовка RR
+					size_t offset = rdataOffset;
+					// Декодируем доменное имя из RDATA для PTR-записи и сохраняем его в результирующем объекте
+					if(decodeDomainName(buffer, size, offset, name, sizeof(name))){
+						// Объект для хранения данных PTR-записи
+						ptr_record_t record;
+						// Устанавливаем TTL для PTR-записи
+						record.ttl = ttl;
+						// Устанавливаем доменное имя для PTR-записи
+						record.name = fqdn;
+						// Устанавливаем доменное имя для PTR-записи
+						record.domain = name;
+						// Добавляем PTR-запись в список PTR-записей в результирующем объекте
+						result.ptr.push_back(record);
+					}
+				} break;
+			}
+			// Переходим к следующей записи
+			offset += rdlength;
+		}
+		// Выводим результат
+		return true;
+	}
+
 	/**
 	 * @brief Функция выполнения ресолвинга доменного имени
 	 *
 	 * @param eid    идентификатор события DNS-резолвера
-	 * @param family тип интернет-протокола IPv4/IPv6
+	 * @param type   тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
 	 * @param domain доменное имя сервера
 	 * @param io     объект асинхронного сетевого движка
 	 * @param log    объект для работы с логами
 	 * @return       результат выполнения операции
 	 */
-	static bool request(const event::id_t eid, const event::family_t family, string_view domain, engine::io_t * io, const log_t * log) noexcept {
+	static bool request(const event::id_t eid, const type_t type, string_view domain, engine::io_t * io, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Если доменное имя передано
 			if((eid > 0) && !domain.empty() && (io != nullptr)){
-				// Выполняем блокировку потокв для работы с буфером и объектом заголовка запроса
-				const locker_t <> lock(::dns::mtx);
 				// Зануляем буфер полезной нагрузки
 				::memset(::dns::buffer, 0, sizeof(::dns::buffer));
 				// Получаем объект заголовка запроса
@@ -531,23 +1185,10 @@ namespace dns {
 				size += (fqdn.size() + 1);
 				// Создаём части флагов вопроса пакета запроса
 				::dns::q_flags_t * qflags = reinterpret_cast <::dns::q_flags_t *> (&::dns::buffer[size]);
-				/**
-				 * Определяем семейство события
-				 */
-				switch(static_cast <uint8_t> (family)){
-					// Для семейства IPv4
-					case static_cast <uint8_t> (event::family_t::IPV4):
-						// Устанавливаем тип флага запроса
-						qflags->type = htons(0x0001);
-					break;
-					// Для семейства IPv6
-					case static_cast <uint8_t> (event::family_t::IPV6):
-						// Устанавливаем тип флага запроса
-						qflags->type = htons(0x1C);
-					break;
-				}
 				// Устанавливаем класс флага запроса
 				qflags->cls = htons(0x0001);
+				// Устанавливаем тип запроса в флагах вопроса
+				qflags->type = htons(static_cast <uint16_t> (type));
 				// Увеличиваем размер запроса
 				size += sizeof(::dns::q_flags_t);
 				{
@@ -566,7 +1207,7 @@ namespace dns {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (type), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -735,7 +1376,7 @@ void awh::unit::DNS::timeout(const event::id_t eid, const event::status_t status
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 						// Выполняем резолвинг доменного имени
-						::dns::request(j->second, i->second.family, i->second.domain, this->_io, this->_log);
+						::dns::request(j->second, i->second.type, i->second.domain, this->_io, this->_log);
 					}
 					// Удаляем сохраненный запрос текущего DNS-резолвера
 					::timeout::requests.erase(i);
@@ -1230,68 +1871,390 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
  * @param size размер данных события чтения из DNS-резолвера
  */
 void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
-	{
-		// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
-		const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем поиск идентификатора события таймера для ожидания ответа от DNS-сервера
-		auto i = ::timeout::timers.find(eid);
-		// Если идентификатор события таймера для ожидания ответа от DNS-сервера найден
-		if(i != ::timeout::timers.end()){
-			// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-			const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-			// Устанавливаем таймаут таймера по умолчанию на указанное количество секунд для ожидания ответа от DNS-сервера
-			this->_io->setTimeout(tid, event::action_t::NONE, this->_io->getTimeout(i->second, event::action_t::NONE));
-			// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-			this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, _1, _2)));
-			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-			// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-			if(!this->_io->commit(tid)){
-				// Удаляем событие таймера
-				this->_io->destroy(tid);
-				// Если функция обратного вызова не установлена
-				if(!this->_callback.is("error")){
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Доменное имя для логирования
+		string domain = "unknown";
+		{
+			// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
+			const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем поиск идентификатора события таймера для ожидания ответа от DNS-сервера
+			auto i = ::timeout::timers.find(eid);
+			// Если идентификатор события таймера для ожидания ответа от DNS-сервера найден
+			if(i != ::timeout::timers.end()){
+				// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
+				const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+				// Устанавливаем таймаут таймера по умолчанию на указанное количество секунд для ожидания ответа от DNS-сервера
+				this->_io->setTimeout(tid, event::action_t::NONE, this->_io->getTimeout(i->second, event::action_t::NONE));
+				// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
+				this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, _1, _2)));
+				// Устанавливаем функцию обратного вызова на событие получения ошибок
+				this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
+				if(!this->_io->commit(tid)){
+					// Удаляем событие таймера
+					this->_io->destroy(tid);
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to commit DNS resolver timeout");
+						#endif
+					}
+				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+				} else {
+					// Сохраняем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
+					::timeout::timers.emplace(eid, tid);
+					// Сохраняем обратную связь между идентификатором события таймера и идентификатором события DNS-резолвера в контейнере обратных связей таймаутов
+					::timeout::reverse.emplace(tid, eid);
+				}
+				// Удаляем событие таймера для ожидания ответа от DNS-сервера
+				this->_io->destroy(i->second);
+				// Выполняем поиск идентификатора события DNS-резолвера, связанного с идентификатором события таймера для ожидания ответа от DNS-сервера
+				auto j = ::timeout::reverse.find(i->second);
+				// Если идентификатор события DNS-резолвера найден в контейнере обратных связей таймаутов
+				if(j != ::timeout::reverse.end())
+					// Удаляем идентификатор события DNS-резолвера из контейнера обратных связей таймаутов
+					::timeout::reverse.erase(j);
+				// Выполняем поиск сохраненных запросов текущего DNS-резолвера
+				auto k = ::timeout::requests.find(i->second);
+				// Если сохраненный запрос текущего DNS-резолвера найден
+				if(k != ::timeout::requests.end()){
+					// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
+					domain = k->second.domain;
+					// Удаляем сохраненный запрос текущего DNS-резолвера
+					::timeout::requests.erase(k);
+				}
+				// Удаляем идентификатор события таймера для ожидания ответа от DNS-сервера из контейнера таймаутов
+				::timeout::timers.erase(i);
+			}
+		}
+		// Если данные события чтения из DNS-резолвера не пустые
+		if((data != nullptr) && (size > 0)){
+			// Получаем объект заголовка запроса
+			const ::dns::head_t * header = reinterpret_cast <const ::dns::head_t *> (data);
+			/**
+			 * Определяем код выполнения операции
+			 */
+			switch(header->rcode){
+				// Если операция выполнена удачно
+				case 0: {
+					// Создаём объект для хранения результата парсинга ответа от DNS-сервера
+					::dns::dns_result_t result;
+					// Выполняем парсинг ответа от DNS-сервера
+					if(::dns::parse(data, size, result)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим начальный разделитель
+							cout << "------------------------------------------------------------" << endl << endl << flush;
+						#endif
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим заголовок
+							cout << "DNS RESPONSE:" << endl << endl << flush;
+						#endif
+						/**
+						 * Перебираем все A-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.a){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Устанавливаем IPv4-адрес в объекте адреса
+								this->_addr.v4(answer.ip);
+								// Выводим IPv4-адрес
+								::printf("IPv4: %s\n", static_cast <string> (this->_addr).c_str());
+							#endif
+						}
+						/**
+						 * Перебираем все AAAA-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.aaaa){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Устанавливаем IPv6-адрес в объекте адреса
+								this->_addr.v6(answer.ip);
+								// Выводим IPv6-адрес
+								::printf("IPv6: %s\n", static_cast <string> (this->_addr).c_str());
+							#endif
+						}
+						/**
+						 * Перебираем все NS-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.ns){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Выводим сервер имён
+								::printf("NS: %s\n", answer.server.c_str());
+							#endif
+						}
+						/**
+						 * Перебираем все CNAME-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.cname){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Выводим каноническое имя
+								::printf("CNAME: %s\n", answer.canonical.c_str());
+							#endif
+						}
+						/**
+						 * Перебираем все MX-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.mx){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Выводим сервер почты
+								::printf("MX: %s\n", answer.server.c_str());
+								// Выводим приоритет MX-записи
+								::printf("PREFERENCE: %u\n", answer.preference);
+							#endif
+						}
+						/**
+						 * Перебираем все TEXT-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.txt){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								/**
+								 * Вывод текстовых данных из TXT-записи
+								 */
+								for(auto & text : answer.texts)
+									// Выводим текст записи
+									::printf("TXT: %s\n", text.c_str());
+							#endif
+						}
+						/**
+						 * Перебираем все PTR-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.ptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Выводим PTR-запись
+								::printf("PTR: %s\n", answer.domain.c_str());
+							#endif
+						}
+						/**
+						 * Перебираем все SOA-записи в ответе от DNS-сервера
+						 */
+						for(auto & answer : result.soa){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим название записи
+								::printf("\nNAME: %s\n", answer.name.c_str());
+								// Выводим TTL записи
+								::printf("TTL: %u\n", answer.ttl);
+								// Выводим SOA-запись
+								::printf("SOA: %s\n", answer.mname.c_str());
+								// Выводим административный контакт
+								::printf("RNAME: %s\n", answer.rname.c_str());
+								// Выводим серийный номер зоны
+								::printf("SERIAL: %u\n", answer.serial);
+								// Выводим время обновления зоны
+								::printf("REFRESH: %u\n", answer.refresh);
+								// Выводим время повторной попытки обновления зоны
+								::printf("RETRY: %u\n", answer.retry);
+								// Выводим время истечения срока действия зоны
+								::printf("EXPIRE: %u\n", answer.expire);
+							#endif
+						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим начальный разделитель
+							cout << endl << "------------------------------------------------------------" << endl << endl << flush;
+						#endif
+					}
+				} break;
+				// Если сервер DNS не смог интерпретировать запрос
+				case 1: {
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL);
+						this->_log->debug(
+							"DNS query format error to nameserver %s for domain %s",
+							__PRETTY_FUNCTION__,
+							std::make_tuple(eid),
+							log_t::flag_t::WARNING,
+							this->_io->getTarget(eid).c_str(), domain.c_str()
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to commit DNS resolver timeout");
+						this->_log->print("DNS query format error to nameserver %s for domain %s", log_t::flag_t::WARNING, this->_io->getTarget(eid).c_str(), domain.c_str());
 					#endif
-				}
-			// Если таймер для ожидания ответа от DNS-сервера успешно установлен
-			} else {
-				// Сохраняем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
-				::timeout::timers.emplace(eid, tid);
-				// Сохраняем обратную связь между идентификатором события таймера и идентификатором события DNS-резолвера в контейнере обратных связей таймаутов
-				::timeout::reverse.emplace(tid, eid);
+				} break;
+				// Если проблемы возникли на DNS-сервера
+				case 2: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"DNS server failure %s for domain %s",
+							__PRETTY_FUNCTION__,
+							std::make_tuple(eid),
+							log_t::flag_t::WARNING,
+							this->_io->getTarget(eid).c_str(), domain.c_str()
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("DNS server failure %s for domain %s", log_t::flag_t::WARNING, this->_io->getTarget(eid).c_str(), domain.c_str());
+					#endif
+				} break;
+				// Если доменное имя указанное в запросе не существует
+				case 3: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"Domain name %s referenced in the query for nameserver %s does not exist",
+							__PRETTY_FUNCTION__,
+							std::make_tuple(eid),
+							log_t::flag_t::WARNING,
+							domain.c_str(), this->_io->getTarget(eid).c_str()
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Domain name %s referenced in the query for nameserver %s does not exist", log_t::flag_t::WARNING, domain.c_str(), this->_io->getTarget(eid).c_str());
+					#endif
+				} break;
+				// Если DNS-сервер не поддерживает подобный тип запросов
+				case 4: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"DNS server is not implemented at %s for domain %s",
+							__PRETTY_FUNCTION__,
+							std::make_tuple(eid),
+							log_t::flag_t::WARNING,
+							this->_io->getTarget(eid).c_str(), domain.c_str()
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("DNS server is not implemented at %s for domain %s", log_t::flag_t::WARNING, this->_io->getTarget(eid).c_str(), domain.c_str());
+					#endif
+				} break;
+				// Если DNS-сервер отказался выполнять наш запрос (например по политическим причинам)
+				case 5: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"DNS request is refused to nameserver %s for domain %s",
+							__PRETTY_FUNCTION__,
+							std::make_tuple(eid),
+							log_t::flag_t::WARNING,
+							this->_io->getTarget(eid).c_str(), domain.c_str()
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("DNS request is refused to nameserver %s for domain %s", log_t::flag_t::WARNING, this->_io->getTarget(eid).c_str(), domain.c_str());
+					#endif
+				} break;
 			}
-			// Удаляем событие таймера для ожидания ответа от DNS-сервера
-			this->_io->destroy(i->second);
-			// Выполняем поиск идентификатора события DNS-резолвера, связанного с идентификатором события таймера для ожидания ответа от DNS-сервера
-			auto j = ::timeout::reverse.find(i->second);
-			// Если идентификатор события DNS-резолвера найден в контейнере обратных связей таймаутов
-			if(j != ::timeout::reverse.end())
-				// Удаляем идентификатор события DNS-резолвера из контейнера обратных связей таймаутов
-				::timeout::reverse.erase(j);
-			// Выполняем поиск сохраненных запросов текущего DNS-резолвера
-			auto k = ::timeout::requests.find(i->second);
-			// Если сохраненный запрос текущего DNS-резолвера найден
-			if(k != ::timeout::requests.end())
-				// Удаляем сохраненный запрос текущего DNS-резолвера
-				::timeout::requests.erase(k);
-			// Удаляем идентификатор события таймера для ожидания ответа от DNS-сервера из контейнера таймаутов
-			::timeout::timers.erase(i);
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
-
-	cout << " !!!!!!!!!!!!!!!!!!!! DATA " << size << endl;
 }
 /**
  * @brief Метод обработки ошибок событий DNS-резолвера
@@ -1314,8 +2277,6 @@ void awh::unit::DNS::error(const event::id_t eid, const event::error_t error, co
 void awh::unit::DNS::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности работы потоков
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
-	// Активируем работу мьютекса блокировки потока при работе с DNS-резолвером
-	::dns::mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с таймаутами
 	::timeout::mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
@@ -4059,14 +5020,38 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 					auto ret = ::timeout::requests.emplace(i->second, ::timeout::request_t());
 					// Устанавливаем доменное имя
 					ret.first->second.domain = domain;
-					// Устанавливаем тип интернет-протокола
-					ret.first->second.family = family;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+							// Устанавливаем тип интернет-протокола
+							ret.first->second.type = ::dns::type_t::A;
+						break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+							// Устанавливаем тип интернет-протокола
+							ret.first->second.type = ::dns::type_t::AAAA;
+						break;
+					}
 					// Запускаем таймер для ожидания ответа от DNS-сервера
 					this->_io->launch(i->second);
 				}
 			}
-			// Выполняем резолвинг доменного имени
-			return ::dns::request(eid, family, domain, this->_io, this->_log);
+			/**
+			 * Определяем семейство события
+			 */
+			switch(static_cast <uint8_t> (family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+					// Выполняем резолвинг доменного имени
+					return ::dns::request(eid, ::dns::type_t::A, domain, this->_io, this->_log);
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6):
+					// Выполняем резолвинг доменного имени
+					return ::dns::request(eid, ::dns::type_t::AAAA, domain, this->_io, this->_log);
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -4097,8 +5082,6 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
  */
 awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _addr(fmk, log), _binbox(fmk, log) {
-	// Активируем работу мьютекса блокировки потока при работе с DNS-резолвером
-	::dns::mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с таймаутами
 	::timeout::mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами

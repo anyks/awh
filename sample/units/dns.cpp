@@ -76,7 +76,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Если событие DNS-резолвера запущено
 				if(dns.commit(eid)){
 					// Выполняем резолвинг доменного имени
-					if(!dns.resolve(eid, "anyks.com"))
+					if(!dns.resolve(eid, event::family_t::IPV4, "ya.ru"))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить резолвинг доменного имени", log_t::flag_t::CRITICAL);
 				// Выводим сообщение об ошибке
