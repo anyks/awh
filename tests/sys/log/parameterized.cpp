@@ -50,7 +50,7 @@ class LogTestParameterizedFixture : public LogFixture, public ::testing::WithPar
  */
 TEST_P(LogTestParameterizedFixture, LogPrintTest){
 	// Подписываемся на получение логов
-	this->_log->subscribe([this](const awh::log_t::flag_t flag, const std::string & text) noexcept -> void {
+	this->_log->subscribe([this](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
 		// Проверяем корректность полученного флага лога
 		ASSERT_EQ(this->_parameter.flag, flag);
 		// Проверяем корректность текста лога

@@ -178,7 +178,6 @@ namespace awh {
 		private:
 			// Максимальный размер файла лога
 			size_t _maxSize;
-		private:
 			// Размер сообщения для формирования разделителя
 			size_t _sepSize;
 		private:
@@ -201,19 +200,19 @@ namespace awh {
 			// Список доступных флагов
 			std::unordered_set <mode_t> _mode;
 		private:
-			// Список проинициализированных процессов
-			mutable std::unordered_set <pid_t> _initialized;
+			// Объект работы с дочерними потоками
+			mutable screen_t <payload_t> _screen;
 		private:
 			// Мютекс для блокировки потока
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
-			// Объект работы с дочерними потоками
-			mutable screen_t <payload_t> _screen;
+			// Список проинициализированных процессов
+			mutable std::unordered_set <pid_t> _initialized;
 		private:
 			/**
 			 * Функция обратного вызова которая срабатывает при появлении лога
 			 */
-			function <void (const flag_t, const string &)> _fn;
+			function <void (const flag_t, string_view)> _callback;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -304,7 +303,7 @@ namespace awh {
 			 * @param filename адрес где находится файл
 			 * @return         параметры компонента (адрес, название файла без расширения)
 			 */
-			std::pair <string, string> components(const string & filename) const noexcept;
+			std::pair <string, string> components(string_view filename) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
@@ -322,7 +321,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   аргументы формирования лога
 			 */
-			void debug(const string & format, const string & method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
+			void debug(string_view format, string_view method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -344,8 +343,10 @@ namespace awh {
 							// Добавляем описание входящего сообщения
 							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
 						}
+						// Добавляем формат сообщения
+						debug.append(format);
 						// Выводим полученный нами лог
-						this->print(debug + format, flag, args...);
+						this->print(debug, flag, args...);
 					// Выводим лог в том виде как он пришёл
 					} else this->print(format, flag, args...);
 				}
@@ -366,7 +367,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   аргументы формирования лога
 			 */
-			void debug(const wstring & format, const string & method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
+			void debug(wstring_view format, string_view method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -388,8 +389,10 @@ namespace awh {
 							// Добавляем описание входящего сообщения
 							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
 						}
+						// Добавляем формат сообщения
+						debug.append(this->_fmk->convert(format));
 						// Выводим полученный нами лог
-						this->print(this->_fmk->convert(debug) + format, flag, args...);
+						this->print(debug, flag, args...);
 					// Выводим лог в том виде как он пришёл
 					} else this->print(format, flag, args...);
 				}
@@ -410,7 +413,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void debug(const string & format, const string & method, const tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
+			void debug(string_view format, string_view method, const tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -432,8 +435,10 @@ namespace awh {
 							// Добавляем описание входящего сообщения
 							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
 						}
+						// Добавляем формат сообщения
+						debug.append(format);
 						// Выводим полученный нами лог
-						this->print(debug + format, flag, args);
+						this->print(debug, flag, args);
 					// Выводим лог в том виде как он пришёл
 					} else this->print(format, flag, args);
 				}
@@ -453,7 +458,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void debug(const wstring & format, const string & method, const tuple <T...> & params, flag_t flag, const vector <wstring> & args) const noexcept {
+			void debug(wstring_view format, string_view method, const tuple <T...> & params, flag_t flag, const vector <wstring> & args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -475,8 +480,10 @@ namespace awh {
 							// Добавляем описание входящего сообщения
 							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
 						}
+						// Добавляем формат сообщения
+						debug.append(this->_fmk->convert(format));
 						// Выводим полученный нами лог
-						this->print(this->_fmk->convert(debug) + format, flag, args);
+						this->print(debug, flag, args);
 					// Выводим лог в том виде как он пришёл
 					} else this->print(format, flag, args);
 				}
@@ -488,14 +495,14 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 */
-			void print(const string & format, flag_t flag, ...) const noexcept;
+			void print(string_view format, flag_t flag, ...) const noexcept;
 			/**
 			 * @brief Метод вывода текстовой информации в консоль или файл
 			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 */
-			void print(const wstring & format, flag_t flag, ...) const noexcept;
+			void print(wstring_view format, flag_t flag, ...) const noexcept;
 		public:
 			/**
 			 * @brief Метод вывода текстовой информации в консоль или файл
@@ -504,7 +511,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void print(const string & format, flag_t flag, const vector <string> & args) const noexcept;
+			void print(string_view format, flag_t flag, const vector <string> & args) const noexcept;
 			/**
 			 * @brief Метод вывода текстовой информации в консоль или файл
 			 *
@@ -512,7 +519,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept;
+			void print(wstring_view format, flag_t flag, const vector <wstring> & args) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения установленных режимов вывода логов
@@ -538,7 +545,7 @@ namespace awh {
 			 *
 			 * @param format формат даты и времени для вывода лога
 			 */
-			void format(const string & format) noexcept;
+			void format(string_view format) noexcept;
 		public:
 			/**
 			 * @brief Метод установки флага асинхронного режима работы
@@ -551,7 +558,7 @@ namespace awh {
 			 *
 			 * @param name название сервиса для вывода лога
 			 */
-			void name(const string & name) noexcept;
+			void name(string_view name) noexcept;
 			/**
 			 * @brief Метод установки максимального размера файла логов
 			 *
@@ -587,14 +594,14 @@ namespace awh {
 			 *
 			 * @param filename адрес файла для сохранения логов
 			 */
-			void filename(const string & filename) noexcept;
+			void filename(string_view filename) noexcept;
 		public:
 			/**
 			 * @brief Метод подписки на события логов
 			 *
 			 * @param callback функция обратного вызова
 			 */
-			void subscribe(function <void (const flag_t, const string &)> callback) noexcept;
+			void subscribe(function <void (const flag_t, string_view)> callback) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
@@ -602,7 +609,7 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			explicit Logging(const fmk_t * fmk, const string & filename = "") noexcept;
+			explicit Logging(const fmk_t * fmk, string_view filename = "") noexcept;
 			/**
 			 * @brief Деструктор
 			 *

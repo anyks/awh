@@ -21,6 +21,10 @@
 #include <cstring>
 #include <cstdarg>
 #include <iostream>
+
+/**
+ * Системные модули
+ */
 #include <zlib.h>
 #include <unistd.h>
 #include <sys/file.h>
@@ -161,7 +165,7 @@ void awh::Logging::rotate() const noexcept {
 					// Буфер данных для чтения
 					vector <char> buffer(size, 0);
 					// Выполняем чтение из файла в буфер данные
-					::ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
+					::ReadFile(file, static_cast <LPVOID> (&buffer[0]), static_cast <DWORD> (buffer.size()), 0, nullptr);
 					// Если данные строки получены
 					if(!buffer.empty()){
 						// Получаем компоненты адреса
@@ -171,7 +175,7 @@ void awh::Logging::rotate() const noexcept {
 						// Если файл открыт удачно
 						if(gz != nullptr){
 							// Выполняем сжатие файла
-							::gzwrite(gz, buffer.data(), buffer.size());
+							::gzwrite(gz, &buffer[0], buffer.size());
 							// Закрываем сжатый файл
 							::gzclose(gz);
 						// Если произошла ошибка
@@ -195,7 +199,7 @@ void awh::Logging::rotate() const noexcept {
 						// Буфер данных для чтения
 						vector <char> buffer(size, 0);
 						// Выполняем чтение данных из файла
-						file.read(buffer.data(), buffer.size());
+						file.read(&buffer[0], buffer.size());
 						// Если данные строки получены
 						if(!buffer.empty()){
 							// Получаем компоненты адреса
@@ -205,7 +209,7 @@ void awh::Logging::rotate() const noexcept {
 							// Если файл открыт удачно
 							if(gz != nullptr){
 								// Выполняем сжатие файла
-								::gzwrite(gz, buffer.data(), buffer.size());
+								::gzwrite(gz, &buffer[0], buffer.size());
 								// Закрываем сжатый файл
 								::gzclose(gz);
 							// Если произошла ошибка
@@ -285,9 +289,9 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx);
 	// Если функция подписки на логи установлена, выводим результат
-	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
+	if((this->_callback != nullptr) && (this->_mode.find(mode_t::DEFERRED) != this->_mode.end()))
 		// Выводим сообщение лога всем подписавшимся
-		this->_fn(payload.flag, payload.text);
+		this->_callback(payload.flag, payload.text);
 	// Если вывод сообщения в консоль разрешён
 	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
 		// Если тип сообщение не является пустым
@@ -396,7 +400,7 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 					break;
 				}
 				// Выполняем запись в файл
-				::WriteFile(file, static_cast <LPCVOID> (logData.data()), static_cast <DWORD> (logData.size()), 0, nullptr);
+				::WriteFile(file, static_cast <LPCVOID> (&logData[0]), static_cast <DWORD> (logData.size()), 0, nullptr);
 				// Выполняем закрытие файла
 				::CloseHandle(file);
 			}
@@ -449,7 +453,7 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
  * @param filename адрес где находится файл
  * @return         параметры компонента (адрес, название файла без расширения)
  */
-std::pair <string, string> awh::Logging::components(const string & filename) const noexcept {
+std::pair <string, string> awh::Logging::components(string_view filename) const noexcept {
 	// Результат работы функции
 	std::pair <string, string> result;
 	// Если адрес передан
@@ -490,7 +494,7 @@ std::pair <string, string> awh::Logging::components(const string & filename) con
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  */
-void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept {
+void awh::Logging::print(string_view format, flag_t flag, ...) const noexcept {
 	// Если формат передан
 	if(!format.empty()){
 		// Если уровень логирования соответствует
@@ -501,6 +505,10 @@ void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
+			/**
+			 * Создаём текст для логирования
+			 */
+			const string text{format};
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
@@ -522,22 +530,22 @@ void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept
 						// Выводим сообщение так-как оно есть
 						case static_cast <uint8_t> (flag_t::NONE):
 							// Выполняем отправку сообщения
-							::vsyslog(LOG_NOTICE, format.c_str(), args);
+							::vsyslog(LOG_NOTICE, text.c_str(), args);
 						break;
 						// Выводим информационное сообщение
 						case static_cast <uint8_t> (flag_t::INFO):
 							// Выполняем отправку сообщения
-							::vsyslog(LOG_INFO, format.c_str(), args);
+							::vsyslog(LOG_INFO, text.c_str(), args);
 						break;
 						// Выводим сообщение об ошибке
 						case static_cast <uint8_t> (flag_t::CRITICAL):
 							// Выполняем отправку сообщения
-							::vsyslog(LOG_ERR, format.c_str(), args);
+							::vsyslog(LOG_ERR, text.c_str(), args);
 						break;
 						// Выводим сообщение предупреждения
 						case static_cast <uint8_t> (flag_t::WARNING):
 							// Выполняем отправку сообщения
-							::vsyslog(LOG_WARNING, format.c_str(), args);
+							::vsyslog(LOG_WARNING, text.c_str(), args);
 						break;
 					}
 					// Завершаем список аргументов
@@ -561,7 +569,7 @@ void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept
 					// Копируем список аргументов
 					va_copy(args2, args);
 					// Выполняем запись в буфер данных
-					size_t res = ::vsnprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+					size_t res = ::vsnprintf(&buffer[0], buffer.size(), text.c_str(), args2);
 					// Если результат получен
 					if((res >= 0) && (res < buffer.size())){
 						// Завершаем список аргументов
@@ -641,7 +649,7 @@ void awh::Logging::print(const string & format, flag_t flag, ...) const noexcept
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  */
-void awh::Logging::print(const wstring & format, flag_t flag, ...) const noexcept {
+void awh::Logging::print(wstring_view format, flag_t flag, ...) const noexcept {
 	// Если формат передан
 	if(!format.empty()){
 		// Если уровень логирования соответствует
@@ -705,6 +713,10 @@ void awh::Logging::print(const wstring & format, flag_t flag, ...) const noexcep
 				va_start(args, flag);
 				// Буфер данных для логирования
 				vector <wchar_t> buffer(1024);
+				/**
+				 * Создаём текст для логирования
+				 */
+				const wstring text{format};
 				// Выполняем перебор всех аргументов
 				for(;;){
 					// Создаем список аргументов
@@ -712,7 +724,7 @@ void awh::Logging::print(const wstring & format, flag_t flag, ...) const noexcep
 					// Копируем список аргументов
 					va_copy(args2, args);
 					// Выполняем запись в буфер данных
-					size_t res = ::vswprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+					size_t res = ::vswprintf(&buffer[0], buffer.size(), text.c_str(), args2);
 					// Если результат получен
 					if((res >= 0) && (res < buffer.size())){
 						// Завершаем список аргументов
@@ -793,7 +805,7 @@ void awh::Logging::print(const wstring & format, flag_t flag, ...) const noexcep
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
-void awh::Logging::print(const string & format, flag_t flag, const vector <string> & args) const noexcept {
+void awh::Logging::print(string_view format, flag_t flag, const vector <string> & args) const noexcept {
 	// Если формат передан
 	if(!format.empty() && !args.empty()){
 		// Если уровень логирования соответствует
@@ -890,7 +902,7 @@ void awh::Logging::print(const string & format, flag_t flag, const vector <strin
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
-void awh::Logging::print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept {
+void awh::Logging::print(wstring_view format, flag_t flag, const vector <wstring> & args) const noexcept {
 	// Если формат передан
 	if(!format.empty() && !args.empty()){
 		// Если уровень логирования соответствует
@@ -1012,7 +1024,7 @@ const string & awh::Logging::format() const noexcept {
  *
  * @param format формат даты и времени для вывода лога
  */
-void awh::Logging::format(const string & format) noexcept {
+void awh::Logging::format(string_view format) noexcept {
 	// Устанавливаем формат даты и времени для вывода лога
 	this->_format = format;
 }
@@ -1030,7 +1042,7 @@ void awh::Logging::async(const bool mode) noexcept {
  *
  * @param name название сервиса для вывода лога
  */
-void awh::Logging::name(const string & name) noexcept {
+void awh::Logging::name(string_view name) noexcept {
 	// Устанавливаем название сервиса для вывода лога
 	this->_name = name;
 }
@@ -1084,7 +1096,7 @@ void awh::Logging::separator(const separator_t sep) noexcept {
  *
  * @param filename адрес файла для сохранения логов
  */
-void awh::Logging::filename(const string & filename) noexcept {
+void awh::Logging::filename(string_view filename) noexcept {
 	// Устанавливаем адрес файла для сохранения логов
 	this->_filename = filename;
 }
@@ -1093,9 +1105,9 @@ void awh::Logging::filename(const string & filename) noexcept {
  *
  * @param callback функция обратного вызова
  */
-void awh::Logging::subscribe(function <void (const flag_t, const string &)> callback) noexcept {
+void awh::Logging::subscribe(function <void (const flag_t, string_view)> callback) noexcept {
 	// Устанавливаем функцию подписки на получение лога
-	this->_fn = callback;
+	this->_callback = ::move(callback);
 }
 /**
  * @brief Конструктор
@@ -1103,11 +1115,11 @@ void awh::Logging::subscribe(function <void (const flag_t, const string &)> call
  * @param fmk      объект фреймворка
  * @param filename адрес файла для сохранения логов
  */
-awh::Logging::Logging(const fmk_t * fmk, const string & filename) noexcept :
+awh::Logging::Logging(const fmk_t * fmk, string_view filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),
  _level(level_t::ALL), _sep(separator_t::ALWAYS), _chrono(fmk, this),
  _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
- _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
+ _screen(Screen <payload_t>::health_t::DEAD), _callback(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = ::getpid();
 	// Деактивируем мьютекс на время инициализации
