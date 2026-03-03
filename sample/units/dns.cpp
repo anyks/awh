@@ -84,12 +84,18 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Доменное имя закодированно: %s", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 					// Декодируем доменное имя из Punycode
 					log.print("Доменное имя декодированно: %s", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
+					// Выполняем пересортировку адресов в кэше для доменного имени
+					dns.shuffle(event::family_t::IPV4, "www.google.com");
 					// Выполняем поиск доменного имени соответствующему IP-адресу
 					if(!dns.search(eid, event::family_t::IPV4, "77.88.44.242"))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить поиск доменного имени", log_t::flag_t::CRITICAL);
 					// Выполняем резолвинг доменного имени
 					if(!dns.resolve(eid, event::family_t::IPV4, "www.google.com")) // CNAME for "dns.rambler-co.ru"
+						// Выводим сообщение об ошибке
+						log.print("Не удалось выполнить резолвинг доменного имени", log_t::flag_t::CRITICAL);
+					// Выполняем резолвинг доменного имени
+					if(!dns.resolve(eid, event::family_t::IPV4, "gitlab.pgr.local"))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить резолвинг доменного имени", log_t::flag_t::CRITICAL);
 				// Выводим сообщение об ошибке
