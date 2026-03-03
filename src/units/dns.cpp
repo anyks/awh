@@ -1252,14 +1252,22 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 				Entry record{};
 				// Количество добавленных записей для статистики
 				uint32_t count = 0;
-				// Выполняем перебор всего списка доменных имён с IP-адресами
+				/**
+				 * Выполняем перебор всего списка доменных имён с IP-адресами
+				 */
 				for(const auto & [domain, ips] : __awh_cache__.domains){
 					// Размер доменного имени
 					size_t size = 0;
-					// Выполняем перебор всех IP-адресов доменного имени
-					for(const auto & item : ips){
-						// Если время жизни записи не истекло
-						if(!item.local && ((item.life == 0) || (item.life > now))){
+					/**
+					 * Выполняем перебор всех IP-адресов доменного имени
+					 */
+					for(auto i = ips.begin(); i != ips.end();){
+						// Проверяем устарела ли запись в кэше
+						if((i->life > 0) && (i->life <= now))
+							// Если запись в кэше устарела, удаляем её
+							i = const_cast <vector <EntryIP> &> (ips).erase(i);
+						// Если запись в кэше не является локальной
+						else if(!i->local) {
 							// Определяем размер доменного имени
 							size = ::min(domain.size(), sizeof(record.fqdn) - 1);
 							// Зануляем буфер доменного имени
@@ -1269,27 +1277,30 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 							// Устанавливаем завершающий нулевой байт в доменном имени
 							record.fqdn[size] = '\0';
 							// Устанавливаем время жизни записи
-							record.life = item.life;
+							record.life = i->life;
 							// Устанавливаем размер IP-адреса в записи
-							record.size = static_cast <uint8_t> (item.ip->size);
+							record.size = static_cast <uint8_t> (i->ip->size);
 							/**
 							 * Определяем тип адреса
 							 */
-							switch(item.ip->size){
+							switch(i->ip->size){
 								// Если адрес является IPv4
 								case 4:
 									// Копируем IP-адрес в запись
-									::memcpy(record.ip, &awh_cast <net::addr_net_ipv4_t *> (item.ip.get())->address, record.size);
+									::memcpy(record.ip, &awh_cast <net::addr_net_ipv4_t *> (i->ip.get())->address, record.size);
 								break;
 								// Если адрес является IPv6
 								case 16:
 									// Копируем IP-адрес в запись
-									::memcpy(record.ip, &awh_cast <net::addr_net_ipv6_t *> (item.ip.get())->address, record.size);
+									::memcpy(record.ip, &awh_cast <net::addr_net_ipv6_t *> (i->ip.get())->address, record.size);
 								break;
 							}
 							// Добавляем запись в контейнер
 							this->_binbox.add(this->_fmk->format("RECORD_%u", count++), &record, sizeof(record));
-						}
+							// Продолжаем перебор кэша
+							++i;
+						// Продолжаем перебор кэша
+						} else ++i;
 					}
 				}
 				// Если есть записи для сохранения в кэше
@@ -3801,35 +3812,44 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 				/**
 				 * Выполняем перебор всех записей доменного имени
 				 */
-				for(const auto & record : i->second){
-					/**
-					 * Определяем семейство события
-					 */
-					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
-						case static_cast <uint8_t> (event::family_t::IPV4): {
-							// Если IP-адрес доменного имени является IPv4
-							if((record.ip->size == 4) && ((now < record.life) || (record.life == 0))){
-								// Выполняем блокировку потокв для парсинга IP-адреса
-								const locker_t <> lock(::__awh_mtx__);
-								// Устанавливаем полученный IP-адрес
-								this->_addr.source(record.ip, net_addr_t::endian_t::LITTLE);
-								// Выводим результат
-								return static_cast <string> (this->_addr);
-							}
-						} break;
-						// Для семейства IPv6
-						case static_cast <uint8_t> (event::family_t::IPV6): {
-							// Если IP-адрес доменного имени является IPv6
-							if((record.ip->size == 16) && ((now < record.life) || (record.life == 0))){
-								// Выполняем блокировку потокв для парсинга IP-адреса
-								const locker_t <> lock(::__awh_mtx__);
-								// Устанавливаем полученный IP-адрес
-								this->_addr.source(record.ip, net_addr_t::endian_t::LITTLE);
-								// Выводим результат
-								return static_cast <string> (this->_addr);
-							}
-						} break;
+				for(auto j = i->second.begin(); j != i->second.end();){
+					// Проверяем устарела ли запись в кэше
+					if((j->life > 0) && (j->life <= now))
+						// Удаляем запись в кэше
+						j = i->second.erase(j);
+					// Продолжаем перебор дальше
+					else {
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если IP-адрес доменного имени является IPv4
+								if(j->ip->size == 4){
+									// Выполняем блокировку потокв для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем полученный IP-адрес
+									this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+									// Выводим результат
+									return static_cast <string> (this->_addr);
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если IP-адрес доменного имени является IPv6
+								if(j->ip->size == 16){
+									// Выполняем блокировку потокв для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем полученный IP-адрес
+									this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+									// Выводим результат
+									return static_cast <string> (this->_addr);
+								}
+							} break;
+						}
+						// Продолжаем перебор дальше
+						++j;
 					}
 				}
 			}
@@ -3883,39 +3903,48 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 				/**
 				 * Выполняем перебор всех записей доменного имени
 				 */
-				for(const auto & record : i->second){
-					/**
-					 * Определяем семейство события
-					 */
-					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
-						case static_cast <uint8_t> (event::family_t::IPV4): {
-							// Если IP-адрес доменного имени является IPv4
-							if((result = ((record.ip->size == 4) && ((now < record.life) || (record.life == 0))))){
-								// Если объект результата не инициализирован
-								if(value == nullptr)
-									// Инициализируем объект результата
-									value = make_unique <net::addr_net_ipv4_t> ();
-								// Устанавливаем IP-адрес
-								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address;
-								// Выводим результат
-								return result;
-							}
-						} break;
-						// Для семейства IPv6
-						case static_cast <uint8_t> (event::family_t::IPV6): {
-							// Если IP-адрес доменного имени является IPv6
-							if((result = ((record.ip->size == 16) && ((now < record.life) || (record.life == 0))))){
-								// Если объект результата не инициализирован
-								if(value == nullptr)
-									// Инициализируем объект результата
-									value = make_unique <net::addr_net_ipv6_t> ();
-								// Устанавливаем IP-адрес
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address[0], 16);
-								// Выводим результат
-								return result;
-							}
-						} break;
+				for(auto j = i->second.begin(); j != i->second.end();){
+					// Проверяем устарела ли запись в кэше
+					if((j->life > 0) && (j->life <= now))
+						// Удаляем запись в кэше
+						j = i->second.erase(j);
+					// Продолжаем перебор дальше
+					else {
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если IP-адрес доменного имени является IPv4
+								if((result = (j->ip->size == 4))){
+									// Если объект результата не инициализирован
+									if(value == nullptr)
+										// Инициализируем объект результата
+										value = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем IP-адрес
+									awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (j->ip.get())->address;
+									// Выводим результат
+									return result;
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если IP-адрес доменного имени является IPv6
+								if((result = (j->ip->size == 16))){
+									// Если объект результата не инициализирован
+									if(value == nullptr)
+										// Инициализируем объект результата
+										value = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем IP-адрес
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (j->ip.get())->address[0], 16);
+									// Выводим результат
+									return result;
+								}
+							} break;
+						}
+						// Продолжаем перебор дальше
+						++j;
 					}
 				}
 			}
@@ -5299,51 +5328,60 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 					/**
 					 * Выполняем перебор всех записей доменного имени
 					 */
-					for(const auto & record : i->second){
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Если IP-адрес доменного имени является IPv4
-								if((record.ip->size == 4) && ((now < record.life) || (record.life == 0))){
-									// IP-адрес для вывода результата
-									string address = "";
-									{
-										// Выполняем блокировку потокв для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем полученный IP-адрес
-										this->_addr.source(record.ip, net_addr_t::endian_t::LITTLE);
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
+					for(auto j = i->second.begin(); j != i->second.end();){
+						// Проверяем устарела ли запись в кэше
+						if((j->life > 0) && (j->life <= now))
+							// Удаляем запись в кэше
+							j = i->second.erase(j);
+						// Продолжаем перебор дальше
+						else {
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Если IP-адрес доменного имени является IPv4
+									if(j->ip->size == 4){
+										// IP-адрес для вывода результата
+										string address = "";
+										{
+											// Выполняем блокировку потокв для парсинга IP-адреса
+											const locker_t <> lock(::__awh_mtx__);
+											// Устанавливаем полученный IP-адрес
+											this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+											// Устанавливаем строковое представление IP-адреса для вывода результата
+											address = ::move(static_cast <string> (this->_addr));
+										}
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, domain, address);
+										// Выводим положительный результат
+										return true;
 									}
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, domain, address);
-									// Выводим положительный результат
-									return true;
-								}
-							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Если IP-адрес доменного имени является IPv6
-								if((record.ip->size == 16) && ((now < record.life) || (record.life == 0))){
-									// IP-адрес для вывода результата
-									string address = "";
-									{
-										// Выполняем блокировку потокв для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем полученный IP-адрес
-										this->_addr.source(record.ip, net_addr_t::endian_t::LITTLE);
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Если IP-адрес доменного имени является IPv6
+									if(j->ip->size == 16){
+										// IP-адрес для вывода результата
+										string address = "";
+										{
+											// Выполняем блокировку потокв для парсинга IP-адреса
+											const locker_t <> lock(::__awh_mtx__);
+											// Устанавливаем полученный IP-адрес
+											this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+											// Устанавливаем строковое представление IP-адреса для вывода результата
+											address = ::move(static_cast <string> (this->_addr));
+										}
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, domain, address);
+										// Выводим положительный результат
+										return true;
 									}
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, domain, address);
-									// Выводим положительный результат
-									return true;
-								}
-							} break;
+								} break;
+							}
+							// Продолжаем перебор дальше
+							++j;
 						}
 					}
 				}
