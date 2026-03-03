@@ -26,6 +26,11 @@
 #include <unordered_map>
 
 /**
+ * Системные модули
+ */
+#include <arpa/inet.h>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/locker.hpp>
