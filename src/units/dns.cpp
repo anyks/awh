@@ -31,7 +31,7 @@
 #include <sys/locker.hpp>
 
 /**
- * Подключаем заголовочные файл модуля
+ * Подключаем заголовочный файл модуля
  */
 #include <units/dns.hpp>
 
@@ -100,7 +100,7 @@ namespace {
 	 *
 	 */
 	struct HostsEntry {
-		// IP-адрес из файла ххостов
+		// IP-адрес из файла хостов
 		string_view ip;
 		// Список доменных имён
 		vector <string_view> domains;
@@ -124,7 +124,7 @@ namespace {
 		 *
 		 */
 		explicit Entry() noexcept : size(0), life(0), ip{0}, fqdn{0} {}
-	} __attribute__((packed));
+	};
 
 	/**
 	 * @brief Структура записи IP-адреса принадлежащего домену
@@ -327,7 +327,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit ARecord() noexcept : name{""}, ip(0), ttl(0) {}
+		explicit ARecord() noexcept :
+		 name{""}, ip(0), ttl(0) {}
 	} a_record_t;
 	
 	/**
@@ -345,7 +346,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit AAAARecord() noexcept : name{""}, ip{0}, ttl(0) {}
+		explicit AAAARecord() noexcept :
+		 name{""}, ip{0}, ttl(0) {}
 	} aaaa_record_t;
 
 	/**
@@ -363,7 +365,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit NSRecord() noexcept : name{""}, server{""}, ttl(0) {}
+		explicit NSRecord() noexcept :
+		 name{""}, server{""}, ttl(0) {}
 	} ns_record_t;
 
 	/**
@@ -381,7 +384,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit CNAMERecord() noexcept : name{""}, canonical{""}, ttl(0) {}
+		explicit CNAMERecord() noexcept :
+		 name{""}, canonical{""}, ttl(0) {}
 	} cname_record_t;
 
 	/**
@@ -401,7 +405,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit MXRecord() noexcept : name{""}, server{""}, preference(0), ttl(0) {}
+		explicit MXRecord() noexcept :
+		 name{""}, server{""}, preference(0), ttl(0) {}
 	} mx_record_t;
 
 	/**
@@ -419,7 +424,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit TXTRecord() noexcept : name{""}, texts{}, ttl(0) {}
+		explicit TXTRecord() noexcept :
+		 name{""}, texts{}, ttl(0) {}
 	} txt_record_t;
 
 	/**
@@ -433,9 +439,9 @@ namespace dns {
 		string mname;
 		// Доменное имя ответственного лица за зону (обычно email-адрес, где "@" заменён на ".")
 		string rname;
-		// Серийный номер зоны, который должен увеличиваться при каждом изменении данных зоны
-		uint32_t retry;
 		// Время в секундах, через которое вторичные серверы должны повторить попытку получения данных зоны после неудачной попытки
+		uint32_t retry;
+		// Время в секундах, после которого данные зоны на вторичных серверах считаются недействительными, если не удалось обновить их с первичного сервера
 		uint32_t expire;
 		// Серийный номер зоны, который должен увеличиваться при каждом изменении данных зоны (обычно в формате YYYYMMDDnn, где nn — порядковый номер изменений в течение дня)
 		uint32_t serial;
@@ -470,7 +476,8 @@ namespace dns {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit PTRRecord() noexcept : name{""}, domain{""}, ttl(0) {}
+		explicit PTRRecord() noexcept :
+		 name{""}, domain{""}, ttl(0) {}
 	} ptr_record_t;
 
 	/**
@@ -517,11 +524,11 @@ namespace dns {
 		uint8_t opcode : 4; // Опкод операции
 		uint8_t qr : 1;     // Тип запроса или ответа
 		uint8_t rcode : 4;  // Код выполнения операции
-		uint8_t z : 3;      // Зарезервированно для использования в будущем
+		uint8_t z : 3;      // Зарезервировано для использования в будущем
 		uint8_t ra : 1;     // Флаг активации рекурсивных запросов на сервере
 		uint16_t qdcount;   // Количество записей в разделе запроса
 		uint16_t ancount;   // Количество записей в разделе ответа
-		uint16_t nscount;   // Номер имени записи ресурсов сервера
+		uint16_t nscount;   // Количество записей ресурсов в разделе Authority (серверы имён)
 		uint16_t arcount;   // Количество записей ресурсов в разделе дополнительных записей
 		/**
 		 * @brief Конструктор
@@ -530,7 +537,7 @@ namespace dns {
 		explicit Header() noexcept :
 		 qdcount(0), ancount(0),
 		 nscount(0), arcount(0) {}
-	} __attribute__((packed)) head_t;
+	} head_t;
 
 	/**
 	 * @brief Структура флагов DNS запросов
@@ -544,7 +551,7 @@ namespace dns {
 		 *
 		 */
 		explicit Q_Flags() noexcept : type(0), cls(0) {}
-	} __attribute__((packed)) q_flags_t;
+	} q_flags_t;
 };
 
 /**
@@ -755,7 +762,7 @@ namespace dns {
 	 * @param offset количество прочитанных байт (output)
 	 * @param buffer буфер для записи декодированного доменного имени
 	 * @param size   размер буфера для записи декодированного доменного имени
-	 * @return       результ декодирования (true при успешном декодировании, false при ошибке)
+	 * @return       результат декодирования (true при успешном декодировании, false при ошибке)
 	 */
 	static bool decodeDomainName(const uint8_t * packet, const size_t length, size_t & offset, char * buffer, const size_t size) noexcept {
 		// Текущая позиция в буфере данных
@@ -1145,7 +1152,7 @@ namespace dns {
 				// Получаем объект заголовка запроса
 				::dns::head_t * header = reinterpret_cast <::dns::head_t *> (::dns::buffer);
 				// Устанавливаем идентификатор заголовка
-				header->id = static_cast <uint16_t> (htons(::getpid()));
+				header->id = htons(static_cast <uint16_t> (::getpid()));
 				/**
 				 * Заполняем оставшуюся структуру пакетов
 				 */
@@ -1178,7 +1185,7 @@ namespace dns {
 				// Увеличиваем размер запроса
 				size += sizeof(::dns::q_flags_t);
 				{
-					// Выполняем блокировку потокв для установки IP-адреса события
+					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(::__awh_resolver__.mtx);
 					// Отправляем запрос на резолвинг доменного имени
 					return (io->send(eid, ::dns::buffer, size) > 0);
@@ -1220,11 +1227,11 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для работы с кэшем
-			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Выполняем блокировку потока для работы с кэшем
+			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Если кэш DNS-резолвера не пустой
 			if(!::__awh_cache__.domains.empty()){
-				// Выполняем блокировку потокв для работы с бинарным контейнером
+				// Выполняем блокировку потока для работы с бинарным контейнером
 				const locker_t <> lock(::__awh_mtx__);
 				// Получаем текущую метку времени
 				const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
@@ -1324,7 +1331,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 void awh::unit::DNS::timeout(const event::id_t eid, const event::status_t status) noexcept {
 	// Если статус события успешен
 	if(status == event::status_t::SUCCESS){
-		// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
+		// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 		const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск сохраненных запросов текущего DNS-резолвера
 		auto i = ::timeout::requests.find(eid);
@@ -1490,7 +1497,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 			 * Сначала удаляем все локальные записи из кэша, чтобы не было конфликтов с новыми данными
 			 */
 			{
-				// Выполняем блокировку потокв для работы с кэшем
+				// Выполняем блокировку потока для работы с кэшем
 				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Если в кэше есть IPv4-адреса
 				if(!::__awh_cache__.ipv4.empty()){
@@ -1615,7 +1622,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 					}
 					// Если IP-адрес и доменные имена успешно извлечены из строки файла хостов
 					if(!entry.ip.empty() && !entry.domains.empty()){
-						// Выполняем блокировку потокв для парсинга IP-адреса
+						// Выполняем блокировку потока для парсинга IP-адреса
 						const locker_t <> lock(::__awh_mtx__);
 						/**
 						 * Выполняем перебор всех доменных имён, связанных с IP-адресом
@@ -1623,7 +1630,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 						for(auto & domain : entry.domains){
 							// Выполняем парсинг IP-адреса
 							if(this->_addr.parse(entry.ip)){
-								// Выполняем блокировку потокв для работы с кэшем
+								// Выполняем блокировку потока для работы с кэшем
 								const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 								// Выполняем поиск доменного имени в кэше
 								auto i = ::__awh_cache__.domains.find(string{domain});
@@ -1809,7 +1816,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 						// Удаляем символ возврата каретки из строки
 						str = str.substr(0, str.size() - 1);
 					// Если строка не является комментарием
-					if((* str.begin()) != '#')
+					if(!str.empty() && (str.front() != '#'))
 						// Выполняем парсинг полученной строки
 						parseStrHosts(str);
 					// Обновляем остаток
@@ -1821,7 +1828,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 					// Создаём представление строки
 					string_view str(remainder.c_str(), pos);
 					// Если строка не является комментарием
-					if((* str.begin()) != '#')
+					if(!str.empty() && (str.front() != '#'))
 						// Выполняем парсинг полученной строки
 						parseStrHosts(str);
 					// Обновляем остаток
@@ -1840,7 +1847,7 @@ void awh::unit::DNS::hosts([[maybe_unused]] const event::id_t, const uint8_t * d
 					// Удаляем символ возврата каретки из строки
 					str = str.substr(0, str.size() - 1);
 				// Если строка не является комментарием
-				if((* str.begin()) != '#')
+				if(!str.empty() && (str.front() != '#'))
 					// Выполняем парсинг полученной строки
 					parseStrHosts(str);
 			}
@@ -1879,7 +1886,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 		// Доменное имя для логирования
 		string domain = "unknown";
 		{
-			// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
+			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 			const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск идентификатора события таймера для ожидания ответа от DNS-сервера
 			auto i = ::timeout::timers.find(eid);
@@ -1984,7 +1991,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 										::printf("\nNAME: %s\n", answer.name.c_str());
 										// Выводим TTL записи
 										::printf("TTL: %u\n", answer.ttl);
-										// Выполняем блокировку потокв для парсинга IP-адреса
+										// Выполняем блокировку потока для парсинга IP-адреса
 										const locker_t <> lock(::__awh_mtx__);
 										// Устанавливаем IPv4-адрес в объекте адреса
 										this->_addr.v4(answer.ip);
@@ -2001,14 +2008,14 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
-								// Выбираем стаднарт рандомайзера
+								// Выбираем стандарт рандомайзера
 								mt19937 generator(::__awh_randev__());
 								// Выполняем рандомную сортировку списка DNS-серверов
 								::shuffle(result.a.begin(), result.a.end(), generator);
 								// IP-адрес для вывода результата
 								string address = "";
 								{
-									// Выполняем блокировку потокв для парсинга IP-адреса
+									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем IPv4-адрес в объекте адреса
 									this->_addr.v4(result.a.front().ip);
@@ -2034,7 +2041,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 										::printf("\nNAME: %s\n", answer.name.c_str());
 										// Выводим TTL записи
 										::printf("TTL: %u\n", answer.ttl);
-										// Выполняем блокировку потокв для парсинга IP-адреса
+										// Выполняем блокировку потока для парсинга IP-адреса
 										const locker_t <> lock(::__awh_mtx__);
 										// Устанавливаем IPv6-адрес в объекте адреса
 										this->_addr.v6(answer.ip);
@@ -2051,14 +2058,14 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
-								// Выбираем стаднарт рандомайзера
+								// Выбираем стандарт рандомайзера
 								mt19937 generator(::__awh_randev__());
 								// Выполняем рандомную сортировку списка DNS-серверов
 								::shuffle(result.aaaa.begin(), result.aaaa.end(), generator);
 								// IP-адрес для вывода результата
 								string address = "";
 								{
-									// Выполняем блокировку потокв для парсинга IP-адреса
+									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем IPv6-адрес в объекте адреса
 									this->_addr.v6(result.aaaa.front().ip);
@@ -2212,7 +2219,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 									// Выводим PTR-запись
 									::printf("PTR: %s\n", answer.domain.c_str());
 								#endif
-								// Выполняем блокировку потокв для парсинга IP-адреса
+								// Выполняем блокировку потока для парсинга IP-адреса
 								const locker_t <> lock(::__awh_mtx__);
 								// Устанавливаем ARPA-адрес в объекте адреса
 								this->_addr.arpa(answer.name);
@@ -2221,7 +2228,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
-								// Выбираем стаднарт рандомайзера
+								// Выбираем стандарт рандомайзера
 								mt19937 generator(::__awh_randev__());
 								// Выполняем рандомную сортировку списка DNS-серверов
 								::shuffle(result.ptr.begin(), result.ptr.end(), generator);
@@ -2230,7 +2237,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Семейство адресов для вывода результата
 								event::family_t family = event::family_t::NONE;
 								{
-									// Выполняем блокировку потокв для парсинга IP-адреса
+									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем ARPA-адрес в объекте адреса
 									this->_addr.arpa(result.ptr.front().name);
@@ -2471,7 +2478,7 @@ void awh::unit::DNS::threadSafety(const bool mode) noexcept {
  * @param attempts количество попыток резолвинга доменного имени
  */
 void awh::unit::DNS::setAttempts(const uint8_t attempts) noexcept {
-	// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
+	// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 	const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем количество попыток резолвинга доменного имени
 	::timeout::attempts = attempts;
@@ -2667,7 +2674,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 /**
  * @brief Метод пересортировки адресов в кэше для доменного имени
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  */
 void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) noexcept {
@@ -2675,7 +2682,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потокв для работы с кэшем
+		// Выполняем блокировку потока для работы с кэшем
 		const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Если доменное имя передано
 		if(!domain.empty()){
@@ -2683,7 +2690,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
 			if(i != ::__awh_cache__.domains.end()){
-				// Выбираем стаднарт рандомайзера
+				// Выбираем стандарт рандомайзера
 				mt19937 generator(::__awh_randev__());
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(i->second.begin(), i->second.end(), generator);
@@ -2697,7 +2704,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Если список IPv4-адресов не пустой
 				if(!::__awh_cache__.ipv4.empty()){
-					// Выбираем стаднарт рандомайзера
+					// Выбираем стандарт рандомайзера
 					mt19937 generator(::__awh_randev__());
 					/**
 					 * Выполняем перебор всех IPv4-адресов в кэше
@@ -2711,7 +2718,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Если список IPv6-адресов не пустой
 				if(!::__awh_cache__.ipv6.empty()){
-					// Выбираем стаднарт рандомайзера
+					// Выбираем стандарт рандомайзера
 					mt19937 generator(::__awh_randev__());
 					/**
 					 * Выполняем перебор всех IPv6-адресов в кэше
@@ -2752,14 +2759,14 @@ void awh::unit::DNS::clearBlacklist() noexcept {
 	try {
 		// Если чёрный список IPv4 адресов не пустой
 		if(!::__awh_blacklist__.ipv4.empty()){
-			// Выполняем блокировку потокв для работы с чёрным списком
+			// Выполняем блокировку потока для работы с чёрным списком
 			const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Очищаем чёрный список
 			::__awh_blacklist__.ipv4.clear();
 		}
 		// Если чёрный список IPv6 адресов не пустой
 		if(!::__awh_blacklist__.ipv6.empty()){
-			// Выполняем блокировку потокв для работы с чёрным списком
+			// Выполняем блокировку потока для работы с чёрным списком
 			const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Очищаем чёрный список
 			::__awh_blacklist__.ipv6.clear();
@@ -2786,7 +2793,7 @@ void awh::unit::DNS::clearBlacklist() noexcept {
 /**
  * @brief Метод очистки чёрного списка
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  */
 void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 	/**
@@ -2801,7 +2808,7 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Если чёрный список IPv4 адресов не пустой
 				if(!::__awh_blacklist__.ipv4.empty()){
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем чёрный список
 					::__awh_blacklist__.ipv4.clear();
@@ -2811,7 +2818,7 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Если чёрный список IPv6 адресов не пустой
 				if(!::__awh_blacklist__.ipv6.empty()){
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем чёрный список
 					::__awh_blacklist__.ipv6.clear();
@@ -2849,7 +2856,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для парсинга IP-адреса
+			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(ip)){
@@ -2861,7 +2868,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Выполняем поиск IP-адреса в чёрном списке
 						auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
@@ -2872,7 +2879,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Выполняем поиск IP-адреса в чёрном списке
 						auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
@@ -2921,7 +2928,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const unique_ptr <net::addr_t> & i
 			switch(ip->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск IP-адреса в чёрном списке
 					auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
@@ -2932,7 +2939,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const unique_ptr <net::addr_t> & i
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск IP-адреса в чёрном списке
 					auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
@@ -2965,7 +2972,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const unique_ptr <net::addr_t> & i
 /**
  * @brief Метод удаления IP-адреса из чёрного списка
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, string_view ip) noexcept {
@@ -2981,11 +2988,11 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -2999,11 +3006,11 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3048,11 +3055,11 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для парсинга IP-адреса
+			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(ip)){
-				// Выполняем блокировку потокв для работы с чёрным списком
+				// Выполняем блокировку потока для работы с чёрным списком
 				const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Получаем IP-адрес в исходном виде
 				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3110,14 +3117,14 @@ void awh::unit::DNS::pushAddressToBlacklist(const unique_ptr <net::addr_t> & ip)
 			switch(ip->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем добавление IP-адреса в чёрный список
 					::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем добавление IP-адреса в чёрный список
 					::__awh_blacklist__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
@@ -3146,7 +3153,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const unique_ptr <net::addr_t> & ip)
 /**
  * @brief Метод добавления IP-адреса в чёрный список
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string_view ip) noexcept {
@@ -3162,11 +3169,11 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3176,11 +3183,11 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3222,11 +3229,11 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для парсинга IP-адреса
+			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(const_cast <dns_t *> (this)->_addr.parse(ip)){
-				// Выполняем блокировку потокв для работы с чёрным списком
+				// Выполняем блокировку потока для работы с чёрным списком
 				const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 				// Получаем IP-адрес в исходном виде
 				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3285,14 +3292,14 @@ bool awh::unit::DNS::checkAddressInBlacklist(const unique_ptr <net::addr_t> & ip
 			switch(ip->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 					// Выполняем поиск IP-адреса в чёрном списке
 					return (::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address) != ::__awh_blacklist__.ipv4.end());
 				}
 				// Если адрес является IPv6
 				case 16: {
-					// Выполняем блокировку потокв для работы с чёрным списком
+					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 					// Выполняем поиск IP-адреса в чёрном списке
 					return (::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address) != ::__awh_blacklist__.ipv6.end());
@@ -3323,7 +3330,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const unique_ptr <net::addr_t> & ip
 /**
  * @brief Метод проверки наличия IP-адреса в чёрном списке
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для проверки наличия в чёрном списке
  * @return       результат проверки наличия IP-адреса в чёрном списке
  */
@@ -3340,11 +3347,11 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(const_cast <dns_t *> (this)->_addr.parse(ip, net_addr_t::type_t::IPV4)){
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3354,11 +3361,11 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(const_cast <dns_t *> (this)->_addr.parse(ip, net_addr_t::type_t::IPV6)){
-						// Выполняем блокировку потокв для работы с чёрным списком
+						// Выполняем блокировку потока для работы с чёрным списком
 						const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -3394,7 +3401,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
  *
  */
 void awh::unit::DNS::clearCache() noexcept {
-	// Выполняем блокировку потокв для работы с кэшем
+	// Выполняем блокировку потока для работы с кэшем
 	const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Если в кэше есть IPv4-адреса
 	if(!::__awh_cache__.ipv4.empty()){
@@ -3469,14 +3476,14 @@ void awh::unit::DNS::clearCache() noexcept {
 /**
  * @brief Метод очистки кэша
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  */
 void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потокв для работы с кэшем
+		// Выполняем блокировку потока для работы с кэшем
 		const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Если в кэше есть доменные имена
 		if(!::__awh_cache__.domains.empty()){
@@ -3608,7 +3615,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для работы с кэшем
+			// Выполняем блокировку потока для работы с кэшем
 			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
@@ -3697,7 +3704,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 /**
  * @brief Метод очистки кэша для указанного доменного имени
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя для которого выполняется очистка кэша
  */
 void awh::unit::DNS::clearCache(const event::family_t family, string_view domain) noexcept {
@@ -3707,7 +3714,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для работы с кэшем
+			// Выполняем блокировку потока для работы с кэшем
 			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
@@ -3828,7 +3835,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 /**
  * @brief Метод получения IP-адреса из кэша
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  * @return       IP-адрес находящийся в кэше
  */
@@ -3839,8 +3846,8 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для работы с кэшем
-			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Выполняем блокировку потока для работы с кэшем
+			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
@@ -3865,7 +3872,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Если IP-адрес доменного имени является IPv4
 								if(j->ip->size == 4){
-									// Выполняем блокировку потокв для парсинга IP-адреса
+									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем полученный IP-адрес
 									this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
@@ -3877,7 +3884,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Если IP-адрес доменного имени является IPv6
 								if(j->ip->size == 16){
-									// Выполняем блокировку потокв для парсинга IP-адреса
+									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем полученный IP-адрес
 									this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
@@ -3916,7 +3923,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 /**
  * @brief Метод получения IP-адреса из кэша
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  * @param value  IP-адрес находящийся в кэше
  * @return       результат выполнения операции
@@ -3930,8 +3937,8 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для работы с кэшем
-			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Выполняем блокировку потока для работы с кэшем
+			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
@@ -4018,7 +4025,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 void awh::unit::DNS::pushAddressToCache(string_view domain, string_view ip, const uint32_t ttl) noexcept {
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потокв для парсинга IP-адреса
+		// Выполняем блокировку потока для парсинга IP-адреса
 		const locker_t <> lock(::__awh_mtx__);
 		// Выполняем парсинг IP-адреса
 		if(this->_addr.parse(ip)){
@@ -4043,7 +4050,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем блокировку потокв для работы с кэшем
+			// Выполняем блокировку потока для работы с кэшем
 			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
@@ -4231,7 +4238,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 /**
  * @brief Метод добавления IP-адреса в кэш
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в кэш
  * @param ttl    время жизни кэша доменного имени (в секундах)
@@ -4245,7 +4252,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Выполняем блокировку потокв для парсинга IP-адреса
+				// Выполняем блокировку потока для парсинга IP-адреса
 				const locker_t <> lock(::__awh_mtx__);
 				// Выполняем парсинг IPv4-адреса
 				if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
@@ -4257,7 +4264,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// Выполняем блокировку потокв для парсинга IP-адреса
+				// Выполняем блокировку потока для парсинга IP-адреса
 				const locker_t <> lock(::__awh_mtx__);
 				// Выполняем парсинг IPv6-адреса
 				if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
@@ -4278,7 +4285,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 void awh::unit::DNS::setPrefixEnvironment(string_view prefix) noexcept {
 	// Если префикс переменной окружения передан
 	if(!prefix.empty()){
-		// Выполняем блокировку потокв для установки IP-адреса события
+		// Выполняем блокировку потока для установки IP-адреса события
 		const locker_t <> lock(::__awh_resolver__.mtx);
 		// Устанавливаем префикс переменной окружения
 		::__awh_resolver__.prefix = this->_fmk->transform(prefix, fmk_t::transform_t::UPPER_CASE);
@@ -4384,7 +4391,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 		// Если адрес файла дампа кэша передан
 		if(!filename.empty()){
 			{
-				// Выполняем блокировку потокв для работы с бинарным контейнером
+				// Выполняем блокировку потока для работы с бинарным контейнером
 				const locker_t <> lock(::__awh_mtx__);
 				// Очищаем бинарный контейнер для хранения кэша доменных имён
 				this->_binbox.clear();
@@ -4447,14 +4454,14 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 				if(::__awh_cache__.tid > 0){
 					// Если интервал времени сохранения дампа кэша не совпадает с новым интервалом, то удаляем старый интервал
 					if(::__awh_cache__.interval != interval){
-						// Выполняем блокировку потокв для уничтожения события DNS-резолвера
+						// Выполняем блокировку потока для уничтожения события DNS-резолвера
 						const locker_t <> lock(::__awh_resolver__.mtx);
 						// Удаляем старый интервал
 						this->_io->destroy(::__awh_cache__.tid);
 					// Если интервал времени сохранения дампа кэша совпадает с новым интервалом, то просто выходим из функции
 					} else return;
 				}
-				// Выполняем блокировку потокв для уничтожения события DNS-резолвера
+				// Выполняем блокировку потока для уничтожения события DNS-резолвера
 				const locker_t <> lock(::__awh_resolver__.mtx);
 				// Устанавливаем интервал сохранения дампа кэша
 				::__awh_cache__.interval = interval;
@@ -4498,7 +4505,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 			}
 		// Если адрес файла дампа кэша не передан, но интервал сохранения дампа кэша установлен, то удаляем старый интервал
 		} else if(interval > 0) {
-			// Выполняем блокировку потокв для уничтожения события DNS-резолвера
+			// Выполняем блокировку потока для уничтожения события DNS-резолвера
 			const locker_t <> lock(::__awh_resolver__.mtx);
 			// Удаляем событие интервала
 			this->_io->destroy(::__awh_cache__.tid);
@@ -4535,7 +4542,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
  * @return    результат выполнения фиксации
  */
 bool awh::unit::DNS::commit(const event::id_t eid) noexcept {
-	// Выполняем блокировку потокв для фиксации параметров события DNS-резолвера
+	// Выполняем блокировку потока для фиксации параметров события DNS-резолвера
 	const locker_t <> lock(::__awh_resolver__.mtx);
 	// Выполняем фиксацию параметров события и его запуск
 	return (this->_io->commit(eid) && this->_io->launch(eid));
@@ -4546,12 +4553,12 @@ bool awh::unit::DNS::commit(const event::id_t eid) noexcept {
  * @param eid идентификатор события DNS-резолвера
  */
 void awh::unit::DNS::destroy(const event::id_t eid) noexcept {
-	// Выполняем блокировку потокв для уничтожения события DNS-резолвера
+	// Выполняем блокировку потока для уничтожения события DNS-резолвера
 	const locker_t <> lock(::__awh_resolver__.mtx);
 	// Удаляем событие DNS-резолвера
 	this->_io->destroy(eid);
 	{
-		// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
+		// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 		const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск идентификатора события таймера для ожидания ответа от DNS-сервера
 		auto i = ::timeout::timers.find(eid);
@@ -4579,7 +4586,7 @@ void awh::unit::DNS::destroy(const event::id_t eid) noexcept {
 /**
  * @brief Метод создания события DNS-резолвера
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @return       идентификатор события DNS-резолвера
  */
 awh::event::id_t awh::unit::DNS::create(const event::family_t family) noexcept {
@@ -4587,7 +4594,7 @@ awh::event::id_t awh::unit::DNS::create(const event::family_t family) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потокв для создания события DNS-резолвера
+		// Выполняем блокировку потока для создания события DNS-резолвера
 		const locker_t <> lock(::__awh_resolver__.mtx);
 		// Добавляем новое событие клиента UDP
 		const event::id_t result = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
@@ -4697,7 +4704,7 @@ awh::event::id_t awh::unit::DNS::create(const event::family_t family) noexcept {
 			}
 		// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 		} else {
-			// Выполняем блокировку потокв для работы с контейнером таймаутов и обратных связей таймаутов
+			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 			const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сохраняем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 			::timeout::timers.emplace(result, tid);
@@ -4745,7 +4752,7 @@ uint16_t awh::unit::DNS::getPort(const event::id_t eid) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::unit::DNS::setPort(const event::id_t eid, const uint16_t port) noexcept {
-	// Выполняем блокировку потокв для установки порта события
+	// Выполняем блокировку потока для установки порта события
 	const locker_t <> lock(::__awh_resolver__.mtx);
 	// Устанавливаем порт события
 	return this->_io->setPort(eid, port);
@@ -4758,7 +4765,7 @@ bool awh::unit::DNS::setPort(const event::id_t eid, const uint16_t port) noexcep
  * @return       значение таймаута в миллисекундах
  */
 uint32_t awh::unit::DNS::getTimeout(const event::id_t eid) const noexcept {
-	// Выполняем блокировку потокв для работы с контейнером таймаутов
+	// Выполняем блокировку потока для работы с контейнером таймаутов
 	const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 	auto i = ::timeout::timers.find(eid);
@@ -4776,13 +4783,13 @@ uint32_t awh::unit::DNS::getTimeout(const event::id_t eid) const noexcept {
  * @param timeout значение таймаута в миллисекундах
  */
 void awh::unit::DNS::setTimeout(const event::id_t eid, const uint32_t timeout) noexcept {
-	// Выполняем блокировку потокв для работы с контейнером таймаутов
+	// Выполняем блокировку потока для работы с контейнером таймаутов
 	const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 	auto i = ::timeout::timers.find(eid);
 	// Если таймер для события DNS-резолвера найден
 	if(i != ::timeout::timers.end()){
-		// Выполняем блокировку потокв для установки таймаута события
+		// Выполняем блокировку потока для установки таймаута события
 		const locker_t <> lock(::__awh_resolver__.mtx);
 		// Устанавливаем время ожидания выполнения запроса
 		this->_io->setTimeout(i->second, event::action_t::NONE, timeout);
@@ -4801,11 +4808,11 @@ void awh::unit::DNS::addServer(const event::id_t eid, string_view server) noexce
 	try {
 		// Если адрес DNS-сервера передан
 		if((eid > 0) && !server.empty()){
-			// Выполняем блокировку потокв для парсинга IP-адреса
+			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
-				// Выполняем блокировку потокв для установки IP-адреса события
+				// Выполняем блокировку потока для установки IP-адреса события
 				const locker_t <> lock(::__awh_resolver__.mtx);
 				// Получаем IP-адрес в исходном виде
 				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -4868,7 +4875,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const unique_ptr <net::add
 			}
 			// Если IP-адрес получен
 			if(ip != nullptr){
-				// Выполняем блокировку потокв для установки IP-адреса события
+				// Выполняем блокировку потока для установки IP-адреса события
 				const locker_t <> lock(::__awh_resolver__.mtx);
 				// Устанавливаем IP-адрес события
 				this->_io->setTarget(eid, ::move(ip));
@@ -4897,7 +4904,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const unique_ptr <net::add
  * @brief Метод добавления сервера DNS
  *
  * @param eid    идентификатор события DNS-резолвера
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param server адрес DNS-сервера
  */
 void awh::unit::DNS::addServer(const event::id_t eid, const event::family_t family, string_view server) noexcept {
@@ -4915,7 +4922,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const event::family_t fami
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4))
@@ -4924,7 +4931,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const event::family_t fami
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6))
@@ -4934,7 +4941,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const event::family_t fami
 			}
 			// Если IP-адрес получен
 			if(ip != nullptr){
-				// Выполняем блокировку потокв для установки IP-адреса события
+				// Выполняем блокировку потока для установки IP-адреса события
 				const locker_t <> lock(::__awh_resolver__.mtx);
 				// Устанавливаем IP-адрес события
 				this->_io->setTarget(eid, ::move(ip));
@@ -4972,7 +4979,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
 	try {
 		// Если адрес сети для выполнения запроса передан
 		if((eid > 0) && !source.empty()){
-			// Выполняем блокировку потокв для парсинга IP-адреса
+			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(source)){
@@ -4982,7 +4989,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем блокировку потокв для установки IP-адреса события
+						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(::__awh_resolver__.mtx);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -4991,7 +4998,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем блокировку потокв для установки IP-адреса события
+						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(::__awh_resolver__.mtx);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -5039,7 +5046,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, const unique_ptr <net::add
 			switch(source->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Выполняем блокировку потокв для установки IP-адреса события
+					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(::__awh_resolver__.mtx);
 					// Выполняем инициализацию объекта IP-адреса
 					auto ip = make_unique <net::addr_net_ipv4_t> ();
@@ -5050,7 +5057,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, const unique_ptr <net::add
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Выполняем блокировку потокв для установки IP-адреса события
+					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(::__awh_resolver__.mtx);
 					// Выполняем инициализацию объекта IP-адреса
 					auto ip = make_unique <net::addr_net_ipv6_t> ();
@@ -5084,7 +5091,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, const unique_ptr <net::add
  * @brief Метод добавления адреса сети с которого будет выполняться запрос
  *
  * @param eid    идентификатор события DNS-резолвера
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param source адрес сети для выполнения запроса
  */
 void awh::unit::DNS::addSource(const event::id_t eid, const event::family_t family, string_view source) noexcept {
@@ -5100,11 +5107,11 @@ void awh::unit::DNS::addSource(const event::id_t eid, const event::family_t fami
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV4)){
-						// Выполняем блокировку потокв для установки IP-адреса события
+						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(::__awh_resolver__.mtx);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -5114,11 +5121,11 @@ void awh::unit::DNS::addSource(const event::id_t eid, const event::family_t fami
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV6)){
-						// Выполняем блокировку потокв для установки IP-адреса события
+						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(::__awh_resolver__.mtx);
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
@@ -5172,7 +5179,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 	try {
 		// Если адрес сети для выполнения запроса передан
 		if((eid > 0) && (ip != nullptr) && this->_callback.is("address")){
-			// Выполняем блокировку потокв для парсинга IP-адреса
+			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Устанавливаем полученный IP-адрес
 			this->_addr.source(ip);
@@ -5183,8 +5190,8 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем блокировку потокв для работы с кэшем
-						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Выполняем блокировку потока для работы с кэшем
+						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Выполняем поиск IP-адреса в кэше
 						auto i = ::__awh_cache__.ipv4.find(this->_addr.v4(net_addr_t::endian_t::LITTLE));
 						// Если в кэше IP-адрес найден
@@ -5211,8 +5218,8 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем блокировку потокв для работы с кэшем
-						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Выполняем блокировку потока для работы с кэшем
+						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Выполняем поиск IP-адреса в кэше
 						auto i = ::__awh_cache__.ipv6.find(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 						// Если в кэше IP-адрес найден
@@ -5243,7 +5250,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 			const string domain = ::move(this->_addr.arpa());
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потокв для работы с контейнером таймаутов
+				// Выполняем блокировку потока для работы с контейнером таймаутов
 				const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 				auto i = ::timeout::timers.find(eid);
@@ -5306,13 +5313,13 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
 						{
-							// Выполняем блокировку потокв для работы с кэшем
-							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+							// Выполняем блокировку потока для работы с кэшем
+							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Выполняем поиск IP-адреса в кэше
 							auto i = ::__awh_cache__.ipv4.find(this->_addr.v4(net_addr_t::endian_t::LITTLE));
 							// Если в кэше IP-адрес найден
@@ -5341,7 +5348,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 						const string domain = ::move(this->_addr.arpa());
 						// Если доменное имя получено
 						if(!domain.empty()){
-							// Выполняем блокировку потокв для работы с контейнером таймаутов
+							// Выполняем блокировку потока для работы с контейнером таймаутов
 							const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 							auto i = ::timeout::timers.find(eid);
@@ -5365,13 +5372,13 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потокв для парсинга IP-адреса
+					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
 						{
-							// Выполняем блокировку потокв для работы с кэшем
-							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+							// Выполняем блокировку потока для работы с кэшем
+							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Выполняем поиск IP-адреса в кэше
 							auto i = ::__awh_cache__.ipv6.find(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 							// Если в кэше IP-адрес найден
@@ -5400,7 +5407,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 						const string domain = ::move(this->_addr.arpa());
 						// Если доменное имя получено
 						if(!domain.empty()){
-							// Выполняем блокировку потокв для работы с контейнером таймаутов
+							// Выполняем блокировку потока для работы с контейнером таймаутов
 							const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 							auto i = ::timeout::timers.find(eid);
@@ -5461,7 +5468,7 @@ bool awh::unit::DNS::request(const event::id_t eid, const record_t record, strin
 		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
 		if((eid > 0) && !domain.empty()){
 			{
-				// Выполняем блокировку потокв для работы с контейнером таймаутов
+				// Выполняем блокировку потока для работы с контейнером таймаутов
 				const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 				auto i = ::timeout::timers.find(eid);
@@ -5528,8 +5535,8 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
 		if((eid > 0) && !domain.empty() && this->_callback.is("address")){
 			{
-				// Выполняем блокировку потокв для работы с кэшем
-				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Выполняем блокировку потока для работы с кэшем
+				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем поиск доменного имени в кэше
 				auto i = ::__awh_cache__.domains.find(string{domain});
 				// Если в кэше доменное имя найдено
@@ -5557,7 +5564,7 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 										// IP-адрес для вывода результата
 										string address = "";
 										{
-											// Выполняем блокировку потокв для парсинга IP-адреса
+											// Выполняем блокировку потока для парсинга IP-адреса
 											const locker_t <> lock(::__awh_mtx__);
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
@@ -5577,7 +5584,7 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 										// IP-адрес для вывода результата
 										string address = "";
 										{
-											// Выполняем блокировку потокв для парсинга IP-адреса
+											// Выполняем блокировку потока для парсинга IP-адреса
 											const locker_t <> lock(::__awh_mtx__);
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
@@ -5597,7 +5604,7 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 					}
 				}
 			}{
-				// Выполняем блокировку потокв для работы с контейнером таймаутов
+				// Выполняем блокировку потока для работы с контейнером таймаутов
 				const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
 				auto i = ::timeout::timers.find(eid);
