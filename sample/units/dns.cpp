@@ -58,6 +58,11 @@ int32_t main(int32_t argc, char * argv[]){
 	dns.setTimeout(eid, 3000);
 	// Добавляем DNS-сервер для резолвинга доменных имён (фейковый)
 	// dns.addServer(eid, "127.0.0.1");
+	// Устанавливаем функцию обратного вызова на событие получения IP-адреса при резолвинге доменного имени
+	dns.on <void (const event::family_t, string_view, string_view)> ("address", [&log](const event::family_t family, string_view fqdn, string_view ip) noexcept -> void {
+		// Выводим информацию об успешно резолвленном доменном имени
+		log.print("Успешно резолвлено доменное имя %s в IP-адрес: %s (%s)", log_t::flag_t::INFO, fqdn.data(), ip.data(), (family == event::family_t::IPV4 ? "IPv4" : "IPv6"));
+	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие количества попыток резолвинга доменного имени
 	dns.on <void (const event::id_t, const uint8_t)> ("attempts", [&log](const event::id_t eid, const uint8_t attempts) noexcept -> void {
 		// Выводим количество попыток резолвинга доменного имени
@@ -75,8 +80,12 @@ int32_t main(int32_t argc, char * argv[]){
 				log.print("Событие DNS-резолвера было запущено", log_t::flag_t::INFO);
 				// Если событие DNS-резолвера запущено
 				if(dns.commit(eid)){
+					// Выполняем поиск доменного имени соответствующему IP-адресу
+					if(!dns.search(eid, event::family_t::IPV4, "77.88.44.242"))
+						// Выводим сообщение об ошибке
+						log.print("Не удалось выполнить поиск доменного имени", log_t::flag_t::CRITICAL);
 					// Выполняем резолвинг доменного имени
-					if(!dns.resolve(eid, event::family_t::IPV4, "ya.ru"))
+					if(!dns.resolve(eid, event::family_t::IPV4, "www.google.com")) // CNAME for "dns.rambler-co.ru"
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить резолвинг доменного имени", log_t::flag_t::CRITICAL);
 				// Выводим сообщение об ошибке
