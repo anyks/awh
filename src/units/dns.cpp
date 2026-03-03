@@ -4322,7 +4322,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 				// Очищаем бинарный контейнер для хранения кэша доменных имён
 				this->_binbox.clear();
 				// Загружаем кэш доменных имён из файла дампа кэша
-				this->_binbox.load(::__awh_cache__.filename);
+				this->_binbox.load(filename);
 				// Если кэш из бинарного файла загружен в контейнер
 				if(!this->_binbox.empty()){
 					// Создаём объект записи для добавления в контейнер
@@ -5285,9 +5285,69 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если доменное имя передано
-		if((eid > 0) && !domain.empty()){
+		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
+		if((eid > 0) && !domain.empty() && this->_callback.is("address")){
 			{
+				// Выполняем блокировку потокв для работы с кэшем
+				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Выполняем поиск доменного имени в кэше
+				auto i = ::__awh_cache__.domains.find(string{domain});
+				// Если в кэше доменное имя найдено
+				if(i != ::__awh_cache__.domains.end()){
+					// Получаем текущую метку времени
+					const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+					/**
+					 * Выполняем перебор всех записей доменного имени
+					 */
+					for(const auto & record : i->second){
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если IP-адрес доменного имени является IPv4
+								if((record.ip->size == 4) && ((now < record.life) || (record.life == 0))){
+									// IP-адрес для вывода результата
+									string address = "";
+									{
+										// Выполняем блокировку потокв для парсинга IP-адреса
+										const locker_t <> lock(::__awh_mtx__);
+										// Устанавливаем полученный IP-адрес
+										this->_addr.source(record.ip, net_addr_t::endian_t::LITTLE);
+										// Устанавливаем строковое представление IP-адреса для вывода результата
+										address = ::move(static_cast <string> (this->_addr));
+									}
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, domain, address);
+									// Выводим положительный результат
+									return true;
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если IP-адрес доменного имени является IPv6
+								if((record.ip->size == 16) && ((now < record.life) || (record.life == 0))){
+									// IP-адрес для вывода результата
+									string address = "";
+									{
+										// Выполняем блокировку потокв для парсинга IP-адреса
+										const locker_t <> lock(::__awh_mtx__);
+										// Устанавливаем полученный IP-адрес
+										this->_addr.source(record.ip, net_addr_t::endian_t::LITTLE);
+										// Устанавливаем строковое представление IP-адреса для вывода результата
+										address = ::move(static_cast <string> (this->_addr));
+									}
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, domain, address);
+									// Выводим положительный результат
+									return true;
+								}
+							} break;
+						}
+					}
+				}
+			}{
 				// Выполняем блокировку потокв для работы с контейнером таймаутов
 				const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
