@@ -80,6 +80,10 @@ int32_t main(int32_t argc, char * argv[]){
 				log.print("Событие DNS-резолвера было запущено", log_t::flag_t::INFO);
 				// Если событие DNS-резолвера запущено
 				if(dns.commit(eid)){
+					// Кодируем доменное имя в Punycode
+					log.print("Доменное имя закодированно: %s", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
+					// Декодируем доменное имя из Punycode
+					log.print("Доменное имя декодированно: %s", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
 					// Выполняем поиск доменного имени соответствующему IP-адресу
 					if(!dns.search(eid, event::family_t::IPV4, "77.88.44.242"))
 						// Выводим сообщение об ошибке
