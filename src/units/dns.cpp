@@ -2235,8 +2235,8 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 									// Устанавливаем ARPA-адрес в объекте адреса
 									this->_addr.arpa(result.ptr.front().name);
 									/**
-										* Определяем тип адреса для установки семейства адресов для вывода результата
-										*/
+									 * Определяем тип адреса для установки семейства адресов для вывода результата
+									 */
 									switch(static_cast <uint8_t> (this->_addr.type())){
 										// Если адрес является IPv4
 										case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
