@@ -144,7 +144,7 @@ namespace awh {
 			 * @param target адрес хоста целевой машины
 			 * @return       результат выполнения установки
 			 */
-			virtual bool setTarget(const event::id_t id, const unique_ptr <net::addr_t> & target) noexcept = 0;
+			virtual bool setTarget(const event::id_t id, const net::addr_t * target) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса события
@@ -181,7 +181,7 @@ namespace awh {
 			 * @param value   значение адреса события
 			 * @return        результат выполнения установки
 			 */
-			virtual bool setAddress(const event::id_t id, const event::address_t address, const unique_ptr <net::addr_t> & value) noexcept = 0;
+			virtual bool setAddress(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод активации/деактивации мультикаст группы события
@@ -204,7 +204,7 @@ namespace awh {
 			 * @param port   порт мультикаст-группы с которого выполняется подписка
 			 * @return       результат выполнения установки
 			 */
-			virtual bool membership(const event::id_t id, const event::mode_t mode, const unique_ptr <net::addr_t> & group, const unique_ptr <net::addr_t> & source, const uint16_t port = 0) noexcept = 0;
+			virtual bool membership(const event::id_t id, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод удаления события

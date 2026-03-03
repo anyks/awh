@@ -61,19 +61,19 @@ namespace awh {
 				 */
 				void fillSource(net::src_t & source) const noexcept;
 				/**
+				 * @brief Метод заполнения источника сетевых адресов по заданной сети
+				 *
+				 * @param net    сетевой адрес подсети в хостовом порядке
+				 * @param source объект источника сетевых адресов
+				 */
+				void fillSource(const net::addr_t * net, net::src_t & source) const noexcept;
+				/**
 				 * @brief Метод заполнения источника сетевых адресов
 				 *
 				 * @param node   тип узла события
 				 * @param source объект источника сетевых адресов
 				 */
 				void fillSource(const event::node_t node, net::src_t & source) const noexcept;
-				/**
-				 * @brief Метод заполнения источника сетевых адресов по заданной сети
-				 *
-				 * @param net    сетевой адрес подсети в хостовом порядке
-				 * @param source объект источника сетевых адресов
-				 */
-				void fillSource(const unique_ptr <net::addr_t> & net, net::src_t & source) const noexcept;
 			public:
 				/**
 				 * @brief Метод проверки принадлежности IP-адреса подсети

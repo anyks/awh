@@ -178,7 +178,7 @@ TEST_F(EthFixture, EthSuiteTest){
 		// Устанавливаем адрес мультикаст-группы
 		static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
 		// Получаем имя сетевого интерфейса по IP-адресу
-		ASSERT_TRUE(this->_eth->iface.name(addr).empty());
+		ASSERT_TRUE(this->_eth->iface.name(addr.get()).empty());
 	}{
 		// Временный объект для извлечения сетевого интерфейса
 		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
@@ -187,7 +187,7 @@ TEST_F(EthFixture, EthSuiteTest){
 		// Устанавливаем адрес мультикаст-группы
 		static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
 		// Выполняем извлечение сетевых параметров
-		this->_eth->addr.fillSource(addr, source);
+		this->_eth->addr.fillSource(addr.get(), source);
 		// Получаем имя сетевого интерфейса по IP-адресу
 		ASSERT_TRUE(source.iface.empty());
 	}{

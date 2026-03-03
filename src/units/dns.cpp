@@ -2114,7 +2114,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Устанавливаем IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = answer.ip;
 								// Добавляем запись в кэш DNS-резолвера
-								this->pushAddressToCache(answer.name, ::move(ip), answer.ttl);
+								this->pushAddressToCache(answer.name, ip.get(), answer.ttl);
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
@@ -2123,17 +2123,17 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Выполняем рандомную сортировку списка DNS-серверов
 								::shuffle(result.a.begin(), result.a.end(), generator);
 								// IP-адрес для вывода результата
-								string address = "";
+								unique_ptr <net::addr_t> address = nullptr;
 								{
 									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем IPv4-адрес в объекте адреса
 									this->_addr.v4(result.a.front().ip);
 									// Устанавливаем строковое представление IP-адреса для вывода результата
-									address = ::move(static_cast <string> (this->_addr));
+									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, result.a.front().name, address);
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV4, result.a.front().name, address.get());
 							}
 						}
 						// Если мы получили AAAA-записи в ответе
@@ -2164,7 +2164,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Устанавливаем IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &answer.ip[0], 16);
 								// Добавляем запись в кэш DNS-резолвера
-								this->pushAddressToCache(answer.name, ::move(ip), answer.ttl);
+								this->pushAddressToCache(answer.name, ip.get(), answer.ttl);
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
@@ -2173,17 +2173,17 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Выполняем рандомную сортировку списка DNS-серверов
 								::shuffle(result.aaaa.begin(), result.aaaa.end(), generator);
 								// IP-адрес для вывода результата
-								string address = "";
+								unique_ptr <net::addr_t> address = nullptr;
 								{
 									// Выполняем блокировку потока для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем IPv6-адрес в объекте адреса
 									this->_addr.v6(result.aaaa.front().ip);
 									// Устанавливаем строковое представление IP-адреса для вывода результата
-									address = ::move(static_cast <string> (this->_addr));
+									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, result.aaaa.front().name, address);
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV6, result.aaaa.front().name, address.get());
 							}
 						}
 						// Если мы получили NS-записи в ответе
@@ -2334,7 +2334,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Устанавливаем ARPA-адрес в объекте адреса
 								this->_addr.arpa(answer.name);
 								// Добавляем запись в кэш DNS-резолвера
-								this->pushAddressToCache(answer.domain, ::move(this->_addr.source()), answer.ttl);
+								this->pushAddressToCache(answer.domain, this->_addr.source().get(), answer.ttl);
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
@@ -2343,7 +2343,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 								// Выполняем рандомную сортировку списка DNS-серверов
 								::shuffle(result.ptr.begin(), result.ptr.end(), generator);
 								// IP-адрес для вывода результата
-								string address = "";
+								unique_ptr <net::addr_t> address = nullptr;
 								// Семейство адресов для вывода результата
 								event::family_t family = event::family_t::NONE;
 								{
@@ -2367,10 +2367,10 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 										break;
 									}
 									// Устанавливаем строковое представление IP-адреса для вывода результата
-									address = ::move(static_cast <string> (this->_addr));
+									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, family, result.ptr.front().domain, address);
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, family, result.ptr.front().domain, address.get());
 							}
 						}
 						// Если мы получили SOA-записи в ответе
@@ -3025,7 +3025,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
  *
  * @param ip адрес для удаления из чёрного списка
  */
-void awh::unit::DNS::removeAddressInBlacklist(const unique_ptr <net::addr_t> & ip) noexcept {
+void awh::unit::DNS::removeAddressInBlacklist(const net::addr_t * ip) noexcept {
 	// Если IP-адрес передан
 	if(ip != nullptr){
 		/**
@@ -3041,7 +3041,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const unique_ptr <net::addr_t> & i
 					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск IP-адреса в чёрном списке
-					auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+					auto i = ::__awh_blacklist__.ipv4.find(awh_cast <const net::addr_net_ipv4_t *> (ip)->address);
 					// Если IP-адрес найден в чёрном списке
 					if(i != ::__awh_blacklist__.ipv4.end())
 						// Удаляем IP-адрес из чёрного списка
@@ -3052,7 +3052,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const unique_ptr <net::addr_t> & i
 					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск IP-адреса в чёрном списке
-					auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+					auto i = ::__awh_blacklist__.ipv6.find(awh_cast <const net::addr_net_ipv6_t *> (ip)->address);
 					// Если IP-адрес найден в чёрном списке
 					if(i != ::__awh_blacklist__.ipv6.end())
 						// Удаляем IP-адрес из чёрного списка
@@ -3214,7 +3214,7 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
  *
  * @param ip адрес для добавления в чёрный список
  */
-void awh::unit::DNS::pushAddressToBlacklist(const unique_ptr <net::addr_t> & ip) noexcept {
+void awh::unit::DNS::pushAddressToBlacklist(const net::addr_t * ip) noexcept {
 	// Если IP-адрес передан
 	if(ip != nullptr){
 		/**
@@ -3230,14 +3230,14 @@ void awh::unit::DNS::pushAddressToBlacklist(const unique_ptr <net::addr_t> & ip)
 					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем добавление IP-адреса в чёрный список
-					::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+					::__awh_blacklist__.ipv4.emplace(awh_cast <const net::addr_net_ipv4_t *> (ip)->address);
 				} break;
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем добавление IP-адреса в чёрный список
-					::__awh_blacklist__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+					::__awh_blacklist__.ipv6.emplace(awh_cast <const net::addr_net_ipv6_t *> (ip)->address);
 				} break;
 			}
 		/**
@@ -3389,7 +3389,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
  * @param ip адрес для проверки наличия в чёрном списке
  * @return   результат проверки наличия IP-адреса в чёрном списке
  */
-bool awh::unit::DNS::checkAddressInBlacklist(const unique_ptr <net::addr_t> & ip) const noexcept {
+bool awh::unit::DNS::checkAddressInBlacklist(const net::addr_t * ip) const noexcept {
 	// Если IP-адрес передан
 	if(ip != nullptr){
 		/**
@@ -3405,14 +3405,14 @@ bool awh::unit::DNS::checkAddressInBlacklist(const unique_ptr <net::addr_t> & ip
 					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 					// Выполняем поиск IP-адреса в чёрном списке
-					return (::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address) != ::__awh_blacklist__.ipv4.end());
+					return (::__awh_blacklist__.ipv4.find(awh_cast <const net::addr_net_ipv4_t *> (ip)->address) != ::__awh_blacklist__.ipv4.end());
 				}
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для работы с чёрным списком
 					const locker_t <std::shared_mutex> lock(::__awh_blacklist__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 					// Выполняем поиск IP-адреса в чёрном списке
-					return (::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address) != ::__awh_blacklist__.ipv6.end());
+					return (::__awh_blacklist__.ipv6.find(awh_cast <const net::addr_net_ipv6_t *> (ip)->address) != ::__awh_blacklist__.ipv6.end());
 				}
 			}
 		/**
@@ -3983,7 +3983,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 								// Выполняем блокировку потока для парсинга IP-адреса
 								const locker_t <> lock(::__awh_mtx__);
 								// Устанавливаем полученный IP-адрес
-								this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+								this->_addr.source(j->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
@@ -3995,7 +3995,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 								// Выполняем блокировку потока для парсинга IP-адреса
 								const locker_t <> lock(::__awh_mtx__);
 								// Устанавливаем полученный IP-адрес
-								this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+								this->_addr.source(j->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
@@ -4132,7 +4132,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, string_view ip, cons
 			// Получаем IP-адрес в исходном виде
 			auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 			// Выполняем добавление записи в кэш
-			this->pushAddressToCache(domain, ip, ttl);
+			this->pushAddressToCache(domain, ip.get(), ttl);
 		}
 	}
 }
@@ -4143,7 +4143,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, string_view ip, cons
  * @param ip     адрес для добавления в кэш
  * @param ttl    время жизни кэша доменного имени (в секундах)
  */
-void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <net::addr_t> & ip, const uint32_t ttl) noexcept {
+void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * ip, const uint32_t ttl) noexcept {
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && (ip != nullptr)){
 		/**
@@ -4173,7 +4173,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 						// Выполняем инициализацию объекта IP-адреса
 						record.ip = make_unique <net::addr_net_ipv4_t> ();
 						// Устанавливаем IP-адрес
-						awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (ip.get())->address;
+						awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
 						// Выполняем поиск IP-адреса
 						auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address);
 						// Если IP-адрес найден в кэше
@@ -4205,7 +4205,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 						// Выполняем инициализацию объекта IP-адреса
 						record.ip = make_unique <net::addr_net_ipv6_t> ();
 						// Устанавливаем IP-адрес
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16);
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
 						// Выполняем поиск IP-адреса
 						auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address);
 						// Если IP-адрес найден в кэше
@@ -4252,9 +4252,9 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 						// Выполняем инициализацию объекта IP-адреса
 						entry.back().ip = make_unique <net::addr_net_ipv4_t> ();
 						// Устанавливаем IP-адрес
-						awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (ip.get())->address;
+						awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
 						// Выполняем поиск IP-адреса
-						auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
+						auto i = ::__awh_cache__.ipv4.find(awh_cast <const net::addr_net_ipv4_t *> (ip)->address);
 						// Если IP-адрес найден в кэше
 						if(i != ::__awh_cache__.ipv4.end()){
 							// Создаём объект записи
@@ -4278,7 +4278,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 								// Устанавливаем время жизни
 								entry.back().life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Добавляем новую запись в кэш IP-адресов
-							::__awh_cache__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, ::move(entry));
+							::__awh_cache__.ipv4.emplace(awh_cast <const net::addr_net_ipv4_t *> (ip)->address, ::move(entry));
 						}
 					} break;
 					// Если адрес является IPv6
@@ -4286,9 +4286,9 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 						// Выполняем инициализацию объекта IP-адреса
 						entry.back().ip = make_unique <net::addr_net_ipv6_t> ();
 						// Устанавливаем IP-адрес
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16);
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
 						// Выполняем поиск IP-адреса
-						auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
+						auto i = ::__awh_cache__.ipv6.find(awh_cast <const net::addr_net_ipv6_t *> (ip)->address);
 						// Если IP-адрес найден в кэше
 						if(i != ::__awh_cache__.ipv6.end()){
 							// Создаём объект записи
@@ -4312,7 +4312,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 								// Устанавливаем время жизни
 								entry.back().life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Добавляем новую запись в кэш IP-адресов
-							::__awh_cache__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, ::move(entry));
+							::__awh_cache__.ipv6.emplace(awh_cast <const net::addr_net_ipv6_t *> (ip)->address, ::move(entry));
 						}
 					} break;
 				}
@@ -4363,7 +4363,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 					// Получаем IP-адрес в исходном виде
 					auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					// Выполняем добавление записи в кэш
-					this->pushAddressToCache(domain, ip, ttl);
+					this->pushAddressToCache(domain, ip.get(), ttl);
 				}
 			} break;
 			// Для семейства IPv6
@@ -4375,7 +4375,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 					// Получаем IP-адрес в исходном виде
 					auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					// Выполняем добавление записи в кэш
-					this->pushAddressToCache(domain, ip, ttl);
+					this->pushAddressToCache(domain, ip.get(), ttl);
 				}
 			} break;
 		}
@@ -4534,7 +4534,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 											// Устанавливаем IP-адрес из записи кэша доменных имён
 											::memcpy(&awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, record.ip, 4);
 											// Устанавливаем запись в кэш доменных имён
-											this->pushAddressToCache(reinterpret_cast <char *> (record.fqdn), ::move(ip), record.life);
+											this->pushAddressToCache(reinterpret_cast <char *> (record.fqdn), ip.get(), record.life);
 										} break;
 										// Если адрес является IPv6
 										case 16:
@@ -4543,7 +4543,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 											// Устанавливаем IP-адрес из записи кэша доменных имён
 											::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, record.ip, 16);
 											// Устанавливаем запись в кэш доменных имён
-											this->pushAddressToCache(reinterpret_cast <char *> (record.fqdn), ::move(ip), record.life);
+											this->pushAddressToCache(reinterpret_cast <char *> (record.fqdn), ip.get(), record.life);
 										break;
 									}
 								}
@@ -4921,7 +4921,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, string_view server) noexce
 				// Получаем IP-адрес в исходном виде
 				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				// Устанавливаем IP-адрес события
-				this->_io->setTarget(eid, ::move(ip));
+				this->_io->setTarget(eid, ip.get());
 			}
 		}
 	/**
@@ -4949,7 +4949,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, string_view server) noexce
  * @param eid    идентификатор события DNS-резолвера
  * @param server адрес DNS-сервера
  */
-void awh::unit::DNS::addServer(const event::id_t eid, const unique_ptr <net::addr_t> & server) noexcept {
+void awh::unit::DNS::addServer(const event::id_t eid, const net::addr_t * server) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4967,14 +4967,14 @@ void awh::unit::DNS::addServer(const event::id_t eid, const unique_ptr <net::add
 					// Выполняем инициализацию объекта IP-адреса
 					ip = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (server.get())->address;
+					awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (server)->address;
 				} break;
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем инициализацию объекта IP-адреса
 					ip = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (server.get())->address[0], 16);
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (server)->address[0], 16);
 				} break;
 			}
 			// Если IP-адрес получен
@@ -4982,7 +4982,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const unique_ptr <net::add
 				// Выполняем блокировку потока для установки IP-адреса события
 				const locker_t <> lock(::__awh_resolver__.mtx);
 				// Устанавливаем IP-адрес события
-				this->_io->setTarget(eid, ::move(ip));
+				this->_io->setTarget(eid, ip.get());
 			}
 		}
 	/**
@@ -5048,7 +5048,7 @@ void awh::unit::DNS::addServer(const event::id_t eid, const event::family_t fami
 				// Выполняем блокировку потока для установки IP-адреса события
 				const locker_t <> lock(::__awh_resolver__.mtx);
 				// Устанавливаем IP-адрес события
-				this->_io->setTarget(eid, ::move(ip));
+				this->_io->setTarget(eid, ip.get());
 			}
 		}
 	/**
@@ -5098,7 +5098,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Устанавливаем IP-адрес события
-						this->_io->setAddress(eid, event::address_t::IPV4, ::move(ip));
+						this->_io->setAddress(eid, event::address_t::IPV4, ip.get());
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
@@ -5107,7 +5107,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Устанавливаем IP-адрес события
-						this->_io->setAddress(eid, event::address_t::IPV6, ::move(ip));
+						this->_io->setAddress(eid, event::address_t::IPV6, ip.get());
 					} break;
 				}
 			}
@@ -5137,7 +5137,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, string_view source) noexce
  * @param eid    идентификатор события DNS-резолвера
  * @param source адрес сети для выполнения запроса
  */
-void awh::unit::DNS::addSource(const event::id_t eid, const unique_ptr <net::addr_t> & source) noexcept {
+void awh::unit::DNS::addSource(const event::id_t eid, const net::addr_t * source) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5155,9 +5155,9 @@ void awh::unit::DNS::addSource(const event::id_t eid, const unique_ptr <net::add
 					// Выполняем инициализацию объекта IP-адреса
 					auto ip = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
+					awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 					// Устанавливаем IP-адрес события
-					this->_io->setAddress(eid, event::address_t::IPV4, ::move(ip));
+					this->_io->setAddress(eid, event::address_t::IPV4, ip.get());
 				} break;
 				// Если адрес является IPv6
 				case 16: {
@@ -5166,9 +5166,9 @@ void awh::unit::DNS::addSource(const event::id_t eid, const unique_ptr <net::add
 					// Выполняем инициализацию объекта IP-адреса
 					auto ip = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], 16);
 					// Устанавливаем IP-адрес события
-					this->_io->setAddress(eid, event::address_t::IPV6, ::move(ip));
+					this->_io->setAddress(eid, event::address_t::IPV6, ip.get());
 				} break;
 			}
 		}
@@ -5220,7 +5220,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, const event::family_t fami
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Устанавливаем IP-адрес события
-						this->_io->setAddress(eid, event::address_t::IPV4, ::move(ip));
+						this->_io->setAddress(eid, event::address_t::IPV4, ip.get());
 					}
 				} break;
 				// Для семейства IPv6
@@ -5234,7 +5234,7 @@ void awh::unit::DNS::addSource(const event::id_t eid, const event::family_t fami
 						// Получаем IP-адрес в исходном виде
 						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Устанавливаем IP-адрес события
-						this->_io->setAddress(eid, event::address_t::IPV6, ::move(ip));
+						this->_io->setAddress(eid, event::address_t::IPV6, ip.get());
 					}
 				} break;
 			}
@@ -5276,7 +5276,7 @@ bool awh::unit::DNS::search(const event::id_t eid, string_view ip) noexcept {
  * @param ip  адрес для поиска доменного имени
  * @return    результат выполнения операции
  */
-bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t> & ip) noexcept {
+bool awh::unit::DNS::search(const event::id_t eid, const net::addr_t * ip) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5311,7 +5311,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 									// Пропускаем записи IP-адреса
 									continue;
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, static_cast <string> (this->_addr));
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV4, j->domain, ip);
 								// Выводим положительный результат
 								return true;
 							}
@@ -5336,7 +5336,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 									// Пропускаем записи IP-адреса
 									continue;
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, static_cast <string> (this->_addr));
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV6, j->domain, ip);
 								// Выводим положительный результат
 								return true;
 							}
@@ -5433,7 +5433,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 										// Пропускаем записи IP-адреса
 										continue;
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, ip);
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV4, j->domain, this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 									// Выводим положительный результат
 									return true;
 								}
@@ -5489,7 +5489,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 										// Пропускаем записи IP-адреса
 										continue;
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, ip);
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV6, j->domain, this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 									// Выводим положительный результат
 									return true;
 								}
@@ -5651,18 +5651,8 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Если IP-адрес доменного имени является IPv4
 								if(j->ip->size == 4){
-									// IP-адрес для вывода результата
-									string address = "";
-									{
-										// Выполняем блокировку потока для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем полученный IP-адрес
-										this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
-									}
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, domain, address);
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV4, domain, j->ip.get());
 									// Выводим положительный результат
 									return true;
 								}
@@ -5671,18 +5661,8 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Если IP-адрес доменного имени является IPv6
 								if(j->ip->size == 16){
-									// IP-адрес для вывода результата
-									string address = "";
-									{
-										// Выполняем блокировку потока для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем полученный IP-адрес
-										this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
-									}
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, domain, address);
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", eid, event::family_t::IPV6, domain, j->ip.get());
 									// Выводим положительный результат
 									return true;
 								}

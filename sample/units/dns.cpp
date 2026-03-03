@@ -39,6 +39,8 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект логирования
 	log_t log(&fmk);
+	// Объект работы с сетевыми адресами
+	net_addr_t addr(&fmk, &log);
 	// Создаём объект узла DNS
 	unit::dns_t dns(&fmk, &log);
 	// Устанавливаем адрес файла хостов
@@ -61,9 +63,11 @@ int32_t main(int32_t argc, char * argv[]){
 			log.print("Успешно резолвлено каноническое имя %s в IP-адрес: %s", log_t::flag_t::INFO, fqdn.c_str(), ip.c_str());
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения IP-адреса при резолвинге доменного имени
-	dns.on <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", [&log](const event::id_t eid, const event::family_t family, string_view fqdn, string_view ip) noexcept -> void {
+	dns.on <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", [&addr, &log](const event::id_t eid, const event::family_t family, string_view fqdn, const net::addr_t * ip) noexcept -> void {
+		// Устанавливаем IP-адрес события
+		addr.source(ip);
 		// Выводим информацию об успешно резолвленном доменном имени
-		log.print("Успешно резолвлено доменное имя %s в IP-адрес: %s (%s)", log_t::flag_t::INFO, fqdn.data(), ip.data(), (family == event::family_t::IPV4 ? "IPv4" : "IPv6"));
+		log.print("Успешно резолвлено доменное имя %s в IP-адрес: %s (%s)", log_t::flag_t::INFO, fqdn.data(), static_cast <string> (addr).c_str(), (family == event::family_t::IPV4 ? "IPv4" : "IPv6"));
 	}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
 	// Устанавливаем функцию обратного вызова на событие количества попыток резолвинга доменного имени
 	dns.on <void (const event::id_t, const uint8_t)> ("attempts", [&log](const event::id_t eid, const uint8_t attempts) noexcept -> void {

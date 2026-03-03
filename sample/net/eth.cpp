@@ -128,9 +128,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем полученный IP-адрес
 		addr.v4(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
 		// Выводим адрес шлюза по умолчанию
-		cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << ", isVirtual=" << iface.isVirtual("utun4") << ", isTunnel=" << iface.isTunnel("utun4") << endl;
+		cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip.get()) << ", isVirtual=" << iface.isVirtual("utun4") << ", isTunnel=" << iface.isTunnel("utun4") << endl;
 		// Если устанавливаем IP-адрес туннельного интерфейса
-		if(iface.setAddress(tunnel, ip, ip, 24))
+		if(iface.setAddress(tunnel, ip.get(), ip.get(), 24))
 			// Выводим сообщение об успешной установке IP-адреса
 			cout << " Assigned IPv4 address to " << tunnel << endl;
 		// Иначе выводим сообщение об ошибке
@@ -165,7 +165,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем полученный IP-адрес
 		addr.v6(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
 		// Выводим адрес шлюза по умолчанию
-		cout << "IPv6 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip) << endl;
+		cout << "IPv6 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip.get()) << endl;
 	}
 	// Выводим заголовок примера проброса порта
 	cout << " --- Portmapping Example --- " << endl;

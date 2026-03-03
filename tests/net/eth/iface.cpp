@@ -79,8 +79,8 @@ TEST_F(EthFixture, IfaceTypeByAddrTest){
 	// Устанавливаем адрес петлевого сетевого интерфейса
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = htonl(INADDR_LOOPBACK);
 	// Просто вызываем методы, результат зависит от системы
-	this->_eth->iface.isTunnel(addr);
-	this->_eth->iface.isVirtual(addr);
+	this->_eth->iface.isTunnel(addr.get());
+	this->_eth->iface.isVirtual(addr.get());
 }
 
 /**
@@ -93,7 +93,7 @@ TEST_F(EthFixture, IfaceNameTest){
 	// Устанавливаем адрес мультикаст-группы (как в static.cpp) или loopback
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = 0;
 	// Получаем имя сетевого интерфейса по IP-адресу (ожидаем пустое для 0.0.0.0 или соответствующее)
-	this->_eth->iface.name(addr);
+	this->_eth->iface.name(addr.get());
 }
 
 /**
@@ -170,7 +170,7 @@ TEST_F(EthFixture, IfaceAddressTest){
 		// Если IP-адрес получен успешно
 		if(ip != nullptr)
 			// Если адрес есть, пробуем сеттер (нужны права, но проверяем АПИ)
-			this->_eth->iface.setAddress(ifname, ip, 24); 
+			this->_eth->iface.setAddress(ifname, ip.get(), 24); 
 		// Префикс адреса назначения сетевого интерфейса
 		uint8_t prefix = 0;
 		// IP-адрес маршрутизатора сетевого интерфейса

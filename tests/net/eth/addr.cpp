@@ -63,7 +63,7 @@ TEST_F(EthFixture, AddressFillSourceNetTest){
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = htonl(INADDR_LOOPBACK);
 
 	// Выполняем извлечение сетевых параметров
-	this->_eth->addr.fillSource(addr, source);
+	this->_eth->addr.fillSource(addr.get(), source);
 	// Проверяем, что интерфейс найден (для loopback он должен быть)
 	ASSERT_FALSE(source.iface.empty());
 }

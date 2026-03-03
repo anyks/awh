@@ -86,7 +86,7 @@ namespace awh {
 				 * @param addr адрес сетевого подключения
 				 * @return     результат проверки туннельного сетевого интерфейса
 				 */
-				bool isTunnel(const unique_ptr <net::addr_t> & addr) const noexcept;
+				bool isTunnel(const net::addr_t * addr) const noexcept;
 			public:
 				/**
 				 * @brief Метод проверки виртуального сетевого интерфейса
@@ -101,7 +101,7 @@ namespace awh {
 				 * @param addr адрес сетевого подключения
 				 * @return     результат проверки виртуального сетевого интерфейса
 				 */
-				bool isVirtual(const unique_ptr <net::addr_t> & addr) const noexcept;
+				bool isVirtual(const net::addr_t * addr) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения имени сетевого интерфейса по адресу
@@ -109,7 +109,7 @@ namespace awh {
 				 * @param addr адрес сетевого подключения
 				 * @return     имя сетевого интерфейса
 				 */
-				string name(const unique_ptr <net::addr_t> & addr) const noexcept;
+				string name(const net::addr_t * addr) const noexcept;
 			public:
 				/**
 				 * @brief Метод создания сетевого интерфейса
@@ -154,14 +154,6 @@ namespace awh {
 				bool flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept;
 			public:
 				/**
-				 * @brief Метод получения IP-адреса сетевого интерфейса
-				 *
-				 * @param name   имя сетевого интерфейса
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @return       IP-адрес сетевого интерфейса
-				 */
-				unique_ptr <net::addr_t> getAddress(string_view name, const event::family_t family) const noexcept;
-				/**
 				 * @brief Метод установки IP-адреса на сетевой интерфейс
 				 *
 				 * @param name   имя сетевого интерфейса
@@ -170,8 +162,26 @@ namespace awh {
 				 * @param prefix префикс подсети
 				 * @return       результат установки IP-адреса
 				 */
-				bool setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept;
+				bool setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept;
+				/**
+				 * @brief Метод получения IP-адреса сетевого интерфейса
+				 *
+				 * @param name   имя сетевого интерфейса
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @return       IP-адрес сетевого интерфейса
+				 */
+				unique_ptr <net::addr_t> getAddress(string_view name, const event::family_t family) const noexcept;
 			public:
+				/**
+				 * @brief Метод установки параметров сетевого интерфейса точка-точка
+				 *
+				 * @param name   имя сетевого интерфейса
+				 * @param ip     адрес сетевого интерфейса для установки
+				 * @param peer   адрес удалённого пира (для точка-точка)
+				 * @param prefix префикс подсети
+				 * @return       результат установки параметров сетевого интерфейса точка-точка
+				 */
+				bool setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept;
 				/**
 				 * @brief Метод изменения параметров сетевого интерфейса точка-точка
 				 *
@@ -182,16 +192,6 @@ namespace awh {
 				 * @return       результат изменения параметров сетевого интерфейса точка-точка
 				 */
 				bool getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
-				/**
-				 * @brief Метод установки параметров сетевого интерфейса точка-точка
-				 *
-				 * @param name   имя сетевого интерфейса
-				 * @param ip     адрес сетевого интерфейса для установки
-				 * @param peer   адрес удалённого пира (для точка-точка)
-				 * @param prefix префикс подсети
-				 * @return       результат установки параметров сетевого интерфейса точка-точка
-				 */
-				bool setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

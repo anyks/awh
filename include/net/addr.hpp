@@ -264,7 +264,7 @@ namespace awh {
 			 * @param value  адрес в чистом виде для установки
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void source(const unique_ptr <net::addr_t> & value, const endian_t endian = endian_t::LITTLE) noexcept;
+			void source(const net::addr_t * value, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки валидности IP-адреса

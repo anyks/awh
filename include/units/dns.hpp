@@ -172,7 +172,7 @@ namespace awh {
 				 *
 				 * @param ip адрес для удаления из чёрного списка
 				 */
-				void removeAddressInBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
+				void removeAddressInBlacklist(const net::addr_t * ip) noexcept;
 				/**
 				 * @brief Метод удаления IP-адреса из чёрного списка
 				 *
@@ -192,7 +192,7 @@ namespace awh {
 				 *
 				 * @param ip адрес для добавления в чёрный список
 				 */
-				void pushAddressToBlacklist(const unique_ptr <net::addr_t> & ip) noexcept;
+				void pushAddressToBlacklist(const net::addr_t * ip) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
@@ -214,7 +214,7 @@ namespace awh {
 				 * @param ip адрес для проверки наличия в чёрном списке
 				 * @return   результат проверки наличия IP-адреса в чёрном списке
 				 */
-				bool checkAddressInBlacklist(const unique_ptr <net::addr_t> & ip) const noexcept;
+				bool checkAddressInBlacklist(const net::addr_t * ip) const noexcept;
 				/**
 				 * @brief Метод проверки наличия IP-адреса в чёрном списке
 				 *
@@ -283,7 +283,7 @@ namespace awh {
 				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
 				 */
-				void pushAddressToCache(string_view domain, const unique_ptr <net::addr_t> & ip, const uint32_t ttl) noexcept;
+				void pushAddressToCache(string_view domain, const net::addr_t * ip, const uint32_t ttl) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в кэш
 				 *
@@ -384,7 +384,7 @@ namespace awh {
 				 * @param eid    идентификатор события DNS-резолвера
 				 * @param server адрес DNS-сервера
 				 */
-				void addServer(const event::id_t eid, const unique_ptr <net::addr_t> & server) noexcept;
+				void addServer(const event::id_t eid, const net::addr_t * server) noexcept;
 				/**
 				 * @brief Метод добавления сервера DNS
 				 *
@@ -407,7 +407,7 @@ namespace awh {
 				 * @param eid    идентификатор события DNS-резолвера
 				 * @param source адрес сети для выполнения запроса
 				 */
-				void addSource(const event::id_t eid, const unique_ptr <net::addr_t> & source) noexcept;
+				void addSource(const event::id_t eid, const net::addr_t * source) noexcept;
 				/**
 				 * @brief Метод добавления адреса сети с которого будет выполняться запрос
 				 *
@@ -432,7 +432,7 @@ namespace awh {
 				 * @param ip  адрес для поиска доменного имени
 				 * @return    результат выполнения операции
 				 */
-				bool search(const event::id_t eid, const unique_ptr <net::addr_t> & ip) noexcept;
+				bool search(const event::id_t eid, const net::addr_t * ip) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *

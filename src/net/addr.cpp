@@ -1782,7 +1782,7 @@ unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian
  * @param value  адрес в чистом виде для установки
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Network_Address::source(const unique_ptr <net::addr_t> & value, const endian_t endian) noexcept {
+void awh::Network_Address::source(const net::addr_t * value, const endian_t endian) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1802,7 +1802,7 @@ void awh::Network_Address::source(const unique_ptr <net::addr_t> & value, const 
 				// Выполняем выделение памяти для MAC адреса
 				this->_buffer.resize(6, 0);
 				// Выполняем копирование данных адреса MAC
-				::memcpy(&this->_buffer[0], &awh_cast <net::addr_mac_t *> (value.get())->address[0], 6);
+				::memcpy(&this->_buffer[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
 			} break;
 			// Если адрес является IPv4
 			case 4: {
@@ -1817,12 +1817,12 @@ void awh::Network_Address::source(const unique_ptr <net::addr_t> & value, const 
 					// Если установлен порядок следования байт от старшего к младшему
 					case static_cast <uint8_t> (endian_t::BIG):
 						// Устанавливаем буфер данных IP-адреса
-						::convertEndian(reinterpret_cast <const uint8_t *> (&awh_cast <net::addr_net_ipv4_t *> (value.get())->address), &this->_buffer[0]);
+						::convertEndian(reinterpret_cast <const uint8_t *> (&awh_cast <const net::addr_net_ipv4_t *> (value)->address), &this->_buffer[0]);
 					break;
 					// Если установлен порядок следования байт от младшего к старшему
 					case static_cast <uint8_t> (endian_t::LITTLE):
 						// Выполняем копирование данных адреса IPv4
-						::memcpy(&this->_buffer[0], &awh_cast <net::addr_net_ipv4_t *> (value.get())->address, 4);
+						::memcpy(&this->_buffer[0], &awh_cast <const net::addr_net_ipv4_t *> (value)->address, 4);
 					break;
 				}
 			} break;
@@ -1839,12 +1839,12 @@ void awh::Network_Address::source(const unique_ptr <net::addr_t> & value, const 
 					// Если установлен порядок следования байт от старшего к младшему
 					case static_cast <uint8_t> (endian_t::BIG):
 						// Устанавливаем буфер данных IP-адреса
-						::convertEndian <16> (reinterpret_cast <const uint8_t *> (&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0]), &this->_buffer[0]);
+						::convertEndian <16> (reinterpret_cast <const uint8_t *> (&awh_cast <const net::addr_net_ipv6_t *> (value)->address[0]), &this->_buffer[0]);
 					break;
 					// Если установлен порядок следования байт от младшего к старшему
 					case static_cast <uint8_t> (endian_t::LITTLE):
 						// Выполняем копирование данных адреса IPv6
-						::memcpy(&this->_buffer[0], &awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], 16);
+						::memcpy(&this->_buffer[0], &awh_cast <const net::addr_net_ipv6_t *> (value)->address[0], 16);
 					break;
 				}
 			} break;

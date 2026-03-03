@@ -536,7 +536,7 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
  * @param addr адрес сетевого подключения
  * @return     результат проверки туннельного сетевого интерфейса
  */
-bool awh::eth::Interface::isTunnel(const unique_ptr <net::addr_t> & addr) const noexcept {
+bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
 	// Возвращаем результат проверки имени интерфейса
 	return this->isTunnel(this->name(addr));
 }
@@ -651,7 +651,7 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
  * @param addr адрес сетевого подключения
  * @return     результат проверки виртуального сетевого интерфейса
  */
-bool awh::eth::Interface::isVirtual(const unique_ptr <net::addr_t> & addr) const noexcept {
+bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 	// Возвращаем результат проверки имени интерфейса
 	return this->isVirtual(this->name(addr));
 }
@@ -661,7 +661,7 @@ bool awh::eth::Interface::isVirtual(const unique_ptr <net::addr_t> & addr) const
  * @param addr адрес сетевого подключения
  * @return     имя сетевого интерфейса
  */
-string awh::eth::Interface::name(const unique_ptr <net::addr_t> & addr) const noexcept {
+string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -705,7 +705,7 @@ string awh::eth::Interface::name(const unique_ptr <net::addr_t> & addr) const no
 							// Получаем указатель на MAC-адрес
 							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Сравниваем MAC-адреса
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (addr.get())->address[0], ptr, 6) == 0){
+							if(::memcmp(&awh_cast <const net::addr_mac_t *> (addr)->address[0], ptr, 6) == 0){
 								// Устанавливаем результат
 								result = ifa->ifa_name;
 								// Завершаем поиск
@@ -723,7 +723,7 @@ string awh::eth::Interface::name(const unique_ptr <net::addr_t> & addr) const no
 					// Получаем указатель на структуру IPv4
 					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
 					// Если адреса совпадают
-					if(sin->sin_addr.s_addr == awh_cast <const net::addr_net_ipv4_t *> (addr.get())->address){
+					if(sin->sin_addr.s_addr == awh_cast <const net::addr_net_ipv4_t *> (addr)->address){
 						// Устанавливаем результат
 						result = ifa->ifa_name;
 						// Завершаем поиск
@@ -739,7 +739,7 @@ string awh::eth::Interface::name(const unique_ptr <net::addr_t> & addr) const no
 					// Получаем указатель на структуру IPv6
 					struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 					// Если адреса совпадают
-					if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (addr.get())->address[0], sizeof(in6_addr)) == 0){
+					if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(in6_addr)) == 0){
 						// Устанавливаем результат
 						result = ifa->ifa_name;
 						// Завершаем поиск
@@ -1720,6 +1720,179 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	return result;
 }
 /**
+ * @brief Метод установки IP-адреса на сетевой интерфейс
+ *
+ * @param name   имя сетевого интерфейса
+ * @param ip     адрес сетевого интерфейса для установки
+ * @param peer   адрес удалённого пира (для точка-точка)
+ * @param prefix префикс подсети
+ * @return       результат установки IP-адреса
+ */
+bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если название сетевого интерфейса и адрес для установки переданы
+	if(!name.empty() && (ip != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём сокет для управления интерфейсом
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(!(result = (sock != net::invalid_socket_t))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(ip->size){
+				// Если адрес является IPv4
+				case 4: {
+					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
+					struct in_aliasreq ifra = {0};
+					// Копируем имя сетевого интерфейса
+					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
+					// Устанавливаем семейство адресов IPv4
+					ifra.ifra_addr.sin_family = AF_INET;
+					// Устанавливаем длину структуры
+					ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
+					// Устанавливаем IP-адрес интерфейса
+					ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
+					// Устанавливаем семейство маски
+					ifra.ifra_mask.sin_family = AF_INET;
+					// Устанавливаем длину структуры маски
+					ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
+					// Если префикс подсети больше 32 или равен 0
+					if((prefix > 32) || (prefix == 0))
+						// Устанавливаем маску подсети интерфейса как /32
+						ifra.ifra_mask.sin_addr.s_addr = 0xFFFFFFFF;
+					// Устанавливаем маску подсети интерфейса
+					else ifra.ifra_mask.sin_addr.s_addr = ::iface::prefix2mask(prefix);
+					// Устанавливаем семейство широковещательного адреса
+					ifra.ifra_broadaddr.sin_family = AF_INET;
+					// Устанавливаем длину структуры широковещательного адреса
+					ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
+					// Вычисляем широковещательный адрес
+					ifra.ifra_broadaddr.sin_addr.s_addr = ((ifra.ifra_addr.sin_addr.s_addr & ifra.ifra_mask.sin_addr.s_addr) | ~ifra.ifra_mask.sin_addr.s_addr);
+					// Применяем новый IP-адрес и маску интерфейса
+					if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
+					struct in6_aliasreq ifra6 = {0};
+					// Копируем имя сетевого интерфейса
+					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
+					// Устанавливаем семейство адресов IPv6
+					ifra6.ifra_addr.sin6_family = AF_INET6;
+					// Устанавливаем длину структуры
+					ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
+					// Устанавливаем IP-адрес интерфейса
+					::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
+					// Устанавливаем семейство маски
+					ifra6.ifra_prefixmask.sin6_family = AF_INET6;
+					// Устанавливаем длину структуры маски
+					ifra6.ifra_prefixmask.sin6_len = sizeof(struct sockaddr_in6);
+					// Если префикс задан
+					if((prefix > 0) && (prefix <= 128)){
+						// Текущее значение маски подсети
+						uint32_t mask = static_cast <uint32_t> (prefix);
+						// Проходим по байтам
+						for(uint8_t i = 0; i < 16; ++i){
+							// Если префикс больше либо равен 8
+							if(mask >= 8){
+								// Устанавливаем байт маски подсети
+								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
+								// Уменьшаем префикс на 8
+								mask -= 8;
+							// Если префикс меньше 8, но больше нуля
+							} else if(mask > 0) {
+								// Устанавливаем байт маски подсети
+								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
+								// Обнуляем префикс
+								mask = 0;
+							// Зануляем байт маски подсети
+							} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
+						}
+					// Устанавливаем маску соответствующую префиксу /128
+					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
+					/**
+					 * Устанавливаем бесконечное время жизни адреса
+					 */
+					ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
+					ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
+					// Применяем новый IP-адрес и маску интерфейса
+					if(!(result = (::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				} break;
+			}
+			// Закрываем сокет
+			::close(sock);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод получения IP-адреса сетевого интерфейса
  *
  * @param name   имя сетевого интерфейса
@@ -1836,19 +2009,19 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	return result;
 }
 /**
- * @brief Метод установки IP-адреса на сетевой интерфейс
+ * @brief Метод установки параметров сетевого интерфейса точка-точка
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
  * @param peer   адрес удалённого пира (для точка-точка)
  * @param prefix префикс подсети
- * @return       результат установки IP-адреса
+ * @return       результат установки параметров сетевого интерфейса точка-точка
  */
-bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const uint8_t prefix) const noexcept {
+bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если название сетевого интерфейса и адрес для установки переданы
-	if(!name.empty() && (ip != nullptr)){
+	// Если название сетевого интерфейса и адреса для установки переданы
+	if(!name.empty() && (ip != nullptr) && (peer != nullptr) && (ip->size == peer->size)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1879,7 +2052,7 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 			switch(ip->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
+					// Объект запроса псевдонима интерфейса
 					struct in_aliasreq ifra = {0};
 					// Копируем имя сетевого интерфейса
 					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
@@ -1888,7 +2061,7 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 					// Устанавливаем длину структуры
 					ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
 					// Устанавливаем IP-адрес интерфейса
-					ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip.get())->address;
+					ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
 					// Устанавливаем семейство маски
 					ifra.ifra_mask.sin_family = AF_INET;
 					// Устанавливаем длину структуры маски
@@ -1899,13 +2072,13 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 						ifra.ifra_mask.sin_addr.s_addr = 0xFFFFFFFF;
 					// Устанавливаем маску подсети интерфейса
 					else ifra.ifra_mask.sin_addr.s_addr = ::iface::prefix2mask(prefix);
-					// Устанавливаем семейство широковещательного адреса
+					// Устанавливаем семейство адреса удаленого пира
 					ifra.ifra_broadaddr.sin_family = AF_INET;
-					// Устанавливаем длину структуры широковещательного адреса
+					// Устанавливаем длину структуры адреса удаленого пира
 					ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
-					// Вычисляем широковещательный адрес
-					ifra.ifra_broadaddr.sin_addr.s_addr = ((ifra.ifra_addr.sin_addr.s_addr & ifra.ifra_mask.sin_addr.s_addr) | ~ifra.ifra_mask.sin_addr.s_addr);
-					// Применяем новый IP-адрес и маску интерфейса
+					// Устанавливаем IP-адрес удалённого пира
+					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (peer)->address;
+					// Применяем новый IP-адрес, маску и адрес пира интерфейса
 					if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
 						/**
 						 * Если включён режим отладки
@@ -1924,7 +2097,7 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
+					// Объект запроса псевдонима интерфейса
 					struct in6_aliasreq ifra6 = {0};
 					// Копируем имя сетевого интерфейса
 					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
@@ -1933,7 +2106,13 @@ bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::ad
 					// Устанавливаем длину структуры
 					ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
 					// Устанавливаем IP-адрес интерфейса
-					::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip.get())->address[0], 16);
+					::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
+					// Устанавливаем семейство адреса пира
+					ifra6.ifra_dstaddr.sin6_family = AF_INET6;
+					// Устанавливаем длину структуры адреса пира
+					ifra6.ifra_dstaddr.sin6_len = sizeof(struct sockaddr_in6);
+					// Устанавливаем IP-адрес удалённого пира
+					::memcpy(&ifra6.ifra_dstaddr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (peer)->address[0], 16);
 					// Устанавливаем семейство маски
 					ifra6.ifra_prefixmask.sin6_family = AF_INET6;
 					// Устанавливаем длину структуры маски
@@ -2150,185 +2329,6 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод установки параметров сетевого интерфейса точка-точка
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для установки
- * @param peer   адрес удалённого пира (для точка-точка)
- * @param prefix префикс подсети
- * @return       результат установки параметров сетевого интерфейса точка-точка
- */
-bool awh::eth::Interface::setAddress(string_view name, const unique_ptr <net::addr_t> & ip, const unique_ptr <net::addr_t> & peer, const uint8_t prefix) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если название сетевого интерфейса и адреса для установки переданы
-	if(!name.empty() && (ip != nullptr) && (peer != nullptr) && (ip->size == peer->size)){
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
-			// Если создание сокета прошло неудачно
-			if(!(result = (sock != net::invalid_socket_t))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-				#endif
-				// Выводим результат
-				return result;
-			}
-			/**
-			 * Определяем тип адреса
-			 */
-			switch(ip->size){
-				// Если адрес является IPv4
-				case 4: {
-					// Объект запроса псевдонима интерфейса
-					struct in_aliasreq ifra = {0};
-					// Копируем имя сетевого интерфейса
-					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
-					// Устанавливаем семейство адресов IPv4
-					ifra.ifra_addr.sin_family = AF_INET;
-					// Устанавливаем длину структуры
-					ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
-					// Устанавливаем IP-адрес интерфейса
-					ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip.get())->address;
-					// Устанавливаем семейство маски
-					ifra.ifra_mask.sin_family = AF_INET;
-					// Устанавливаем длину структуры маски
-					ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
-					// Если префикс подсети больше 32 или равен 0
-					if((prefix > 32) || (prefix == 0))
-						// Устанавливаем маску подсети интерфейса как /32
-						ifra.ifra_mask.sin_addr.s_addr = 0xFFFFFFFF;
-					// Устанавливаем маску подсети интерфейса
-					else ifra.ifra_mask.sin_addr.s_addr = ::iface::prefix2mask(prefix);
-					// Устанавливаем семейство адреса удаленого пира
-					ifra.ifra_broadaddr.sin_family = AF_INET;
-					// Устанавливаем длину структуры адреса удаленого пира
-					ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
-					// Устанавливаем IP-адрес удалённого пира
-					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (peer.get())->address;
-					// Применяем новый IP-адрес, маску и адрес пира интерфейса
-					if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-				// Если адрес является IPv6
-				case 16: {
-					// Объект запроса псевдонима интерфейса
-					struct in6_aliasreq ifra6 = {0};
-					// Копируем имя сетевого интерфейса
-					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
-					// Устанавливаем семейство адресов IPv6
-					ifra6.ifra_addr.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры
-					ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
-					// Устанавливаем IP-адрес интерфейса
-					::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip.get())->address[0], 16);
-					// Устанавливаем семейство адреса пира
-					ifra6.ifra_dstaddr.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры адреса пира
-					ifra6.ifra_dstaddr.sin6_len = sizeof(struct sockaddr_in6);
-					// Устанавливаем IP-адрес удалённого пира
-					::memcpy(&ifra6.ifra_dstaddr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (peer.get())->address[0], 16);
-					// Устанавливаем семейство маски
-					ifra6.ifra_prefixmask.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры маски
-					ifra6.ifra_prefixmask.sin6_len = sizeof(struct sockaddr_in6);
-					// Если префикс задан
-					if((prefix > 0) && (prefix <= 128)){
-						// Текущее значение маски подсети
-						uint32_t mask = static_cast <uint32_t> (prefix);
-						// Проходим по байтам
-						for(uint8_t i = 0; i < 16; ++i){
-							// Если префикс больше либо равен 8
-							if(mask >= 8){
-								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
-								// Уменьшаем префикс на 8
-								mask -= 8;
-							// Если префикс меньше 8, но больше нуля
-							} else if(mask > 0) {
-								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
-								// Обнуляем префикс
-								mask = 0;
-							// Зануляем байт маски подсети
-							} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
-						}
-					// Устанавливаем маску соответствующую префиксу /128
-					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
-					/**
-					 * Устанавливаем бесконечное время жизни адреса
-					 */
-					ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
-					ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
-					// Применяем новый IP-адрес и маску интерфейса
-					if(!(result = (::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
-			// Закрываем сокет
-			::close(sock);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
