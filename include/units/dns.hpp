@@ -43,6 +43,23 @@ namespace awh {
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ DNS : public unit_t {
+			public:
+				/**
+				 * @brief Типы DNS-записей
+				 *
+				 */
+				enum class record_t : uint8_t {
+					NONE  = 0x00, // Запись не установлена
+					A     = 0x01, // IPv4-адрес
+					NS    = 0x02, // Доменное имя авторитетного сервера имён
+					CNAME = 0x05, // Каноническое имя (псевдоним для другого доменного имени)
+					SOA   = 0x06, // Информация об авторитете зоны (Start of Authority)
+					PTR   = 0x0C, // Доменное имя, на которое указывает PTR-запись (обычно используется для обратного DNS)
+					MX    = 0x0F, // Почтовый обмен (Mail Exchange) - указывает на почтовый сервер для домена
+					TXT   = 0x10, // Текстовая запись - содержит произвольные текстовые данные, связанные с доменом
+					AAAA  = 0x1C, // IPv6-адрес
+					ANY   = 0xFF  // Любой тип записи (используется для запроса всех типов записей для домена)
+				};
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
@@ -418,6 +435,16 @@ namespace awh {
 				 * @return       результат выполнения операции
 				 */
 				bool search(const event::id_t eid, const event::family_t family, string_view ip) noexcept;
+			public:
+				/**
+				 * @brief Метод выполнения произвольного запроса
+				 *
+				 * @param eid    идентификатор события DNS-резолвера
+				 * @param record тип DNS-записи которую необходимо получить
+				 * @param domain доменное имя сервера
+				 * @return       результат выполнения операции
+				 */
+				bool request(const event::id_t eid, const record_t record, string_view domain) noexcept;
 			public:
 				/**
 				 * @brief Метод ресолвинга домена

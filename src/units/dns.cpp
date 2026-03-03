@@ -313,22 +313,6 @@ namespace dns {
 	thread_local uint8_t buffer[0x1000];
 
 	/**
-	 * @brief Типы DNS-записей
-	 *
-	 */
-	enum class type_t : uint8_t {
-		A     = 0x01, // IPv4-адрес
-		NS    = 0x02, // Доменное имя авторитетного сервера имён
-		CNAME = 0x05, // Каноническое имя (псевдоним для другого доменного имени)
-		SOA   = 0x06, // Информация об авторитете зоны (Start of Authority)
-		PTR   = 0x0C, // Доменное имя, на которое указывает PTR-запись (обычно используется для обратного DNS)
-		MX    = 0x0F, // Почтовый обмен (Mail Exchange) - указывает на почтовый сервер для домена
-		TXT   = 0x10, // Текстовая запись - содержит произвольные текстовые данные, связанные с доменом
-		AAAA  = 0x1C, // IPv6-адрес
-		ANY   = 0xFF  // Любой тип записи (используется для запроса всех типов записей для домена)
-	};
-
-	/**
 	 * @brief Структура A-записи DNS
 	 *
 	 */
@@ -582,14 +566,14 @@ namespace timeout {
 		// Количество попыток резолвинга
 		uint8_t attempts;
 		// Тип DNS-записи для резолвинга
-		::dns::type_t type;
+		unit::dns_t::record_t record;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Request() noexcept :
 		 domain{""}, attempts(1),
-		 type(::dns::type_t::A) {}
+		 record(unit::dns_t::record_t::NONE) {}
 	} request_t;
 
 	/**
@@ -1143,13 +1127,13 @@ namespace dns {
 	 * @brief Функция выполнения ресолвинга доменного имени
 	 *
 	 * @param eid    идентификатор события DNS-резолвера
-	 * @param type   тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
+	 * @param record тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
 	 * @param domain доменное имя сервера
 	 * @param io     объект асинхронного сетевого движка
 	 * @param log    объект для работы с логами
 	 * @return       результат выполнения операции
 	 */
-	static bool request(const event::id_t eid, const type_t type, string_view domain, engine::io_t * io, const log_t * log) noexcept {
+	static bool request(const event::id_t eid, const unit::dns_t::record_t record, string_view domain, engine::io_t * io, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1190,7 +1174,7 @@ namespace dns {
 				// Устанавливаем класс флага запроса
 				qflags->cls = htons(0x0001);
 				// Устанавливаем тип запроса в флагах вопроса
-				qflags->type = htons(static_cast <uint16_t> (type));
+				qflags->type = htons(static_cast <uint16_t> (record));
 				// Увеличиваем размер запроса
 				size += sizeof(::dns::q_flags_t);
 				{
@@ -1209,7 +1193,7 @@ namespace dns {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (type), domain), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1393,7 +1377,7 @@ void awh::unit::DNS::timeout(const event::id_t eid, const event::status_t status
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 						// Выполняем резолвинг доменного имени
-						::dns::request(j->second, i->second.type, i->second.domain, this->_io, this->_log);
+						::dns::request(j->second, i->second.record, i->second.domain, this->_io, this->_log);
 					}
 					// Удаляем сохраненный запрос текущего DNS-резолвера
 					::timeout::requests.erase(i);
@@ -1985,187 +1969,329 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 							// Выводим заголовок
 							cout << "DNS RESPONSE:" << endl << endl << flush;
 						#endif
-						// Тип DNS-запроса по умолчанию
-						::dns::type_t type = ::dns::type_t::A;
-						/**
-						 * Перебираем все A-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.a){
+						// Если мы получили A-записи в ответе
+						if(!result.a.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Перебираем все A-записи в ответе от DNS-сервера
 							 */
-							#if DEBUG_MODE
+							for(auto & answer : result.a){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									{
+										// Выводим название записи
+										::printf("\nNAME: %s\n", answer.name.c_str());
+										// Выводим TTL записи
+										::printf("TTL: %u\n", answer.ttl);
+										// Выполняем блокировку потокв для парсинга IP-адреса
+										const locker_t <> lock(::__awh_mtx__);
+										// Устанавливаем IPv4-адрес в объекте адреса
+										this->_addr.v4(answer.ip);
+										// Выводим IPv4-адрес
+										::printf("IPv4: %s\n", static_cast <string> (this->_addr).c_str());
+									}
+								#endif
+								// Выполняем инициализацию объекта IP-адреса
+								unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = answer.ip;
+								// Добавляем запись в кэш DNS-резолвера
+								this->pushAddressToCache(answer.name, ::move(ip), answer.ttl);
+							}
+							// Если функция обратного вызова установлена для получения IP-адресов
+							if(this->_callback.is("address")){
+								// Выбираем стаднарт рандомайзера
+								mt19937 generator(::__awh_randev__());
+								// Выполняем рандомную сортировку списка DNS-серверов
+								::shuffle(result.a.begin(), result.a.end(), generator);
+								// IP-адрес для вывода результата
+								string address = "";
 								{
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
 									// Выполняем блокировку потокв для парсинга IP-адреса
 									const locker_t <> lock(::__awh_mtx__);
 									// Устанавливаем IPv4-адрес в объекте адреса
-									this->_addr.v4(answer.ip);
-									// Выводим IPv4-адрес
-									::printf("IPv4: %s\n", static_cast <string> (this->_addr).c_str());
+									this->_addr.v4(result.a.front().ip);
+									// Устанавливаем строковое представление IP-адреса для вывода результата
+									address = ::move(static_cast <string> (this->_addr));
 								}
-							#endif
-							// Устанавливаем тип DNS-запроса
-							type = ::dns::type_t::A;
-							// Выполняем инициализацию объекта IP-адреса
-							unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
-							// Устанавливаем IP-адрес
-							awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = answer.ip;
-							// Добавляем запись в кэш DNS-резолвера
-							this->pushAddressToCache(answer.name, ::move(ip), answer.ttl);
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, result.a.front().name, address);
+							}
 						}
-						/**
-						 * Перебираем все AAAA-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.aaaa){
+						// Если мы получили AAAA-записи в ответе
+						if(!result.aaaa.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Перебираем все AAAA-записи в ответе от DNS-сервера
 							 */
-							#if DEBUG_MODE
+							for(auto & answer : result.aaaa){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									{
+										// Выводим название записи
+										::printf("\nNAME: %s\n", answer.name.c_str());
+										// Выводим TTL записи
+										::printf("TTL: %u\n", answer.ttl);
+										// Выполняем блокировку потокв для парсинга IP-адреса
+										const locker_t <> lock(::__awh_mtx__);
+										// Устанавливаем IPv6-адрес в объекте адреса
+										this->_addr.v6(answer.ip);
+										// Выводим IPv6-адрес
+										::printf("IPv6: %s\n", static_cast <string> (this->_addr).c_str());
+									}
+								#endif
+								// Выполняем инициализацию объекта IP-адреса
+								unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &answer.ip[0], 16);
+								// Добавляем запись в кэш DNS-резолвера
+								this->pushAddressToCache(answer.name, ::move(ip), answer.ttl);
+							}
+							// Если функция обратного вызова установлена для получения IP-адресов
+							if(this->_callback.is("address")){
+								// Выбираем стаднарт рандомайзера
+								mt19937 generator(::__awh_randev__());
+								// Выполняем рандомную сортировку списка DNS-серверов
+								::shuffle(result.aaaa.begin(), result.aaaa.end(), generator);
+								// IP-адрес для вывода результата
+								string address = "";
 								{
+									// Выполняем блокировку потокв для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем IPv6-адрес в объекте адреса
+									this->_addr.v6(result.aaaa.front().ip);
+									// Устанавливаем строковое представление IP-адреса для вывода результата
+									address = ::move(static_cast <string> (this->_addr));
+								}
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, result.aaaa.front().name, address);
+							}
+						}
+						// Если мы получили NS-записи в ответе
+						if(!result.ns.empty()){
+							/**
+							 * Создаём контейнер для хранения серверов имён
+							 */
+							unordered_multimap <string, string> ns;
+							/**
+							 * Перебираем все NS-записи в ответе от DNS-сервера
+							 */
+							for(auto & answer : result.ns){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
 									// Выводим название записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
 									// Выводим TTL записи
 									::printf("TTL: %u\n", answer.ttl);
-									// Выполняем блокировку потокв для парсинга IP-адреса
-									const locker_t <> lock(::__awh_mtx__);
-									// Устанавливаем IPv6-адрес в объекте адреса
-									this->_addr.v6(answer.ip);
-									// Выводим IPv6-адрес
-									::printf("IPv6: %s\n", static_cast <string> (this->_addr).c_str());
-								}
-							#endif
-							// Устанавливаем тип DNS-запроса
-							type = ::dns::type_t::AAAA;
-							// Выполняем инициализацию объекта IP-адреса
-							unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
-							// Устанавливаем IP-адрес
-							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &answer.ip[0], 16);
-							// Добавляем запись в кэш DNS-резолвера
-							this->pushAddressToCache(answer.name, ::move(ip), answer.ttl);
+									// Выводим сервер имён
+									::printf("NS: %s\n", answer.server.c_str());
+								#endif
+								// Добавляем запись в контейнер серверов имён
+								ns.emplace(answer.name, answer.server);
+							}
+							// Если функция обратного вызова установлена для получения сервера имён
+							if(!ns.empty() && this->_callback.is("ns"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const unordered_multimap <string, string> &)> ("ns", eid, ns);
 						}
-						/**
-						 * Перебираем все NS-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.ns){
+						// Если мы получили CNAME-записи в ответе
+						if(!result.cname.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Создаём контейнер для хранения канонических имён
 							 */
-							#if DEBUG_MODE
-								// Выводим название записи
-								::printf("\nNAME: %s\n", answer.name.c_str());
-								// Выводим TTL записи
-								::printf("TTL: %u\n", answer.ttl);
-								// Выводим сервер имён
-								::printf("NS: %s\n", answer.server.c_str());
-							#endif
+							unordered_multimap <string, string> cname;
+							/**
+							 * Перебираем все CNAME-записи в ответе от DNS-сервера
+							 */
+							for(auto & answer : result.cname){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим каноническое имя
+									::printf("CNAME: %s\n", answer.canonical.c_str());
+								#endif
+								// Добавляем запись в контейнер канонических имён
+								cname.emplace(answer.name, answer.canonical);
+							}
+							// Если функция обратного вызова установлена для получения канонического имени
+							if(!cname.empty() && this->_callback.is("cname"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const unordered_multimap <string, string> &)> ("cname", eid, cname);
 						}
-						/**
-						 * Перебираем все CNAME-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.cname){
+						// Если мы получили MX-записи в ответе
+						if(!result.mx.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Создаём контейнер для хранения MX-записей
 							 */
-							#if DEBUG_MODE
-								// Выводим название записи
-								::printf("\nNAME: %s\n", answer.name.c_str());
-								// Выводим TTL записи
-								::printf("TTL: %u\n", answer.ttl);
-								// Выводим каноническое имя
-								::printf("CNAME: %s\n", answer.canonical.c_str());
-							#endif
+							unordered_multimap <string, std::pair <string, uint16_t>> mx;
+							/**
+							 * Перебираем все MX-записи в ответе от DNS-сервера
+							 */
+							for(auto & answer : result.mx){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим сервер почты
+									::printf("MX: %s\n", answer.server.c_str());
+									// Выводим приоритет MX-записи
+									::printf("PREFERENCE: %u\n", answer.preference);
+								#endif
+								// Добавляем запись в контейнер MX-записей
+								mx.emplace(answer.name, ::make_pair(answer.server, answer.preference));
+							}
+							// Если функция обратного вызова установлена для получения MX-записей
+							if(!mx.empty() && this->_callback.is("mx"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const unordered_multimap <string, std::pair <string, uint16_t>> &)> ("mx", eid, mx);
 						}
-						/**
-						 * Перебираем все MX-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.mx){
+						// Если мы получили TEXT-записи в ответе
+						if(!result.txt.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Создаём контейнер для хранения текстовых записей
 							 */
-							#if DEBUG_MODE
-								// Выводим название записи
-								::printf("\nNAME: %s\n", answer.name.c_str());
-								// Выводим TTL записи
-								::printf("TTL: %u\n", answer.ttl);
-								// Выводим сервер почты
-								::printf("MX: %s\n", answer.server.c_str());
-								// Выводим приоритет MX-записи
-								::printf("PREFERENCE: %u\n", answer.preference);
-							#endif
-						}
-						/**
-						 * Перебираем все TEXT-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.txt){
+							unordered_multimap <string, string> texts;
 							/**
-							 * Если включён режим отладки
+							 * Перебираем все TEXT-записи в ответе от DNS-сервера
 							 */
-							#if DEBUG_MODE
-								// Выводим название записи
-								::printf("\nNAME: %s\n", answer.name.c_str());
-								// Выводим TTL записи
-								::printf("TTL: %u\n", answer.ttl);
+							for(auto & answer : result.txt){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									/**
+									 * Вывод текстовых данных из TXT-записи
+									 */
+									for(auto & text : answer.texts)
+										// Выводим текст записи
+										::printf("TXT: %s\n", text.c_str());
+								#endif
 								/**
 								 * Вывод текстовых данных из TXT-записи
 								 */
 								for(auto & text : answer.texts)
-									// Выводим текст записи
-									::printf("TXT: %s\n", text.c_str());
-							#endif
+									// Добавляем запись в контейнер текстовых записей
+									texts.emplace(answer.name, text);
+							}
+							// Если функция обратного вызова установлена для получения текстовых записей
+							if(!texts.empty() && this->_callback.is("txt"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const unordered_multimap <string, string> &)> ("txt", eid, texts);
 						}
-						/**
-						 * Перебираем все PTR-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.ptr){
+						// Если мы получили PTR-записи в ответе
+						if(!result.ptr.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Перебираем все PTR-записи в ответе от DNS-сервера
 							 */
-							#if DEBUG_MODE
-								// Выводим название записи
-								::printf("\nNAME: %s\n", answer.name.c_str());
-								// Выводим TTL записи
-								::printf("TTL: %u\n", answer.ttl);
-								// Выводим PTR-запись
-								::printf("PTR: %s\n", answer.domain.c_str());
-							#endif
-							// Устанавливаем тип DNS-запроса
-							type = ::dns::type_t::PTR;
-							// Выполняем блокировку потокв для парсинга IP-адреса
-							const locker_t <> lock(::__awh_mtx__);
-							// Устанавливаем ARPA-адрес в объекте адреса
-							this->_addr.arpa(answer.name);
-							// Добавляем запись в кэш DNS-резолвера
-							this->pushAddressToCache(answer.domain, ::move(this->_addr.source()), answer.ttl);
+							for(auto & answer : result.ptr){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим PTR-запись
+									::printf("PTR: %s\n", answer.domain.c_str());
+								#endif
+								// Выполняем блокировку потокв для парсинга IP-адреса
+								const locker_t <> lock(::__awh_mtx__);
+								// Устанавливаем ARPA-адрес в объекте адреса
+								this->_addr.arpa(answer.name);
+								// Добавляем запись в кэш DNS-резолвера
+								this->pushAddressToCache(answer.domain, ::move(this->_addr.source()), answer.ttl);
+							}
+							// Если функция обратного вызова установлена для получения IP-адресов
+							if(this->_callback.is("address")){
+								// Выбираем стаднарт рандомайзера
+								mt19937 generator(::__awh_randev__());
+								// Выполняем рандомную сортировку списка DNS-серверов
+								::shuffle(result.ptr.begin(), result.ptr.end(), generator);
+								// IP-адрес для вывода результата
+								string address = "";
+								// Семейство адресов для вывода результата
+								event::family_t family = event::family_t::NONE;
+								{
+									// Выполняем блокировку потокв для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем ARPA-адрес в объекте адреса
+									this->_addr.arpa(result.ptr.front().name);
+									/**
+										* Определяем тип адреса для установки семейства адресов для вывода результата
+										*/
+									switch(static_cast <uint8_t> (this->_addr.type())){
+										// Если адрес является IPv4
+										case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+											// Устанавливаем семейство адресов для вывода результата как IPv4
+											family = event::family_t::IPV4;
+										break;
+										// Если адрес является IPv6
+										case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+											// Устанавливаем семейство адресов для вывода результата как IPv6
+											family = event::family_t::IPV6;
+										break;
+									}
+									// Устанавливаем строковое представление IP-адреса для вывода результата
+									address = ::move(static_cast <string> (this->_addr));
+								}
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, family, result.ptr.front().domain, address);
+							}
 						}
-						/**
-						 * Перебираем все SOA-записи в ответе от DNS-сервера
-						 */
-						for(auto & answer : result.soa){
+						// Если мы получили SOA-записи в ответе
+						if(!result.soa.empty()){
 							/**
-							 * Если включён режим отладки
+							 * Перебираем все SOA-записи в ответе от DNS-сервера
 							 */
-							#if DEBUG_MODE
-								// Выводим название записи
-								::printf("\nNAME: %s\n", answer.name.c_str());
-								// Выводим TTL записи
-								::printf("TTL: %u\n", answer.ttl);
-								// Выводим SOA-запись
-								::printf("SOA: %s\n", answer.mname.c_str());
-								// Выводим административный контакт
-								::printf("RNAME: %s\n", answer.rname.c_str());
-								// Выводим серийный номер зоны
-								::printf("SERIAL: %u\n", answer.serial);
-								// Выводим время обновления зоны
-								::printf("REFRESH: %u\n", answer.refresh);
-								// Выводим время повторной попытки обновления зоны
-								::printf("RETRY: %u\n", answer.retry);
-								// Выводим время истечения срока действия зоны
-								::printf("EXPIRE: %u\n", answer.expire);
-							#endif
+							for(auto & answer : result.soa){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим SOA-запись
+									::printf("SOA: %s\n", answer.mname.c_str());
+									// Выводим административный контакт
+									::printf("RNAME: %s\n", answer.rname.c_str());
+									// Выводим серийный номер зоны
+									::printf("SERIAL: %u\n", answer.serial);
+									// Выводим время обновления зоны
+									::printf("REFRESH: %u\n", answer.refresh);
+									// Выводим время повторной попытки обновления зоны
+									::printf("RETRY: %u\n", answer.retry);
+									// Выводим время истечения срока действия зоны
+									::printf("EXPIRE: %u\n", answer.expire);
+								#endif
+								// Если функция обратного вызова установлена для получения SOA-записей
+								if(this->_callback.is("soa"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, string_view, string_view)> ("soa", eid, answer.name, answer.mname);
+								// Если функция обратного вызова установлена для получения RNAME-записей
+								if(this->_callback.is("rname"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, string_view, string_view)> ("rname", eid, answer.name, answer.rname);
+							}
 						}
 						/**
 						 * Если включён режим отладки
@@ -2174,94 +2300,6 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 							// Выводим начальный разделитель
 							cout << endl << "------------------------------------------------------------" << endl << endl << flush;
 						#endif
-						/**
-						 * Определяем тип DNS-запроса для выполнения функции обратного вызова
-						 */
-						switch(static_cast <uint8_t> (type)){
-							// Если тип DNS-запроса является PTR
-							case static_cast <uint8_t> (::dns::type_t::PTR): {
-								// Если в ответе от DNS-сервера есть PTR-записи и функция обратного вызова установлена для получения IP-адресов
-								if(!result.ptr.empty() && this->_callback.is("address")){
-									// Выбираем стаднарт рандомайзера
-									mt19937 generator(::__awh_randev__());
-									// Выполняем рандомную сортировку списка DNS-серверов
-									::shuffle(result.ptr.begin(), result.ptr.end(), generator);
-									// IP-адрес для вывода результата
-									string address = "";
-									// Семейство адресов для вывода результата
-									event::family_t family = event::family_t::NONE;
-									{
-										// Выполняем блокировку потокв для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем ARPA-адрес в объекте адреса
-										this->_addr.arpa(result.ptr.front().name);
-										/**
-										 * Определяем тип адреса для установки семейства адресов для вывода результата
-										 */
-										switch(static_cast <uint8_t> (this->_addr.type())){
-											// Если адрес является IPv4
-											case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-												// Устанавливаем семейство адресов для вывода результата как IPv4
-												family = event::family_t::IPV4;
-											break;
-											// Если адрес является IPv6
-											case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-												// Устанавливаем семейство адресов для вывода результата как IPv6
-												family = event::family_t::IPV6;
-											break;
-										}
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
-									}
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", family, result.ptr.front().domain, address);
-								}
-							} break;
-							// Если тип DNS-запроса является A
-							case static_cast <uint8_t> (::dns::type_t::A): {
-								// Если в ответе от DNS-сервера есть A-записи и функция обратного вызова установлена для получения IP-адресов
-								if(!result.a.empty() && this->_callback.is("address")){
-									// Выбираем стаднарт рандомайзера
-									mt19937 generator(::__awh_randev__());
-									// Выполняем рандомную сортировку списка DNS-серверов
-									::shuffle(result.a.begin(), result.a.end(), generator);
-									// IP-адрес для вывода результата
-									string address = "";
-									{
-										// Выполняем блокировку потокв для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем IPv4-адрес в объекте адреса
-										this->_addr.v4(result.a.front().ip);
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
-									}
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, result.a.front().name, address);
-								}
-							} break;
-							// Если тип DNS-запроса является AAAA
-							case static_cast <uint8_t> (::dns::type_t::AAAA): {
-								// Если в ответе от DNS-сервера есть AAAA-записи и функция обратного вызова установлена для получения IP-адресов
-								if(!result.aaaa.empty() && this->_callback.is("address")){
-									// Выбираем стаднарт рандомайзера
-									mt19937 generator(::__awh_randev__());
-									// Выполняем рандомную сортировку списка DNS-серверов
-									::shuffle(result.aaaa.begin(), result.aaaa.end(), generator);
-									// IP-адрес для вывода результата
-									string address = "";
-									{
-										// Выполняем блокировку потокв для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем IPv6-адрес в объекте адреса
-										this->_addr.v6(result.aaaa.front().ip);
-										// Устанавливаем строковое представление IP-адреса для вывода результата
-										address = ::move(static_cast <string> (this->_addr));
-									}
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, result.aaaa.front().name, address);
-								}
-							} break;
-						}
 					}
 				} break;
 				// Если сервер DNS не смог интерпретировать запрос
@@ -5164,7 +5202,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 								// Выводим положительный результат, если запись в кэше не устарела
 								else {
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, j->domain, static_cast <string> (this->_addr));
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, static_cast <string> (this->_addr));
 									// Выводим положительный результат
 									return true;
 								}
@@ -5192,7 +5230,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 								// Выводим положительный результат, если запись в кэше не устарела
 								else {
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, j->domain, static_cast <string> (this->_addr));
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, static_cast <string> (this->_addr));
 									// Выводим положительный результат
 									return true;
 								}
@@ -5216,7 +5254,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 					// Устанавливаем доменное имя
 					ret.first->second.domain = domain;
 					// Устанавливаем тип DNS-записи
-					ret.first->second.type = ::dns::type_t::PTR;
+					ret.first->second.record = record_t::PTR;
 					// Запускаем таймер для ожидания ответа от DNS-сервера
 					this->_io->launch(i->second);
 				}
@@ -5224,7 +5262,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 			// Если доменное имя получено
 			if(!domain.empty())
 				// Выполняем резолвинг доменного имени
-				return ::dns::request(eid, ::dns::type_t::PTR, domain, this->_io, this->_log);
+				return ::dns::request(eid, record_t::PTR, domain, this->_io, this->_log);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5292,7 +5330,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 									// Выводим положительный результат, если запись в кэше не устарела
 									else {
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, j->domain, ip);
+										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, ip);
 										// Выводим положительный результат
 										return true;
 									}
@@ -5314,7 +5352,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 								// Устанавливаем доменное имя
 								ret.first->second.domain = domain;
 								// Устанавливаем тип DNS-записи
-								ret.first->second.type = ::dns::type_t::PTR;
+								ret.first->second.record = record_t::PTR;
 								// Запускаем таймер для ожидания ответа от DNS-сервера
 								this->_io->launch(i->second);
 							}
@@ -5322,7 +5360,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 						// Если доменное имя получено
 						if(!domain.empty())
 							// Выполняем резолвинг доменного имени
-							return ::dns::request(eid, ::dns::type_t::PTR, domain, this->_io, this->_log);
+							return ::dns::request(eid, record_t::PTR, domain, this->_io, this->_log);
 					}
 				} break;
 				// Для семейства IPv6
@@ -5351,7 +5389,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 									// Выводим положительный результат, если запись в кэше не устарела
 									else {
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, j->domain, ip);
+										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, ip);
 										// Выводим положительный результат
 										return true;
 									}
@@ -5373,7 +5411,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 								// Устанавливаем доменное имя
 								ret.first->second.domain = domain;
 								// Устанавливаем тип DNS-записи
-								ret.first->second.type = ::dns::type_t::PTR;
+								ret.first->second.record = record_t::PTR;
 								// Запускаем таймер для ожидания ответа от DNS-сервера
 								this->_io->launch(i->second);
 							}
@@ -5381,7 +5419,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 						// Если доменное имя получено
 						if(!domain.empty())
 							// Выполняем резолвинг доменного имени
-							return ::dns::request(eid, ::dns::type_t::PTR, domain, this->_io, this->_log);
+							return ::dns::request(eid, record_t::PTR, domain, this->_io, this->_log);
 					}
 				} break;
 			}
@@ -5396,6 +5434,62 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод выполнения произвольного запроса
+ *
+ * @param eid    идентификатор события DNS-резолвера
+ * @param record тип DNS-записи которую необходимо получить
+ * @param domain доменное имя сервера
+ * @return       результат выполнения операции
+ */
+bool awh::unit::DNS::request(const event::id_t eid, const record_t record, string_view domain) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
+		if((eid > 0) && !domain.empty()){
+			{
+				// Выполняем блокировку потокв для работы с контейнером таймаутов
+				const locker_t <std::shared_mutex> lock(::timeout::mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Ищем идентификатор события таймера для ожидания ответа от DNS-сервера в контейнере таймаутов
+				auto i = ::timeout::timers.find(eid);
+				// Если таймер для события DNS-резолвера найден
+				if(i != ::timeout::timers.end()){
+					// Сохраняем данные запроса таймаута в контейнере запросов таймаутов
+					auto ret = ::timeout::requests.emplace(i->second, ::timeout::request_t());
+					// Устанавливаем доменное имя
+					ret.first->second.domain = domain;
+					// Устанавливаем тип DNS-записи
+					ret.first->second.record = record;
+					// Запускаем таймер для ожидания ответа от DNS-сервера
+					this->_io->launch(i->second);
+				}
+			}
+			// Выполняем резолвинг доменного имени
+			return ::dns::request(eid, record, domain, this->_io, this->_log);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5471,7 +5565,7 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 											address = ::move(static_cast <string> (this->_addr));
 										}
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV4, domain, address);
+										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, domain, address);
 										// Выводим положительный результат
 										return true;
 									}
@@ -5491,7 +5585,7 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 											address = ::move(static_cast <string> (this->_addr));
 										}
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::family_t, string_view, string_view)> ("address", event::family_t::IPV6, domain, address);
+										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, domain, address);
 										// Выводим положительный результат
 										return true;
 									}
@@ -5520,12 +5614,12 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 							// Устанавливаем тип DNS-записи
-							ret.first->second.type = ::dns::type_t::A;
+							ret.first->second.record = record_t::A;
 						break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6):
 							// Устанавливаем тип DNS-записи
-							ret.first->second.type = ::dns::type_t::AAAA;
+							ret.first->second.record = record_t::AAAA;
 						break;
 					}
 					// Запускаем таймер для ожидания ответа от DNS-сервера
@@ -5539,11 +5633,11 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4):
 					// Выполняем резолвинг доменного имени
-					return ::dns::request(eid, ::dns::type_t::A, domain, this->_io, this->_log);
+					return ::dns::request(eid, record_t::A, domain, this->_io, this->_log);
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6):
 					// Выполняем резолвинг доменного имени
-					return ::dns::request(eid, ::dns::type_t::AAAA, domain, this->_io, this->_log);
+					return ::dns::request(eid, record_t::AAAA, domain, this->_io, this->_log);
 			}
 		}
 	/**
