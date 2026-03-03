@@ -74,6 +74,13 @@ namespace awh {
 				 */
 				void dumping(const event::id_t, const event::status_t status) noexcept;
 				/**
+				 * @brief Метод обработки событий коллектора DNS-кэша
+				 *
+				 * @param        идентификатор таймера DNS-резолвера
+				 * @param status статус события таймера DNS-резолвера
+				 */
+				void collector(const event::id_t, const event::status_t status) noexcept;
+				/**
 				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
 				 *
 				 * @param eid    идентификатор таймера DNS-резолвера

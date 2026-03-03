@@ -1323,6 +1323,116 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 	}
 }
 /**
+ * @brief Метод обработки событий коллектора DNS-кэша
+ *
+ * @param        идентификатор таймера DNS-резолвера
+ * @param status статус события таймера DNS-резолвера
+ */
+void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::status_t status) noexcept {
+	// Если статус события успешен
+	if(status == event::status_t::SUCCESS){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем текущую метку времени
+			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+			// Если в кэше есть IPv4-адреса
+			if(!::__awh_cache__.ipv4.empty()){
+				// Выполняем блокировку потока для работы с кэшем
+				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				/**
+				 * Выполняем перебор всех IP-адресов в кэше
+				 */
+				for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
+					// Выполняем перебор всех записей IP-адреса
+					for(auto j = i->second.begin(); j != i->second.end();){
+						// Если время жизни записи IP-адреса истекло и запись не является локальной
+						if(!j->local && (j->life > 0) && (j->life <= now))
+							// Удаляем запись IP-адреса из кэша
+							j = i->second.erase(j);
+						// Если IP-адрес является локальным
+						else ++j;
+					}
+					// Если после удаления всех записей IP-адреса в кэше не осталось
+					if(i->second.empty())
+						// Удаляем IP-адрес из кэша
+						i = ::__awh_cache__.ipv4.erase(i);
+					// Если у IP-адреса остались записи
+					else ++i;
+				}
+			}
+			// Если в кэше есть IPv6-адреса
+			if(!::__awh_cache__.ipv6.empty()){
+				// Выполняем блокировку потока для работы с кэшем
+				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				/**
+				 * Выполняем перебор всех IP-адресов в кэше
+				 */
+				for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
+					// Выполняем перебор всех записей IP-адреса
+					for(auto j = i->second.begin(); j != i->second.end();){
+						// Если время жизни записи IP-адреса истекло и запись не является локальной
+						if(!j->local && (j->life > 0) && (j->life <= now))
+							// Удаляем запись IP-адреса из кэша
+							j = i->second.erase(j);
+						// Если IP-адрес является локальным
+						else ++j;
+					}
+					// Если после удаления всех записей IP-адреса в кэше не осталось
+					if(i->second.empty())
+						// Удаляем IP-адрес из кэша
+						i = ::__awh_cache__.ipv6.erase(i);
+					// Если у IP-адреса остались записи
+					else ++i;
+				}
+			}
+			// Если в кэше есть доменные имена
+			if(!::__awh_cache__.domains.empty()){
+				// Выполняем блокировку потока для работы с кэшем
+				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				/**
+				 * Выполняем перебор всех доменных имён в кэше
+				 */
+				for(auto i = ::__awh_cache__.domains.begin(); i != ::__awh_cache__.domains.end();){
+					// Выполняем перебор всех записей доменного имени
+					for(auto j = i->second.begin(); j != i->second.end();){
+						// Если время жизни записи доменного имени истекло и запись не является локальной
+						if(!j->local && (j->life > 0) && (j->life <= now))
+							// Удаляем запись доменного имени из кэша
+							j = i->second.erase(j);
+						// Если доменное имя является локальным
+						else ++j;
+					}
+					// Если после удаления всех записей доменного имени в кэше не осталось
+					if(i->second.empty())
+						// Удаляем доменное имя из кэша
+						i = ::__awh_cache__.domains.erase(i);
+					// Если у доменного имени остались записи
+					else ++i;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+}
+/**
  * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
  *
  * @param eid    идентификатор таймера DNS-резолвера
@@ -1370,7 +1480,7 @@ void awh::unit::DNS::timeout(const event::id_t eid, const event::status_t status
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to commit DNS resolver timeout");
+								this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
 							#endif
 						}
 					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
@@ -1428,7 +1538,7 @@ void awh::unit::DNS::timeout(const event::id_t eid, const event::status_t status
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to commit DNS resolver timeout");
+								this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
 							#endif
 						}
 					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
@@ -1917,7 +2027,7 @@ void awh::unit::DNS::read(const event::id_t eid, const uint8_t * data, const siz
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to commit DNS resolver timeout");
+							this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
 						#endif
 					}
 				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
@@ -3409,20 +3519,20 @@ void awh::unit::DNS::clearCache() noexcept {
 		 * Выполняем перебор всех IP-адресов в кэше
 		 */
 		for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-			// Выполняем перебор всех записей доменного имени
+			// Выполняем перебор всех записей IP-адреса
 			for(auto j = i->second.begin(); j != i->second.end();){
-				// Если доменное имя не является локальным
+				// Если IP-адрес не является локальным
 				if(!j->local)
-					// Удаляем запись доменного имени из кэша
+					// Удаляем запись IP-адреса из кэша
 					j = i->second.erase(j);
-				// Если доменное имя является локальным
+				// Если IP-адрес является локальным
 				else ++j;
 			}
-			// Если после удаления всех записей доменного имени в кэше не осталось
+			// Если после удаления всех записей IP-адреса в кэше не осталось
 			if(i->second.empty())
-				// Удаляем доменное имя из кэша
+				// Удаляем IP-адрес из кэша
 				i = ::__awh_cache__.ipv4.erase(i);
-			// Если у доменного имени остались записи
+			// Если у IP-адреса остались записи
 			else ++i;
 		}
 	}
@@ -3432,20 +3542,20 @@ void awh::unit::DNS::clearCache() noexcept {
 		 * Выполняем перебор всех IP-адресов в кэше
 		 */
 		for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-			// Выполняем перебор всех записей доменного имени
+			// Выполняем перебор всех записей IP-адреса
 			for(auto j = i->second.begin(); j != i->second.end();){
-				// Если доменное имя не является локальным
+				// Если IP-адрес не является локальным
 				if(!j->local)
-					// Удаляем запись доменного имени из кэша
+					// Удаляем запись IP-адреса из кэша
 					j = i->second.erase(j);
-				// Если доменное имя является локальным
+				// Если IP-адрес является локальным
 				else ++j;
 			}
-			// Если после удаления всех записей доменного имени в кэше не осталось
+			// Если после удаления всех записей IP-адреса в кэше не осталось
 			if(i->second.empty())
-				// Удаляем доменное имя из кэша
+				// Удаляем IP-адрес из кэша
 				i = ::__awh_cache__.ipv6.erase(i);
-			// Если у доменного имени остались записи
+			// Если у IP-адреса остались записи
 			else ++i;
 		}
 	}
@@ -3539,20 +3649,20 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 					 * Выполняем перебор всех IP-адресов в кэше
 					 */
 					for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-						// Выполняем перебор всех записей доменного имени
+						// Выполняем перебор всех записей IP-адреса
 						for(auto j = i->second.begin(); j != i->second.end();){
-							// Если доменное имя не является локальным
+							// Если IP-адрес не является локальным
 							if(!j->local)
-								// Удаляем запись доменного имени из кэша
+								// Удаляем запись IP-адреса из кэша
 								j = i->second.erase(j);
-							// Если доменное имя является локальным
+							// Если IP-адрес является локальным
 							else ++j;
 						}
-						// Если после удаления всех записей доменного имени в кэше не осталось
+						// Если после удаления всех записей IP-адреса в кэше не осталось
 						if(i->second.empty())
-							// Удаляем доменное имя из кэша
+							// Удаляем IP-адрес из кэша
 							i = ::__awh_cache__.ipv4.erase(i);
-						// Если у доменного имени остались записи
+						// Если у IP-адреса остались записи
 						else ++i;
 					}
 				}
@@ -3565,20 +3675,20 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 					 * Выполняем перебор всех IP-адресов в кэше
 					 */
 					for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-						// Выполняем перебор всех записей доменного имени
+						// Выполняем перебор всех записей IP-адреса
 						for(auto j = i->second.begin(); j != i->second.end();){
-							// Если доменное имя не является локальным
+							// Если IP-адрес не является локальным
 							if(!j->local)
-								// Удаляем запись доменного имени из кэша
+								// Удаляем запись IP-адреса из кэша
 								j = i->second.erase(j);
-							// Если доменное имя является локальным
+							// Если IP-адрес является локальным
 							else ++j;
 						}
-						// Если после удаления всех записей доменного имени в кэше не осталось
+						// Если после удаления всех записей IP-адреса в кэше не осталось
 						if(i->second.empty())
-							// Удаляем доменное имя из кэша
+							// Удаляем IP-адрес из кэша
 							i = ::__awh_cache__.ipv6.erase(i);
-						// Если у доменного имени остались записи
+						// Если у IP-адреса остались записи
 						else ++i;
 					}
 				}
@@ -3641,20 +3751,20 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 				 * Выполняем перебор всех IPv4-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-					// Выполняем перебор всех доменных имён IPv4-адреса
+					// Выполняем перебор всех записей IPv4-адреса
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 						if(!j->local && this->_fmk->compare(domain, j->domain))
-							// Удаляем доменное имя из кэша
+							// Удаляем запись IPv4-адреса из кэша
 							j = i->second.erase(j);
 						// Если доменное имя не соответствует удаляемому, то пропускаем его
 						else ++j;
 					}
-					// Если после удаления всех доменных имён у IPv4-адреса не осталось доменных имён, то удаляем его из кэша
+					// Если после удаления всех записей у IPv4-адреса не осталось записей, то удаляем его из кэша
 					if(i->second.empty())
 						// Удаляем IPv4-адрес из кэша
 						i = ::__awh_cache__.ipv4.erase(i);
-					// Если у IPv4-адреса остались доменные имена, то пропускаем его
+					// Если у IPv4-адреса остались записи, то пропускаем его
 					else ++i;
 				}
 			}
@@ -3664,20 +3774,20 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 				 * Выполняем перебор всех IPv6-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-					// Выполняем перебор всех доменных имён IPv6-адреса
+					// Выполняем перебор всех записей IPv6-адреса
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 						if(!j->local && this->_fmk->compare(domain, j->domain))
-							// Удаляем доменное имя из кэша
+							// Удаляем запись IPv6-адреса из кэша
 							j = i->second.erase(j);
 						// Если доменное имя не соответствует удаляемому, то пропускаем его
 						else ++j;
 					}
-					// Если после удаления всех доменных имён у IPv6-адреса не осталось доменных имён, то удаляем его из кэша
+					// Если после удаления всех записей у IPv6-адреса не осталось записей, то удаляем его из кэша
 					if(i->second.empty())
 						// Удаляем IPv6-адрес из кэша
 						i = ::__awh_cache__.ipv6.erase(i);
-					// Если у IPv6-адреса остались доменные имена, то пропускаем его
+					// Если у IPv6-адреса остались записи, то пропускаем его
 					else ++i;
 				}
 			}
@@ -3767,20 +3877,20 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 						 * Выполняем перебор всех IPv4-адресов в кэше
 						 */
 						for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-							// Выполняем перебор всех доменных имён IPv4-адреса
+							// Выполняем перебор всех записей IPv4-адреса
 							for(auto j = i->second.begin(); j != i->second.end();){
 								// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 								if(!j->local && this->_fmk->compare(domain, j->domain))
-									// Удаляем доменное имя из кэша
+									// Удаляем запись IPv4-адреса из кэша
 									j = i->second.erase(j);
 								// Если доменное имя не соответствует удаляемому, то пропускаем его
 								else ++j;
 							}
-							// Если после удаления всех доменных имён у IPv4-адреса не осталось доменных имён, то удаляем его из кэша
+							// Если после удаления всех записей у IPv4-адреса не осталось записей, то удаляем его из кэша
 							if(i->second.empty())
 								// Удаляем IPv4-адрес из кэша
 								i = ::__awh_cache__.ipv4.erase(i);
-							// Если у IPv4-адреса остались доменные имена, то пропускаем его
+							// Если у IPv4-адреса остались записи, то пропускаем его
 							else ++i;
 						}
 					}
@@ -3793,20 +3903,20 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 						 * Выполняем перебор всех IPv6-адресов в кэше
 						 */
 						for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-							// Выполняем перебор всех доменных имён IPv6-адреса
+							// Выполняем перебор всех записей IPv6-адреса
 							for(auto j = i->second.begin(); j != i->second.end();){
 								// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 								if(!j->local && this->_fmk->compare(domain, j->domain))
-									// Удаляем доменное имя из кэша
+									// Удаляем запись IPv6-адреса из кэша
 									j = i->second.erase(j);
 								// Если доменное имя не соответствует удаляемому, то пропускаем его
 								else ++j;
 							}
-							// Если после удаления всех доменных имён у IPv6-адреса не осталось доменных имён, то удаляем его из кэша
+							// Если после удаления всех записей у IPv6-адреса не осталось записей, то удаляем его из кэша
 							if(i->second.empty())
 								// Удаляем IPv6-адрес из кэша
 								i = ::__awh_cache__.ipv6.erase(i);
-							// Если у IPv6-адреса остались доменные имена, то пропускаем его
+							// Если у IPv6-адреса остались записи, то пропускаем его
 							else ++i;
 						}
 					}
@@ -3847,7 +3957,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 		 */
 		try {
 			// Выполняем блокировку потока для работы с кэшем
-			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
@@ -3857,44 +3967,39 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 				/**
 				 * Выполняем перебор всех записей доменного имени
 				 */
-				for(auto j = i->second.begin(); j != i->second.end();){
-					// Проверяем устарела ли запись в кэше
+				for(auto j = i->second.begin(); j != i->second.end(); ++j){
+					// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 					if((j->life > 0) && (j->life <= now))
-						// Удаляем запись в кэше
-						j = i->second.erase(j);
-					// Продолжаем перебор дальше
-					else {
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Если IP-адрес доменного имени является IPv4
-								if(j->ip->size == 4){
-									// Выполняем блокировку потока для парсинга IP-адреса
-									const locker_t <> lock(::__awh_mtx__);
-									// Устанавливаем полученный IP-адрес
-									this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
-									// Выводим результат
-									return static_cast <string> (this->_addr);
-								}
-							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Если IP-адрес доменного имени является IPv6
-								if(j->ip->size == 16){
-									// Выполняем блокировку потока для парсинга IP-адреса
-									const locker_t <> lock(::__awh_mtx__);
-									// Устанавливаем полученный IP-адрес
-									this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
-									// Выводим результат
-									return static_cast <string> (this->_addr);
-								}
-							} break;
-						}
-						// Продолжаем перебор дальше
-						++j;
+						// Пропускаем записи доменного имени
+						continue;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если IP-адрес доменного имени является IPv4
+							if(j->ip->size == 4){
+								// Выполняем блокировку потока для парсинга IP-адреса
+								const locker_t <> lock(::__awh_mtx__);
+								// Устанавливаем полученный IP-адрес
+								this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+								// Выводим результат
+								return static_cast <string> (this->_addr);
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если IP-адрес доменного имени является IPv6
+							if(j->ip->size == 16){
+								// Выполняем блокировку потока для парсинга IP-адреса
+								const locker_t <> lock(::__awh_mtx__);
+								// Устанавливаем полученный IP-адрес
+								this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+								// Выводим результат
+								return static_cast <string> (this->_addr);
+							}
+						} break;
 					}
 				}
 			}
@@ -3938,7 +4043,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 		 */
 		try {
 			// Выполняем блокировку потока для работы с кэшем
-			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 			// Выполняем поиск доменного имени в кэше
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
@@ -3948,48 +4053,43 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 				/**
 				 * Выполняем перебор всех записей доменного имени
 				 */
-				for(auto j = i->second.begin(); j != i->second.end();){
-					// Проверяем устарела ли запись в кэше
+				for(auto j = i->second.begin(); j != i->second.end(); ++j){
+					// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 					if((j->life > 0) && (j->life <= now))
-						// Удаляем запись в кэше
-						j = i->second.erase(j);
-					// Продолжаем перебор дальше
-					else {
-						/**
-						 * Определяем семейство события
-						 */
-						switch(static_cast <uint8_t> (family)){
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Если IP-адрес доменного имени является IPv4
-								if((result = (j->ip->size == 4))){
-									// Если объект результата не инициализирован
-									if(value == nullptr)
-										// Инициализируем объект результата
-										value = make_unique <net::addr_net_ipv4_t> ();
-									// Устанавливаем IP-адрес
-									awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (j->ip.get())->address;
-									// Выводим результат
-									return result;
-								}
-							} break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Если IP-адрес доменного имени является IPv6
-								if((result = (j->ip->size == 16))){
-									// Если объект результата не инициализирован
-									if(value == nullptr)
-										// Инициализируем объект результата
-										value = make_unique <net::addr_net_ipv6_t> ();
-									// Устанавливаем IP-адрес
-									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (j->ip.get())->address[0], 16);
-									// Выводим результат
-									return result;
-								}
-							} break;
-						}
-						// Продолжаем перебор дальше
-						++j;
+						// Пропускаем записи доменного имени
+						continue;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Если IP-адрес доменного имени является IPv4
+							if((result = (j->ip->size == 4))){
+								// Если объект результата не инициализирован
+								if(value == nullptr)
+									// Инициализируем объект результата
+									value = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем IP-адрес
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (j->ip.get())->address;
+								// Выводим результат
+								return result;
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Если IP-адрес доменного имени является IPv6
+							if((result = (j->ip->size == 16))){
+								// Если объект результата не инициализирован
+								if(value == nullptr)
+									// Инициализируем объект результата
+									value = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем IP-адрес
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (j->ip.get())->address[0], 16);
+								// Выводим результат
+								return result;
+							}
+						} break;
 					}
 				}
 			}
@@ -4056,12 +4156,14 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
 			if(i != ::__awh_cache__.domains.end()){
+				// Получаем текущую метку времени
+				const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 				// Создаём объект записи
 				EntryIP record;
 				// Если время жизни кэша установлено
 				if(ttl > 0)
 					// Устанавливаем время жизни
-					record.life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+					record.life = (now + static_cast <uint64_t>  (ttl * 1000));
 				/**
 				 * Определяем тип адреса
 				 */
@@ -4083,7 +4185,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 							// Если время жизни кэша установлено
 							if(ttl > 0)
 								// Устанавливаем время жизни
-								record.life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+								record.life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Выполняем добавление IP-адреса
 							i->second.push_back(::move(record));
 						// Если IP-адрес не найден в кэше
@@ -4115,7 +4217,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 							// Если время жизни кэша установлено
 							if(ttl > 0)
 								// Устанавливаем время жизни
-								record.life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+								record.life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Выполняем добавление IP-адреса
 							i->second.push_back(::move(record));
 						// Если IP-адрес не найден в кэше
@@ -4137,8 +4239,10 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 			} else {
 				// Создаём список записей IP-адресов
 				vector <EntryIP> entry(1);
+				// Получаем текущую метку времени
+				const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 				// Устанавливаем время жизни
-				entry.back().life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+				entry.back().life = (now + static_cast <uint64_t>  (ttl * 1000));
 				/**
 				 * Определяем тип адреса
 				 */
@@ -4160,7 +4264,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 							// Если время жизни кэша установлено
 							if(ttl > 0)
 								// Устанавливаем время жизни
-								record.life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+								record.life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Выполняем добавление IP-адреса
 							i->second.push_back(::move(record));
 						// Если IP-адрес не найден в кэше
@@ -4172,7 +4276,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 							// Если время жизни кэша установлено
 							if(ttl > 0)
 								// Устанавливаем время жизни
-								entry.back().life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+								entry.back().life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Добавляем новую запись в кэш IP-адресов
 							::__awh_cache__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, ::move(entry));
 						}
@@ -4194,7 +4298,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 							// Если время жизни кэша установлено
 							if(ttl > 0)
 								// Устанавливаем время жизни
-								record.life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+								record.life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Выполняем добавление IP-адреса
 							i->second.push_back(::move(record));
 						// Если IP-адрес не найден в кэше
@@ -4206,7 +4310,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const unique_ptr <ne
 							// Если время жизни кэша установлено
 							if(ttl > 0)
 								// Устанавливаем время жизни
-								entry.back().life = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + static_cast <uint64_t>  (ttl * 1000));
+								entry.back().life = (now + static_cast <uint64_t>  (ttl * 1000));
 							// Добавляем новую запись в кэш IP-адресов
 							::__awh_cache__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, ::move(entry));
 						}
@@ -4492,13 +4596,13 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, interval), log_t::flag_t::CRITICAL, "Failed to start cache dump interval");
+							this->_log->debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, std::make_tuple(filename, interval), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to start cache dump interval");
+							this->_log->print("Failed to start cache dump interval", log_t::flag_t::CRITICAL);
 						#endif
 					}
 				}
@@ -4699,7 +4803,7 @@ awh::event::id_t awh::unit::DNS::create(const event::family_t family) noexcept {
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "Failed to commit DNS resolver timeout");
+					this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
 				#endif
 			}
 		// Если таймер для ожидания ответа от DNS-сервера успешно установлен
@@ -5191,7 +5295,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 						// Выполняем блокировку потока для работы с кэшем
-						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 						// Выполняем поиск IP-адреса в кэше
 						auto i = ::__awh_cache__.ipv4.find(this->_addr.v4(net_addr_t::endian_t::LITTLE));
 						// Если в кэше IP-адрес найден
@@ -5201,25 +5305,22 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 							/**
 							 * Выполняем перебор всех записей IP-адреса в кэше
 							 */
-							for(auto j = i->second.begin(); j != i->second.end();){
-								// Проверяем устарела ли запись в кэше
+							for(auto j = i->second.begin(); j != i->second.end(); ++j){
+								// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 								if((j->life > 0) && (j->life <= now))
-									// Удаляем запись в кэше
-									j = i->second.erase(j);
-								// Выводим положительный результат, если запись в кэше не устарела
-								else {
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, static_cast <string> (this->_addr));
-									// Выводим положительный результат
-									return true;
-								}
+									// Пропускаем записи IP-адреса
+									continue;
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, static_cast <string> (this->_addr));
+								// Выводим положительный результат
+								return true;
 							}
 						}
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 						// Выполняем блокировку потока для работы с кэшем
-						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 						// Выполняем поиск IP-адреса в кэше
 						auto i = ::__awh_cache__.ipv6.find(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 						// Если в кэше IP-адрес найден
@@ -5229,18 +5330,15 @@ bool awh::unit::DNS::search(const event::id_t eid, const unique_ptr <net::addr_t
 							/**
 							 * Выполняем перебор всех записей IP-адреса в кэше
 							 */
-							for(auto j = i->second.begin(); j != i->second.end();){
-								// Проверяем устарела ли запись в кэше
+							for(auto j = i->second.begin(); j != i->second.end(); ++j){
+								// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 								if((j->life > 0) && (j->life <= now))
-									// Удаляем запись в кэше
-									j = i->second.erase(j);
-								// Выводим положительный результат, если запись в кэше не устарела
-								else {
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, static_cast <string> (this->_addr));
-									// Выводим положительный результат
-									return true;
-								}
+									// Пропускаем записи IP-адреса
+									continue;
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, static_cast <string> (this->_addr));
+								// Выводим положительный результат
+								return true;
 							}
 						}
 					} break;
@@ -5319,7 +5417,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
 						{
 							// Выполняем блокировку потока для работы с кэшем
-							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 							// Выполняем поиск IP-адреса в кэше
 							auto i = ::__awh_cache__.ipv4.find(this->_addr.v4(net_addr_t::endian_t::LITTLE));
 							// Если в кэше IP-адрес найден
@@ -5329,18 +5427,15 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 								/**
 								 * Выполняем перебор всех записей IP-адреса в кэше
 								 */
-								for(auto j = i->second.begin(); j != i->second.end();){
-									// Проверяем устарела ли запись в кэше
+								for(auto j = i->second.begin(); j != i->second.end(); ++j){
+									// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 									if((j->life > 0) && (j->life <= now))
-										// Удаляем запись в кэше
-										j = i->second.erase(j);
-									// Выводим положительный результат, если запись в кэше не устарела
-									else {
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, ip);
-										// Выводим положительный результат
-										return true;
-									}
+										// Пропускаем записи IP-адреса
+										continue;
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, j->domain, ip);
+									// Выводим положительный результат
+									return true;
 								}
 							}
 						}
@@ -5378,7 +5473,7 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
 						{
 							// Выполняем блокировку потока для работы с кэшем
-							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 							// Выполняем поиск IP-адреса в кэше
 							auto i = ::__awh_cache__.ipv6.find(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 							// Если в кэше IP-адрес найден
@@ -5388,18 +5483,15 @@ bool awh::unit::DNS::search(const event::id_t eid, const event::family_t family,
 								/**
 								 * Выполняем перебор всех записей IP-адреса в кэше
 								 */
-								for(auto j = i->second.begin(); j != i->second.end();){
-									// Проверяем устарела ли запись в кэше
+								for(auto j = i->second.begin(); j != i->second.end(); ++j){
+									// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 									if((j->life > 0) && (j->life <= now))
-										// Удаляем запись в кэше
-										j = i->second.erase(j);
-									// Выводим положительный результат, если запись в кэше не устарела
-									else {
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, ip);
-										// Выводим положительный результат
-										return true;
-									}
+										// Пропускаем записи IP-адреса
+										continue;
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, j->domain, ip);
+									// Выводим положительный результат
+									return true;
 								}
 							}
 						}
@@ -5536,7 +5628,7 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 		if((eid > 0) && !domain.empty() && this->_callback.is("address")){
 			{
 				// Выполняем блокировку потока для работы с кэшем
-				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 				// Выполняем поиск доменного имени в кэше
 				auto i = ::__awh_cache__.domains.find(string{domain});
 				// Если в кэше доменное имя найдено
@@ -5546,60 +5638,55 @@ bool awh::unit::DNS::resolve(const event::id_t eid, const event::family_t family
 					/**
 					 * Выполняем перебор всех записей доменного имени
 					 */
-					for(auto j = i->second.begin(); j != i->second.end();){
-						// Проверяем устарела ли запись в кэше
+					for(auto j = i->second.begin(); j != i->second.end(); ++j){
+						// Пропускаем устаревшие записи в кэше (удаление будет при записи)
 						if((j->life > 0) && (j->life <= now))
-							// Удаляем запись в кэше
-							j = i->second.erase(j);
-						// Продолжаем перебор дальше
-						else {
-							/**
-							 * Определяем семейство события
-							 */
-							switch(static_cast <uint8_t> (family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									// Если IP-адрес доменного имени является IPv4
-									if(j->ip->size == 4){
-										// IP-адрес для вывода результата
-										string address = "";
-										{
-											// Выполняем блокировку потока для парсинга IP-адреса
-											const locker_t <> lock(::__awh_mtx__);
-											// Устанавливаем полученный IP-адрес
-											this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
-											// Устанавливаем строковое представление IP-адреса для вывода результата
-											address = ::move(static_cast <string> (this->_addr));
-										}
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, domain, address);
-										// Выводим положительный результат
-										return true;
+							// Пропускаем записи доменного имени
+							continue;
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Если IP-адрес доменного имени является IPv4
+								if(j->ip->size == 4){
+									// IP-адрес для вывода результата
+									string address = "";
+									{
+										// Выполняем блокировку потока для парсинга IP-адреса
+										const locker_t <> lock(::__awh_mtx__);
+										// Устанавливаем полученный IP-адрес
+										this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+										// Устанавливаем строковое представление IP-адреса для вывода результата
+										address = ::move(static_cast <string> (this->_addr));
 									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									// Если IP-адрес доменного имени является IPv6
-									if(j->ip->size == 16){
-										// IP-адрес для вывода результата
-										string address = "";
-										{
-											// Выполняем блокировку потока для парсинга IP-адреса
-											const locker_t <> lock(::__awh_mtx__);
-											// Устанавливаем полученный IP-адрес
-											this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
-											// Устанавливаем строковое представление IP-адреса для вывода результата
-											address = ::move(static_cast <string> (this->_addr));
-										}
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, domain, address);
-										// Выводим положительный результат
-										return true;
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV4, domain, address);
+									// Выводим положительный результат
+									return true;
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Если IP-адрес доменного имени является IPv6
+								if(j->ip->size == 16){
+									// IP-адрес для вывода результата
+									string address = "";
+									{
+										// Выполняем блокировку потока для парсинга IP-адреса
+										const locker_t <> lock(::__awh_mtx__);
+										// Устанавливаем полученный IP-адрес
+										this->_addr.source(j->ip, net_addr_t::endian_t::LITTLE);
+										// Устанавливаем строковое представление IP-адреса для вывода результата
+										address = ::move(static_cast <string> (this->_addr));
 									}
-								} break;
-							}
-							// Продолжаем перебор дальше
-							++j;
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, const event::family_t, string_view, string_view)> ("address", eid, event::family_t::IPV6, domain, address);
+									// Выводим положительный результат
+									return true;
+								}
+							} break;
 						}
 					}
 				}
@@ -5686,6 +5773,32 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
 	::__awh_resolver__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с чёрным списком
 	::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Добавляем новое событие таймаута для периодической очистки кэша от устаревших записей
+	const event::id_t tid = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
+	// Устанавливаем интервал таймера по умолчанию на 1 минуту для периодической очистки кэша
+	this->_io->setTimeout(tid, event::action_t::NONE, 60000);
+	// Устанавливаем обработчик события таймера для периодической очистки кэша
+	this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::collector, this, _1, _2)));
+	// Если не удалось установить таймер для периодической очистки кэша
+	if(!this->_io->commit(tid) || !this->_io->launch(tid)){
+		// Удаляем событие таймера
+		this->_io->destroy(tid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Failed to create collector timeout", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Failed to create collector timeout", log_t::flag_t::CRITICAL);
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	}
 }
 /**
  * @brief Деструктор
