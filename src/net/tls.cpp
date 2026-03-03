@@ -518,6 +518,12 @@ namespace local {
 	 *
 	 */
 	using guard_t = Guard_Transport_Layer_Security;
+
+	/**
+	 * @brief Буфер для обмена данными SSL
+	 *
+	 */
+	thread_local uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 };
 
 /**
@@ -4642,14 +4648,12 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 								int32_t bytes = 0;
 								// Количество ожидающих данных для чтения
 								size_t pending = 0;
-								// Буфер данных для чтения
-								uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 								/**
 								 * Читаем все ожидающие данные из BIO буфера записи
 								 */
 								while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 									// Читаем данные из BIO буфера записи
-									bytes = ::BIO_read(member->bio.write, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+									bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 									// Если данные не прочитаны
 									if(bytes <= 0){
 										// Получаем код ошибки
@@ -4697,7 +4701,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 									// Если функция обратного вызова чтения данных установлена
 									} else if(member->callback.read != nullptr)
 										// Вызываем функцию обратного вызова чтения данных
-										member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
+										member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 								}
 							// Если ошибка не связана с необходимостью повторного чтения или записи
 							} else {
@@ -4869,14 +4873,12 @@ bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
 						int32_t bytes = 0;
 						// Количество ожидающих данных для чтения
 						size_t pending = 0;
-						// Буфер данных для чтения
-						uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 						/**
 						 * Читаем все ожидающие данные из BIO буфера записи
 						 */
 						while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 							// Читаем данные из BIO буфера записи
-							bytes = ::BIO_read(member->bio.write, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+							bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 							// Если данные не прочитаны
 							if(bytes <= 0)
 								// Выходим из цикла
@@ -4884,7 +4886,7 @@ bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
 							// Если функция обратного вызова чтения данных установлена
 							else if((result = (member->callback.read != nullptr)))
 								// Вызываем функцию обратного вызова чтения данных
-								member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
+								member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 						}
 					}
 				} break;
@@ -6210,14 +6212,12 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 								member->callback.write(id, event_t::ENCRYPTION, static_cast <size_t> (bytes));
 							// Количество ожидающих данных для чтения
 							size_t pending = 0;
-							// Буфер данных для чтения
-							uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 							/**
 							 * Читаем все ожидающие данные из BIO буфера записи
 							 */
 							while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 								// Читаем данные из BIO буфера записи
-								bytes = ::BIO_read(member->bio.write, buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+								bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 								// Если данные не прочитаны
 								if(bytes <= 0){
 									// Получаем код ошибки
@@ -6262,7 +6262,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 								// Если функция обратного вызова чтения данных установлена
 								} else if(member->callback.read != nullptr)
 									// Вызываем функцию обратного вызова чтения данных
-									member->callback.read(id, event_t::ENCRYPTION, buffer, static_cast <size_t> (bytes));
+									member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 							}
 						}
 					// Если рукопожатие не выполнено
@@ -6401,14 +6401,12 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 						}
 						// Если у нас есть подготовленные данные для чтения
 						if((::BIO_ctrl_pending(member->bio.read) > 0) || (::SSL_has_pending(member->ssl) == 1)){
-							// Буфер данных для чтения
-							uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 							/**
 							 * Читаем все доступные данные из защищённого сокета
 							 */
 							do {
 								// Читаем данные из защищённого сокета
-								bytes = ::SSL_read(member->ssl, buffer, AWH_MAX_SSL_BUFFER_SIZE);
+								bytes = ::SSL_read(member->ssl, ::local::buffer, AWH_MAX_SSL_BUFFER_SIZE);
 								// Если данные не прочитаны
 								if(bytes <= 0){
 									// Получаем код ошибки
@@ -6453,7 +6451,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 								// Если функция обратного вызова чтения данных установлена
 								} else if(member->callback.read != nullptr)
 									// Вызываем функцию обратного вызова чтения данных
-									member->callback.read(id, event_t::DECRYPTION, buffer, static_cast <size_t> (bytes));
+									member->callback.read(id, event_t::DECRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 							/**
 							 * Пока в BIO буфере чтения или в защищённом сокете есть ожидающие данные для чтения
 							 */
