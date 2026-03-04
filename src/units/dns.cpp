@@ -16,25 +16,18 @@
  * Стандартные модули
  */
 #include <array>
-#include <cstdint>
-#include <net/event.hpp>
-#include <string_view>
-#include <sys/types.h>
 #include <vector>
 #include <random>
 #include <cerrno>
+#include <cstdint>
+#include <string_view>
 #include <unordered_set>
-#include <unordered_map>
 
 /**
  * Системные модули
  */
 #include <arpa/inet.h>
-
-/**
- * Подключаем заголовочные файлы проекта
- */
-#include <sys/locker.hpp>
+#include <sys/types.h>
 
 /**
  * Подключаем заголовочный файл модуля
