@@ -23,6 +23,7 @@
  */
 #include "unit.hpp"
 #include "../sys/binbox.hpp"
+#include "../sys/locker.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -45,6 +46,12 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ DNS : public unit_t {
 			public:
 				/**
+				 * @brief Идентификатор DNS-резолвера
+				 *
+				 */
+				using id_t = uint16_t;
+			public:
+				/**
 				 * @brief Типы DNS-записей
 				 *
 				 */
@@ -61,10 +68,144 @@ namespace awh {
 					ANY   = 0xFF  // Любой тип записи (используется для запроса всех типов записей для домена)
 				};
 			private:
+				/**
+				 * @brief Класс для управления списком DNS-серверов
+				 *
+				 */
+				typedef class __AWH_SHARED_EXPORT__ Servers {
+					private:
+						// Индекс текущего DNS-сервера для выполнения запроса IPv4 (для раунд-робин распределения нагрузки)
+						size_t _indexIPv4;
+						// Индекс текущего DNS-сервера для выполнения запроса IPv6 (для раунд-робин распределения нагрузки)
+						size_t _indexIPv6;
+					private:
+						// Флаг инициализации списка DNS-серверов IPv4
+						bool _initializedIPv4;
+						// Флаг инициализации списка DNS-серверов IPv6
+						bool _initializedIPv6;
+					private:
+						// Список DNS-серверов для выполнения запросов (IPv4)
+						vector <unique_ptr <net::addr_t>> _ipv4;
+						// Список DNS-серверов для выполнения запросов (IPv6)
+						vector <unique_ptr <net::addr_t>> _ipv6;
+					public:
+						/**
+						 * @brief Метод инициализации списка DNS-серверов из переменных окружения или стандартных значений
+						 *
+						 */
+						void init() noexcept;
+					public:
+						/**
+						 * @brief Метод сброса списка DNS-серверов
+						 *
+						 * @param family семейстов IP-адресов IPv4/IPv6
+						 */
+						void reset(const event::family_t family) noexcept;
+					public:
+						/**
+						 * @brief Метод получения текущего DNS-сервера
+						 *
+						 * @param family семейстов IP-адресов IPv4/IPv6
+						 * @return       объект DNS-сервера для выполнения запроса
+						 */
+						const net::addr_t * get(const event::family_t family) noexcept;
+					public:
+						/**
+						 * @brief Метод добавления DNS-сервера в список
+						 *
+						 * @param server объект DNS-сервера для добавления в список
+						 */
+						void push(const net::addr_t * server) noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Servers() noexcept;
+				} servers_t;
+				/**
+				 * @brief Класс для управления состоянием DNS-резолвера
+				 *
+				 */
+				typedef struct Resolver {
+					// Префикс для переменных окружения
+					string prefix;
+					// Порт сервера DNS-резолвера
+					uint16_t port;
+					// Идентификатор события для DNS-резолвера
+					event::id_t eid;
+					// Адрес DNS-сервера для выполнения запросов
+					servers_t nameServers;
+					// Адрес сети для выполнения запроса
+					unique_ptr <net::addr_t> source;
+					// Мютекс для блокировки потока
+					lock_state_t <std::mutex> mtx;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Resolver() noexcept :
+					 prefix{""}, port(53),
+					 eid(0), source(nullptr) {}
+				} resolver_t;
+				/**
+				 * @brief Класс для управления тайм-аутами при ожидании ответа от DNS-сервера
+				 *
+				 */
+				typedef struct Timeout {
+					// Доменное имя, для которого произошёл таймаут
+					string domain;
+					// Время ожидания ответа от DNS-сервера (в миллисекундах)
+					uint32_t delay;
+					// Количество попыток резолвинга доменного имени
+					uint8_t attempt;
+					// Тип DNS-записи, для которой произошёл таймаут
+					record_t record;
+					// Идентификатор события для таймера DNS-резолвера
+					event::id_t eid;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Timeout() noexcept :
+					 domain{""},
+					 delay(5000), attempt(0),
+					 record(record_t::NONE), eid(0) {}
+				} timeout_t;
+				/**
+				 * @brief Класс для управления тайм-аутами при ожидании ответа от DNS-сервера
+				 *
+				 */
+				typedef struct Timeouts {
+					// Количество попыток резолвинга доменного имени
+					uint8_t attempts;
+					// Мютекс для блокировки потока
+					lock_state_t <std::shared_mutex> mtx;
+					// Активные тайм-ауты при ожидании ответа от DNS-сервера
+					unordered_map <id_t, timeout_t> waiting;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					 explicit Timeouts() noexcept : attempts(3) {}
+				} timeouts_t;
+			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
 				// Бинарный контейнер для хранения кэша доменных имён
 				binbox_t _binbox;
+			private:
+				// Состояние DNS-резолвера
+				resolver_t _resolver;
+				// Тайм-ауты при ожидании ответа от DNS-сервера
+				timeouts_t _timeouts;
+			private:
+				/**
+				 * @brief Метод создания события DNS-резолвера
+				 *
+				 * @param family семейство протоколов (например: IPv4 или IPv6)
+				 */
+				void create(const event::family_t family) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий дампинга DNS-кэша
@@ -80,13 +221,7 @@ namespace awh {
 				 * @param status статус события таймера DNS-резолвера
 				 */
 				void collector(const event::id_t, const event::status_t status) noexcept;
-				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
-				 *
-				 * @param eid    идентификатор таймера DNS-резолвера
-				 * @param status статус события таймера DNS-резолвера
-				 */
-				void timeout(const event::id_t eid, const event::status_t status) noexcept;
+			private:
 				/**
 				 * @brief Метод обработки событий загрузки локальных хостов
 				 *
@@ -95,14 +230,7 @@ namespace awh {
 				 * @param size размер данных события загрузки локальных хостов
 				 */
 				void hosts(const event::id_t, const uint8_t * data, const size_t size) noexcept;
-				/**
-				 * @brief Метод обработки событий чтения из DNS-резолвера
-				 *
-				 * @param eid  идентификатор события чтения из DNS-резолвера
-				 * @param data данные события чтения из DNS-резолвера
-				 * @param size размер данных события чтения из DNS-резолвера
-				 */
-				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+			private:
 				/**
 				 * @brief Метод обработки ошибок событий DNS-резолвера
 				 *
@@ -111,6 +239,24 @@ namespace awh {
 				 * @param description описание ошибки события DNS-резолвера
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки ответов от DNS-сервера на запросы резолвинга доменных имён
+				 *
+				 * @param eid  идентификатор события чтения из DNS-резолвера
+				 * @param data данные события чтения из DNS-резолвера
+				 * @param size размер данных события чтения из DNS-резолвера
+				 */
+				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
+				 *
+				 * @param did     идентификатор DNS-резолвера
+				 * @param eid     идентификатор таймера DNS-резолвера
+				 * @param status  статус события таймера DNS-резолвера
+				 * @param timeout объект активного таймаута DNS-записи
+				 */
+				void timeout(const id_t did, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков
@@ -317,167 +463,187 @@ namespace awh {
 				void setDumpAddress(string_view filename, const uint32_t interval) noexcept;
 			public:
 				/**
-				 * @brief Метод фиксации параметров события
+				 * @brief Метод сброса DNS-резолвера
 				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 * @return    результат выполнения фиксации
+				 * @return результат выполнения операции
 				 */
-				bool commit(const event::id_t eid) noexcept;
+				bool reset() noexcept;
 			public:
 				/**
-				 * @brief Метод уничтожения события DNS-резолвера
+				 * @brief Метод фиксации параметров DNS-резолвера
 				 *
-				 * @param eid идентификатор события DNS-резолвера
+				 * @return результат выполнения операции
 				 */
-				void destroy(const event::id_t eid) noexcept;
+				bool commit() noexcept;
 			public:
 				/**
-				 * @brief Метод создания события DNS-резолвера
+				 * @brief Метод получения порта сервера DNS-резолвера
+				 *
+				 * @return порт сервера DNS-резолвера
+				 */
+				uint16_t getPort() const noexcept;
+				/**
+				 * @brief Метод установки порта сервера DNS-резолвера
+				 *
+				 * @param port порт сервера DNS-резолвера
+				 */
+				void setPort(const uint16_t port) noexcept;
+			public:
+				/**
+				 * @brief Метод установки сервера DNS
+				 *
+				 * @param server адрес DNS-сервера для установки
+				 */
+				void setServer(string_view server) noexcept;
+				/**
+				 * @brief Метод установки сервера DNS
+				 *
+				 * @param server адрес DNS-сервера для установки
+				 */
+				void setServer(const net::addr_t * server) noexcept;
+				/**
+				 * @brief Метод установки сервера DNS
 				 *
 				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @return       идентификатор события DNS-резолвера
+				 * @param server адрес DNS-сервера для установки
 				 */
-				event::id_t create(const event::family_t family) noexcept;
-			public:
-				/**
-				 * @brief Метод получения порта события
-				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 * @return    порт события
-				 */
-				uint16_t getPort(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки порта события
-				 *
-				 * @param eid  идентификатор события DNS-резолвера
-				 * @param port порт события
-				 * @return     результат выполнения установки
-				 */
-				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
-			public:
-				/**
-				 * @brief Метод получения таймаута события
-				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param action тип действия события
-				 * @return       значение таймаута в миллисекундах
-				 */
-				uint32_t getTimeout(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки времени ожидания выполнения запроса
-				 *
-				 * @param eid     идентификатор события DNS-резолвера
-				 * @param timeout значение таймаута в миллисекундах
-				 */
-				void setTimeout(const event::id_t eid, const uint32_t timeout) noexcept;
+				void setServer(const event::family_t family, string_view server) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления сервера DNS
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param server адрес DNS-сервера
+				 * @param server адрес DNS-сервера для добавления
 				 */
-				void addServer(const event::id_t eid, string_view server) noexcept;
+				void addServer(string_view server) noexcept;
 				/**
 				 * @brief Метод добавления сервера DNS
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param server адрес DNS-сервера
+				 * @param server адрес DNS-сервера для добавления
 				 */
-				void addServer(const event::id_t eid, const net::addr_t * server) noexcept;
+				void addServer(const net::addr_t * server) noexcept;
 				/**
 				 * @brief Метод добавления сервера DNS
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
 				 * @param family семейстов IP-адресов IPv4/IPv6
-				 * @param server адрес DNS-сервера
+				 * @param server адрес DNS-сервера для добавления
 				 */
-				void addServer(const event::id_t eid, const event::family_t family, string_view server) noexcept;
+				void addServer(const event::family_t family, string_view server) noexcept;
 			public:
 				/**
-				 * @brief Метод добавления адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки списка серверов DNS
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
+				 * @param server адреса DNS-серверов для установки
+				 */
+				void setServers(const vector <string> & servers) noexcept;
+				/**
+				 * @brief Метод установки списка серверов DNS
+				 *
+				 * @param server адреса DNS-серверов для установки
+				 */
+				void setServers(const vector <const net::addr_t *> & servers) noexcept;
+				/**
+				 * @brief Метод установки списка серверов DNS
+				 *
+				 * @param family  семейстов IP-адресов IPv4/IPv6
+				 * @param servers адреса DNS-серверов для установки
+				 */
+				void setServers(const event::family_t family, const vector <string> & servers) noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 *
 				 * @param source адрес сети для выполнения запроса
 				 */
-				void addSource(const event::id_t eid, string_view source) noexcept;
+				void setSource(string_view source) noexcept;
 				/**
-				 * @brief Метод добавления адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки адреса сети с которого будет выполняться запрос
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
 				 * @param source адрес сети для выполнения запроса
 				 */
-				void addSource(const event::id_t eid, const net::addr_t * source) noexcept;
+				void setSource(const net::addr_t * source) noexcept;
 				/**
-				 * @brief Метод добавления адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки адреса сети с которого будет выполняться запрос
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
 				 * @param family семейстов IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса
 				 */
-				void addSource(const event::id_t eid, const event::family_t family, string_view source) noexcept;
+				void setSource(const event::family_t family, string_view source) noexcept;
+			public:
+				/**
+				 * @brief Метод получения идентификатора DNS-резолвера для выполнения запроса к DNS-серверу
+				 *
+				 * @return идентификатор DNS-резолвера для выполнения запроса к DNS-серверу
+				 */
+				id_t issue() const noexcept;
 			public:
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 * @param ip  адрес для поиска доменного имени
-				 * @return    результат выполнения операции
+				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param ip      адрес для поиска доменного имени
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @return        результат выполнения запроса
 				 */
-				bool search(const event::id_t eid, string_view ip) noexcept;
+				bool search(const id_t did, string_view ip, const uint32_t timeout = 0) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param eid идентификатор события DNS-резолвера
-				 * @param ip  адрес для поиска доменного имени
-				 * @return    результат выполнения операции
+				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param ip      адрес для поиска доменного имени
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @return        результат выполнения запроса
 				 */
-				bool search(const event::id_t eid, const net::addr_t * ip) noexcept;
+				bool search(const id_t did, const net::addr_t * ip, const uint32_t timeout = 0) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param family тип интернет-протокола IPv4/IPv6
-				 * @param ip     адрес для поиска доменного имени
-				 * @return       результат выполнения операции
+				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param family  тип интернет-протокола IPv4/IPv6
+				 * @param ip      адрес для поиска доменного имени
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @return        результат выполнения запроса
 				 */
-				bool search(const event::id_t eid, const event::family_t family, string_view ip) noexcept;
+				bool search(const id_t did, const event::family_t family, string_view ip, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Метод выполнения произвольного запроса
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param record тип DNS-записи которую необходимо получить
-				 * @param domain доменное имя сервера
-				 * @return       результат выполнения операции
+				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param record  тип DNS-записи которую необходимо получить
+				 * @param domain  доменное имя сервера
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @return        результат выполнения запроса
 				 */
-				bool request(const event::id_t eid, const record_t record, string_view domain) noexcept;
+				bool request(const id_t did, const record_t record, string_view domain, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
-				 * @brief Метод ресолвинга домена
+				 * @brief Метод ресолвинга доменного имени
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param domain доменное имя сервера
-				 * @return       результат выполнения операции
+				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param domain  доменное имя сервера
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @return        результат выполнения запроса
 				 */
-				bool resolve(const event::id_t eid, string_view domain) noexcept;
+				bool resolve(const id_t did, string_view domain, const uint32_t timeout = 0) noexcept;
 				/**
-				 * @brief Метод ресолвинга домена
+				 * @brief Метод ресолвинга доменного имени
 				 *
-				 * @param eid    идентификатор события DNS-резолвера
-				 * @param family тип интернет-протокола IPv4/IPv6
-				 * @param domain доменное имя сервера
-				 * @return       результат выполнения операции
+				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param family  тип интернет-протокола IPv4/IPv6
+				 * @param domain  доменное имя сервера
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @return        результат выполнения запроса
 				 */
-				bool resolve(const event::id_t eid, const event::family_t family, string_view domain) noexcept;
+				bool resolve(const id_t did, const event::family_t family, string_view domain, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
+				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param fmk    объект фреймворка
+				 * @param log    объект для работы с логами
 				 */
-				explicit DNS(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

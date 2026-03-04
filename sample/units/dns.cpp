@@ -42,50 +42,46 @@ int32_t main(int32_t argc, char * argv[]){
 	// Объект работы с сетевыми адресами
 	net_addr_t addr(&fmk, &log);
 	// Создаём объект узла DNS
-	unit::dns_t dns(&fmk, &log);
+	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Устанавливаем адрес файла хостов
 	dns.setHostsAddress("../hosts");
 	// Устанавливаем адрес файла дампа кэша и интервал сохранения дампа кэша в миллисекундах
 	dns.setDumpAddress("../dump.adb", 60000);
-	// Создаём новое событие DNS-резолвера для IPv4
-	const event::id_t eid = dns.create(event::family_t::IPV4);
 	// Устанавливаем количество попыток резолвинга доменного имени
-	dns.setAttempts(10);
-	// Устанавливаем таймаут ожидания ответа от DNS-сервера в миллисекундах
-	dns.setTimeout(eid, 3000);
+	// dns.setAttempts(10);
 	// Добавляем DNS-сервер для резолвинга доменных имён (фейковый)
-	// dns.addServer(eid, "127.0.0.1");
-	// Устанавливаем функцию обратного вызова на событие получения канонического имени при резолвинге доменного имени
-	dns.on <void (const event::id_t, const unordered_multimap <string, string> &)> ("cname", [&log](const event::id_t eid, const unordered_multimap <string, string> & cname) noexcept -> void {
-		// Выводим информацию об успешно резолвленных канонических именах
-		for(const auto & [fqdn, ip] : cname)
-			// Выводим информацию об успешно резолвленном каноническом имени
-			log.print("Успешно резолвлено каноническое имя %s в IP-адрес: %s", log_t::flag_t::INFO, fqdn.c_str(), ip.c_str());
-	}, placeholders::_1, placeholders::_2);
-	// Устанавливаем функцию обратного вызова на событие получения IP-адреса при резолвинге доменного имени
-	dns.on <void (const event::id_t, const event::family_t, string_view, const net::addr_t *)> ("address", [&addr, &log](const event::id_t eid, const event::family_t family, string_view fqdn, const net::addr_t * ip) noexcept -> void {
-		// Устанавливаем IP-адрес события
-		addr.source(ip);
-		// Выводим информацию об успешно резолвленном доменном имени
-		log.print("Успешно резолвлено доменное имя %s в IP-адрес: %s (%s)", log_t::flag_t::INFO, fqdn.data(), static_cast <string> (addr).c_str(), (family == event::family_t::IPV4 ? "IPv4" : "IPv6"));
-	}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
-	// Устанавливаем функцию обратного вызова на событие количества попыток резолвинга доменного имени
-	dns.on <void (const event::id_t, const uint8_t)> ("attempts", [&log](const event::id_t eid, const uint8_t attempts) noexcept -> void {
-		// Выводим количество попыток резолвинга доменного имени
-		log.print("Количество попыток резолвинга доменного имени: %d", log_t::flag_t::INFO, attempts);
-	}, placeholders::_1, placeholders::_2);
-	// Устанавливаем функцию обратного вызова на событие таймера
-	dns.on <void (const event::status_t)> ("status", [eid, &dns, &log](const event::status_t status) noexcept -> void {
-		/**
-		 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
-		 */
-		switch(static_cast <uint8_t> (status)){
-			// Если событие DNS-резолвера запущено
-			case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-				// Выводим сообщение о запуске события DNS-резолвера
-				log.print("Событие DNS-резолвера было запущено", log_t::flag_t::INFO);
+	// dns.addServer("127.0.0.1");
+	// Если событие DNS-резолвера запущено
+	if(dns.commit()){
+		// Устанавливаем функцию обратного вызова на событие получения канонического имени при резолвинге доменного имени
+		dns.on <void (const unit::dns_t::id_t, const unordered_multimap <string, string> &)> ("cname", [&log](const unit::dns_t::id_t did, const unordered_multimap <string, string> & cname) noexcept -> void {
+			// Выводим информацию об успешно резолвленных канонических именах
+			for(const auto & [fqdn, ip] : cname)
+				// Выводим информацию об успешно резолвленном каноническом имени
+				log.print("Успешно резолвлено каноническое имя %s в IP-адрес: %s (ID: %u)", log_t::flag_t::INFO, fqdn.c_str(), ip.c_str(), did);
+		}, placeholders::_1, placeholders::_2);
+		// Устанавливаем функцию обратного вызова на событие получения IP-адреса при резолвинге доменного имени
+		dns.on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", [&addr, &log](const unit::dns_t::id_t did, const event::family_t family, const string & domain, const net::addr_t * ip) noexcept -> void {
+			// Устанавливаем IP-адрес события
+			addr.source(ip);
+			// Выводим информацию об успешно резолвленном доменном имени
+			log.print("Успешно резолвлено доменное имя %s в IP-адрес: %s (%s) (ID: %u)", log_t::flag_t::INFO, domain.c_str(), static_cast <string> (addr).c_str(), (family == event::family_t::IPV4 ? "IPv4" : "IPv6"), did);
+		}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
+		// Устанавливаем функцию обратного вызова на событие количества попыток резолвинга доменного имени
+		dns.on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", [&log](const unit::dns_t::id_t did, const string & domain, const uint8_t attempts) noexcept -> void {
+			// Выводим количество попыток резолвинга доменного имени
+			log.print("Количество попыток резолвинга доменного имени '%s': attempts=%d (ID: %u)", log_t::flag_t::WARNING, domain.c_str(), attempts, did);
+		}, placeholders::_1, placeholders::_2, placeholders::_3);
+		// Устанавливаем функцию обратного вызова на событие таймера
+		dns.on <void (const event::status_t)> ("status", [&dns, &log](const event::status_t status) noexcept -> void {
+			/**
+			 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
+			 */
+			switch(static_cast <uint8_t> (status)){
 				// Если событие DNS-резолвера запущено
-				if(dns.commit(eid)){
+				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					// Выводим сообщение о запуске события DNS-резолвера
+					log.print("Событие DNS-резолвера было запущено", log_t::flag_t::INFO);
 					// Кодируем доменное имя в Punycode
 					log.print("Доменное имя закодированно: %s", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 					// Декодируем доменное имя из Punycode
@@ -93,42 +89,49 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выполняем пересортировку адресов в кэше для доменного имени
 					dns.shuffle(event::family_t::IPV4, "www.google.com");
 					// Выполняем поиск доменного имени соответствующему IP-адресу
-					if(!dns.search(eid, event::family_t::IPV4, "77.88.44.242"))
+					if(!dns.search(dns.issue(), event::family_t::IPV4, "77.88.44.242", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить поиск доменного имени", log_t::flag_t::CRITICAL);
 					// Выполняем резолвинг доменного имени
-					if(!dns.resolve(eid, event::family_t::IPV4, "www.google.com"))
+					if(!dns.resolve(dns.issue(), event::family_t::IPV4, "www.google.com", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить резолвинг доменного имени", log_t::flag_t::CRITICAL);
 					// Выполняем резолвинг доменного имени
-					if(!dns.resolve(eid, event::family_t::IPV4, "gitlab.pgr.local"))
+					if(!dns.resolve(dns.issue(), event::family_t::IPV4, "gitlab.pgr.local", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить резолвинг доменного имени", log_t::flag_t::CRITICAL);
 					// Выполняем запрос на получение записей CNAME
-					if(!dns.request(eid, unit::dns_t::record_t::CNAME, "dns.rambler-co.ru"))
+					if(!dns.request(dns.issue(), unit::dns_t::record_t::CNAME, "dns.rambler-co.ru", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить запрос на получение CNAME доменного имени", log_t::flag_t::CRITICAL);
 					// Выполняем запрос на получение всех записей доменного имени
-					if(!dns.request(eid, unit::dns_t::record_t::ANY, "ya.ru"))
+					if(!dns.request(dns.issue(), unit::dns_t::record_t::ANY, "ya.ru", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить запрос на получение всех записей доменного имени", log_t::flag_t::CRITICAL);
-				// Выводим сообщение об ошибке
-				} else log.print("Не удалось запустить событие DNS-резолвера", log_t::flag_t::CRITICAL);
-			} break;
-			// Если событие DNS-резолвера остановлено
-			case static_cast <uint8_t> (event::status_t::DESTROYED):
-				// Выводим сообщение об остановке события DNS-резолвера
-				log.print("Событие DNS-резолвера было остановлено", log_t::flag_t::INFO);
-			break;
-		}
-	}, placeholders::_1);
-	// Устанавливаем функцию обратного вызова на событие получения ошибок DNS-резолвера
-	dns.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
-		// Выводим информацию об ошибке
-		log.print("DNS error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
-	}, placeholders::_1, placeholders::_2, placeholders::_3);
-	// Запускаем DNS-резолвер
-	dns.start();
+
+
+					// Выполняем запрос на получение записей CNAME
+					if(!dns.request(dns.issue(), unit::dns_t::record_t::CNAME, "www.google.com", 3000))
+						// Выводим сообщение об ошибке
+						log.print("Не удалось выполнить запрос на получение CNAME доменного имени", log_t::flag_t::CRITICAL);
+
+				} break;
+				// Если событие DNS-резолвера остановлено
+				case static_cast <uint8_t> (event::status_t::DESTROYED):
+					// Выводим сообщение об остановке события DNS-резолвера
+					log.print("Событие DNS-резолвера было остановлено", log_t::flag_t::INFO);
+				break;
+			}
+		}, placeholders::_1);
+		// Устанавливаем функцию обратного вызова на событие получения ошибок DNS-резолвера
+		dns.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
+			// Выводим информацию об ошибке
+			log.print("DNS error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
+		}, placeholders::_1, placeholders::_2, placeholders::_3);
+		// Запускаем DNS-резолвер
+		dns.start();
+	// Выводим сообщение об ошибке
+	} else log.print("Не удалось запустить событие DNS-резолвера", log_t::flag_t::CRITICAL);
 	// Выводим результат
 	return EXIT_SUCCESS;
 }
