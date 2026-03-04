@@ -504,7 +504,7 @@ namespace awh {
 				/**
 				 * @brief Метод установки сервера DNS
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес DNS-сервера для установки
 				 */
 				void setServer(const event::family_t family, string_view server) noexcept;
@@ -524,7 +524,7 @@ namespace awh {
 				/**
 				 * @brief Метод добавления сервера DNS
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес DNS-сервера для добавления
 				 */
 				void addServer(const event::family_t family, string_view server) noexcept;
@@ -544,7 +544,7 @@ namespace awh {
 				/**
 				 * @brief Метод установки списка серверов DNS
 				 *
-				 * @param family  семейстов IP-адресов IPv4/IPv6
+				 * @param family  семейство IP-адресов IPv4/IPv6
 				 * @param servers адреса DNS-серверов для установки
 				 */
 				void setServers(const event::family_t family, const vector <string> & servers) noexcept;
@@ -564,7 +564,7 @@ namespace awh {
 				/**
 				 * @brief Метод установки адреса сети с которого будет выполняться запрос
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса
 				 */
 				void setSource(const event::family_t family, string_view source) noexcept;
@@ -617,7 +617,7 @@ namespace awh {
 				bool request(const id_t did, const record_t record, string_view domain, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
-				 * @brief Метод ресолвинга доменного имени
+				 * @brief Метод резолвинга доменного имени
 				 *
 				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param domain  доменное имя сервера
@@ -626,7 +626,7 @@ namespace awh {
 				 */
 				bool resolve(const id_t did, string_view domain, const uint32_t timeout = 0) noexcept;
 				/**
-				 * @brief Метод ресолвинга доменного имени
+				 * @brief Метод резолвинга доменного имени
 				 *
 				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param family  тип интернет-протокола IPv4/IPv6
@@ -639,7 +639,7 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
 				 */

@@ -1103,7 +1103,7 @@ namespace dns {
 	}
 
 	/**
-	 * @brief Функция выполнения ресолвинга доменного имени
+	 * @brief Функция выполнения резолвинга доменного имени
 	 *
 	 * @param did    идентификатор DNS-резолвера
 	 * @param record тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
@@ -1222,14 +1222,14 @@ void awh::unit::DNS::Servers::init() noexcept {
 /**
  * @brief Метод сброса списка DNS-серверов
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  */
 void awh::unit::DNS::Servers::reset(const event::family_t family) noexcept {
 	/**
 	 * Определяем семейство события
 	 */
 	switch(static_cast <uint8_t> (family)){
-		// Для семейства IPv4
+		// Для семейство IPv4
 		case static_cast <uint8_t> (event::family_t::IPV4): {
 			// Сбрасываем индекс текущего DNS-сервера
 			this->_indexIPv4 = 0;
@@ -1252,7 +1252,7 @@ void awh::unit::DNS::Servers::reset(const event::family_t family) noexcept {
 				}
 			}
 		} break;
-		// Для семейства IPv6
+		// Для семейство IPv6
 		case static_cast <uint8_t> (event::family_t::IPV6): {
 			// Сбрасываем индекс текущего DNS-сервера
 			this->_indexIPv6 = 0;
@@ -1280,7 +1280,7 @@ void awh::unit::DNS::Servers::reset(const event::family_t family) noexcept {
 /**
  * @brief Метод получения текущего DNS-сервера
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @return       объект DNS-сервера для выполнения запроса
  */
 const awh::net::addr_t * awh::unit::DNS::Servers::get(const event::family_t family) noexcept {
@@ -1288,7 +1288,7 @@ const awh::net::addr_t * awh::unit::DNS::Servers::get(const event::family_t fami
 	 * Определяем семейство события
 	 */
 	switch(static_cast <uint8_t> (family)){
-		// Для семейства IPv4
+		// Для семейство IPv4
 		case static_cast <uint8_t> (event::family_t::IPV4): {
 			// Если список DNS-серверов не пустой
 			if(!this->_ipv4.empty()){
@@ -1300,7 +1300,7 @@ const awh::net::addr_t * awh::unit::DNS::Servers::get(const event::family_t fami
 				return server;
 			}
 		} break;
-		// Для семейства IPv6
+		// Для семейство IPv6
 		case static_cast <uint8_t> (event::family_t::IPV6): {
 			// Если список DNS-серверов не пустой
 			if(!this->_ipv6.empty()){
@@ -1874,7 +1874,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 									}
 									// Выполняем добавление IP-адреса
 									i->second.push_back(::move(record));
-								// Если к хэше доменное имя не найдено
+								// Если в кэше доменное имя не найдено
 								} else {
 									// Создаём список записей IP-адресов
 									vector <EntryIP> entry(1);
@@ -2386,7 +2386,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									// Устанавливаем ARPA-адрес в объекте адреса
 									this->_addr.arpa(result.ptr.front().name);
 									/**
-									 * Определяем тип адреса для установки семейства адресов для вывода результата
+									 * Определяем тип адреса для установки семейство адресов для вывода результата
 									 */
 									switch(static_cast <uint8_t> (this->_addr.type())){
 										// Если адрес является IPv4
@@ -2478,7 +2478,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						#endif
 					}
 				} break;
-				// Если проблемы возникли на DNS-сервера
+				// Если проблемы возникли на DNS-сервере
 				case 2: {
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("DNS server failure %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
@@ -2503,7 +2503,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						#endif
 					}
 				} break;
-				// Если доменное имя указанное в запросе не существует
+				// Если доменное имя, указанное в запросе, не существует
 				case 3: {
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), this->_io->getTarget(eid).c_str());
@@ -2553,7 +2553,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						#endif
 					}
 				} break;
-				// Если DNS-сервер отказался выполнять наш запрос (например по политическим причинам)
+				// Если DNS-сервер отказался выполнять наш запрос (например, по политическим причинам)
 				case 5: {
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("DNS request is refused to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
@@ -2745,7 +2745,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 			#if _WIN32 || _WIN64
 				// Результирующий буфер данных
 				wchar_t buffer[0xFF];
-				// Выполняем кодирования доменного имени
+				// Выполняем кодирование доменного имени
 				if(::IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
@@ -2866,7 +2866,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 			#elif AWH_IDN
 				// Результирующий буфер данных
 				char * buffer = nullptr;
-				// Выполняем декодирования доменного имени
+				// Выполняем декодирование доменного имени
 				const int32_t rc = ::idn2_to_unicode_8z8z(domain.data(), &buffer, 0);
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS){
@@ -2915,7 +2915,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 /**
  * @brief Метод пересортировки адресов в кэше для доменного имени
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  */
 void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) noexcept {
@@ -2941,7 +2941,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 		 * Определяем семейство события
 		 */
 		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
+			// Для семейство IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Если список IPv4-адресов не пустой
 				if(!::__awh_cache__.ipv4.empty()){
@@ -2955,7 +2955,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 						::shuffle(i->second.begin(), i->second.end(), generator);
 				}
 			} break;
-			// Для семейства IPv6
+			// Для семейство IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Если список IPv6-адресов не пустой
 				if(!::__awh_cache__.ipv6.empty()){
@@ -3034,7 +3034,7 @@ void awh::unit::DNS::clearBlacklist() noexcept {
 /**
  * @brief Метод очистки чёрного списка
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  */
 void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 	/**
@@ -3045,7 +3045,7 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 		 * Определяем семейство события
 		 */
 		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
+			// Для семейство IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Если чёрный список IPv4 адресов не пустой
 				if(!::__awh_blacklist__.ipv4.empty()){
@@ -3055,7 +3055,7 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 					::__awh_blacklist__.ipv4.clear();
 				}
 			} break;
-			// Для семейства IPv6
+			// Для семейство IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Если чёрный список IPv6 адресов не пустой
 				if(!::__awh_blacklist__.ipv6.empty()){
@@ -3213,7 +3213,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const net::addr_t * ip) noexcept {
 /**
  * @brief Метод удаления IP-адреса из чёрного списка
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, string_view ip) noexcept {
@@ -3227,7 +3227,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -3245,7 +3245,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 							::__awh_blacklist__.ipv4.erase(i);
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -3394,7 +3394,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const net::addr_t * ip) noexcept {
 /**
  * @brief Метод добавления IP-адреса в чёрный список
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string_view ip) noexcept {
@@ -3408,7 +3408,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -3422,7 +3422,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 						::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -3571,7 +3571,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const net::addr_t * ip) const noexc
 /**
  * @brief Метод проверки наличия IP-адреса в чёрном списке
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для проверки наличия в чёрном списке
  * @return       результат проверки наличия IP-адреса в чёрном списке
  */
@@ -3586,7 +3586,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -3600,7 +3600,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 						return (::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address) != ::__awh_blacklist__.ipv4.end());
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -3717,7 +3717,7 @@ void awh::unit::DNS::clearCache() noexcept {
 /**
  * @brief Метод очистки кэша
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  */
 void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 	/**
@@ -3738,7 +3738,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 					 * Определяем семейство события
 					 */
 					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
+						// Для семейство IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Если IP-адрес доменного имени является IPv4
 							if(!j->local && (j->ip->size == 4))
@@ -3747,7 +3747,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 							// Если IP-адрес доменного имени является IPv6
 							else ++j;
 						} break;
-						// Для семейства IPv6
+						// Для семейство IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Если IP-адрес доменного имени является IPv6
 							if(!j->local && (j->ip->size == 16))
@@ -3772,7 +3772,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 		 * Определяем семейство события
 		 */
 		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
+			// Для семейство IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Если в кэше есть IPv4-адреса
 				if(!::__awh_cache__.ipv4.empty()){
@@ -3798,7 +3798,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 					}
 				}
 			} break;
-			// Для семейства IPv6
+			// Для семейство IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Если в кэше есть IPv6-адреса
 				if(!::__awh_cache__.ipv6.empty()){
@@ -3945,7 +3945,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 /**
  * @brief Метод очистки кэша для указанного доменного имени
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя для которого выполняется очистка кэша
  */
 void awh::unit::DNS::clearCache(const event::family_t family, string_view domain) noexcept {
@@ -3969,7 +3969,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 					 * Определяем семейство события
 					 */
 					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
+						// Для семейство IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Если IP-адрес доменного имени является IPv4
 							if(!j->local && (j->ip->size == 4))
@@ -3978,7 +3978,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 							// Если IP-адрес доменного имени является IPv6, то пропускаем его
 							else ++j;
 						} break;
-						// Для семейства IPv6
+						// Для семейство IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Если IP-адрес доменного имени является IPv6
 							if(!j->local && (j->ip->size == 16))
@@ -4000,7 +4000,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Если список IPv4-адресов не пустой
 					if(!::__awh_cache__.ipv4.empty()){
@@ -4026,7 +4026,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 						}
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Если список IPv6-адресов не пустой
 					if(!::__awh_cache__.ipv6.empty()){
@@ -4076,7 +4076,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 /**
  * @brief Метод получения IP-адреса из кэша
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  * @return       IP-адрес находящийся в кэше
  */
@@ -4107,7 +4107,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 					 * Определяем семейство события
 					 */
 					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
+						// Для семейство IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Если IP-адрес доменного имени является IPv4
 							if(j->ip->size == 4){
@@ -4119,7 +4119,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 								return static_cast <string> (this->_addr);
 							}
 						} break;
-						// Для семейства IPv6
+						// Для семейство IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Если IP-адрес доменного имени является IPv6
 							if(j->ip->size == 16){
@@ -4159,7 +4159,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 /**
  * @brief Метод получения IP-адреса из кэша
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  * @param value  IP-адрес находящийся в кэше
  * @return       результат выполнения операции
@@ -4193,7 +4193,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 					 * Определяем семейство события
 					 */
 					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
+						// Для семейство IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Если IP-адрес доменного имени является IPv4
 							if((result = (j->ip->size == 4))){
@@ -4207,7 +4207,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 								return result;
 							}
 						} break;
-						// Для семейства IPv6
+						// Для семейство IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Если IP-адрес доменного имени является IPv6
 							if((result = (j->ip->size == 16))){
@@ -4366,7 +4366,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 				}
 				// Выполняем добавление IP-адреса
 				i->second.push_back(::move(record));
-			// Если к хэше доменное имя не найдено
+			// Если в кэше доменное имя не найдено
 			} else {
 				// Создаём список записей IP-адресов
 				vector <EntryIP> entry(1);
@@ -4473,7 +4473,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 /**
  * @brief Метод добавления IP-адреса в кэш
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в кэш
  * @param ttl    время жизни кэша доменного имени (в секундах)
@@ -4485,7 +4485,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 		 * Определяем семейство события
 		 */
 		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
+			// Для семейство IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Выполняем блокировку потока для парсинга IP-адреса
 				const locker_t <> lock(::__awh_mtx__);
@@ -4497,7 +4497,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 					this->pushAddressToCache(domain, ip.get(), ttl);
 				}
 			} break;
-			// Для семейства IPv6
+			// Для семейство IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Выполняем блокировку потока для парсинга IP-адреса
 				const locker_t <> lock(::__awh_mtx__);
@@ -4549,7 +4549,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 			if(this->_io->setAddress(::__awh_cache__.fid, event::address_t::FS, filename)){
 				// Выполняем фиксацию настроек события сервера
 				if(this->_io->commit(::__awh_cache__.fid)){
-					// Устананавливаем опции события
+					// Устанавливаем опции события
 					if(!this->_io->setOptions(::__awh_cache__.fid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
@@ -4785,7 +4785,7 @@ bool awh::unit::DNS::reset() noexcept {
 		// Удаляем событие DNS-резолвера
 		this->_io->destroy(this->_resolver.eid);
 	}
-	// Выполняем создание события DNS-резолвера для указанного семейства IP-адресов
+	// Выполняем создание события DNS-резолвера для указанного семейство IP-адресов
 	this->create(family);
 	// Выполняем фиксацию параметров DNS-резолвера
 	return this->commit();
@@ -4812,7 +4812,7 @@ bool awh::unit::DNS::commit() noexcept {
 		 * Определяем семейство события
 		 */
 		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
+			// Для семейство IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Если префикс для переменных окружения установлен
 				if(!this->_resolver.prefix.empty()){
@@ -4825,7 +4825,7 @@ bool awh::unit::DNS::commit() noexcept {
 				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
 				} else this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
 			} break;
-			// Для семейства IPv6
+			// Для семейство IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Если префикс для переменных окружения установлен
 				if(!this->_resolver.prefix.empty()){
@@ -4845,12 +4845,12 @@ bool awh::unit::DNS::commit() noexcept {
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4):
 					// Устанавливаем IP-адрес события
 					this->_io->setAddress(this->_resolver.eid, event::address_t::IPV4, this->_resolver.source.get());
 				break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6):
 					// Устанавливаем IP-адрес события
 					this->_io->setAddress(this->_resolver.eid, event::address_t::IPV6, this->_resolver.source.get());
@@ -4946,12 +4946,12 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-						// Очищаем список IP-адресов события для семейства IPv4
+						// Очищаем список IP-адресов события для семейство IPv4
 						this->_resolver.nameServers.reset(event::family_t::IPV4);
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-						// Очищаем список IP-адресов события для семейства IPv6
+						// Очищаем список IP-адресов события для семейство IPv6
 						this->_resolver.nameServers.reset(event::family_t::IPV6);
 					break;
 				}
@@ -4962,9 +4962,9 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_resolver.mtx);
-			// Очищаем список IP-адресов события для семейства IPv4
+			// Очищаем список IP-адресов события для семейство IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейства IPv6
+			// Очищаем список IP-адресов события для семейство IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -5006,7 +5006,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv4
+					// Очищаем список IP-адресов события для семейство IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 					// Устанавливаем IP-адрес события
 					this->_resolver.nameServers.push(server);
@@ -5015,7 +5015,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv6
+					// Очищаем список IP-адресов события для семейство IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 					// Устанавливаем IP-адрес события
 					this->_resolver.nameServers.push(server);
@@ -5025,9 +5025,9 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_resolver.mtx);
-			// Очищаем список IP-адресов события для семейства IPv4
+			// Очищаем список IP-адресов события для семейство IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейства IPv6
+			// Очищаем список IP-адресов события для семейство IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -5052,7 +5052,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 /**
  * @brief Метод установки сервера DNS
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param server адрес DNS-сервера для установки
  */
 void awh::unit::DNS::setServer(const event::family_t family, string_view server) noexcept {
@@ -5066,7 +5066,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -5074,13 +5074,13 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
 						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(this->_resolver.mtx);
-						// Очищаем список IP-адресов события для семейства IPv4
+						// Очищаем список IP-адресов события для семейство IPv4
 						this->_resolver.nameServers.reset(event::family_t::IPV4);
 						// Устанавливаем IP-адрес события
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -5088,7 +5088,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
 						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(this->_resolver.mtx);
-						// Очищаем список IP-адресов события для семейства IPv6
+						// Очищаем список IP-адресов события для семейство IPv6
 						this->_resolver.nameServers.reset(event::family_t::IPV6);
 						// Устанавливаем IP-адрес события
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
@@ -5101,18 +5101,18 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv4
+					// Очищаем список IP-адресов события для семейство IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv6
+					// Очищаем список IP-адресов события для семейство IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 				} break;
 			}
@@ -5231,7 +5231,7 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 /**
  * @brief Метод добавления сервера DNS
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param server адрес DNS-сервера для добавления
  */
 void awh::unit::DNS::addServer(const event::family_t family, string_view server) noexcept {
@@ -5245,7 +5245,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -5257,7 +5257,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -5320,12 +5320,12 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 					switch(static_cast <uint8_t> (this->_addr.type())){
 						// Если адрес является IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-							// Очищаем список IP-адресов события для семейства IPv4
+							// Очищаем список IP-адресов события для семейство IPv4
 							this->_resolver.nameServers.reset(event::family_t::IPV4);
 						break;
 						// Если адрес является IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-							// Очищаем список IP-адресов события для семейства IPv6
+							// Очищаем список IP-адресов события для семейство IPv6
 							this->_resolver.nameServers.reset(event::family_t::IPV6);
 						break;
 					}
@@ -5351,9 +5351,9 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_resolver.mtx);
-			// Очищаем список IP-адресов события для семейства IPv4
+			// Очищаем список IP-адресов события для семейство IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейства IPv6
+			// Очищаем список IP-адресов события для семейство IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -5401,14 +5401,14 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 						case 4: {
 							// Выполняем блокировку потока для установки IP-адреса события
 							const locker_t <> lock(this->_resolver.mtx);
-							// Очищаем список IP-адресов события для семейства IPv4
+							// Очищаем список IP-адресов события для семейство IPv4
 							this->_resolver.nameServers.reset(event::family_t::IPV4);
 						} break;
 						// Если адрес является IPv6
 						case 16: {
 							// Выполняем блокировку потока для установки IP-адреса события
 							const locker_t <> lock(this->_resolver.mtx);
-							// Очищаем список IP-адресов события для семейства IPv6
+							// Очищаем список IP-адресов события для семейство IPv6
 							this->_resolver.nameServers.reset(event::family_t::IPV6);
 						} break;
 					}
@@ -5445,9 +5445,9 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_resolver.mtx);
-			// Очищаем список IP-адресов события для семейства IPv4
+			// Очищаем список IP-адресов события для семейство IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейства IPv6
+			// Очищаем список IP-адресов события для семейство IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -5472,7 +5472,7 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 /**
  * @brief Метод установки списка серверов DNS
  *
- * @param family  семейстов IP-адресов IPv4/IPv6
+ * @param family  семейство IP-адресов IPv4/IPv6
  * @param servers адреса DNS-серверов для установки
  */
 void awh::unit::DNS::setServers(const event::family_t family, const vector <string> & servers) noexcept {
@@ -5486,11 +5486,11 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv4
+					// Очищаем список IP-адресов события для семейство IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 					/**
 					 * Проходим по каждому адресу DNS-сервера для установки
@@ -5506,11 +5506,11 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 						else break;
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv6
+					// Очищаем список IP-адресов события для семейство IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 					/**
 					 * Проходим по каждому адресу DNS-сервера для установки
@@ -5533,18 +5533,18 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv4
+					// Очищаем список IP-адресов события для семейство IPv4
 					this->_resolver.nameServers.reset(family);
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_resolver.mtx);
-					// Очищаем список IP-адресов события для семейства IPv6
+					// Очищаем список IP-адресов события для семейство IPv6
 					this->_resolver.nameServers.reset(family);
 				} break;
 			}
@@ -5694,7 +5694,7 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 /**
  * @brief Метод установки адреса сети с которого будет выполняться запрос
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param source адрес сети для выполнения запроса
  */
 void awh::unit::DNS::setSource(const event::family_t family, string_view source) noexcept {
@@ -5708,7 +5708,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -5720,7 +5720,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 						this->_resolver.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -5967,7 +5967,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -6001,7 +6001,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 						domain = ::move(this->_addr.arpa());
 					}
 				} break;
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для парсинга IP-адреса
 					const locker_t <> lock(::__awh_mtx__);
@@ -6215,7 +6215,7 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 	return false;
 }
 /**
- * @brief Метод ресолвинга доменного имени
+ * @brief Метод резолвинга доменного имени
  *
  * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param domain  доменное имя сервера
@@ -6227,7 +6227,7 @@ bool awh::unit::DNS::resolve(const id_t did, string_view domain, const uint32_t 
 	return this->resolve(did, this->_io->family(this->_resolver.eid), domain, timeout);
 }
 /**
- * @brief Метод ресолвинга доменного имени
+ * @brief Метод резолвинга доменного имени
  *
  * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param family  тип интернет-протокола IPv4/IPv6
@@ -6263,7 +6263,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 						 * Определяем семейство события
 						 */
 						switch(static_cast <uint8_t> (family)){
-							// Для семейства IPv4
+							// Для семейство IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Если IP-адрес доменного имени является IPv4
 								if(j->ip->size == 4){
@@ -6273,7 +6273,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 									return true;
 								}
 							} break;
-							// Для семейства IPv6
+							// Для семейство IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Если IP-адрес доменного имени является IPv6
 								if(j->ip->size == 16){
@@ -6334,12 +6334,12 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 						 * Определяем семейство события
 						 */
 						switch(static_cast <uint8_t> (family)){
-							// Для семейства IPv4
+							// Для семейство IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4):
 								// Устанавливаем тип записи для отслеживания выполнения таймаута
 								ret.first->second.record = record_t::A;
 							break;
-							// Для семейства IPv6
+							// Для семейство IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6):
 								// Устанавливаем тип записи для отслеживания выполнения таймаута
 								ret.first->second.record = record_t::AAAA;
@@ -6356,7 +6356,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
+				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
 					const size_t size = ::dns::request(did, record_t::A, domain, this->_log);
@@ -6365,7 +6365,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 					// Отправляем запрос на резолвинг доменного имени
 					return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
 				}
-				// Для семейства IPv6
+				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
 					const size_t size = ::dns::request(did, record_t::AAAA, domain, this->_log);
@@ -6400,7 +6400,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 /**
  * @brief Конструктор
  *
- * @param family семейстов IP-адресов IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
@@ -6410,7 +6410,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 	this->_resolver.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с таймаутами
 	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Если общие DNS-резолверы ещё не добавлены в чёрный список
+	// Если общие DNS-резолверы ещё не добавлены в глобальный список
 	if(::ns::general.empty()){
 		// Активируем работу мьютекса блокировки потока при работе с IP-адресами
 		::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
@@ -6421,25 +6421,21 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 		{
 			// Создаём массив стандартных DNS-серверов IPv4
 			const array <string_view, 6> resolvers = AWH_IPV4_RESOLVERS;
-			// Выбираем случайный DNS-сервер из массива
-			const string_view resolver = resolvers[::__awh_randev__() % resolvers.size()];
 			// Выполняем перебор всех DNS-серверов из массива
 			for(const auto & item : resolvers){
 				// Выполняем парсинг IP-адреса
 				if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
-					// Добавляем DNS-сервер в чёрный список для блокировки его использования при выполнении запросов к DNS-серверам
+					// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
 					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
 			}
 		}{
 			// Создаём массив стандартных DNS-серверов IPv6
 			const array <string_view, 6> resolvers = AWH_IPV6_RESOLVERS;
-			// Выбираем случайный DNS-сервер из массива
-			const string_view resolver = resolvers[::__awh_randev__() % resolvers.size()];
 			// Выполняем перебор всех DNS-серверов из массива
 			for(const auto & item : resolvers){
 				// Выполняем парсинг IP-адреса
 				if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
-					// Добавляем DNS-сервер в чёрный список для блокировки его использования при выполнении запросов к DNS-серверам
+					// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
 					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
 			}
 		}
@@ -6475,7 +6471,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 	 */
 	this->_resolver.nameServers.init();
 	/**
-	 * Выполняем создание события DNS-резолвера для указанного семейства IP-адресов
+	 * Выполняем создание события DNS-резолвера для указанного семейство IP-адресов
 	 */
 	this->create(family);
 }
