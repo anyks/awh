@@ -2469,7 +2469,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__,std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2494,7 +2494,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__,std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2519,7 +2519,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__,std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2544,7 +2544,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__,std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2569,7 +2569,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__,std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5863,43 +5863,70 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_resolver.mtx);
-				// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-				const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-				// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-				this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-				if(!this->_io->commit(tid)){
-					// Удаляем событие таймера
-					this->_io->destroy(tid);
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
+				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
+				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
+				auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				// Если таймаут уже существует для данного идентификатора DNS-резолвера
+				if(!ret.second){
+					// Формируем текст выводимой ошибки DNS-резолвера
+					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
+					// Если функция вывода ошибки не установлена
+					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, timeout), log_t::flag_t::CRITICAL);
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, timeout), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 					// Выводим результат по умолчанию
 					return false;
-				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+				// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
 				} else {
-					{
-						// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-						const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-						auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+					// Выполняем блокировку потока для установки IP-адреса события
+					const locker_t <> lock(this->_resolver.mtx);
+					// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
+					const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
+					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
+					// Устанавливаем функцию обратного вызова на событие получения ошибок
+					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
+					if(!this->_io->commit(tid)){
+						// Удаляем событие таймера
+						this->_io->destroy(tid);
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, timeout), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+							#endif
+						}
+						// Выводим результат по умолчанию
+						return false;
+					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
 						// Устанавливаем идентификатор таймаута для отслеживания его выполнения
@@ -5910,9 +5937,9 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+						// Запускаем таймер для ожидания ответа от DNS-сервера
+						this->_io->launch(tid);
 					}
-					// Запускаем таймер для ожидания ответа от DNS-сервера
-					this->_io->launch(tid);
 				}
 			}
 			// Выполняем резолвинг доменного имени
@@ -6053,43 +6080,72 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_resolver.mtx);
-				// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-				const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-				// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-				this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-				if(!this->_io->commit(tid)){
-					// Удаляем событие таймера
-					this->_io->destroy(tid);
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
+				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
+				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
+				auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				// Если таймаут уже существует для данного идентификатора DNS-резолвера
+				if(!ret.second){
+					// Формируем текст выводимой ошибки DNS-резолвера
+					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
+					// Если функция вывода ошибки не установлена
+					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL);
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 					// Выводим результат по умолчанию
 					return false;
-				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+				// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
 				} else {
-					{
-						// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-						const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-						auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+					// Выполняем блокировку потока для установки IP-адреса события
+					const locker_t <> lock(this->_resolver.mtx);
+					// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
+					const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
+					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
+					// Устанавливаем функцию обратного вызова на событие получения ошибок
+					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
+					if(!this->_io->commit(tid)){
+						// Удаляем событие таймера
+						this->_io->destroy(tid);
+						// Удаляем таймаут из контейнера ожидания выполнения запроса
+						this->_timeouts.waiting.erase(did);
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+							#endif
+						}
+						// Выводим результат по умолчанию
+						return false;
+					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
 						// Устанавливаем идентификатор таймаута для отслеживания его выполнения
@@ -6100,9 +6156,9 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+						// Запускаем таймер для ожидания ответа от DNS-сервера
+						this->_io->launch(tid);
 					}
-					// Запускаем таймер для ожидания ответа от DNS-сервера
-					this->_io->launch(tid);
 				}
 			}
 			// Выполняем резолвинг доменного имени
@@ -6152,43 +6208,72 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 	try {
 		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
 		if(!domain.empty()){
-			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_resolver.mtx);
-			// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-			const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-			// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-			this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-			// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-			if(!this->_io->commit(tid)){
-				// Удаляем событие таймера
-				this->_io->destroy(tid);
-				// Если функция обратного вызова не установлена
-				if(!this->_callback.is("error")){
+			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
+			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
+			auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+			// Если таймаут уже существует для данного идентификатора DNS-резолвера
+			if(!ret.second){
+				// Формируем текст выводимой ошибки DNS-резолвера
+				const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
+				// Если функция вывода ошибки не установлена
+				else {
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL);
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 					#endif
 				}
 				// Выводим результат по умолчанию
 				return false;
-			// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+			// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
 			} else {
-				{
-					// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-					const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-					auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				// Выполняем блокировку потока для установки IP-адреса события
+				const locker_t <> lock(this->_resolver.mtx);
+				// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
+				const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+				// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
+				this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
+				// Устанавливаем функцию обратного вызова на событие получения ошибок
+				this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
+				if(!this->_io->commit(tid)){
+					// Удаляем событие таймера
+					this->_io->destroy(tid);
+					// Удаляем таймаут из контейнера ожидания выполнения запроса
+					this->_timeouts.waiting.erase(did);
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+						#endif
+					}
+					// Выводим результат по умолчанию
+					return false;
+				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+				} else {
 					// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 					ret.first->second.eid = tid;
 					// Устанавливаем идентификатор таймаута для отслеживания его выполнения
@@ -6199,14 +6284,14 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 					ret.first->second.record = record;
 					// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 					this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+					// Запускаем таймер для ожидания ответа от DNS-сервера
+					this->_io->launch(tid);
 				}
-				// Запускаем таймер для ожидания ответа от DNS-сервера
-				this->_io->launch(tid);
+				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
+				const size_t size = ::dns::request(did, record, domain, this->_log);
+				// Отправляем запрос на резолвинг доменного имени
+				return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
 			}
-			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-			const size_t size = ::dns::request(did, record, domain, this->_log);
-			// Отправляем запрос на резолвинг доменного имени
-			return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
 		}
 	/**
 	 * Если возникает ошибка
@@ -6302,43 +6387,72 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 					}
 				}
 			}{
-				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_resolver.mtx);
-				// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-				const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-				// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-				this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-				if(!this->_io->commit(tid)){
-					// Удаляем событие таймера
-					this->_io->destroy(tid);
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
+				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
+				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
+				auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				// Если таймаут уже существует для данного идентификатора DNS-резолвера
+				if(!ret.second){
+					// Формируем текст выводимой ошибки DNS-резолвера
+					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
+					// Если функция вывода ошибки не установлена
+					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL);
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 					// Выводим результат по умолчанию
 					return false;
-				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+				// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
 				} else {
-					{
-						// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-						const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-						auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+					// Выполняем блокировку потока для установки IP-адреса события
+					const locker_t <> lock(this->_resolver.mtx);
+					// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
+					const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
+					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
+					// Устанавливаем функцию обратного вызова на событие получения ошибок
+					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
+					if(!this->_io->commit(tid)){
+						// Удаляем событие таймера
+						this->_io->destroy(tid);
+						// Удаляем таймаут из контейнера ожидания выполнения запроса
+						this->_timeouts.waiting.erase(did);
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+							#endif
+						}
+						// Выводим результат по умолчанию
+						return false;
+					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
 						// Устанавливаем идентификатор таймаута для отслеживания его выполнения
@@ -6362,9 +6476,9 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 						}
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+						// Запускаем таймер для ожидания ответа от DNS-сервера
+						this->_io->launch(tid);
 					}
-					// Запускаем таймер для ожидания ответа от DNS-сервера
-					this->_io->launch(tid);
 				}
 			}
 			/**
