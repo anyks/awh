@@ -108,13 +108,10 @@ int32_t main(int32_t argc, char * argv[]){
 					if(!dns.request(dns.issue(), unit::dns_t::record_t::ANY, "ya.ru", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить запрос на получение всех записей доменного имени", log_t::flag_t::CRITICAL);
-
-
 					// Выполняем запрос на получение записей CNAME
 					if(!dns.request(dns.issue(), unit::dns_t::record_t::CNAME, "www.google.com", 3000))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить запрос на получение CNAME доменного имени", log_t::flag_t::CRITICAL);
-
 				} break;
 				// Если событие DNS-резолвера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
