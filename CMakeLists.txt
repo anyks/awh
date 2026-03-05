@@ -37,13 +37,13 @@ endif (CMAKE_MAX_COUNT_FDS)
 
 # Сборка с установкой адреса DNS-серверов IPv4 по умолчанию
 if (CMAKE_DEFAULT_DNS_SERVERS)
-    add_compile_definitions(AWH_IPV4_RESOLVERS=${CMAKE_DEFAULT_DNS_SERVERS})
+    add_compile_definitions(AWH_IPV4_NS=${CMAKE_DEFAULT_DNS_SERVERS})
     message(STATUS "Build with default DNS servers: ${CMAKE_DEFAULT_DNS_SERVERS}\n")
 endif (CMAKE_DEFAULT_DNS_SERVERS)
 
 # Сборка с установкой адреса DNS-серверов IPv6 по умолчанию
 if (CMAKE_DEFAULT_DNS6_SERVERS)
-    add_compile_definitions(AWH_IPV6_RESOLVERS=${CMAKE_DEFAULT_DNS6_SERVERS})
+    add_compile_definitions(AWH_IPV6_NS=${CMAKE_DEFAULT_DNS6_SERVERS})
     message(STATUS "Build with default IPv6 DNS servers: ${CMAKE_DEFAULT_DNS6_SERVERS}\n")
 endif (CMAKE_DEFAULT_DNS6_SERVERS)
 

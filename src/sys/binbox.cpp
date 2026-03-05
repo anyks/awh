@@ -93,12 +93,13 @@ namespace binbox {
 	 * @brief dump Функция создания дампов записей
 	 *
 	 * @param name    название контейнера для создания дампа
+	 * @param version версия контейнера для создания дампа
 	 * @param records контейнер для хранения бинарных данных
 	 * @param result  результат бинарного буфера куда будет помещён итоговый дамп
 	 * @param fmk     объект фреймворка
 	 * @param log     объект для работы с логами
 	 */
-	static void dump(const string & name, const unordered_map <uint64_t, binbox_t::record_t> & records, vector <uint8_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
+	static void dump(const string & name, const uint32_t version, const unordered_map <uint64_t, binbox_t::record_t> & records, vector <uint8_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
 		// Если список записей передан
 		if(!name.empty() && !records.empty()){
 			/**
@@ -138,7 +139,7 @@ namespace binbox {
 				// Добавляем размер итогового дампа в начало бинарного буфера
 				result.insert(result.begin(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
 				// Получаем заголовок контейнера
-				const string header = fmk->format("%s/BINBOX", name.c_str());
+				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
 				// Выполняем установку заголовка бинарного контейнера
 				result.insert(result.begin(), header.begin(), header.end());
 			/**
@@ -164,13 +165,14 @@ namespace binbox {
 	/**
 	 * @brief dump Функция извлечения записей из дампа
 	 *
-	 * @param name   название контейнера для извлечения записей
-	 * @param buffer бинарный буфер дампа для извлечения записей контейнера
-	 * @param result результирующий контейнер для извлечения записей из бинарного буфера
-	 * @param fmk    объект фреймворка
-	 * @param log    объект для работы с логами
+	 * @param name    название контейнера для извлечения записей
+	 * @param version версия контейнера для извлечения записей
+	 * @param buffer  бинарный буфер дампа для извлечения записей контейнера
+	 * @param result  результирующий контейнер для извлечения записей из бинарного буфера
+	 * @param fmk     объект фреймворка
+	 * @param log     объект для работы с логами
 	 */
-	static void dump(const string & name, const vector <uint8_t> & buffer, unordered_map <uint64_t, binbox_t::record_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
+	static void dump(const string & name, const uint32_t version, const vector <uint8_t> & buffer, unordered_map <uint64_t, binbox_t::record_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
 		// Если буфер данных передан
 		if(!name.empty() && !buffer.empty()){
 			/**
@@ -178,7 +180,7 @@ namespace binbox {
 			 */
 			try {
 				// Получаем заголовок контейнера
-				const string header = fmk->format("%s/BINBOX", name.c_str());
+				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
 				// Если размер буфера данных меньше размера заголовка контейнера
 				if(buffer.size() < header.size()){
 					// Выводим сообщение об ошибке
@@ -436,6 +438,24 @@ void awh::BinBox::setName(string_view name) noexcept {
 	this->_name = name;
 }
 /**
+ * @brief Метод получения версии контейнера
+ *
+ * @return версия контейнера
+ */
+string awh::BinBox::getVersion() const noexcept {
+	// Выводим версию контейнера
+	return static_cast <string> (version_t(this->_version));
+}
+/**
+ * @brief Метод установки версии контейнера
+ *
+ * @param version версия контейнера для установки
+ */
+void awh::BinBox::setVersion(string_view version) noexcept {
+	// Получаем версию контейнера
+	this->_version = static_cast <uint32_t> (version_t(version.data()));
+}
+/**
  * @brief Метод удаления записи по ключу
  *
  * @param key ключ для удаления записи
@@ -495,7 +515,7 @@ void awh::BinBox::load(string_view filename) noexcept {
 		// Выполняем загрузку данных из файла
 		this->_fs->read(filename, buffer);
 		// Извлекаем из бинарного буфера дампа, записи контейнера
-		::binbox::dump(this->_name, buffer, this->_records, this->_fmk, this->_log);
+		::binbox::dump(this->_name, this->_version, buffer, this->_records, this->_fmk, this->_log);
 	}
 }
 /**
@@ -509,7 +529,7 @@ void awh::BinBox::save(string_view filename) noexcept {
 		// Результат работы функции
 		vector <uint8_t> result;
 		// Выполняем дамп бинарного контейнера в бинарный буфер данных
-		::binbox::dump(this->_name, this->_records, result, this->_fmk, this->_log);
+		::binbox::dump(this->_name, this->_version, this->_records, result, this->_fmk, this->_log);
 		// Если есть данные для сохранения дампа
 		if(!result.empty())
 			// Записываем в файл бинарные данные
@@ -532,14 +552,9 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
 		 */
 		try {
 			// Если название функции передано
-			if(!key.empty()){
-				// Если размер имени умещается в 8 байт
-				if(key.size() <= 8)
-					// Выполняем копирование данных имени
-					::memcpy(&result, key.data(), key.size());
+			if(!key.empty())
 				// Получаем идентификатор обратного вызова
-				else return this->_crypto->hash <uint64_t> (key);
-			}
+				return this->_crypto->hash <uint64_t> (key);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1430,7 +1445,7 @@ awh::BinBox::operator vector <uint8_t> () const noexcept {
 	// Результат работы функции
 	vector <uint8_t> result;
 	// Выполняем дамп бинарного контейнера в бинарный буфер данных
-	::binbox::dump(this->_name, this->_records, result, this->_fmk, this->_log);
+	::binbox::dump(this->_name, this->_version, this->_records, result, this->_fmk, this->_log);
 	// Выводим результат
 	return result;
 }
@@ -1447,10 +1462,14 @@ awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
 	this->_crypto = binbox._crypto;
 	// Выполняем перемещение записей контейнера
 	this->_records = ::move(binbox._records);
+	// Выполняем копирование версии контейнера
+	this->_version = binbox._version;
 	// Выполняем копирование названия контейнера
 	this->_name = ::move(binbox._name);
 	// Восстанавливаем название контейнера в перемещаемом объекте
 	binbox._name = AWH_SHORT_NAME;
+	// Восстанавливаем версию контейнера в перемещаемом объекте
+	binbox._version = static_cast <uint32_t> (version_t(AWH_VERSION));
 	// Выводим текущее значение объекта
 	return (* this);
 }
@@ -1462,7 +1481,7 @@ awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
  */
 awh::BinBox & awh::BinBox::operator = (const vector <uint8_t> & buffer) noexcept {
 	// Извлекаем из бинарного буфера дампа, записи контейнера
-	::binbox::dump(this->_name, buffer, this->_records, this->_fmk, this->_log);
+	::binbox::dump(this->_name, this->_version, buffer, this->_records, this->_fmk, this->_log);
 	// Выводим текущее значение объекта
 	return (* this);
 }
@@ -1478,10 +1497,14 @@ awh::BinBox::BinBox(BinBox && binbox) noexcept {
 	this->_crypto = binbox._crypto;
 	// Выполняем перемещение записей контейнера
 	this->_records = ::move(binbox._records);
+	// Выполняем копирование версии контейнера
+	this->_version = binbox._version;
 	// Выполняем копирование названия контейнера
 	this->_name = ::move(binbox._name);
 	// Восстанавливаем название контейнера в перемещаемом объекте
 	binbox._name = AWH_SHORT_NAME;
+	// Восстанавливаем версию контейнера в перемещаемом объекте
+	binbox._version = static_cast <uint32_t> (version_t(AWH_VERSION));
 }
 /**
  * @brief Конструктор
@@ -1495,6 +1518,8 @@ awh::BinBox::BinBox(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_fs = make_unique <fs_t> (fmk, log);
 	// Выполняем инициализацию объекта работы с криптографией
 	this->_crypto = make_unique <crypto_t> (fmk, log);
+	// Выполняем установку версии бинарного контейнера
+	this->_version = static_cast <uint32_t> (version_t(AWH_VERSION));
 }
 /**
  * @brief Деструктор

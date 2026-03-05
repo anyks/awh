@@ -15,11 +15,11 @@
 /**
  * Если стандартные DNS-серверы IPv4 не установлены
  */
-#ifndef AWH_IPV4_RESOLVERS
+#ifndef AWH_IPV4_NS
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv4
 	 */
-	#define AWH_IPV4_RESOLVERS { \
+	#define AWH_IPV4_NS { \
 		"8.8.8.8", \
 		"8.8.4.4", \
 		"1.1.1.1", \
@@ -32,11 +32,11 @@
 /**
  * Если стандартные DNS-серверы IPv6 не установлены
  */
-#ifndef AWH_IPV6_RESOLVERS
+#ifndef AWH_IPV6_NS
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv6
 	 */
-	#define AWH_IPV6_RESOLVERS { \
+	#define AWH_IPV6_NS { \
 		"2001:4860:4860::8888", \
 		"2001:4860:4860::8844", \
 		"2606:4700:4700::1111", \
@@ -547,7 +547,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						// Устанавливаем порт DNS-сервера
 						serv.sin_port = htons(53);
 						// Создаём массив стандартных DNS-серверов IPv4
-						const array <string_view, 6> resolvers = AWH_IPV4_RESOLVERS;
+						const array <string_view, 6> resolvers = AWH_IPV4_NS;
 						// Указываем адреса IPv4 DNS-сервера
 						::inet_pton(AF_INET, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin_addr);
 						// Создаем сокет для проверки подключения
@@ -586,7 +586,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						// Устанавливаем порт DNS сервера
 						serv.sin6_port = htons(53);
 						// Создаём массив стандартных DNS-серверов IPv6
-						const array <string_view, 6> resolvers = AWH_IPV6_RESOLVERS;
+						const array <string_view, 6> resolvers = AWH_IPV6_NS;
 						// Указываем адреса IPv6 DNS-сервера
 						::inet_pton(AF_INET6, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin6_addr);
 						// Создаем сокет для проверки подключения

@@ -54,11 +54,11 @@ using namespace placeholders;
 /**
  * Если стандартные DNS-серверы IPv4 не установлены
  */
-#ifndef AWH_IPV4_RESOLVERS
+#ifndef AWH_IPV4_NS
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv4
 	 */
-	#define AWH_IPV4_RESOLVERS { \
+	#define AWH_IPV4_NS { \
 		"8.8.8.8", \
 		"8.8.4.4", \
 		"1.1.1.1", \
@@ -71,11 +71,11 @@ using namespace placeholders;
 /**
  * Если стандартные DNS-серверы IPv6 не установлены
  */
-#ifndef AWH_IPV6_RESOLVERS
+#ifndef AWH_IPV6_NS
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv6
 	 */
-	#define AWH_IPV6_RESOLVERS { \
+	#define AWH_IPV6_NS { \
 		"2001:4860:4860::8888", \
 		"2001:4860:4860::8844", \
 		"2606:4700:4700::1111", \
@@ -6549,7 +6549,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 		::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 		{
 			// Создаём массив стандартных DNS-серверов IPv4
-			const array <string_view, 6> resolvers = AWH_IPV4_RESOLVERS;
+			const array <string_view, 6> resolvers = AWH_IPV4_NS;
 			// Выполняем перебор всех DNS-серверов из массива
 			for(const auto & item : resolvers){
 				// Выполняем парсинг IP-адреса
@@ -6559,7 +6559,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 			}
 		}{
 			// Создаём массив стандартных DNS-серверов IPv6
-			const array <string_view, 6> resolvers = AWH_IPV6_RESOLVERS;
+			const array <string_view, 6> resolvers = AWH_IPV6_NS;
 			// Выполняем перебор всех DNS-серверов из массива
 			for(const auto & item : resolvers){
 				// Выполняем парсинг IP-адреса

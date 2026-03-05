@@ -145,6 +145,9 @@ namespace awh {
 			// Название контейнера
 			string _name;
 		private:
+			// Версия контейнера
+			uint32_t _version;
+		private:
 			// Объект работы с файловой системой
 			shared_ptr <fs_t> _fs;
 			// Объект работы с криптографией
@@ -192,6 +195,19 @@ namespace awh {
 			 * @param name название контейнера
 			 */
 			void setName(string_view name) noexcept;
+		public:
+			/**
+			 * @brief Метод получения версии контейнера
+			 *
+			 * @return версия контейнера
+			 */
+			string getVersion() const noexcept;
+			/**
+			 * @brief Метод установки версии контейнера
+			 *
+			 * @param version версия контейнера для установки
+			 */
+			void setVersion(string_view version) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления записи по ключу
