@@ -2356,12 +2356,20 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									// Выводим PTR-запись
 									::printf("PTR: %s\n", answer.domain.c_str());
 								#endif
-								// Выполняем блокировку потока для парсинга IP-адреса
-								const locker_t <> lock(::__awh_mtx__);
-								// Устанавливаем ARPA-адрес в объекте адреса
-								this->_addr.arpa(answer.name);
-								// Добавляем запись в кэш DNS-резолвера
-								this->pushAddressToCache(answer.domain, this->_addr.source().get(), answer.ttl);
+								// IP-адрес для кэширования
+								unique_ptr <net::addr_t> address = nullptr;
+								{
+									// Выполняем блокировку потока для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем ARPA-адрес в объекте адреса
+									this->_addr.arpa(answer.name);
+									// Получаем IP-адрес
+									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+								}
+								// Если IP-адрес получен
+								if(address != nullptr)
+									// Добавляем запись в кэш DNS-резолвера
+									this->pushAddressToCache(answer.domain, address.get(), answer.ttl);
 							}
 							// Если функция обратного вызова установлена для получения IP-адресов
 							if(this->_callback.is("address")){
@@ -5795,63 +5803,63 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 				const locker_t <> lock(::__awh_mtx__);
 				// Устанавливаем полученный IP-адрес
 				this->_addr.source(ip);
-				/**
-				 * Определяем тип адреса
-				 */
-				switch(static_cast <uint8_t> (this->_addr.type())){
-					// Если адрес является IPv4
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем блокировку потока для работы с кэшем
-						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-						// Выполняем поиск IP-адреса в кэше
-						auto i = ::__awh_cache__.ipv4.find(this->_addr.v4(net_addr_t::endian_t::LITTLE));
-						// Если в кэше IP-адрес найден
-						if(i != ::__awh_cache__.ipv4.end()){
-							// Получаем текущую метку времени
-							const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-							/**
-							 * Выполняем перебор всех записей IP-адреса в кэше
-							 */
-							for(auto j = i->second.begin(); j != i->second.end(); ++j){
-								// Пропускаем устаревшие записи в кэше (удаление будет при записи)
-								if((j->life > 0) && (j->life <= now))
-									// Пропускаем записи IP-адреса
-									continue;
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, j->domain, ip);
-								// Выводим положительный результат
-								return true;
-							}
-						}
-					} break;
-					// Если адрес является IPv6
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем блокировку потока для работы с кэшем
-						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-						// Выполняем поиск IP-адреса в кэше
-						auto i = ::__awh_cache__.ipv6.find(this->_addr.v6(net_addr_t::endian_t::LITTLE));
-						// Если в кэше IP-адрес найден
-						if(i != ::__awh_cache__.ipv6.end()){
-							// Получаем текущую метку времени
-							const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-							/**
-							 * Выполняем перебор всех записей IP-адреса в кэше
-							 */
-							for(auto j = i->second.begin(); j != i->second.end(); ++j){
-								// Пропускаем устаревшие записи в кэше (удаление будет при записи)
-								if((j->life > 0) && (j->life <= now))
-									// Пропускаем записи IP-адреса
-									continue;
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, j->domain, ip);
-								// Выводим положительный результат
-								return true;
-							}
-						}
-					} break;
-				}
 				// Извлекаем доменное имя в формате ARPA
 				domain = ::move(this->_addr.arpa());
+			}
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(static_cast <uint8_t> (ip->size)){
+				// Если адрес является IPv4
+				case 4: {
+					// Выполняем блокировку потока для работы с кэшем
+					const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Выполняем поиск IP-адреса в кэше
+					auto i = ::__awh_cache__.ipv4.find(awh_cast <const net::addr_net_ipv4_t *> (ip)->address);
+					// Если в кэше IP-адрес найден
+					if(i != ::__awh_cache__.ipv4.end()){
+						// Получаем текущую метку времени
+						const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+						/**
+						 * Выполняем перебор всех записей IP-адреса в кэше
+						 */
+						for(auto j = i->second.begin(); j != i->second.end(); ++j){
+							// Пропускаем устаревшие записи в кэше (удаление будет при записи)
+							if((j->life > 0) && (j->life <= now))
+								// Пропускаем записи IP-адреса
+								continue;
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, j->domain, ip);
+							// Выводим положительный результат
+							return true;
+						}
+					}
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Выполняем блокировку потока для работы с кэшем
+					const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Выполняем поиск IP-адреса в кэше
+					auto i = ::__awh_cache__.ipv6.find(awh_cast <const net::addr_net_ipv6_t *> (ip)->address);
+					// Если в кэше IP-адрес найден
+					if(i != ::__awh_cache__.ipv6.end()){
+						// Получаем текущую метку времени
+						const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+						/**
+						 * Выполняем перебор всех записей IP-адреса в кэше
+						 */
+						for(auto j = i->second.begin(); j != i->second.end(); ++j){
+							// Пропускаем устаревшие записи в кэше (удаление будет при записи)
+							if((j->life > 0) && (j->life <= now))
+								// Пропускаем записи IP-адреса
+								continue;
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, j->domain, ip);
+							// Выводим положительный результат
+							return true;
+						}
+					}
+				} break;
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
@@ -5962,70 +5970,84 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 			switch(static_cast <uint8_t> (family)){
 				// Для семейство IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потока для парсинга IP-адреса
-					const locker_t <> lock(::__awh_mtx__);
-					// Выполняем парсинг IPv4-адреса
-					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
-						{
-							// Выполняем блокировку потока для работы с кэшем
-							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-							// Выполняем поиск IP-адреса в кэше
-							auto i = ::__awh_cache__.ipv4.find(this->_addr.v4(net_addr_t::endian_t::LITTLE));
-							// Если в кэше IP-адрес найден
-							if(i != ::__awh_cache__.ipv4.end()){
-								// Получаем текущую метку времени
-								const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-								/**
-								 * Выполняем перебор всех записей IP-адреса в кэше
-								 */
-								for(auto j = i->second.begin(); j != i->second.end(); ++j){
-									// Пропускаем устаревшие записи в кэше (удаление будет при записи)
-									if((j->life > 0) && (j->life <= now))
-										// Пропускаем записи IP-адреса
-										continue;
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, j->domain, this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-									// Выводим положительный результат
-									return true;
-								}
+					// IP-адрес в исходном виде для поиска доменного имени
+					unique_ptr <net::addr_t> addr = nullptr;
+					{
+						// Выполняем блокировку потока для парсинга IP-адреса
+						const locker_t <> lock(::__awh_mtx__);
+						// Выполняем парсинг IPv4-адреса
+						if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
+							// Получаем IP-адрес в исходном виде
+							addr = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							// Извлекаем доменное имя в формате ARPA
+							domain = ::move(this->_addr.arpa());
+						}
+					}
+					// Если IP-адрес в исходном виде получен
+					if(addr != nullptr){
+						// Выполняем блокировку потока для работы с кэшем
+						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Выполняем поиск IP-адреса в кэше
+						auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (addr.get())->address);
+						// Если в кэше IP-адрес найден
+						if(i != ::__awh_cache__.ipv4.end()){
+							// Получаем текущую метку времени
+							const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+							/**
+							 * Выполняем перебор всех записей IP-адреса в кэше
+							 */
+							for(auto j = i->second.begin(); j != i->second.end(); ++j){
+								// Пропускаем устаревшие записи в кэше (удаление будет при записи)
+								if((j->life > 0) && (j->life <= now))
+									// Пропускаем записи IP-адреса
+									continue;
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, j->domain, addr.get());
+								// Выводим положительный результат
+								return true;
 							}
 						}
-						// Извлекаем доменное имя в формате ARPA
-						domain = ::move(this->_addr.arpa());
 					}
 				} break;
 				// Для семейство IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потока для парсинга IP-адреса
-					const locker_t <> lock(::__awh_mtx__);
-					// Выполняем парсинг IPv6-адреса
-					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
-						{
-							// Выполняем блокировку потока для работы с кэшем
-							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-							// Выполняем поиск IP-адреса в кэше
-							auto i = ::__awh_cache__.ipv6.find(this->_addr.v6(net_addr_t::endian_t::LITTLE));
-							// Если в кэше IP-адрес найден
-							if(i != ::__awh_cache__.ipv6.end()){
-								// Получаем текущую метку времени
-								const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-								/**
-								 * Выполняем перебор всех записей IP-адреса в кэше
-								 */
-								for(auto j = i->second.begin(); j != i->second.end(); ++j){
-									// Пропускаем устаревшие записи в кэше (удаление будет при записи)
-									if((j->life > 0) && (j->life <= now))
-										// Пропускаем записи IP-адреса
-										continue;
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, j->domain, this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-									// Выводим положительный результат
-									return true;
-								}
+					// IP-адрес в исходном виде для поиска доменного имени
+					unique_ptr <net::addr_t> addr = nullptr;
+					{
+						// Выполняем блокировку потока для парсинга IP-адреса
+						const locker_t <> lock(::__awh_mtx__);
+						// Выполняем парсинг IPv6-адреса
+						if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
+							// Получаем IP-адрес в исходном виде
+							addr = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							// Извлекаем доменное имя в формате ARPA
+							domain = ::move(this->_addr.arpa());
+						}
+					}
+					// Если IP-адрес в исходном виде получен
+					if(addr != nullptr){
+						// Выполняем блокировку потока для работы с кэшем
+						const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Выполняем поиск IP-адреса в кэше
+						auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (addr.get())->address);
+						// Если в кэше IP-адрес найден
+						if(i != ::__awh_cache__.ipv6.end()){
+							// Получаем текущую метку времени
+							const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+							/**
+							 * Выполняем перебор всех записей IP-адреса в кэше
+							 */
+							for(auto j = i->second.begin(); j != i->second.end(); ++j){
+								// Пропускаем устаревшие записи в кэше (удаление будет при записи)
+								if((j->life > 0) && (j->life <= now))
+									// Пропускаем записи IP-адреса
+									continue;
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, j->domain, addr.get());
+								// Выводим положительный результат
+								return true;
 							}
 						}
-						// Извлекаем доменное имя в формате ARPA
-						domain = ::move(this->_addr.arpa());
 					}
 				} break;
 			}
