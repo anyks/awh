@@ -35,17 +35,17 @@ if (CMAKE_MAX_COUNT_FDS)
     message(STATUS "Build with max FDs: ${CMAKE_MAX_COUNT_FDS}\n")
 endif (CMAKE_MAX_COUNT_FDS)
 
-# Сборка с установкой адреса DNS-сервера IPv4 по умолчанию
-if (CMAKE_DEFAULT_DNS_SERVER)
-    add_compile_definitions(AWH_IPV4_RESOLVER=${CMAKE_DEFAULT_DNS_SERVER})
-    message(STATUS "Build with default DNS server: ${CMAKE_DEFAULT_DNS_SERVER}\n")
-endif (CMAKE_DEFAULT_DNS_SERVER)
+# Сборка с установкой адреса DNS-серверов IPv4 по умолчанию
+if (CMAKE_DEFAULT_DNS_SERVERS)
+    add_compile_definitions(AWH_IPV4_RESOLVERS=${CMAKE_DEFAULT_DNS_SERVERS})
+    message(STATUS "Build with default DNS servers: ${CMAKE_DEFAULT_DNS_SERVERS}\n")
+endif (CMAKE_DEFAULT_DNS_SERVERS)
 
-# Сборка с установкой адреса DNS-сервера IPv6 по умолчанию
-if (CMAKE_DEFAULT_DNS6_SERVER)
-    add_compile_definitions(AWH_IPV6_RESOLVER=${CMAKE_DEFAULT_DNS6_SERVER})
-    message(STATUS "Build with default IPv6 DNS server: ${CMAKE_DEFAULT_DNS6_SERVER}\n")
-endif (CMAKE_DEFAULT_DNS6_SERVER)
+# Сборка с установкой адреса DNS-серверов IPv6 по умолчанию
+if (CMAKE_DEFAULT_DNS6_SERVERS)
+    add_compile_definitions(AWH_IPV6_RESOLVERS=${CMAKE_DEFAULT_DNS6_SERVERS})
+    message(STATUS "Build with default IPv6 DNS servers: ${CMAKE_DEFAULT_DNS6_SERVERS}\n")
+endif (CMAKE_DEFAULT_DNS6_SERVERS)
 
 # Если активирован флаг оптимизации операционной системы
 if (CMAKE_BOOSTING_NET)

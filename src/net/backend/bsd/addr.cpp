@@ -15,21 +15,35 @@
 /**
  * Если стандартные DNS-серверы IPv4 не установлены
  */
-#ifndef AWH_IPV4_RESOLVER
+#ifndef AWH_IPV4_RESOLVERS
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv4
 	 */
-	#define AWH_IPV4_RESOLVER "8.8.8.8"
+	#define AWH_IPV4_RESOLVERS { \
+		"8.8.8.8", \
+		"8.8.4.4", \
+		"1.1.1.1", \
+		"1.0.0.1", \
+		"77.88.8.8", \
+		"77.88.8.1" \
+	}
 #endif
 
 /**
  * Если стандартные DNS-серверы IPv6 не установлены
  */
-#ifndef AWH_IPV6_RESOLVER
+#ifndef AWH_IPV6_RESOLVERS
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv6
 	 */
-	#define AWH_IPV6_RESOLVER "2001:4860:4860::8888"
+	#define AWH_IPV6_RESOLVERS { \
+		"2001:4860:4860::8888", \
+		"2001:4860:4860::8844", \
+		"2606:4700:4700::1111", \
+		"2606:4700:4700::1001", \
+		"2A02:6B8::FEED:0FF", \
+		"2A02:6B8:0:1::FEED:0FF" \
+	}
 #endif
 
 /**
@@ -41,9 +55,11 @@
 /**
  * Стандартные модули
  */
+#include <array>
 #include <cerrno>
 #include <memory>
 #include <vector>
+#include <random>
 #include <cstring>
 #include <cstdlib>
 
@@ -80,6 +96,17 @@ using namespace std;
  * Инкапсулируем статические типы данных в пространство имён
  */
 namespace {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Генератор случайных чисел для рандомизации DNS-серверов
+	 *
+	 */
+	random_device __awh_randev__;
+
 	/**
 	 * @brief Функция вычисления контрольной суммы
 	 *
@@ -519,8 +546,10 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						serv.sin_family = AF_INET;
 						// Устанавливаем порт DNS-сервера
 						serv.sin_port = htons(53);
+						// Создаём массив стандартных DNS-серверов IPv4
+						const array <string_view, 6> resolvers = AWH_IPV4_RESOLVERS;
 						// Указываем адреса IPv4 DNS-сервера
-						::inet_pton(AF_INET, AWH_IPV4_RESOLVER, &serv.sin_addr);
+						::inet_pton(AF_INET, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin_addr);
 						// Создаем сокет для проверки подключения
 						const net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 						// Выполняем подключение к серверу
@@ -552,12 +581,14 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 					case 16: {
 						// Создаем структуру подключения сервера
 						struct sockaddr_in6 serv{0};
-						// Указываем тип сетевого подключения IPv4
+						// Указываем тип сетевого подключения IPv6
 						serv.sin6_family = AF_INET6;
 						// Устанавливаем порт DNS сервера
 						serv.sin6_port = htons(53);
+						// Создаём массив стандартных DNS-серверов IPv6
+						const array <string_view, 6> resolvers = AWH_IPV6_RESOLVERS;
 						// Указываем адреса IPv6 DNS-сервера
-						::inet_pton(AF_INET6, AWH_IPV6_RESOLVER, &serv.sin6_addr);
+						::inet_pton(AF_INET6, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin6_addr);
 						// Создаем сокет для проверки подключения
 						const net::socket_t sock = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);
 						// Выполняем подключение к серверу
