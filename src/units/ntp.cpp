@@ -97,7 +97,7 @@ namespace servers {
 	/**
 	 * @brief Метод добавления NTP-сервера в список
 	 *
-	 * @param server объект NTP-сервера для добавления в список
+	 * @param server NTP-сервер для добавления в список
 	 */
 	static void push(string_view server) noexcept {
 		// Создаём объект IP-адреса для параметров NTP-сервера
@@ -869,13 +869,15 @@ bool awh::unit::NTP::commit() noexcept {
 					// Получаем значение переменной
 					const char * env = ::getenv(this->_fmk->format("%s_NTP_IPV4_SERVER", this->_client.prefix.c_str()).c_str());
 					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr)
+					if(env != nullptr){
 						// Устанавливаем адрес сервера назначения
 						this->_io->setTarget(this->_client.eid, env);
-					// Если адрес из переменной окружения не получен, устанавливаем адрес сервера назначения
-					else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
-				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
-				} else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
+						// Выходим из условия
+						break;
+					}
+				}
+				// Устанавливаем адрес сервера назначения
+				this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -884,13 +886,15 @@ bool awh::unit::NTP::commit() noexcept {
 					// Получаем значение переменной
 					const char * env = ::getenv(this->_fmk->format("%s_NTP_IPV6_SERVER", this->_client.prefix.c_str()).c_str());
 					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr)
+					if(env != nullptr){
 						// Устанавливаем адрес сервера назначения
 						this->_io->setTarget(this->_client.eid, env);
-					// Если адрес из переменной окружения не получен, устанавливаем адрес сервера назначения
-					else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
-				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
-				} else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
+						// Выходим из условия
+						break;
+					}
+				}
+				// Устанавливаем адрес сервера назначения
+				this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
 			} break;
 		}
 		// Если адрес сети для выполнения запроса установлен
@@ -1976,7 +1980,7 @@ bool awh::unit::NTP::sync(const ver_t version, const uint32_t timeout) noexcept 
  * @param log    объект для работы с логами
  */
 awh::unit::NTP::NTP(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
-unit_t(fmk, log), _addr(fmk, log) {
+ unit_t(fmk, log), _addr(fmk, log) {
 	// Активируем работу мьютекса блокировки потока при работе с клиентом
 	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с таймаутами

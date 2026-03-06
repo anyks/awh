@@ -4818,13 +4818,15 @@ bool awh::unit::DNS::commit() noexcept {
 					// Получаем значение переменной
 					const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_SERVER", this->_resolver.prefix.c_str()).c_str());
 					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr)
+					if(env != nullptr){
 						// Устанавливаем адрес сервера назначения
 						this->_io->setTarget(this->_resolver.eid, env);
-					// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
-					else this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
-				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
-				} else this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
+						// Выходим из условия
+						break;
+					}
+				}
+				// Устанавливаем адрес сервера назначения
+				this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -4833,13 +4835,15 @@ bool awh::unit::DNS::commit() noexcept {
 					// Получаем значение переменной
 					const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_SERVER", this->_resolver.prefix.c_str()).c_str());
 					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr)
+					if(env != nullptr){
 						// Устанавливаем адрес сервера назначения
 						this->_io->setTarget(this->_resolver.eid, env);
-					// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
-					else this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
-				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
-				} else this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
+						// Выходим из условия
+						break;
+					}
+				}
+				// Устанавливаем адрес сервера назначения
+				this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
 			} break;
 		}
 		// Если адрес сети для выполнения запроса установлен
