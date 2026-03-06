@@ -5305,31 +5305,33 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 	try {
 		// Если адреса DNS-серверов переданы
 		if((this->_resolver.eid > 0) && !servers.empty()){
-			// Выполняем блокировку потока для парсинга IP-адреса
-			const locker_t <> lock(::__awh_mtx__);
 			// Результат выполнения парсинга IP-адреса
 			bool result = false;
+			// Флаг сброса списка IP-адресов события для семейства IPv4
+			bool resetIPv4 = false;
+			// Флаг сброса списка IP-адресов события для семейства IPv6
+			bool resetIPv6 = false;
+			// Выполняем блокировку потока для парсинга IP-адреса
+			const locker_t <> lock(::__awh_mtx__);
 			/**
 			 * Проходим по каждому адресу DNS-сервера для установки
 			 */
 			for(const auto & server : servers){
 				// Выполняем парсинг IP-адреса
 				if((result = this->_addr.parse(server))){
-					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_resolver.mtx);
 					/**
 					 * Определяем тип IP-адреса
 					 */
 					switch(static_cast <uint8_t> (this->_addr.type())){
 						// Если адрес является IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-							// Очищаем список IP-адресов события для семейство IPv4
-							this->_resolver.nameServers.reset(event::family_t::IPV4);
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv4
+							resetIPv4 = true;
 						break;
 						// Если адрес является IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-							// Очищаем список IP-адресов события для семейство IPv6
-							this->_resolver.nameServers.reset(event::family_t::IPV6);
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv6
+							resetIPv6 = true;
 						break;
 					}
 				// Выходим из цикла
@@ -5337,17 +5339,24 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 			}
 			// Если парсинг адресов выполнен
 			if(result){
+				// Выполняем блокировку потока для установки IP-адреса события
+				const locker_t <> lock(this->_resolver.mtx);
+				// Если необходимо сбросить список IPv4
+				if(resetIPv4)
+					// Очищаем список IP-адресов события для семейство IPv4
+					this->_resolver.nameServers.reset(event::family_t::IPV4);
+				// Если необходимо сбросить список IPv6
+				if(resetIPv6)
+					// Очищаем список IP-адресов события для семейство IPv6
+					this->_resolver.nameServers.reset(event::family_t::IPV6);
 				/**
 				 * Проходим по каждому адресу DNS-сервера для установки
 				 */
 				for(const auto & server : servers){
 					// Выполняем парсинг IP-адреса
-					if(this->_addr.parse(server)){
-						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_resolver.mtx);
+					if(this->_addr.parse(server))
 						// Устанавливаем IP-адрес события
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-					}
 				}
 			}
 		// Если адреса DNS-серверов не переданы
@@ -5390,6 +5399,10 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 	try {
 		// Если адреса DNS-серверов переданы
 		if((this->_resolver.eid > 0) && !servers.empty()){
+			// Флаг сброса списка IP-адресов события для семейства IPv4
+			bool resetIPv4 = false;
+			// Флаг сброса списка IP-адресов события для семейства IPv6
+			bool resetIPv6 = false;
 			/**
 			 * Проходим по каждому адресу DNS-сервера для установки
 			 */
@@ -5401,46 +5414,51 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 					 */
 					switch(server->size){
 						// Если адрес является IPv4
-						case 4: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_resolver.mtx);
-							// Очищаем список IP-адресов события для семейство IPv4
-							this->_resolver.nameServers.reset(event::family_t::IPV4);
-						} break;
+						case 4:
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv4
+							resetIPv4 = true;
+						break;
 						// Если адрес является IPv6
-						case 16: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_resolver.mtx);
-							// Очищаем список IP-адресов события для семейство IPv6
-							this->_resolver.nameServers.reset(event::family_t::IPV6);
-						} break;
+						case 16:
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv6
+							resetIPv6 = true;
+						break;
 					}
 				}
 			}
-			/**
-			 * Проходим по каждому адресу DNS-сервера для установки
-			 */
-			for(const auto & server : servers){
-				// Если адрес DNS-сервера передан
-				if(server != nullptr){
-					/**
-					 * Определяем тип адреса
-					 */
-					switch(server->size){
-						// Если адрес является IPv4
-						case 4: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_resolver.mtx);
-							// Устанавливаем IP-адрес события
-							this->_resolver.nameServers.push(server);
-						} break;
-						// Если адрес является IPv6
-						case 16: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_resolver.mtx);
-							// Устанавливаем IP-адрес события
-							this->_resolver.nameServers.push(server);
-						} break;
+			// Если необходимо сбросить список IPv4 или IPv6
+			if(resetIPv4 || resetIPv6){
+				// Выполняем блокировку потока для установки IP-адреса события
+				const locker_t <> lock(this->_resolver.mtx);
+				// Если необходимо сбросить список IPv4
+				if(resetIPv4)
+					// Очищаем список IP-адресов события для семейство IPv4
+					this->_resolver.nameServers.reset(event::family_t::IPV4);
+				// Если необходимо сбросить список IPv6
+				if(resetIPv6)
+					// Очищаем список IP-адресов события для семейство IPv6
+					this->_resolver.nameServers.reset(event::family_t::IPV6);
+				/**
+				 * Проходим по каждому адресу DNS-сервера для установки
+				 */
+				for(const auto & server : servers){
+					// Если адрес DNS-сервера передан
+					if(server != nullptr){
+						/**
+						* Определяем тип адреса
+						*/
+						switch(server->size){
+							// Если адрес является IPv4
+							case 4:
+								// Устанавливаем IP-адрес события
+								this->_resolver.nameServers.push(server);
+							break;
+							// Если адрес является IPv6
+							case 16:
+								// Устанавливаем IP-адрес события
+								this->_resolver.nameServers.push(server);
+							break;
+						}
 					}
 				}
 			}

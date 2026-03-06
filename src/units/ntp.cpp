@@ -247,7 +247,7 @@ namespace ntp {
 		auto seconds = chrono::duration_cast <chrono::seconds> (epoch).count();
 		/**
 		 * NTP epoch = 1 Jan 1900, Unix epoch = 1 Jan 1970
-		 * Разница: 70 лет + 17 високосных дня = 2208988800 секунд
+		 * Разница: 70 лет + 17 високосных дней = 2208988800 секунд
 		 */
 		return htonl(static_cast <uint32_t> (seconds + 2208988800ULL));
 	}
@@ -611,7 +611,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 			// Удаляем событие NTP-клиента
 			this->_io->destroy(eid);
 		}
-		// Выполняем создание события NTP-клиента для указанного семейство IP-адресов
+		// Выполняем создание события NTP-клиента для указанного семейства IP-адресов
 		this->create(family);
 		// Если попытки резолвинга не превышают максимально допустимое количество
 		if(timeout->attempt < this->_timeouts.attempts){
@@ -718,13 +718,13 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 				 */
 				switch(static_cast <uint8_t> (version)){
 					// Если версия протокола NTPv1
-					case 1: packet.mode = 0x0B; break;
+					case 0x01: packet.mode = 0x0B; break;
 					// Если версия протокола NTPv2
-					case 2: packet.mode = 0x13; break;
+					case 0x02: packet.mode = 0x13; break;
 					// Если версия протокола NTPv3
-					case 4: packet.mode = 0x23; break;
+					case 0x03: packet.mode = 0x1B; break;
 					// Если версия протокола NTPv4
-					case 3: packet.mode = 0x1B; break;
+					case 0x04: packet.mode = 0x23; break;
 				}
 				// Устанавливаем версию протокола NTP
 				packet.origTimeStampSec = ::ntp::timesec();
@@ -828,7 +828,7 @@ bool awh::unit::NTP::reset() noexcept {
 		// Удаляем событие NTP-клиента
 		this->_io->destroy(this->_client.eid);
 	}
-	// Выполняем создание события NTP-клиента для указанного семейство IP-адресов
+	// Выполняем создание события NTP-клиента для указанного семейства IP-адресов
 	this->create(family);
 	// Выполняем фиксацию параметров NTP-клиента
 	return this->commit();
@@ -865,7 +865,7 @@ bool awh::unit::NTP::commit() noexcept {
 					if(env != nullptr)
 						// Устанавливаем адрес сервера назначения
 						this->_io->setTarget(this->_client.eid, env);
-					// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
+					// Если адрес из переменной окружения не получен, устанавливаем адрес сервера назначения
 					else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
 				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
 				} else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
@@ -880,7 +880,7 @@ bool awh::unit::NTP::commit() noexcept {
 					if(env != nullptr)
 						// Устанавливаем адрес сервера назначения
 						this->_io->setTarget(this->_client.eid, env);
-					// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
+					// Если адрес из переменной окружения не получен, устанавливаем адрес сервера назначения
 					else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
 				// Если префикс для переменных окружения не установлен, устанавливаем адрес сервера назначения
 				} else this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
@@ -993,12 +993,12 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-						// Очищаем список IP-адресов события для семейство IPv4
+						// Очищаем список IP-адресов события для семейства IPv4
 						this->_client.servers.reset(event::family_t::IPV4);
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-						// Очищаем список IP-адресов события для семейство IPv6
+						// Очищаем список IP-адресов события для семейства IPv6
 						this->_client.servers.reset(event::family_t::IPV6);
 					break;
 				}
@@ -1009,9 +1009,9 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_client.mtx);
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Очищаем список IP-адресов события для семейства IPv6
 			this->_client.servers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -1053,7 +1053,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(event::family_t::IPV4);
 					// Устанавливаем IP-адрес события
 					this->_client.servers.push(server);
@@ -1062,7 +1062,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(event::family_t::IPV6);
 					// Устанавливаем IP-адрес события
 					this->_client.servers.push(server);
@@ -1072,9 +1072,9 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_client.mtx);
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Очищаем список IP-адресов события для семейства IPv6
 			this->_client.servers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -1121,7 +1121,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
 						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(this->_client.mtx);
-						// Очищаем список IP-адресов события для семейство IPv4
+						// Очищаем список IP-адресов события для семейства IPv4
 						this->_client.servers.reset(event::family_t::IPV4);
 						// Устанавливаем IP-адрес события
 						this->_client.servers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
@@ -1135,7 +1135,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
 						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(this->_client.mtx);
-						// Очищаем список IP-адресов события для семейство IPv6
+						// Очищаем список IP-адресов события для семейства IPv6
 						this->_client.servers.reset(event::family_t::IPV6);
 						// Устанавливаем IP-адрес события
 						this->_client.servers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
@@ -1152,14 +1152,14 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(event::family_t::IPV4);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(event::family_t::IPV6);
 				} break;
 			}
@@ -1349,58 +1349,67 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 	try {
 		// Если адреса NTP-серверов переданы
 		if((this->_client.eid > 0) && !servers.empty()){
+			// Результат выполнения парсинга IP-адреса
+			bool result = true;
+			// Флаг сброса списка IP-адресов события для семейства IPv4
+			bool resetIPv4 = false;
+			// Флаг сброса списка IP-адресов события для семейства IPv6
+			bool resetIPv6 = false;
 			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
-			// Результат выполнения парсинга IP-адреса
-			bool result = false;
 			/**
-			 * Проходим по каждому адресу NTP-сервера для установки
+			 * Проходим по каждому адресу NTP-сервера для проверки
 			 */
 			for(const auto & server : servers){
 				// Выполняем парсинг IP-адреса
 				if((result = this->_addr.parse(server))){
-					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
 					/**
-					 * Определяем тип IP-адреса
+					 * Определяем тип IP-адреса для сброса соответствующего списка
 					 */
 					switch(static_cast <uint8_t> (this->_addr.type())){
 						// Если адрес является IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-							// Очищаем список IP-адресов события для семейство IPv4
-							this->_client.servers.reset(event::family_t::IPV4);
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv4
+							resetIPv4 = true;
 						break;
 						// Если адрес является IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-							// Очищаем список IP-адресов события для семейство IPv6
-							this->_client.servers.reset(event::family_t::IPV6);
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv6
+							resetIPv6 = true;
 						break;
 					}
-				// Выходим из цикла
+				// Если парсинг IP-адреса не выполнен, прерываем цикл
 				} else break;
 			}
-			// Если парсинг адресов выполнен
+			// Если парсинг всех адресов выполнен успешно
 			if(result){
+				// Выполняем блокировку потока для установки IP-адреса события
+				const locker_t <> lock(this->_client.mtx);
+				// Если необходимо сбросить список IPv4
+				if(resetIPv4)
+					// Сбрасываем список IP-адресов события для семейства IPv4
+					this->_client.servers.reset(event::family_t::IPV4);
+				// Если необходимо сбросить список IPv6
+				if(resetIPv6)
+					// Сбрасываем список IP-адресов события для семейства IPv6
+					this->_client.servers.reset(event::family_t::IPV6);
 				/**
 				 * Проходим по каждому адресу NTP-сервера для установки
 				 */
 				for(const auto & server : servers){
 					// Выполняем парсинг IP-адреса
-					if(this->_addr.parse(server)){
-						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+					if(this->_addr.parse(server))
 						// Устанавливаем IP-адрес события
 						this->_client.servers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-					}
 				}
 			}
 		// Если адреса NTP-серверов не переданы
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_client.mtx);
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Очищаем список IP-адресов события для семейства IPv6
 			this->_client.servers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -1434,6 +1443,10 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 	try {
 		// Если адреса NTP-серверов переданы
 		if((this->_client.eid > 0) && !servers.empty()){
+			// Флаг сброса списка IP-адресов события для семейства IPv4
+			bool resetIPv4 = false;
+			// Флаг сброса списка IP-адресов события для семейства IPv6
+			bool resetIPv6 = false;
 			/**
 			 * Проходим по каждому адресу NTP-сервера для установки
 			 */
@@ -1445,46 +1458,51 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 					 */
 					switch(server->size){
 						// Если адрес является IPv4
-						case 4: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_client.mtx);
-							// Очищаем список IP-адресов события для семейство IPv4
-							this->_client.servers.reset(event::family_t::IPV4);
-						} break;
+						case 4:
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv4
+							resetIPv4 = true;
+						break;
 						// Если адрес является IPv6
-						case 16: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_client.mtx);
-							// Очищаем список IP-адресов события для семейство IPv6
-							this->_client.servers.reset(event::family_t::IPV6);
-						} break;
+						case 16:
+							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv6
+							resetIPv6 = true;
+						break;
 					}
 				}
 			}
-			/**
-			 * Проходим по каждому адресу NTP-сервера для установки
-			 */
-			for(const auto & server : servers){
-				// Если адрес NTP-сервера передан
-				if(server != nullptr){
-					/**
-					 * Определяем тип адреса
-					 */
-					switch(server->size){
-						// Если адрес является IPv4
-						case 4: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_client.mtx);
-							// Устанавливаем IP-адрес события
-							this->_client.servers.push(server);
-						} break;
-						// Если адрес является IPv6
-						case 16: {
-							// Выполняем блокировку потока для установки IP-адреса события
-							const locker_t <> lock(this->_client.mtx);
-							// Устанавливаем IP-адрес события
-							this->_client.servers.push(server);
-						} break;
+			// Если необходимо сбросить список IPv4 или IPv6
+			if(resetIPv4 || resetIPv6){
+				// Выполняем блокировку потока для установки IP-адреса события
+				const locker_t <> lock(this->_client.mtx);
+				// Если необходимо сбросить список IPv4
+				if(resetIPv4)
+					// Сбрасываем список IP-адресов события для семейства IPv4
+					this->_client.servers.reset(event::family_t::IPV4);
+				// Если необходимо сбросить список IPv6
+				if(resetIPv6)
+					// Сбрасываем список IP-адресов события для семейства IPv6
+					this->_client.servers.reset(event::family_t::IPV6);
+				/**
+				 * Проходим по каждому адресу NTP-сервера для установки
+				 */
+				for(const auto & server : servers){
+					// Если адрес NTP-сервера передан
+					if(server != nullptr){
+						/**
+						 * Определяем тип адреса
+						 */
+						switch(server->size){
+							// Если адрес является IPv4
+							case 4:
+								// Устанавливаем IP-адрес события
+								this->_client.servers.push(server);
+							break;
+							// Если адрес является IPv6
+							case 16:
+								// Устанавливаем IP-адрес события
+								this->_client.servers.push(server);
+							break;
+						}
 					}
 				}
 			}
@@ -1492,9 +1510,9 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
 			const locker_t <> lock(this->_client.mtx);
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Очищаем список IP-адресов события для семейства IPv6
 			this->_client.servers.reset(event::family_t::IPV6);
 		}
 	/**
@@ -1537,7 +1555,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(event::family_t::IPV4);
 					/**
 					 * Проходим по каждому адресу NTP-сервера для установки
@@ -1557,7 +1575,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(event::family_t::IPV6);
 					/**
 					 * Проходим по каждому адресу NTP-сервера для установки
@@ -1584,14 +1602,14 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(family);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
 					const locker_t <> lock(this->_client.mtx);
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(family);
 				} break;
 			}
@@ -1909,13 +1927,13 @@ bool awh::unit::NTP::sync(const ver_t version, const uint32_t timeout) noexcept 
 			 */
 			switch(static_cast <uint8_t> (version)){
 				// Если версия протокола NTPv1
-				case 1: packet.mode = 0x0B; break;
+				case 0x01: packet.mode = 0x0B; break;
 				// Если версия протокола NTPv2
-				case 2: packet.mode = 0x13; break;
+				case 0x02: packet.mode = 0x13; break;
 				// Если версия протокола NTPv3
-				case 4: packet.mode = 0x23; break;
+				case 0x03: packet.mode = 0x1B; break;
 				// Если версия протокола NTPv4
-				case 3: packet.mode = 0x1B; break;
+				case 0x04: packet.mode = 0x23; break;
 			}
 			// Устанавливаем версию протокола NTP
 			packet.origTimeStampSec = ::ntp::timesec();
@@ -1976,7 +1994,7 @@ unit_t(fmk, log), _addr(fmk, log) {
 	 */
 	this->_client.servers.init();
 	/**
-	 * Выполняем создание события NTP-клиента для указанного семейство IP-адресов
+	 * Выполняем создание события NTP-клиента для указанного семейства IP-адресов
 	 */
 	this->create(family);
 }
