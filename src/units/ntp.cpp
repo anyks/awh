@@ -236,7 +236,7 @@ namespace ntp {
 	/**
 	 * @brief Функция получения времени в формате NTP (секунды с 1900 года)
 	 *
-	 * @return Время в формате NTP
+	 * @return текущее время в формате NTP
 	 */
 	static uint32_t timesec() noexcept {
 		// Получаем текущее время в секундах с 1 января 1970 года (Unix epoch)
@@ -555,21 +555,28 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 				// Получаем объект заголовка запроса
 				const ::ntp::packet_t * packet = reinterpret_cast <const ::ntp::packet_t *> (data);
 				/**
-				 * Эти два поля содержат метку времени в секундах, когда пакет покинул сервер NTP.
-				 * Количество секунд соответствует секундам, прошедшим с 1900 года.
-				 * ntohl() преобразует порядок битов/байтов из сетевого в "порядок байтов" хоста.
+				 * 1. Читаем время отправки ответа сервером (T3) и конвертируем из сетевого порядка байтов в порядок байтов хоста
 				 */
-				// Получаем штамп времени в секундах
-				// packet.transmitedTimeStampSec = ntohl(packet.transmitedTimeStampSec);
-				// Получаем штамп времени в долях секунды
-				// packet.transmitedTimeStampSecFrac = ntohl(packet.transmitedTimeStampSecFrac);
+				uint32_t sec  = ntohl(packet->transmitedTimeStampSec);
+				uint32_t frac = ntohl(packet->transmitedTimeStampSecFrac);
 				/**
-				 * Извлекаем 32 бита, которые представляют собой метку времени в секундах (начиная с эпохи NTP) с момента, когда пакет покинул сервер.
-				 * Вычитаем 70 лет секунд из секунд с 1900 года. Это оставит секунды с эпохи UNIX 1970 года.
-				 * (1900)--------- (1970) ********** (Время когд пакет покинул сервер)
+				 * 2. Конвертируем эпоху NTP (1900) в Unix (1970) и получаем миллисекунды
+				 * NTP epoch = 1 Jan 1900, Unix epoch = 1 Jan 1970
+				 * Разница: 70 лет + 17 високосных дней = 2208988800 секунд
+				 * 2208988800 = разница в секундах между 1900 и 1970 годами
 				 */
-			 	// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint64_t)> ("timestamp", (static_cast <uint64_t> (ntohl(packet->transmitedTimeStampSec)) - 2208988800ULL) * 1000ULL);
+				constexpr uint64_t NTP_TO_UNIX_EPOCH = 2208988800ULL;
+				/** 
+				 * Получаем время в миллисекундах, вычитая секунды с 1900 года из секунд с 1970 года и умножая на 1000 для получения миллисекунд
+				 */
+				uint64_t timestamp = ((static_cast <uint64_t> (sec) - NTP_TO_UNIX_EPOCH) * 1000ULL);
+				/**
+				 * 3. Добавляем дробную часть для точности до миллисекунд (опционально)
+				 * 2^32 / 1000 ≈ 4294967
+				 */
+				timestamp += (static_cast <uint64_t> (frac) / 4294967ULL);
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const uint64_t)> ("timestamp", timestamp);
 			}
 		}
 	/**
