@@ -72,7 +72,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выводим количество попыток резолвинга доменного имени
 			log.print("Количество попыток резолвинга доменного имени '%s': attempts=%d (ID: %u)", log_t::flag_t::WARNING, domain.c_str(), attempts, did);
 		}, placeholders::_1, placeholders::_2, placeholders::_3);
-		// Устанавливаем функцию обратного вызова на событие таймера
+		// Устанавливаем функцию обратного вызова на событие DNS-резолвера
 		dns.on <void (const event::status_t)> ("status", [&dns, &log](const event::status_t status) noexcept -> void {
 			/**
 			 * В зависимости от статуса события DNS-резолвера выполняем определённые действия

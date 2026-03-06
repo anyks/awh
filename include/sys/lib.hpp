@@ -136,36 +136,6 @@
 #define HTTP_VERSION 1.1
 
 /**
- * Адреса NTP серверов
- */
-
-// Адреса серверов IPv4 NTP-клиента
-#define IPV4_NTP { \
-	"ntp0.ntp-servers.net", \
-	"ntp1.ntp-servers.net", \
-	"ntp2.ntp-servers.net", \
-	"ntp3.ntp-servers.net", \
-	"ntp4.ntp-servers.net", \
-	"ntp5.ntp-servers.net", \
-	"ntp6.ntp-servers.net", \
-	"ntp7.ntp-servers.net", \
-	"pool.ntp.org", \
-	"0.pool.ntp.org", \
-	"1.pool.ntp.org", \
-	"2.pool.ntp.org", \
-	"3.pool.ntp.org" \
-}
-// Адреса серверов IPv6 NTP-клиента
-#define IPV6_NTP { \
-	"ntp0.ntp-servers.net", \
-	"ntp2.ntp-servers.net", \
-	"ntp3.ntp-servers.net", \
-	"ntp4.ntp-servers.net", \
-	"ntp6.ntp-servers.net", \
-	"2.pool.ntp.org" \
-}
-
-/**
  * Параметры сервера
  */
 

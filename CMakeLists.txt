@@ -35,6 +35,12 @@ if (CMAKE_MAX_COUNT_FDS)
     message(STATUS "Build with max FDs: ${CMAKE_MAX_COUNT_FDS}\n")
 endif (CMAKE_MAX_COUNT_FDS)
 
+# Сборка с установкой адреса NTP-серверов по умолчанию
+if (CMAKE_DEFAULT_NTP_SERVERS)
+    add_compile_definitions(AWH_NTP_SERVERS=${CMAKE_DEFAULT_NTP_SERVERS})
+    message(STATUS "Build with default NTP servers: ${CMAKE_DEFAULT_NTP_SERVERS}\n")
+endif (CMAKE_DEFAULT_NTP_SERVERS)
+
 # Сборка с установкой адреса DNS-серверов IPv4 по умолчанию
 if (CMAKE_DEFAULT_DNS_SERVERS)
     add_compile_definitions(AWH_IPV4_NS=${CMAKE_DEFAULT_DNS_SERVERS})
@@ -479,6 +485,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/dns.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/ntp.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
@@ -559,6 +566,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(UNIT_APP_DNS_NAME unit-dns)
     # Указываем что нужно собрать приложение работы с юнитом резолвером доменных имён
     option(CMAKE_BUILD_UNIT_DNS_APP_SAMPLE "Build Unit DNS app sample" ON)
+
+    # Устанавливаем имя приложения работы с юнитом синхронизации времени NTP
+    SET(UNIT_APP_NTP_NAME unit-ntp)
+    # Указываем что нужно собрать приложение работы с юнитом синхронизации времени NTP
+    option(CMAKE_BUILD_UNIT_NTP_APP_SAMPLE "Build Unit NTP app sample" ON)
 
     # Устанавливаем имя приложения работы с юнитом таймера
     SET(UNIT_APP_TIMER_NAME unit-timer)
@@ -850,6 +862,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT DNS: No\n")
     endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом синхронизации времени NTP
+    if (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT NTP: Yes\n")
+        # Выполняем создание приложения работы с юнитом синхронизации времени NTP
+        add_sample(${UNIT_APP_NTP_NAME} sample/units/ntp.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом синхронизации времени NTP
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT NTP: No\n")
+    endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -1289,6 +1313,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом синхронизации времени NTP
+        if (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом синхронизации времени NTP
+            target_link_libraries(
+                ${UNIT_APP_NTP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом таймера
         if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -1850,6 +1885,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом синхронизации времени NTP
+        if (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом синхронизации времени NTP
+            target_link_libraries(
+                ${UNIT_APP_NTP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом таймера
         if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -2472,6 +2519,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом синхронизации времени NTP
+            if (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом синхронизации времени NTP
+                add_custom_command(TARGET "${UNIT_APP_NTP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_NTP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${UNIT_APP_NTP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом таймера
             if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
                 # Выполняем сборку приложения работы с юнитом таймера
@@ -2888,6 +2945,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${UNIT_APP_DNS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_DNS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом синхронизации времени NTP
+            if (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом синхронизации времени NTP
+                pvs_studio_add_target(TARGET ${UNIT_APP_NTP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_NTP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом таймера
             if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом таймера
@@ -3208,6 +3271,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с юнитом резолвером доменных имён
         install(TARGETS ${UNIT_APP_DNS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом синхронизации времени NTP
+    if (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом синхронизации времени NTP
+        install(TARGETS ${UNIT_APP_NTP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})

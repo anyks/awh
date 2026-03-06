@@ -98,14 +98,14 @@ namespace awh {
 						/**
 						 * @brief Метод сброса списка DNS-серверов
 						 *
-						 * @param family семейстов IP-адресов IPv4/IPv6
+						 * @param family семейство IP-адресов IPv4/IPv6
 						 */
 						void reset(const event::family_t family) noexcept;
 					public:
 						/**
 						 * @brief Метод получения текущего DNS-сервера
 						 *
-						 * @param family семейстов IP-адресов IPv4/IPv6
+						 * @param family семейство IP-адресов IPv4/IPv6
 						 * @return       объект DNS-сервера для выполнения запроса
 						 */
 						const net::addr_t * get(const event::family_t family) noexcept;
@@ -138,7 +138,7 @@ namespace awh {
 					servers_t nameServers;
 					// Адрес сети для выполнения запроса
 					unique_ptr <net::addr_t> source;
-					// Мютекс для блокировки потока
+					// Мьютекс для блокировки потока
 					lock_state_t <std::mutex> mtx;
 					/**
 					 * @brief Конструктор
@@ -168,7 +168,7 @@ namespace awh {
 					 *
 					 */
 					explicit Timeout() noexcept :
-					 domain{""},
+					 domain{AWH_SHORT_NAME},
 					 delay(5000), attempt(0),
 					 record(record_t::NONE), eid(0) {}
 				} timeout_t;
@@ -179,7 +179,7 @@ namespace awh {
 				typedef struct Timeouts {
 					// Количество попыток резолвинга доменного имени
 					uint8_t attempts;
-					// Мютекс для блокировки потока
+					// Мьютекс для блокировки потока
 					lock_state_t <std::shared_mutex> mtx;
 					// Активные тайм-ауты при ожидании ответа от DNS-сервера
 					unordered_map <id_t, timeout_t> waiting;
@@ -290,7 +290,7 @@ namespace awh {
 				/**
 				 * @brief Метод пересортировки адресов в кэше для доменного имени
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
 				 */
 				void shuffle(const event::family_t family, string_view domain) noexcept;
@@ -303,7 +303,7 @@ namespace awh {
 				/**
 				 * @brief Метод очистки чёрного списка
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 */
 				void clearBlacklist(const event::family_t family) noexcept;
 			public:
@@ -322,7 +322,7 @@ namespace awh {
 				/**
 				 * @brief Метод удаления IP-адреса из чёрного списка
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param ip     адрес для удаления из чёрного списка
 				 */
 				void removeAddressInBlacklist(const event::family_t family, string_view ip) noexcept;
@@ -342,7 +342,7 @@ namespace awh {
 				/**
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param ip     адрес для добавления в чёрный список
 				 */
 				void pushAddressToBlacklist(const event::family_t family, string_view ip) noexcept;
@@ -364,7 +364,7 @@ namespace awh {
 				/**
 				 * @brief Метод проверки наличия IP-адреса в чёрном списке
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param ip     адрес для проверки наличия в чёрном списке
 				 * @return       результат проверки наличия IP-адреса в чёрном списке
 				 */
@@ -378,7 +378,7 @@ namespace awh {
 				/**
 				 * @brief Метод очистки кэша
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 */
 				void clearCache(const event::family_t family) noexcept;
 			public:
@@ -391,7 +391,7 @@ namespace awh {
 				/**
 				 * @brief Метод очистки кэша для указанного доменного имени
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя для которого выполняется очистка кэша
 				 */
 				void clearCache(const event::family_t family, string_view domain) noexcept;
@@ -399,7 +399,7 @@ namespace awh {
 				/**
 				 * @brief Метод получения IP-адреса из кэша
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @return       IP-адрес находящийся в кэше
 				 */
@@ -407,7 +407,7 @@ namespace awh {
 				/**
 				 * @brief Метод получения IP-адреса из кэша
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param value  IP-адрес находящийся в кэше
 				 * @return       результат выполнения операции
@@ -433,7 +433,7 @@ namespace awh {
 				/**
 				 * @brief Метод добавления IP-адреса в кэш
 				 *
-				 * @param family семейстов IP-адресов IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
@@ -490,19 +490,19 @@ namespace awh {
 				void setPort(const uint16_t port) noexcept;
 			public:
 				/**
-				 * @brief Метод установки сервера DNS
+				 * @brief Метод установки адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для установки
 				 */
 				void setServer(string_view server) noexcept;
 				/**
-				 * @brief Метод установки сервера DNS
+				 * @brief Метод установки адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для установки
 				 */
 				void setServer(const net::addr_t * server) noexcept;
 				/**
-				 * @brief Метод установки сервера DNS
+				 * @brief Метод установки адреса DNS-сервера
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес DNS-сервера для установки
@@ -510,19 +510,19 @@ namespace awh {
 				void setServer(const event::family_t family, string_view server) noexcept;
 			public:
 				/**
-				 * @brief Метод добавления сервера DNS
+				 * @brief Метод добавления адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для добавления
 				 */
 				void addServer(string_view server) noexcept;
 				/**
-				 * @brief Метод добавления сервера DNS
+				 * @brief Метод добавления адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для добавления
 				 */
 				void addServer(const net::addr_t * server) noexcept;
 				/**
-				 * @brief Метод добавления сервера DNS
+				 * @brief Метод добавления адреса DNS-сервера
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес DNS-сервера для добавления
@@ -530,19 +530,19 @@ namespace awh {
 				void addServer(const event::family_t family, string_view server) noexcept;
 			public:
 				/**
-				 * @brief Метод установки списка серверов DNS
+				 * @brief Метод установки списка адресов DNS-серверов
 				 *
 				 * @param server адреса DNS-серверов для установки
 				 */
 				void setServers(const vector <string> & servers) noexcept;
 				/**
-				 * @brief Метод установки списка серверов DNS
+				 * @brief Метод установки списка адресов DNS-серверов
 				 *
 				 * @param server адреса DNS-серверов для установки
 				 */
 				void setServers(const vector <const net::addr_t *> & servers) noexcept;
 				/**
-				 * @brief Метод установки списка серверов DNS
+				 * @brief Метод установки списка адресов DNS-серверов
 				 *
 				 * @param family  семейство IP-адресов IPv4/IPv6
 				 * @param servers адреса DNS-серверов для установки
