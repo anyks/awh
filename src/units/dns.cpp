@@ -2071,20 +2071,20 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Доменное имя для логирования
 			string domain = "unknown";
 			{
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем поиск таймаута в контейнере таймаутов
-				auto i = this->_timeouts.waiting.find(id);
-				// Если таймаут найден в контейнере таймаутов
-				if(i != this->_timeouts.waiting.end()){
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск пакета в контейнере активных пакетов
+				auto i = this->_transfer.waiting.find(id);
+				// Если пакет найден в контейнере активных пакетов
+				if(i != this->_transfer.waiting.end()){
 					// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
 					domain = i->second.domain;
 					// Выполняем блокировку потока для уничтожения события
 					const locker_t <> lock(this->_resolver.mtx);
 					// Удаляем событие таймера для ожидания ответа от DNS-сервера
 					this->_io->destroy(i->second.eid);
-					// Удаляем таймаут из контейнера таймаутов
-					this->_timeouts.waiting.erase(i);
+					// Удаляем пакет из контейнера активных пакетов
+					this->_transfer.waiting.erase(i);
 				}
 			}
 			/**
@@ -2601,30 +2601,30 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 /**
  * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
  *
- * @param id      идентификатор DNS-резолвера
- * @param         идентификатор таймера DNS-резолвера
- * @param status  статус события таймера DNS-резолвера
- * @param timeout объект активного таймаута DNS-записи
+ * @param id     идентификатор DNS-резолвера
+ * @param        идентификатор таймера DNS-резолвера
+ * @param status статус события таймера DNS-резолвера
+ * @param packet объект активного пакета DNS-запроса
  */
-void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, const event::status_t status, timeout_t * timeout) noexcept {
+void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, const event::status_t status, packet_t * packet) noexcept {
 	// Если статус события успешен
 	if(status == event::status_t::SUCCESS){
 		// Если попытки резолвинга не превышают максимально допустимое количество
-		if(timeout->attempt < this->_timeouts.attempts){
+		if(packet->attempt < this->_transfer.attempts){
 			// Выполняем блокировку потока для модификации таймаута
 			const locker_t <> lock(this->_resolver.mtx);
 			// Увеличиваем количество попыток резолвинга
-			timeout->attempt++;
+			packet->attempt++;
 			// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-			timeout->eid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+			packet->eid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 			// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-			this->_io->setTimeout(timeout->eid, event::action_t::NONE, (timeout->delay > 0 ? timeout->delay : 5000));
+			this->_io->setTimeout(packet->eid, event::action_t::NONE, (packet->delay > 0 ? packet->delay : 5000));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(timeout->eid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+			this->_io->on(packet->eid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 			// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-			if(!this->_io->commit(timeout->eid)){
+			if(!this->_io->commit(packet->eid)){
 				// Удаляем событие таймера
-				this->_io->destroy(timeout->eid);
+				this->_io->destroy(packet->eid);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -2646,12 +2646,12 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 			// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 			} else {
 				// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-				this->_io->on(timeout->eid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, timeout)));
+				this->_io->on(packet->eid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, packet)));
 				// Запускаем таймер для ожидания ответа от DNS-сервера
-				this->_io->launch(timeout->eid);
+				this->_io->launch(packet->eid);
 			}
 			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-			const size_t size = ::dns::request(id, timeout->record, timeout->domain, this->_log);
+			const size_t size = ::dns::request(id, packet->record, packet->domain, this->_log);
 			// Отправляем запрос на резолвинг доменного имени
 			this->_io->send(this->_resolver.eid, ::dns::buffer, size);
 		// Если попытки резолвинга превышают максимально допустимое количество
@@ -2659,7 +2659,7 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("attempts"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", id, timeout->domain, timeout->attempt);
+				this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", id, packet->domain, packet->attempt);
 			// Если функция обратного вызова не установлена
 			else {
 				/**
@@ -2672,24 +2672,24 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 						__PRETTY_FUNCTION__,
 						std::make_tuple(static_cast <uint16_t> (status)),
 						log_t::flag_t::WARNING,
-						timeout->domain, timeout->attempt
+						packet->domain, packet->attempt
 					);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, timeout->domain, timeout->attempt);
+					this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, packet->domain, packet->attempt);
 				#endif
 			}
-			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем поиск таймаута в контейнере таймаутов
-			auto i = this->_timeouts.waiting.find(id);
-			// Если таймаут найден в контейнере таймаутов
-			if(i != this->_timeouts.waiting.end())
-				// Удаляем таймаут из контейнера таймаутов
-				this->_timeouts.waiting.erase(i);
+			// Выполняем блокировку потока для работы с контейнером активных пакетов
+			const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем поиск пакета в контейнере активных пакетов
+			auto i = this->_transfer.waiting.find(id);
+			// Если пакет найден в контейнере активных пакетов
+			if(i != this->_transfer.waiting.end())
+				// Удаляем пакет из контейнера активных пакетов
+				this->_transfer.waiting.erase(i);
 		}
 	}
 }
@@ -2709,8 +2709,8 @@ void awh::unit::DNS::threadSafety(const bool mode) noexcept {
 	::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с резолвером
 	this->_resolver.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с таймаутами
-	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с контейнером пакетов
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Метод установки количества попыток резолвинга доменного имени
@@ -2718,10 +2718,10 @@ void awh::unit::DNS::threadSafety(const bool mode) noexcept {
  * @param attempts количество попыток резолвинга доменного имени
  */
 void awh::unit::DNS::setAttempts(const uint8_t attempts) noexcept {
-	// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-	const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем блокировку потока для работы с контейнером пакетов
+	const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем количество попыток резолвинга доменного имени
-	this->_timeouts.attempts = attempts;
+	this->_transfer.attempts = attempts;
 }
 /**
  * @brief Метод кодирования интернационального доменного имени
@@ -5887,11 +5887,11 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
-				// Если таймаут уже существует для данного идентификатора DNS-резолвера
+				// Выполняем блокировку потока для работы с контейнером пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
+				auto ret = this->_transfer.waiting.emplace(id, packet_t());
+				// Если пакет уже существует для данного идентификатора DNS-резолвера
 				if(!ret.second){
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
@@ -5953,11 +5953,11 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
-						// Устанавливаем идентификатор таймаута для отслеживания его выполнения
+						// Устанавливаем доменное имя для отслеживания его выполнения
 						ret.first->second.domain = domain;
-						// Устанавливаем время жизни таймаута для отслеживания его выполнения
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
 						ret.first->second.delay = timeout;
-						// Устанавливаем тип записи для отслеживания выполнения таймаута
+						// Устанавливаем тип записи для отслеживания передачи пакета
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
@@ -6104,11 +6104,11 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
-				// Если таймаут уже существует для данного идентификатора DNS-резолвера
+				// Выполняем блокировку потока для работы с контейнером пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
+				auto ret = this->_transfer.waiting.emplace(id, packet_t());
+				// Если пакет уже существует для данного идентификатора DNS-резолвера
 				if(!ret.second){
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
@@ -6148,8 +6148,8 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
 						this->_io->destroy(tid);
-						// Удаляем таймаут из контейнера ожидания выполнения запроса
-						this->_timeouts.waiting.erase(id);
+						// Удаляем пакет из контейнера ожидания выполнения запроса
+						this->_transfer.waiting.erase(id);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -6172,11 +6172,11 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
-						// Устанавливаем идентификатор таймаута для отслеживания его выполнения
+						// Устанавливаем доменное имя для отслеживания его выполнения
 						ret.first->second.domain = domain;
-						// Устанавливаем время жизни таймаута для отслеживания его выполнения
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
 						ret.first->second.delay = timeout;
-						// Устанавливаем тип записи для отслеживания выполнения таймаута
+						// Устанавливаем тип записи для отслеживания передачи пакета
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
@@ -6232,11 +6232,11 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 	try {
 		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
 		if(!domain.empty()){
-			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-			auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
-			// Если таймаут уже существует для данного идентификатора DNS-резолвера
+			// Выполняем блокировку потока для работы с контейнером пакетов
+			const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
+			auto ret = this->_transfer.waiting.emplace(id, packet_t());
+			// Если пакет уже существует для данного идентификатора DNS-резолвера
 			if(!ret.second){
 				// Формируем текст выводимой ошибки DNS-резолвера
 				const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
@@ -6276,8 +6276,8 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				if(!this->_io->commit(tid)){
 					// Удаляем событие таймера
 					this->_io->destroy(tid);
-					// Удаляем таймаут из контейнера ожидания выполнения запроса
-					this->_timeouts.waiting.erase(id);
+					// Удаляем пакет из контейнера ожидания выполнения запроса
+					this->_transfer.waiting.erase(id);
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
 						/**
@@ -6300,11 +6300,11 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				} else {
 					// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 					ret.first->second.eid = tid;
-					// Устанавливаем идентификатор таймаута для отслеживания его выполнения
+					// Устанавливаем доменное имя для отслеживания его выполнения
 					ret.first->second.domain = domain;
-					// Устанавливаем время жизни таймаута для отслеживания его выполнения
+					// Устанавливаем время жизни пакета для отслеживания его выполнения
 					ret.first->second.delay = timeout;
-					// Устанавливаем тип записи для отслеживания выполнения таймаута
+					// Устанавливаем тип записи для отслеживания передачи пакета
 					ret.first->second.record = record;
 					// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
 					this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
@@ -6411,11 +6411,11 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					}
 				}
 			}{
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
-				// Если таймаут уже существует для данного идентификатора DNS-резолвера
+				// Выполняем блокировку потока для работы с контейнером пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
+				auto ret = this->_transfer.waiting.emplace(id, packet_t());
+				// Если пакет уже существует для данного идентификатора DNS-резолвера
 				if(!ret.second){
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
@@ -6455,8 +6455,8 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
 						this->_io->destroy(tid);
-						// Удаляем таймаут из контейнера ожидания выполнения запроса
-						this->_timeouts.waiting.erase(id);
+						// Удаляем пакет из контейнера ожидания выполнения запроса
+						this->_transfer.waiting.erase(id);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -6479,9 +6479,9 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
-						// Устанавливаем идентификатор таймаута для отслеживания его выполнения
+						// Устанавливаем доменное имя для отслеживания его выполнения
 						ret.first->second.domain = domain;
-						// Устанавливаем время жизни таймаута для отслеживания его выполнения
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
 						ret.first->second.delay = timeout;
 						/**
 						 * Определяем семейство события
@@ -6489,12 +6489,12 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 						switch(static_cast <uint8_t> (family)){
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4):
-								// Устанавливаем тип записи для отслеживания выполнения таймаута
+								// Устанавливаем тип записи для отслеживания передачи пакета
 								ret.first->second.record = record_t::A;
 							break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6):
-								// Устанавливаем тип записи для отслеживания выполнения таймаута
+								// Устанавливаем тип записи для отслеживания передачи пакета
 								ret.first->second.record = record_t::AAAA;
 							break;
 						}
@@ -6561,8 +6561,8 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
  unit_t(fmk, log), _addr(fmk, log), _binbox(fmk, log) {
 	// Активируем работу мьютекса блокировки потока при работе с резолвером
 	this->_resolver.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с таймаутами
-	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с пакетами
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Если общие DNS-резолверы ещё не добавлены в глобальный список
 	if(::ns::general.empty()){
 		// Активируем работу мьютекса блокировки потока при работе с IP-адресами

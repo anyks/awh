@@ -57,9 +57,33 @@ namespace awh {
 					SYNC  = 0x00, // Синхронный режим работы
 					ASYNC = 0x01  // Асинхронный режим работы
 				};
+			public:
+				/**
+				 * @brief Структура ответа от удалённого сервера на запрос ICMP-клиента
+				 *
+				 */
+				typedef struct Response {
+					// Размер полученного ответа от удалённого сервера на запрос ICMP-клиента
+					size_t size;
+					// Время выполнения запроса в миллисекундах
+					uint64_t elapsed;
+					// Индекс последовательности запроса
+					uint16_t sequence;
+					// Время жизни пакета (TTL) в миллисекундах
+					uint32_t timeToLive;
+					// Адрес удалённого сервера, от которого пришёл ответ на запрос ICMP-клиента
+					net::addr_t * address;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Response() noexcept :
+					 size(0), elapsed(0), sequence(0),
+					 timeToLive(0), address(nullptr) {}
+				} response_t;
 			private:
 				/**
-				 * @brief Класс для управления состоянием ICMP-клиента
+				 * @brief Структура для управления состоянием ICMP-клиента
 				 *
 				 */
 				typedef struct Client {
@@ -79,10 +103,10 @@ namespace awh {
                      eid(0), source(nullptr) {}
 				} client_t;
 				/**
-				 * @brief Класс для управления тайм-аутами при ожидании ответа от удалённого сервера
+				 * @brief Структура активного пакета при выполнении запросов ICMP-клиента
 				 *
 				 */
-				typedef struct Timeout {
+				typedef struct Packet {
 					// Количество повторений запросов
 					uint16_t count;
 					// Время ожидания ответа от удалённого сервера (в миллисекундах)
@@ -95,25 +119,25 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Timeout() noexcept :
+					explicit Packet() noexcept :
 					 count(0), delay(5000),
 					 eid(0), timestamp(0) {}
-				} timeout_t;
+				} packet_t;
 				/**
-				 * @brief Класс для управления тайм-аутами при ожидании ответа от удалённого сервера
+				 * @brief Структура для управления передачей данных при выполнении запросов ICMP-клиента
 				 *
 				 */
-				typedef struct Timeouts {
+				typedef struct Transfer {
 					// Мьютекс для блокировки потока
 					lock_state_t <std::shared_mutex> mtx;
-					// Активные тайм-ауты при ожидании ответа от удалённого сервера
-					unordered_map <id_t, timeout_t> waiting;
+					// Активные пакеты при выполнении запросов ICMP-клиента
+					unordered_map <id_t, packet_t> waiting;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Timeouts() noexcept {}
-				} timeouts_t;
+					 explicit Transfer() noexcept {}
+				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
@@ -121,8 +145,8 @@ namespace awh {
 				// Состояние ICMP-клиента
 				client_t _client;
 			private:
-				// Тайм-ауты при ожидании ответа от удалённого сервера
-				timeouts_t _timeouts;
+				// Объект управления передачей данных при выполнении запросов ICMP-клиента
+				transfer_t _transfer;
 			private:
 				/**
 				 * @brief Метод создания события ICMP-клиента

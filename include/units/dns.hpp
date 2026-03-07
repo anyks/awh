@@ -124,7 +124,7 @@ namespace awh {
 						explicit Servers() noexcept;
 				} servers_t;
 				/**
-				 * @brief Класс для управления состоянием DNS-резолвера
+				 * @brief Структура для управления состоянием DNS-резолвера
 				 *
 				 */
 				typedef struct Resolver {
@@ -149,10 +149,10 @@ namespace awh {
 					 eid(0), source(nullptr) {}
 				} resolver_t;
 				/**
-				 * @brief Класс для управления тайм-аутами при ожидании ответа от DNS-сервера
+				 * @brief Структура активного пакета при выполнении DNS-запросов
 				 *
 				 */
-				typedef struct Timeout {
+				typedef struct Packet {
 					// Доменное имя, для которого произошёл таймаут
 					string domain;
 					// Время ожидания ответа от DNS-сервера (в миллисекундах)
@@ -167,28 +167,28 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Timeout() noexcept :
+					explicit Packet() noexcept :
 					 domain{AWH_SHORT_NAME},
 					 delay(5000), attempt(0),
 					 record(record_t::NONE), eid(0) {}
-				} timeout_t;
+				} packet_t;
 				/**
-				 * @brief Класс для управления тайм-аутами при ожидании ответа от DNS-сервера
+				 * @brief Структура для управления передачей данных при резолвинге доменных имён
 				 *
 				 */
-				typedef struct Timeouts {
+				typedef struct Transfer {
 					// Количество попыток резолвинга доменного имени
 					uint8_t attempts;
 					// Мьютекс для блокировки потока
 					lock_state_t <std::shared_mutex> mtx;
-					// Активные тайм-ауты при ожидании ответа от DNS-сервера
-					unordered_map <id_t, timeout_t> waiting;
+					// Активные пакеты при резолвинге доменных имён
+					unordered_map <id_t, packet_t> waiting;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Timeouts() noexcept : attempts(3) {}
-				} timeouts_t;
+					 explicit Transfer() noexcept : attempts(3) {}
+				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
@@ -197,8 +197,8 @@ namespace awh {
 			private:
 				// Состояние DNS-резолвера
 				resolver_t _resolver;
-				// Тайм-ауты при ожидании ответа от DNS-сервера
-				timeouts_t _timeouts;
+				// Объект управления передачей данных при резолвинге доменных имён
+				transfer_t _transfer;
 			private:
 				/**
 				 * @brief Метод создания события DNS-резолвера
@@ -251,12 +251,12 @@ namespace awh {
 				/**
 				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
 				 *
-				 * @param id      идентификатор DNS-резолвера
-				 * @param         идентификатор таймера DNS-резолвера
-				 * @param status  статус события таймера DNS-резолвера
-				 * @param timeout объект активного таймаута DNS-записи
+				 * @param id     идентификатор DNS-резолвера
+				 * @param        идентификатор таймера DNS-резолвера
+				 * @param status статус события таймера DNS-резолвера
+				 * @param packet объект активного пакета DNS-запроса
 				 */
-				void timeout(const id_t id, const event::id_t, const event::status_t status, timeout_t * timeout) noexcept;
+				void timeout(const id_t id, const event::id_t, const event::status_t status, packet_t * packet) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

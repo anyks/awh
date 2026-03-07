@@ -50,11 +50,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если событие ICMP-запроса запущено
 	if(icmp.commit()){
 		// Устанавливаем функцию обратного вызова на событие получения ответа от ICMP-сервера
-		icmp.on <void (const unit::icmp_t::id_t, const uint16_t, const uint64_t, const net::addr_t *)> ("ping", [&addr, &chrono, &log](const unit::icmp_t::id_t identifier, const uint16_t sequence, const uint64_t elapsed, const net::addr_t * ip) noexcept -> void {
+		icmp.on <void (const unit::icmp_t::id_t, const unit::icmp_t::response_t &)> ("ping", [&addr, &chrono, &log](const unit::icmp_t::id_t identifier, const unit::icmp_t::response_t & response) noexcept -> void {
 			// Лейбл единиц измерений
 			string label = "";
 			// Получаем аббревиатуру даты
-			const auto & abbr = chrono.abbreviation(elapsed);
+			const auto & abbr = chrono.abbreviation(response.elapsed);
 			/**
 			 * Определяем тип аббревиатуры
 			 */
@@ -101,11 +101,11 @@ int32_t main(int32_t argc, char * argv[]){
 				break;
 			}
 			// Устанавливаем IP-адрес события
-			addr.source(ip);
-			// Выводим информацию о полученном ответе от удалённого сервера (Разделить на Gateway и IP адрес, добавить размер отправляемого пакета и вывести время жизни пакета (TTL))
+			addr.source(response.address);
+			// Выводим информацию о полученном ответе от удалённого сервера (добавить размер отправляемого пакета)
 			// log.print("Ответ от %s: icmp_seq=%d time=%dms (ID: %d)", log_t::flag_t::INFO, static_cast <string> (addr).c_str(), sequence, elapsed, identifier);
-			log.print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, 42, static_cast <string> (addr).c_str(), sequence, 5000 / 1000, abbr.second, label.c_str());
-		}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
+			log.print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, response.size, static_cast <string> (addr).c_str(), response.sequence, (response.timeToLive / 1000), abbr.second, label.c_str());
+		}, placeholders::_1, placeholders::_2);
 		// Выполняем ICMP-запрос к удалённому серверу
 		if(icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::SYNC, 5000)){
 			/**
@@ -123,7 +123,7 @@ int32_t main(int32_t argc, char * argv[]){
 							// Выводим сообщение о запуске события ICMP-клиента
 							log.print("Событие ICMP-клиента было запущено", log_t::flag_t::INFO);
 							// Выполняем проверку существования удалённого сервера
-							if(!icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::ASYNC, 5000))
+							if(!icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::ASYNC, 3000))
 								// Выводим сообщение об ошибке
 								log.print("Не удалось проверить существование удалённого сервера", log_t::flag_t::CRITICAL);
 						} break;

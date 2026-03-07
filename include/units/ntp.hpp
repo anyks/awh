@@ -111,7 +111,7 @@ namespace awh {
 						explicit Servers() noexcept;
 				} servers_t;
 				/**
-				 * @brief Класс для управления состоянием NTP-клиента
+				 * @brief Структура для управления состоянием NTP-клиента
 				 *
 				 */
 				typedef struct Client {
@@ -136,10 +136,10 @@ namespace awh {
                      port(123), eid(0), source(nullptr) {}
 				} client_t;
 				/**
-				 * @brief Класс для управления тайм-аутами при ожидании ответа от NTP-сервера
+				 * @brief Структура активного пакета при выполнении запросов NTP-клиента
 				 *
 				 */
-				typedef struct Timeout {
+				typedef struct Packet {
 					// Версия протокола NTP для выполнения запроса
 					ver_t version;
 					// Время ожидания ответа от NTP-сервера (в миллисекундах)
@@ -152,35 +152,35 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Timeout() noexcept :
+					explicit Packet() noexcept :
 					 version(ver_t::V4),
 					 delay(5000), attempt(0), eid(0) {}
-				} timeout_t;
+				} packet_t;
 				/**
-				 * @brief Класс для управления тайм-аутами при ожидании ответа от NTP-сервера
+				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
 				 */
-				typedef struct Timeouts {
+				typedef struct Transfer {
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempts;
 					// Мьютекс для блокировки потока
 					lock_state_t <std::shared_mutex> mtx;
-					// Активные тайм-ауты при ожидании ответа от NTP-сервера
-					unordered_map <event::id_t, timeout_t> waiting;
+					// Активные пакеты при выполнении запросов NTP-клиента
+					unordered_map <event::id_t, packet_t> waiting;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Timeouts() noexcept : attempts(3) {}
-				} timeouts_t;
+					 explicit Transfer() noexcept : attempts(3) {}
+				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
 			private:
 				// Состояние NTP-клиента
 				client_t _client;
-				// Тайм-ауты при ожидании ответа от NTP-сервера
-				timeouts_t _timeouts;
+				// Объект управления передачей данных при выполнении запросов NTP-клиента
+				transfer_t _transfer;
 			private:
 				/**
 				 * @brief Метод создания события NTP-клиента
@@ -209,11 +209,11 @@ namespace awh {
 				/**
 				 * @brief Метод обработки событий таймаута при ожидании ответа от NTP-сервера
 				 *
-				 * @param eid     идентификатор таймера NTP-клиента
-				 * @param status  статус события таймера NTP-клиента
-				 * @param timeout объект активного таймаута ожидания ответа от NTP-сервера
+				 * @param eid    идентификатор таймера NTP-клиента
+				 * @param status статус события таймера NTP-клиента
+				 * @param packet объект активного пакета при выполнении запроса NTP-клиента
 				 */
-				void timeout(const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept;
+				void timeout(const event::id_t eid, const event::status_t status, packet_t * packet) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

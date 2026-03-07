@@ -375,14 +375,14 @@ void awh::unit::ICMP::timeout(const id_t id, [[maybe_unused]] const event::id_t,
 		// Выполняем фиксацию параметров ICMP-клиента
 		this->commit();
 		{
-			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем поиск таймаута в контейнере таймаутов
-			auto i = this->_timeouts.waiting.find(id);
-			// Если таймаут найден в контейнере таймаутов
-			if(i != this->_timeouts.waiting.end())
-				// Удаляем таймаут из контейнера таймаутов
-				this->_timeouts.waiting.erase(i);
+			// Выполняем блокировку потока для работы с контейнером активных пакетов
+			const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем поиск пакета в контейнере активных пакетов
+			auto i = this->_transfer.waiting.find(id);
+			// Если пакет найден в контейнере активных пакетов
+			if(i != this->_transfer.waiting.end())
+				// Удаляем пакет из контейнера активных пакетов
+				this->_transfer.waiting.erase(i);
 		}
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
@@ -451,7 +451,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					// Выполняем инициализацию объекта IP-адреса
 					address = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (address.get())->address = icmp->meta.redirect.gatewayAddress;
+					awh_cast <net::addr_net_ipv4_t *> (address.get())->address = iph->ip_src.s_addr;
 				}
 			} break;
 			// Если адрес является IPv6
@@ -510,18 +510,31 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 		const id_t id = ntohs(icmp->meta.echo.identifier);
 		// Извлекаем номер последовательности запроса
 		const uint16_t sequence = ntohs(icmp->meta.echo.sequence);
-		// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-		const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-		// Выполняем поиск таймаута в контейнере таймаутов
-		auto i = this->_timeouts.waiting.find(id);
-		// Если таймаут найден в контейнере таймаутов
-		if(i != this->_timeouts.waiting.end()){
+		// Выполняем блокировку потока для работы с контейнером активных пакетов
+		const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск пакета в контейнере активных пакетов
+		auto i = this->_transfer.waiting.find(id);
+		// Если пакет найден в контейнере активных пакетов
+		if(i != this->_transfer.waiting.end()){
 			// Получаем текущую метку времени
 			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 			// Если функция обратного вызова установлена для получения ответа от удалённого сервера
-			if(this->_callback.is("ping"))
+			if(this->_callback.is("ping")){
+				// Создаём объект ответа от удалённого сервера
+				response_t response{};
+				// Устанавливаем размер полученных данных от удалённого сервера
+				response.size = size;
+				// Устанавливаем номер последовательности запроса
+				response.sequence = sequence;
+				// Устанавливаем IP-адрес удалённого сервера
+				response.address = address.get();
+				// Устанавливаем время жизни ответа от удалённого сервера
+				response.timeToLive = i->second.delay;
+				// Устанавливаем время ответа от удалённого сервера
+				response.elapsed = (now - i->second.timestamp);
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const uint16_t, const uint64_t, const net::addr_t *)> ("ping", id, sequence, (now - i->second.timestamp), address.get());
+				this->_callback.call <void (const id_t, const response_t &)> ("ping", id, response);
+			}
 			// Выполняем фиксацию текущей метки времени для данного запроса
 			i->second.timestamp = now;
 			// Если выполняется синхронный режим пинга удалённого сервера
@@ -542,8 +555,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
 						this->_io->destroy(tid);
-						// Удаляем таймаут из контейнера ожидания выполнения запроса
-						this->_timeouts.waiting.erase(i);
+						// Удаляем пакет из контейнера активных пакетов
+						this->_transfer.waiting.erase(i);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -602,8 +615,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 						// Отправляем сообщение серверу
 						this->_io->send(eid, &icmp, sizeof(icmp));
 					}
-				// Удаляем таймаут из контейнера таймаутов
-				} else this->_timeouts.waiting.erase(i);
+				// Удаляем пакет из контейнера активных пакетов
+				} else this->_transfer.waiting.erase(i);
 			}
 		}
 	/**
@@ -637,8 +650,8 @@ void awh::unit::ICMP::threadSafety(const bool mode) noexcept {
 	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с ICMP-клиентом
 	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с таймаутами
-	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с активными пакетами
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Метод сброса ICMP-клиента
@@ -1262,11 +1275,11 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 		switch(static_cast <uint8_t> (mode)){
 			// Если выполняется синхронный режим пинга удалённого сервера
 			case static_cast <uint8_t> (mode_t::SYNC): {
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
-				// Если таймаут уже существует для данного идентификатора ICMP-клиента
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем пакет в контейнер активных пакетов для данного идентификатора ICMP-клиента
+				auto ret = this->_transfer.waiting.emplace(id, packet_t());
+				// Если пакет уже существует для данного идентификатора ICMP-клиента
 				if(!ret.second){
 					// Формируем текст выводимой ошибки ICMP-клиента
 					const string error = this->_fmk->format("ICMP request for ID=%d is still in progress, please wait for the result", id);
@@ -1325,8 +1338,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					if(!this->_io->setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 						// Удаляем событие ICMP-клиента
 						this->_io->destroy(eid);
-						// Удаляем таймаут из контейнера таймаутов для данного идентификатора ICMP-клиента
-						this->_timeouts.waiting.erase(id);
+						// Удаляем пакет из контейнера активных пакетов для данного идентификатора ICMP-клиента
+						this->_transfer.waiting.erase(id);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -1386,8 +1399,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 						if(!(result = this->_io->commit(eid) && this->_io->launch(eid))){
 							// Удаляем событие ICMP-клиента
 							this->_io->destroy(eid);
-							// Удаляем таймаут из контейнера таймаутов для данного идентификатора ICMP-клиента
-							this->_timeouts.waiting.erase(id);
+							// Удаляем пакет из контейнера активных пакетов для данного идентификатора ICMP-клиента
+							this->_transfer.waiting.erase(id);
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error")){
 								/**
@@ -1489,8 +1502,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					}
 					// Удаляем событие ICMP-клиента
 					this->_io->destroy(eid);
-					// Удаляем таймаут из контейнера таймаутов для данного идентификатора ICMP-клиента
-					this->_timeouts.waiting.erase(id);
+					// Удаляем пакет из контейнера активных пакетов для данного идентификатора ICMP-клиента
+					this->_transfer.waiting.erase(id);
 				}
 			} break;
 			/**
@@ -1500,11 +1513,11 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 				// Если выполняется асинхронный режим пинга удалённого сервера
 				case static_cast <uint8_t> (mode_t::ASYNC): {
 					{
-						// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-						const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-						auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
-						// Если таймаут уже существует для данного идентификатора ICMP-клиента
+						// Выполняем блокировку потока для работы с контейнером активных пакетов
+						const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Добавляем пакет в контейнер активных пакетов для отслеживания его выполнения
+						auto ret = this->_transfer.waiting.emplace(id, packet_t());
+						// Если пакет уже существует для данного идентификатора ICMP-клиента
 						if(!ret.second){
 							// Формируем текст выводимой ошибки ICMP-клиента
 							const string error = this->_fmk->format("ICMP request for ID=%d is still in progress, please wait for the result", id);
@@ -1544,8 +1557,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							if(!this->_io->commit(tid)){
 								// Удаляем событие таймера
 								this->_io->destroy(tid);
-								// Удаляем таймаут из контейнера ожидания выполнения запроса
-								this->_timeouts.waiting.erase(id);
+								// Удаляем пакет из контейнера активных пакетов для данного идентификатора ICMP-клиента
+								this->_transfer.waiting.erase(id);
 								// Если функция обратного вызова не установлена
 								if(!this->_callback.is("error")){
 									/**
@@ -1570,7 +1583,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								ret.first->second.eid = tid;
 								// Устанавливаем количество выполняемых запросов
 								ret.first->second.count = count;
-								// Устанавливаем время жизни таймаута для отслеживания его выполнения
+								// Устанавливаем время жизни пакета для отслеживания его выполнения
 								ret.first->second.delay = timeout;
 								// Запоминаем текущее значение времени в миллисекундах для фиксации начала запроса
 								ret.first->second.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
@@ -1660,8 +1673,8 @@ awh::unit::ICMP::ICMP(const event::family_t family, const fmk_t * fmk, const log
  unit_t(fmk, log), _addr(fmk, log) {
 	// Активируем работу мьютекса блокировки потока при работе с клиентом
 	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с таймаутами
-	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с активными пакетами
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
 	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	/**

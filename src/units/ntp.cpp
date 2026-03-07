@@ -534,18 +534,18 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 	 */
 	try {
 		{
-			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем поиск таймаута в контейнере таймаутов
-			auto i = this->_timeouts.waiting.find(this->_client.eid);
-			// Если таймаут найден в контейнере таймаутов
-			if(i != this->_timeouts.waiting.end()){
+			// Выполняем блокировку потока для работы с контейнером активных пакетов
+			const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем поиск активного пакета в контейнере активных пакетов
+			auto i = this->_transfer.waiting.find(this->_client.eid);
+			// Если активный пакет найден в контейнере активных пакетов
+			if(i != this->_transfer.waiting.end()){
 				// Выполняем блокировку потока для уничтожения события
 				const locker_t <> lock(this->_client.mtx);
 				// Удаляем событие таймера для ожидания ответа от NTP-сервера
 				this->_io->destroy(i->second.eid);
-				// Удаляем таймаут из контейнера таймаутов
-				this->_timeouts.waiting.erase(i);
+				// Удаляем активный пакет из контейнера активных пакетов
+				this->_transfer.waiting.erase(i);
 			}
 		}
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
@@ -601,11 +601,11 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 /**
  * @brief Метод обработки событий таймаута при ожидании ответа от NTP-сервера
  *
- * @param eid     идентификатор таймера NTP-клиента
- * @param status  статус события таймера NTP-клиента
- * @param timeout объект активного таймаута ожидания ответа от NTP-сервера
+ * @param eid    идентификатор таймера NTP-клиента
+ * @param status статус события таймера NTP-клиента
+ * @param packet объект активного пакета при выполнении запроса NTP-клиента
  */
-void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept {
+void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status, packet_t * packet) noexcept {
 	// Если статус события успешен
 	if(status == event::status_t::SUCCESS){
 		// Запоминаем идентификатор клиента
@@ -621,27 +621,27 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 		// Выполняем создание события NTP-клиента для указанного семейства IP-адресов
 		this->create(family);
 		// Если попытки резолвинга не превышают максимально допустимое количество
-		if(timeout->attempt < this->_timeouts.attempts){
+		if(packet->attempt < this->_transfer.attempts){
 			// Выполняем фиксацию параметров NTP-клиента
 			if(this->commit()){
 				// Сохраняем время ожидания ответа от NTP-сервера (в миллисекундах)
-				const uint32_t delay = timeout->delay;
+				const uint32_t delay = packet->delay;
 				// Сохраняем версию протокола NTP для текущего запроса
-				const ver_t version = timeout->version;
+				const ver_t version = packet->version;
 				// Сохраняем количество попыток получения ответа от NTP-сервера
-				const uint8_t attempt = timeout->attempt;
+				const uint8_t attempt = packet->attempt;
 				{
-					// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-					const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Выполняем поиск таймаута в контейнере таймаутов
-					auto i = this->_timeouts.waiting.find(eid);
-					// Если таймаут найден в контейнере таймаутов
-					if(i != this->_timeouts.waiting.end())
-						// Удаляем таймаут из контейнера таймаутов
-						this->_timeouts.waiting.erase(i);
-					// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-					auto ret = this->_timeouts.waiting.emplace(this->_client.eid, timeout_t());
-					// Если таймаут уже существует для данного идентификатора NTP-клиента
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем поиск активного пакета в контейнере активных пакетов
+					auto i = this->_transfer.waiting.find(eid);
+					// Если активный пакет найден в контейнере активных пакетов
+					if(i != this->_transfer.waiting.end())
+						// Удаляем активный пакет из контейнера активных пакетов
+						this->_transfer.waiting.erase(i);
+					// Добавляем новый пакет в контейнер ожидания выполнения запроса для отслеживания его выполнения
+					auto ret = this->_transfer.waiting.emplace(this->_client.eid, packet_t());
+					// Если пакет уже существует для данного идентификатора NTP-клиента
 					if(!ret.second){
 						// Формируем текст выводимой ошибки NTP-клиента
 						const string error = "NTP request is still in progress, please wait for the result";
@@ -667,7 +667,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 						}
 						// Выходим из функции
 						return;
-					// Если таймаут успешно добавлен для данного идентификатора NTP-клиента
+					// Если пакет успешно добавлен для данного идентификатора NTP-клиента
 					} else {
 						// Выполняем блокировку потока для установки IP-адреса события
 						const locker_t <> lock(this->_client.mtx);
@@ -681,8 +681,8 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 						if(!this->_io->commit(tid)){
 							// Удаляем событие таймера
 							this->_io->destroy(tid);
-							// Удаляем таймаут из контейнера ожидания выполнения запроса
-							this->_timeouts.waiting.erase(this->_client.eid);
+							// Удаляем активный пакет из контейнера активных пакетов
+							this->_transfer.waiting.erase(this->_client.eid);
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error")){
 								/**
@@ -705,7 +705,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 						} else {
 							// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 							ret.first->second.eid = tid;
-							// Устанавливаем время жизни таймаута для отслеживания его выполнения
+							// Устанавливаем время жизни пакета для отслеживания его выполнения
 							ret.first->second.delay = delay;
 							// Устанавливаем версию протокола NTP для выполнения запроса
 							ret.first->second.version = version;
@@ -744,7 +744,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("attempts"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint8_t)> ("attempts", timeout->attempt);
+					this->_callback.call <void (const uint8_t)> ("attempts", packet->attempt);
 				// Если функция обратного вызова не установлена
 				else {
 					/**
@@ -756,24 +756,24 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 							"NTP-client timeout (attempts: %u)",
 							__PRETTY_FUNCTION__,
 							std::make_tuple(eid, static_cast <uint16_t> (status)),
-							log_t::flag_t::WARNING, timeout->attempt
+							log_t::flag_t::WARNING, packet->attempt
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("NTP-client timeout (attempts: %u)", log_t::flag_t::WARNING, timeout->attempt);
+						this->_log->print("NTP-client timeout (attempts: %u)", log_t::flag_t::WARNING, packet->attempt);
 					#endif
 				}
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем поиск таймаута в контейнере таймаутов
-				auto i = this->_timeouts.waiting.find(eid);
-				// Если таймаут найден в контейнере таймаутов
-				if(i != this->_timeouts.waiting.end())
-					// Удаляем таймаут из контейнера таймаутов
-					this->_timeouts.waiting.erase(i);
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск активного пакета в контейнере активных пакетов
+				auto i = this->_transfer.waiting.find(eid);
+				// Если активный пакет найден в контейнере активных пакетов
+				if(i != this->_transfer.waiting.end())
+					// Удаляем активный пакет из контейнера активных пакетов
+					this->_transfer.waiting.erase(i);
 			}
 			// Выполняем фиксацию параметров NTP-клиента
 			this->commit();
@@ -792,8 +792,8 @@ void awh::unit::NTP::threadSafety(const bool mode) noexcept {
 	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с NTP-клиентом
 	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с таймаутами
-	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с контейнером активных пакетов
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Метод установки количества попыток получения ответа от NTP-сервера
@@ -801,10 +801,10 @@ void awh::unit::NTP::threadSafety(const bool mode) noexcept {
  * @param attempts количество попыток получения ответа от NTP-сервера
  */
 void awh::unit::NTP::setAttempts(const uint8_t attempts) noexcept {
-	// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-	const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем блокировку потока для работы с контейнером активных пакетов
+	const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем количество попыток получения ответов от NTP-сервера
-	this->_timeouts.attempts = attempts;
+	this->_transfer.attempts = attempts;
 }
 /**
  * @brief Метод установки префикса переменной окружения
@@ -1850,11 +1850,11 @@ bool awh::unit::NTP::sync(const ver_t version, const uint32_t timeout) noexcept 
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
 		if(this->_callback.is("timestamp")){
 			{
-				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
-				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(this->_client.eid, timeout_t());
-				// Если таймаут уже существует для данного идентификатора NTP-клиента
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем новый активный пакет для ожидания выполнения запроса к NTP-серверу в контейнер активных пакетов
+				auto ret = this->_transfer.waiting.emplace(this->_client.eid, packet_t());
+				// Если активный пакет уже существует для данного идентификатора NTP-клиента
 				if(!ret.second){
 					// Формируем текст выводимой ошибки NTP-клиента
 					const string error = "NTP request is still in progress, please wait for the result";
@@ -1894,8 +1894,8 @@ bool awh::unit::NTP::sync(const ver_t version, const uint32_t timeout) noexcept 
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
 						this->_io->destroy(tid);
-						// Удаляем таймаут из контейнера ожидания выполнения запроса
-						this->_timeouts.waiting.erase(this->_client.eid);
+						// Удаляем активный пакет из контейнера ожидания выполнения запроса
+						this->_transfer.waiting.erase(this->_client.eid);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -1918,7 +1918,7 @@ bool awh::unit::NTP::sync(const ver_t version, const uint32_t timeout) noexcept 
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
 						ret.first->second.eid = tid;
-						// Устанавливаем время жизни таймаута для отслеживания его выполнения
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
 						ret.first->second.delay = timeout;
 						// Устанавливаем версию протокола NTP для выполнения запроса
 						ret.first->second.version = version;
@@ -1983,8 +1983,8 @@ awh::unit::NTP::NTP(const event::family_t family, const fmk_t * fmk, const log_t
  unit_t(fmk, log), _addr(fmk, log) {
 	// Активируем работу мьютекса блокировки потока при работе с клиентом
 	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с таймаутами
-	this->_timeouts.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с контейнером активных пакетов
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Если общие NTP-серверы ещё не добавлены в глобальный список
 	if(::servers::general.empty()){
 		// Активируем работу мьютекса блокировки потока при работе с IP-адресами
