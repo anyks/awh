@@ -757,33 +757,10 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 						}
 					} break;
 					// Для семейства IPv6
-					case static_cast <uint8_t> (event::family_t::IPV6): {
-						// Активируем/деактивируем заголовки в сокете (В Linux нужно использовать IPV6_HDRINCL)
-						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IP_HDRINCL, &flags, sizeof(flags))))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug(
-									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										static_cast <uint16_t> (mode),
-										option
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
-						}
-					} break;
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Для IPv6 протокола опция HDRINCL не поддерживается, поэтому просто устанавливаем положительный результат
+						result = true;
+					break;
 				}
 			} break;
 			// Если необходимо установить опцию TCP CORK
