@@ -267,65 +267,71 @@ namespace dns {
  *
  * @param family семейство протоколов (например: IPv4 или IPv6)
  */
-void awh::unit::ICMP::create([[maybe_unused]] const event::family_t family) noexcept {
+void awh::unit::ICMP::create(const event::family_t family) noexcept {
 	/**
-	 * Если операционной системой не является FreeBSD
+	 * Выполняем перехват ошибок
 	 */
-	#ifndef __FreeBSD__
+	try {
+		// Выполняем блокировку потока для создания события ICMP-клиента
+		const locker_t <> lock(this->_client.mtx);
 		/**
-		 * Выполняем перехват ошибок
+		 * Для операционной системы MS Windows или FreeBSD
 		 */
-		try {
-			// Выполняем блокировку потока для создания события ICMP-клиента
-			const locker_t <> lock(this->_client.mtx);
+		#if _WIN32 || _WIN64 || __FreeBSD__
+			// Добавляем новое событие клиента ICMP
+			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
 			// Добавляем новое событие клиента UDP
 			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::ICMP);
-			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(this->_client.eid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие чтения данных
-			this->_io->on(this->_client.eid, static_cast <event::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
-			// Если опции события не установлены
-			if(!this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-				// Удаляем событие ICMP-клиента
-				this->_io->destroy(this->_client.eid);
-				// Если функция обратного вызова не установлена
-				if(!this->_callback.is("error")){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
-					#endif
-				}
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+		#endif
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(this->_client.eid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие чтения данных
+		this->_io->on(this->_client.eid, static_cast <event::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
+		// Если опции события не установлены
+		if(!this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+			// Удаляем событие ICMP-клиента
+			this->_io->destroy(this->_client.eid);
+			// Если функция обратного вызова не установлена
+			if(!this->_callback.is("error")){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
+				#endif
 			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
 		}
-	#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод обработки ошибок событий ICMP-клиента
