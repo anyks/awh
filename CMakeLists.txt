@@ -573,6 +573,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с юнитом синхронизации времени NTP
     option(CMAKE_BUILD_UNIT_NTP_APP_SAMPLE "Build Unit NTP app sample" ON)
 
+    # Устанавливаем имя приложения работы с юнитом ICMP-клиентом
+    SET(UNIT_APP_ICMP_NAME unit-ping)
+    # Указываем что нужно собрать приложение работы с юнитом ICMP-клиентом
+    option(CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE "Build Unit Ping app sample" ON)
+
     # Устанавливаем имя приложения работы с юнитом таймера
     SET(UNIT_APP_TIMER_NAME unit-timer)
     # Указываем что нужно собрать приложение работы с юнитом таймера
@@ -875,6 +880,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT NTP: No\n")
     endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
+    if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT ICMP: Yes\n")
+        # Выполняем создание приложения работы с юнитом ICMP-клиентом
+        add_sample(${UNIT_APP_ICMP_NAME} sample/units/ping.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом ICMP-клиентом
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT ICMP: No\n")
+    endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -1325,6 +1342,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
+        if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом ICMP-клиентом
+            target_link_libraries(
+                ${UNIT_APP_ICMP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом таймера
         if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -1898,6 +1926,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
+        if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом ICMP-клиентом
+            target_link_libraries(
+                ${UNIT_APP_ICMP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом таймера
         if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -2530,6 +2570,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
+            if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом ICMP-клиентом
+                add_custom_command(TARGET "${UNIT_APP_ICMP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_ICMP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${UNIT_APP_ICMP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом таймера
             if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
                 # Выполняем сборку приложения работы с юнитом таймера
@@ -2952,6 +3002,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${UNIT_APP_NTP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_NTP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
+            if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом ICMP-клиентом
+                pvs_studio_add_target(TARGET ${UNIT_APP_ICMP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${UNIT_APP_ICMP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом таймера
             if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом таймера
@@ -3278,6 +3334,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с юнитом синхронизации времени NTP
         install(TARGETS ${UNIT_APP_NTP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
+    if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом ICMP-клиентом
+        install(TARGETS ${UNIT_APP_ICMP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом таймера
     if (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})

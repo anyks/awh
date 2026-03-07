@@ -251,12 +251,12 @@ namespace awh {
 				/**
 				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
 				 *
-				 * @param did     идентификатор DNS-резолвера
+				 * @param id      идентификатор DNS-резолвера
 				 * @param eid     идентификатор таймера DNS-резолвера
 				 * @param status  статус события таймера DNS-резолвера
 				 * @param timeout объект активного таймаута DNS-записи
 				 */
-				void timeout(const id_t did, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept;
+				void timeout(const id_t id, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков
@@ -579,62 +579,62 @@ namespace awh {
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param ip      адрес для поиска доменного имени
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool search(const id_t did, string_view ip, const uint32_t timeout = 0) noexcept;
+				bool search(const id_t id, string_view ip, const uint32_t timeout = 0) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param ip      адрес для поиска доменного имени
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool search(const id_t did, const net::addr_t * ip, const uint32_t timeout = 0) noexcept;
+				bool search(const id_t id, const net::addr_t * ip, const uint32_t timeout = 0) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
-				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param family  тип интернет-протокола IPv4/IPv6
 				 * @param ip      адрес для поиска доменного имени
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool search(const id_t did, const event::family_t family, string_view ip, const uint32_t timeout = 0) noexcept;
+				bool search(const id_t id, const event::family_t family, string_view ip, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Метод выполнения произвольного запроса
 				 *
-				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param record  тип DNS-записи которую необходимо получить
 				 * @param domain  доменное имя сервера
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool request(const id_t did, const record_t record, string_view domain, const uint32_t timeout = 0) noexcept;
+				bool request(const id_t id, const record_t record, string_view domain, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Метод резолвинга доменного имени
 				 *
-				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param domain  доменное имя сервера
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool resolve(const id_t did, string_view domain, const uint32_t timeout = 0) noexcept;
+				bool resolve(const id_t id, string_view domain, const uint32_t timeout = 0) noexcept;
 				/**
 				 * @brief Метод резолвинга доменного имени
 				 *
-				 * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
 				 * @param family  тип интернет-протокола IPv4/IPv6
 				 * @param domain  доменное имя сервера
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool resolve(const id_t did, const event::family_t family, string_view domain, const uint32_t timeout = 0) noexcept;
+				bool resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

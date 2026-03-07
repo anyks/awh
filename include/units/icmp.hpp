@@ -44,6 +44,12 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ ICMP : public unit_t {
 			public:
 				/**
+				 * @brief Идентификатор DNS-резолвера
+				 *
+				 */
+				using id_t = uint16_t;
+			public:
+				/**
 				 * @brief Режим работы ICMP-клиента
 				 *
 				 */
@@ -77,6 +83,8 @@ namespace awh {
 				 *
 				 */
 				typedef struct Timeouts {
+					// Штамп времени начала запроса
+					uint64_t timestamp;
 					// Мьютекс для блокировки потока
 					lock_state_t <std::shared_mutex> mtx;
 					// Активные тайм-ауты при ожидании ответа от удалённого сервера
@@ -85,7 +93,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Timeouts() noexcept {}
+					 explicit Timeouts() noexcept : timestamp(0) {}
 				} timeouts_t;
 			private:
 				// Объект работы с сетевыми адресами
@@ -123,11 +131,13 @@ namespace awh {
 				/**
 				 * @brief Метод обработки ответов от удалённого сервера на запросы ICMP-клиента
 				 *
-				 * @param eid  идентификатор события чтения из ICMP-клиента
-				 * @param data данные события чтения из ICMP-клиента
-				 * @param size размер данных события чтения из ICMP-клиента
+				 * @param eid   идентификатор события чтения из ICMP-клиента
+				 * @param mode  режим обработки события чтения из ICMP-клиента
+				 * @param data  данные события чтения из ICMP-клиента
+				 * @param size  размер данных события чтения из ICMP-клиента
+				 * @param count количество выполняемых запросов
 				 */
-				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size, const uint16_t count) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков
@@ -197,14 +207,22 @@ namespace awh {
 				bool setSource(const event::family_t family, string_view source) noexcept;
 			public:
 				/**
-				 * @brief Метод выполнения пингов удалённых серверов
+				 * @brief Метод получения идентификатора ICMP-клиента для выполнения запроса к удалённому серверу
 				 *
+				 * @return идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
+				 */
+				id_t issue() const noexcept;
+			public:
+				/**
+				 * @brief Метод выполнения пингов удалённого сервера
+				 *
+				 * @param id      идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
 				 * @param count   количество выполняемых запросов
 				 * @param mode    режим выполнения запросов
 				 * @param timeout время ожидания ответа от удалённого сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool ping(const uint16_t count, const mode_t mode, const uint32_t timeout = 0) noexcept;
+				bool ping(const id_t id, const uint16_t count, const mode_t mode, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

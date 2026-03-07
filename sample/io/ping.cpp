@@ -201,7 +201,8 @@ int32_t main(int32_t argc, char * argv[]){
 						const struct ip * iph = reinterpret_cast <const struct ip *> (data);
 						// Длина IP-заголовка
 						size_t iphl = (iph->ip_hl * 4);
-						if((iphl < 20) || ((size < iphl) + 8))
+						// Если заголовок пришёл битый
+						if((iphl < 20) || (size < (iphl + 8)))
 							// минимум ICMP-заголовок
 							return;
 						// Длина IP-заголовка: iph->ip_hl * 4

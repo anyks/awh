@@ -1096,13 +1096,13 @@ namespace dns {
 	/**
 	 * @brief Функция выполнения резолвинга доменного имени
 	 *
-	 * @param did    идентификатор DNS-резолвера
+	 * @param id     идентификатор DNS-резолвера
 	 * @param record тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
 	 * @param domain доменное имя сервера
 	 * @param log    объект для работы с логами
 	 * @return       размер буфера данных, отправленного на резолвинг доменного имени, или 0 при ошибке
 	 */
-	static size_t request(const unit::dns_t::id_t did, const unit::dns_t::record_t record, string_view domain, const log_t * log) noexcept {
+	static size_t request(const unit::dns_t::id_t id, const unit::dns_t::record_t record, string_view domain, const log_t * log) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -1110,13 +1110,13 @@ namespace dns {
 		 */
 		try {
 			// Если доменное имя передано
-			if((did > 0) && !domain.empty()){
+			if((id > 0) && !domain.empty()){
 				// Зануляем буфер полезной нагрузки
 				::memset(::dns::buffer, 0, sizeof(::dns::buffer));
 				// Получаем объект заголовка запроса
 				::dns::head_t * header = reinterpret_cast <::dns::head_t *> (::dns::buffer);
 				// Устанавливаем идентификатор заголовка
-				header->id = htons(did);
+				header->id = htons(id);
 				/**
 				 * Заполняем оставшуюся структуру пакетов
 				 */
@@ -1158,7 +1158,7 @@ namespace dns {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2067,14 +2067,14 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Получаем объект заголовка запроса
 			const ::dns::head_t * header = reinterpret_cast <const ::dns::head_t *> (data);
 			// Получаем идентификатор запроса из заголовка запроса
-			const uint16_t did = ntohs(header->id);
+			const uint16_t id = ntohs(header->id);
 			// Доменное имя для логирования
 			string domain = "unknown";
 			{
 				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем поиск таймаута в контейнере таймаутов
-				auto i = this->_timeouts.waiting.find(did);
+				auto i = this->_timeouts.waiting.find(id);
 				// Если таймаут найден в контейнере таймаутов
 				if(i != this->_timeouts.waiting.end()){
 					// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
@@ -2158,7 +2158,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, result.a.front().name, address.get());
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, result.a.front().name, address.get());
 							}
 						}
 						// Если мы получили AAAA-записи в ответе
@@ -2208,7 +2208,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, result.aaaa.front().name, address.get());
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, result.aaaa.front().name, address.get());
 							}
 						}
 						// Если мы получили NS-записи в ответе
@@ -2238,7 +2238,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Если функция обратного вызова установлена для получения сервера имён
 							if(!ns.empty() && this->_callback.is("ns"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("ns", did, ns);
+								this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("ns", id, ns);
 						}
 						// Если мы получили CNAME-записи в ответе
 						if(!result.cname.empty()){
@@ -2267,7 +2267,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Если функция обратного вызова установлена для получения канонического имени
 							if(!cname.empty() && this->_callback.is("cname"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("cname", did, cname);
+								this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("cname", id, cname);
 						}
 						// Если мы получили MX-записи в ответе
 						if(!result.mx.empty()){
@@ -2298,7 +2298,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Если функция обратного вызова установлена для получения MX-записей
 							if(!mx.empty() && this->_callback.is("mx"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const unordered_multimap <string, std::pair <string, uint16_t>> &)> ("mx", did, mx);
+								this->_callback.call <void (const id_t, const unordered_multimap <string, std::pair <string, uint16_t>> &)> ("mx", id, mx);
 						}
 						// Если мы получили TEXT-записи в ответе
 						if(!result.txt.empty()){
@@ -2335,7 +2335,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Если функция обратного вызова установлена для получения текстовых записей
 							if(!texts.empty() && this->_callback.is("txt"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("txt", did, texts);
+								this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("txt", id, texts);
 						}
 						// Если мы получили PTR-записи в ответе
 						if(!result.ptr.empty()){
@@ -2403,7 +2403,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, family, result.ptr.front().domain, address.get());
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, family, result.ptr.front().domain, address.get());
 							}
 						}
 						// Если мы получили SOA-записи в ответе
@@ -2436,11 +2436,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Если функция обратного вызова установлена для получения SOA-записей
 								if(this->_callback.is("soa"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, string_view, string_view)> ("soa", did, answer.name, answer.mname);
+									this->_callback.call <void (const id_t, string_view, string_view)> ("soa", id, answer.name, answer.mname);
 								// Если функция обратного вызова установлена для получения RNAME-записей
 								if(this->_callback.is("rname"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, string_view, string_view)> ("rname", did, answer.name, answer.rname);
+									this->_callback.call <void (const id_t, string_view, string_view)> ("rname", id, answer.name, answer.rname);
 							}
 						}
 						/**
@@ -2601,12 +2601,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 /**
  * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
  *
- * @param did     идентификатор DNS-резолвера
+ * @param id      идентификатор DNS-резолвера
  * @param eid     идентификатор таймера DNS-резолвера
  * @param status  статус события таймера DNS-резолвера
  * @param timeout объект активного таймаута DNS-записи
  */
-void awh::unit::DNS::timeout(const id_t did, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept {
+void awh::unit::DNS::timeout(const id_t id, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept {
 	// Если статус события успешен
 	if(status == event::status_t::SUCCESS){
 		// Если попытки резолвинга не превышают максимально допустимое количество
@@ -2632,7 +2632,7 @@ void awh::unit::DNS::timeout(const id_t did, const event::id_t eid, const event:
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2646,12 +2646,12 @@ void awh::unit::DNS::timeout(const id_t did, const event::id_t eid, const event:
 			// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 			} else {
 				// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-				this->_io->on(timeout->eid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, timeout)));
+				this->_io->on(timeout->eid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, timeout)));
 				// Запускаем таймер для ожидания ответа от DNS-сервера
 				this->_io->launch(timeout->eid);
 			}
 			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-			const size_t size = ::dns::request(did, timeout->record, timeout->domain, this->_log);
+			const size_t size = ::dns::request(id, timeout->record, timeout->domain, this->_log);
 			// Отправляем запрос на резолвинг доменного имени
 			this->_io->send(this->_resolver.eid, ::dns::buffer, size);
 		// Если попытки резолвинга превышают максимально допустимое количество
@@ -2659,7 +2659,7 @@ void awh::unit::DNS::timeout(const id_t did, const event::id_t eid, const event:
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("attempts"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", did, timeout->domain, timeout->attempt);
+				this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", id, timeout->domain, timeout->attempt);
 			// Если функция обратного вызова не установлена
 			else {
 				/**
@@ -2685,7 +2685,7 @@ void awh::unit::DNS::timeout(const id_t did, const event::id_t eid, const event:
 			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем поиск таймаута в контейнере таймаутов
-			auto i = this->_timeouts.waiting.find(did);
+			auto i = this->_timeouts.waiting.find(id);
 			// Если таймаут найден в контейнере таймаутов
 			if(i != this->_timeouts.waiting.end())
 				// Удаляем таймаут из контейнера таймаутов
@@ -5796,24 +5796,24 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 /**
  * @brief Метод поиска доменного имени соответствующего IP-адресу
  *
- * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param ip      адрес для поиска доменного имени
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::DNS::search(const id_t did, string_view ip, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t timeout) noexcept {
 	// Выполняем поиск доменного имени соответствующему IP-адресу
-	return this->search(did, this->_io->family(this->_resolver.eid), ip, timeout);
+	return this->search(id, this->_io->family(this->_resolver.eid), ip, timeout);
 }
 /**
  * @brief Метод поиска доменного имени соответствующего IP-адресу
  *
- * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param ip      адрес для поиска доменного имени
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5853,7 +5853,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 								// Пропускаем записи IP-адреса
 								continue;
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, j->domain, ip);
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, j->domain, ip);
 							// Выводим положительный результат
 							return true;
 						}
@@ -5878,7 +5878,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 								// Пропускаем записи IP-адреса
 								continue;
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, j->domain, ip);
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, j->domain, ip);
 							// Выводим положительный результат
 							return true;
 						}
@@ -5890,11 +5890,11 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
 				// Если таймаут уже существует для данного идентификатора DNS-резолвера
 				if(!ret.second){
 					// Формируем текст выводимой ошибки DNS-резолвера
-					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -5906,7 +5906,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, timeout), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5938,7 +5938,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, timeout), log_t::flag_t::CRITICAL);
+								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, timeout), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -5960,7 +5960,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 						// Устанавливаем тип записи для отслеживания выполнения таймаута
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 					}
@@ -5969,7 +5969,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 			// Выполняем резолвинг доменного имени
 			if(!domain.empty()){
 				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-				const size_t size = ::dns::request(did, record_t::PTR, domain, this->_log);
+				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				// Выполняем блокировку потока для выполнения запроса
 				const locker_t <> lock(this->_resolver.mtx);
 				// Отправляем запрос на резолвинг доменного имени
@@ -5985,7 +5985,7 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6000,13 +6000,13 @@ bool awh::unit::DNS::search(const id_t did, const net::addr_t * ip, const uint32
 /**
  * @brief Метод поиска доменного имени соответствующего IP-адресу
  *
- * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param family  тип интернет-протокола IPv4/IPv6
  * @param ip      адрес для поиска доменного имени
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::DNS::search(const id_t did, const event::family_t family, string_view ip, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_view ip, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6053,7 +6053,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 									// Пропускаем записи IP-адреса
 									continue;
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, j->domain, addr.get());
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, j->domain, addr.get());
 								// Выводим положительный результат
 								return true;
 							}
@@ -6094,7 +6094,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 									// Пропускаем записи IP-адреса
 									continue;
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, j->domain, addr.get());
+								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, j->domain, addr.get());
 								// Выводим положительный результат
 								return true;
 							}
@@ -6107,11 +6107,11 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
 				// Если таймаут уже существует для данного идентификатора DNS-резолвера
 				if(!ret.second){
 					// Формируем текст выводимой ошибки DNS-резолвера
-					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -6123,7 +6123,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -6149,7 +6149,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 						// Удаляем событие таймера
 						this->_io->destroy(tid);
 						// Удаляем таймаут из контейнера ожидания выполнения запроса
-						this->_timeouts.waiting.erase(did);
+						this->_timeouts.waiting.erase(id);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -6157,7 +6157,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL);
+								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -6179,7 +6179,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 						// Устанавливаем тип записи для отслеживания выполнения таймаута
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 					}
@@ -6188,7 +6188,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 			// Выполняем резолвинг доменного имени
 			if(!domain.empty()){
 				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-				const size_t size = ::dns::request(did, record_t::PTR, domain, this->_log);
+				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				// Выполняем блокировку потока для выполнения запроса
 				const locker_t <> lock(this->_resolver.mtx);
 				// Отправляем запрос на резолвинг доменного имени
@@ -6204,7 +6204,7 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6219,13 +6219,13 @@ bool awh::unit::DNS::search(const id_t did, const event::family_t family, string
 /**
  * @brief Метод выполнения произвольного запроса
  *
- * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param record  тип DNS-записи которую необходимо получить
  * @param domain  доменное имя сервера
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::DNS::request(const id_t did, const record_t record, string_view domain, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::request(const id_t id, const record_t record, string_view domain, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6235,11 +6235,11 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 			// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 			const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-			auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+			auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
 			// Если таймаут уже существует для данного идентификатора DNS-резолвера
 			if(!ret.second){
 				// Формируем текст выводимой ошибки DNS-резолвера
-				const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+				const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
@@ -6251,7 +6251,7 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::WARNING, error.c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -6277,7 +6277,7 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 					// Удаляем событие таймера
 					this->_io->destroy(tid);
 					// Удаляем таймаут из контейнера ожидания выполнения запроса
-					this->_timeouts.waiting.erase(did);
+					this->_timeouts.waiting.erase(id);
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
 						/**
@@ -6285,7 +6285,7 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL);
+							this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -6307,12 +6307,12 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 					// Устанавливаем тип записи для отслеживания выполнения таймаута
 					ret.first->second.record = record;
 					// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-					this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+					this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 					// Запускаем таймер для ожидания ответа от DNS-сервера
 					this->_io->launch(tid);
 				}
 				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-				const size_t size = ::dns::request(did, record, domain, this->_log);
+				const size_t size = ::dns::request(id, record, domain, this->_log);
 				// Отправляем запрос на резолвинг доменного имени
 				return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
 			}
@@ -6326,7 +6326,7 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6341,25 +6341,25 @@ bool awh::unit::DNS::request(const id_t did, const record_t record, string_view 
 /**
  * @brief Метод резолвинга доменного имени
  *
- * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param domain  доменное имя сервера
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::DNS::resolve(const id_t did, string_view domain, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t timeout) noexcept {
 	// Выполняем резолвинг доменного имени
-	return this->resolve(did, this->_io->family(this->_resolver.eid), domain, timeout);
+	return this->resolve(id, this->_io->family(this->_resolver.eid), domain, timeout);
 }
 /**
  * @brief Метод резолвинга доменного имени
  *
- * @param did     идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
  * @param family  тип интернет-протокола IPv4/IPv6
  * @param domain  доменное имя сервера
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, string_view domain, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6392,7 +6392,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 								// Если IP-адрес доменного имени является IPv4
 								if(j->ip->size == 4){
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV4, string{domain}, j->ip.get());
+									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, string{domain}, j->ip.get());
 									// Выводим положительный результат
 									return true;
 								}
@@ -6402,7 +6402,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 								// Если IP-адрес доменного имени является IPv6
 								if(j->ip->size == 16){
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", did, event::family_t::IPV6, string{domain}, j->ip.get());
+									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, string{domain}, j->ip.get());
 									// Выводим положительный результат
 									return true;
 								}
@@ -6414,11 +6414,11 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 				// Выполняем блокировку потока для работы с контейнером таймаутов и обратных связей таймаутов
 				const locker_t <std::shared_mutex> lock(this->_timeouts.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Добавляем таймаут в контейнер таймаутов для отслеживания его выполнения
-				auto ret = this->_timeouts.waiting.emplace(did, timeout_t());
+				auto ret = this->_timeouts.waiting.emplace(id, timeout_t());
 				// Если таймаут уже существует для данного идентификатора DNS-резолвера
 				if(!ret.second){
 					// Формируем текст выводимой ошибки DNS-резолвера
-					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", did);
+					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -6430,7 +6430,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -6456,7 +6456,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 						// Удаляем событие таймера
 						this->_io->destroy(tid);
 						// Удаляем таймаут из контейнера ожидания выполнения запроса
-						this->_timeouts.waiting.erase(did);
+						this->_timeouts.waiting.erase(id);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -6464,7 +6464,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL);
+								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -6499,7 +6499,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 							break;
 						}
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, did, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 					}
@@ -6512,7 +6512,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-					const size_t size = ::dns::request(did, record_t::A, domain, this->_log);
+					const size_t size = ::dns::request(id, record_t::A, domain, this->_log);
 					// Выполняем блокировку потока для выполнения запроса
 					const locker_t <> lock(this->_resolver.mtx);
 					// Отправляем запрос на резолвинг доменного имени
@@ -6521,7 +6521,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-					const size_t size = ::dns::request(did, record_t::AAAA, domain, this->_log);
+					const size_t size = ::dns::request(id, record_t::AAAA, domain, this->_log);
 					// Выполняем блокировку потока для выполнения запроса
 					const locker_t <> lock(this->_resolver.mtx);
 					// Отправляем запрос на резолвинг доменного имени
@@ -6538,7 +6538,7 @@ bool awh::unit::DNS::resolve(const id_t did, const event::family_t family, strin
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(did, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
