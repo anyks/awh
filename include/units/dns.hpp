@@ -252,11 +252,11 @@ namespace awh {
 				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
 				 *
 				 * @param id      идентификатор DNS-резолвера
-				 * @param eid     идентификатор таймера DNS-резолвера
+				 * @param         идентификатор таймера DNS-резолвера
 				 * @param status  статус события таймера DNS-резолвера
 				 * @param timeout объект активного таймаута DNS-записи
 				 */
-				void timeout(const id_t id, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept;
+				void timeout(const id_t id, const event::id_t, const event::status_t status, timeout_t * timeout) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

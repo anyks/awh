@@ -39,6 +39,8 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект логирования
 	log_t log(&fmk);
+	// Объект работы с датой и временем
+	chrono_t chrono(&fmk, &log);
 	// Объект работы с сетевыми адресами
 	net_addr_t addr(&fmk, &log);
 	// Создаём объект узла ICMP-клиента
@@ -48,61 +50,94 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если событие ICMP-запроса запущено
 	if(icmp.commit()){
 		// Устанавливаем функцию обратного вызова на событие получения ответа от ICMP-сервера
-		icmp.on <void (const unit::icmp_t::id_t, const uint16_t, const uint64_t, const net::addr_t *)> ("ping", [&addr, &log](const unit::icmp_t::id_t identifier, const uint16_t sequence, const uint64_t elapsed, const net::addr_t * ip) noexcept -> void {
-			// Устанавливаем IP-адрес события
-			addr.source(ip);
-			// Выводим информацию о полученном ответе от удалённого сервера
-			log.print("Ответ от %s: icmp_seq=%d time=%dms (ID: %d)", log_t::flag_t::INFO, static_cast <string> (addr).c_str(), sequence, elapsed, identifier);
-		}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
-		// Выполняем ICMP-запрос к удалённому серверу
-		if(icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::SYNC, 3000)){
-		
-		}
-		
-		
-		#ifdef __AWH_DISABLE__
-		
-		// Устанавливаем функцию обратного вызова на событие получения ответа от ICMP-сервера
-		icmp.on <void (const uint64_t)> ("timestamp", [&chrono, &log](const uint64_t timestamp) noexcept -> void {
-			// Выводим информацию о полученном времени
-			log.print("Получено дата от ICMP-сервера: %s", log_t::flag_t::INFO, chrono.format(timestamp, "%H:%M:%S %d.%m.%Y").c_str());
-		}, placeholders::_1);
-		// Устанавливаем функцию обратного вызова на событие количества попыток запроса времени к ICMP-серверу
-		ntp.on <void (const uint8_t)> ("attempts", [&log](const uint8_t attempts) noexcept -> void {
-			// Выводим количество попыток запроса времени к ICMP-серверу
-			log.print("Количество попыток запроса времени к ICMP-серверу attempts=%d", log_t::flag_t::WARNING, attempts);
-		}, placeholders::_1);
-		// Устанавливаем функцию обратного вызова на событие ICMP-клиента
-		ntp.on <void (const event::status_t)> ("status", [&ntp, &log](const event::status_t status) noexcept -> void {
+		icmp.on <void (const unit::icmp_t::id_t, const uint16_t, const uint64_t, const net::addr_t *)> ("ping", [&addr, &chrono, &log](const unit::icmp_t::id_t identifier, const uint16_t sequence, const uint64_t elapsed, const net::addr_t * ip) noexcept -> void {
+			// Лейбл единиц измерений
+			string label = "";
+			// Получаем аббревиатуру даты
+			const auto & abbr = chrono.abbreviation(elapsed);
 			/**
-			 * В зависимости от статуса события ICMP-клиента выполняем определённые действия
+			 * Определяем тип аббревиатуры
 			 */
-			switch(static_cast <uint8_t> (status)){
-				// Если событие ICMP-клиента запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Выводим сообщение о запуске события ICMP-клиента
-					log.print("Событие ICMP-клиента было запущено", log_t::flag_t::INFO);
-					// Выполняем синхронизацию времени с ICMP-сервером
-					if(!ntp.sync(unit::ntp_t::ver_t::V4, 5000))
-						// Выводим сообщение об ошибке
-						log.print("Не удалось выполнить синхронизацию времени с ICMP-сервером", log_t::flag_t::CRITICAL);
-				} break;
-				// Если событие ICMP-клиента остановлено
-				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события ICMP-клиента
-					log.print("Событие ICMP-клиента было остановлено", log_t::flag_t::INFO);
+			switch(static_cast <uint8_t> (abbr.first)){
+				// Если мы получили год
+				case static_cast <uint8_t> (chrono_t::type_t::YEAR):
+					// Устанавливаем лейбл единиц измерений
+					label = "year";
+				break;
+				// Если мы получили месяц
+				case static_cast <uint8_t> (chrono_t::type_t::MONTH):
+					// Устанавливаем лейбл единиц измерений
+					label = "month";
+				break;
+				// Если мы получили неделя
+				case static_cast <uint8_t> (chrono_t::type_t::WEEK):
+					// Устанавливаем лейбл единиц измерений
+					label = "week";
+				break;
+				// Если мы получили день
+				case static_cast <uint8_t> (chrono_t::type_t::DAY):
+					// Устанавливаем лейбл единиц измерений
+					label = "day";
+				break;
+				// Если мы получили час
+				case static_cast <uint8_t> (chrono_t::type_t::HOUR):
+					// Устанавливаем лейбл единиц измерений
+					label = "hour";
+				break;
+				// Если мы получили минуты
+				case static_cast <uint8_t> (chrono_t::type_t::MINUTES):
+					// Устанавливаем лейбл единиц измерений
+					label = "min";
+				break;
+				// Если мы получили секунды
+				case static_cast <uint8_t> (chrono_t::type_t::SECONDS):
+					// Устанавливаем лейбл единиц измерений
+					label = "sec";
+				break;
+				// Если мы получили миллисекунды
+				case static_cast <uint8_t> (chrono_t::type_t::MILLISECONDS):
+					// Устанавливаем лейбл единиц измерений
+					label = "msec";
 				break;
 			}
-		}, placeholders::_1);
-		// Устанавливаем функцию обратного вызова на событие получения ошибок ICMP-клиента
-		ntp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
-			// Выводим информацию об ошибке
-			log.print("ICMP error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
-		}, placeholders::_1, placeholders::_2, placeholders::_3);
-		// Запускаем ICMP-клиент
-		ntp.start();
-		#endif
-
+			// Устанавливаем IP-адрес события
+			addr.source(ip);
+			// Выводим информацию о полученном ответе от удалённого сервера (Разделить на Gateway и IP адрес, добавить размер отправляемого пакета и вывести время жизни пакета (TTL))
+			// log.print("Ответ от %s: icmp_seq=%d time=%dms (ID: %d)", log_t::flag_t::INFO, static_cast <string> (addr).c_str(), sequence, elapsed, identifier);
+			log.print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, 42, static_cast <string> (addr).c_str(), sequence, 5000 / 1000, abbr.second, label.c_str());
+		}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
+		// Выполняем ICMP-запрос к удалённому серверу
+		if(icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::SYNC, 5000)){
+			// Устанавливаем функцию обратного вызова на событие ICMP-клиента
+			icmp.on <void (const event::status_t)> ("status", [&icmp, &log](const event::status_t status) noexcept -> void {
+				/**
+				 * В зависимости от статуса события ICMP-клиента выполняем определённые действия
+				 */
+				switch(static_cast <uint8_t> (status)){
+					// Если событие ICMP-клиента запущено
+					case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+						// Выводим сообщение о запуске события ICMP-клиента
+						log.print("Событие ICMP-клиента было запущено", log_t::flag_t::INFO);
+						// Выполняем проверку существования удалённого сервера
+						if(!icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::ASYNC, 5000))
+							// Выводим сообщение об ошибке
+							log.print("Не удалось проверить существование удалённого сервера", log_t::flag_t::CRITICAL);
+					} break;
+					// Если событие ICMP-клиента остановлено
+					case static_cast <uint8_t> (event::status_t::DESTROYED):
+						// Выводим сообщение об остановке события ICMP-клиента
+						log.print("Событие ICMP-клиента было остановлено", log_t::flag_t::INFO);
+					break;
+				}
+			}, placeholders::_1);
+			// Устанавливаем функцию обратного вызова на событие получения ошибок ICMP-клиента
+			icmp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
+				// Выводим информацию об ошибке
+				log.print("ICMP error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
+			}, placeholders::_1, placeholders::_2, placeholders::_3);
+			// Запускаем ICMP-клиент
+			icmp.start();
+		}
 	// Выводим сообщение об ошибке
 	} else log.print("Не удалось запустить событие ICMP-клиента", log_t::flag_t::CRITICAL);
 	// Выводим результат

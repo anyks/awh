@@ -44,7 +44,7 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ ICMP : public unit_t {
 			public:
 				/**
-				 * @brief Идентификатор DNS-резолвера
+				 * @brief Идентификатор ICMP-клиента
 				 *
 				 */
 				using id_t = uint16_t;
@@ -82,24 +82,43 @@ namespace awh {
 				 * @brief Класс для управления тайм-аутами при ожидании ответа от удалённого сервера
 				 *
 				 */
-				typedef struct Timeouts {
+				typedef struct Timeout {
+					// Количество повторений запросов
+					uint16_t count;
+					// Время ожидания ответа от удалённого сервера (в миллисекундах)
+					uint32_t delay;
+					// Идентификатор события для таймера ICMP-клиента
+					event::id_t eid;
 					// Штамп времени начала запроса
 					uint64_t timestamp;
-					// Мьютекс для блокировки потока
-					lock_state_t <std::shared_mutex> mtx;
-					// Активные тайм-ауты при ожидании ответа от удалённого сервера
-					unordered_map <event::id_t, event::id_t> waiting;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Timeouts() noexcept : timestamp(0) {}
+					explicit Timeout() noexcept :
+					 count(0), delay(5000),
+					 eid(0), timestamp(0) {}
+				} timeout_t;
+				/**
+				 * @brief Класс для управления тайм-аутами при ожидании ответа от удалённого сервера
+				 *
+				 */
+				typedef struct Timeouts {
+					// Мьютекс для блокировки потока
+					lock_state_t <std::shared_mutex> mtx;
+					// Активные тайм-ауты при ожидании ответа от удалённого сервера
+					unordered_map <id_t, timeout_t> waiting;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					 explicit Timeouts() noexcept {}
 				} timeouts_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
 			private:
-				// Состояние NTP-клиента
+				// Состояние ICMP-клиента
 				client_t _client;
 			private:
 				// Тайм-ауты при ожидании ответа от удалённого сервера
@@ -124,20 +143,20 @@ namespace awh {
 				/**
 				 * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
 				 *
-				 * @param eid     идентификатор таймера ICMP-клиента
-				 * @param status  статус события таймера ICMP-клиента
+				 * @param id     идентификатор ICMP-клиента
+				 * @param        идентификатор таймера ICMP-клиента
+				 * @param status статус события таймера ICMP-клиента
 				 */
-				void timeout(const event::id_t eid, const event::status_t status) noexcept;
+				void timeout(const id_t id, const event::id_t, const event::status_t status) noexcept;
 				/**
 				 * @brief Метод обработки ответов от удалённого сервера на запросы ICMP-клиента
 				 *
-				 * @param eid   идентификатор события чтения из ICMP-клиента
-				 * @param mode  режим обработки события чтения из ICMP-клиента
-				 * @param data  данные события чтения из ICMP-клиента
-				 * @param size  размер данных события чтения из ICMP-клиента
-				 * @param count количество выполняемых запросов
+				 * @param eid  идентификатор события чтения из ICMP-клиента
+				 * @param mode режим обработки события чтения из ICMP-клиента
+				 * @param data данные события чтения из ICMP-клиента
+				 * @param size размер данных события чтения из ICMP-клиента
 				 */
-				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size, const uint16_t count) noexcept;
+				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

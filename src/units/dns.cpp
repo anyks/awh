@@ -2602,11 +2602,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
  * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
  *
  * @param id      идентификатор DNS-резолвера
- * @param eid     идентификатор таймера DNS-резолвера
+ * @param         идентификатор таймера DNS-резолвера
  * @param status  статус события таймера DNS-резолвера
  * @param timeout объект активного таймаута DNS-записи
  */
-void awh::unit::DNS::timeout(const id_t id, const event::id_t eid, const event::status_t status, timeout_t * timeout) noexcept {
+void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, const event::status_t status, timeout_t * timeout) noexcept {
 	// Если статус события успешен
 	if(status == event::status_t::SUCCESS){
 		// Если попытки резолвинга не превышают максимально допустимое количество
@@ -2632,7 +2632,7 @@ void awh::unit::DNS::timeout(const id_t id, const event::id_t eid, const event::
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2670,7 +2670,7 @@ void awh::unit::DNS::timeout(const id_t id, const event::id_t eid, const event::
 					this->_log->debug(
 						"DNS resolver timeout for domain '%s' (attempts: %u)",
 						__PRETTY_FUNCTION__,
-						std::make_tuple(eid, static_cast <uint16_t> (status)),
+						std::make_tuple(static_cast <uint16_t> (status)),
 						log_t::flag_t::WARNING,
 						timeout->domain, timeout->attempt
 					);
