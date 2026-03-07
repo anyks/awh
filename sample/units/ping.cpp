@@ -108,35 +108,40 @@ int32_t main(int32_t argc, char * argv[]){
 		}, placeholders::_1, placeholders::_2, placeholders::_3, placeholders::_4);
 		// Выполняем ICMP-запрос к удалённому серверу
 		if(icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::SYNC, 5000)){
-			// Устанавливаем функцию обратного вызова на событие ICMP-клиента
-			icmp.on <void (const event::status_t)> ("status", [&icmp, &log](const event::status_t status) noexcept -> void {
-				/**
-				 * В зависимости от статуса события ICMP-клиента выполняем определённые действия
-				 */
-				switch(static_cast <uint8_t> (status)){
-					// Если событие ICMP-клиента запущено
-					case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-						// Выводим сообщение о запуске события ICMP-клиента
-						log.print("Событие ICMP-клиента было запущено", log_t::flag_t::INFO);
-						// Выполняем проверку существования удалённого сервера
-						if(!icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::ASYNC, 5000))
-							// Выводим сообщение об ошибке
-							log.print("Не удалось проверить существование удалённого сервера", log_t::flag_t::CRITICAL);
-					} break;
-					// Если событие ICMP-клиента остановлено
-					case static_cast <uint8_t> (event::status_t::DESTROYED):
-						// Выводим сообщение об остановке события ICMP-клиента
-						log.print("Событие ICMP-клиента было остановлено", log_t::flag_t::INFO);
-					break;
-				}
-			}, placeholders::_1);
-			// Устанавливаем функцию обратного вызова на событие получения ошибок ICMP-клиента
-			icmp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
-				// Выводим информацию об ошибке
-				log.print("ICMP error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
-			}, placeholders::_1, placeholders::_2, placeholders::_3);
-			// Запускаем ICMP-клиент
-			icmp.start();
+			/**
+			 * Если операционной системой не является FreeBSD
+			 */
+			#ifndef __FreeBSD__
+				// Устанавливаем функцию обратного вызова на событие ICMP-клиента
+				icmp.on <void (const event::status_t)> ("status", [&icmp, &log](const event::status_t status) noexcept -> void {
+					/**
+					 * В зависимости от статуса события ICMP-клиента выполняем определённые действия
+					 */
+					switch(static_cast <uint8_t> (status)){
+						// Если событие ICMP-клиента запущено
+						case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+							// Выводим сообщение о запуске события ICMP-клиента
+							log.print("Событие ICMP-клиента было запущено", log_t::flag_t::INFO);
+							// Выполняем проверку существования удалённого сервера
+							if(!icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::ASYNC, 5000))
+								// Выводим сообщение об ошибке
+								log.print("Не удалось проверить существование удалённого сервера", log_t::flag_t::CRITICAL);
+						} break;
+						// Если событие ICMP-клиента остановлено
+						case static_cast <uint8_t> (event::status_t::DESTROYED):
+							// Выводим сообщение об остановке события ICMP-клиента
+							log.print("Событие ICMP-клиента было остановлено", log_t::flag_t::INFO);
+						break;
+					}
+				}, placeholders::_1);
+				// Устанавливаем функцию обратного вызова на событие получения ошибок ICMP-клиента
+				icmp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
+					// Выводим информацию об ошибке
+					log.print("ICMP error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
+				}, placeholders::_1, placeholders::_2, placeholders::_3);
+				// Запускаем ICMP-клиент
+				icmp.start();
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else log.print("Не удалось запустить событие ICMP-клиента", log_t::flag_t::CRITICAL);
