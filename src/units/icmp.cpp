@@ -189,7 +189,7 @@ namespace {
 };
 
 /**
- * Инкапсулируем фуркции работы с резолвингом доменных имён в пространство имён
+ * Инкапсулируем функции работы с резолвингом доменных имён в пространство имён
  */
 namespace dns {
 	/**
@@ -284,9 +284,9 @@ void awh::unit::ICMP::create(const event::family_t family) noexcept {
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
-			// Если пользователь является непривилигированным
+			// Если пользователь является непривилегированным
 			if(::getuid() > 0)
-				// Добавляем новое событие клиента UDP
+				// Добавляем новое событие клиента ICMP
 				this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::ICMP);
 			// Добавляем новое событие клиента ICMP
 			else this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
@@ -423,7 +423,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Длина IP-заголовка`
+		// Длина IP-заголовка
 		size_t length = 0;
 		// Заголовок пакета ICMP протокола
 		const header_t * icmp = nullptr;
@@ -461,7 +461,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 			// Если адрес является IPv6
 			case 6: {
 				/**
-				 * Добаявляем выравнивание структуры для корректного чтения данных из буфера
+				 * Добавляем выравнивание структуры для корректного чтения данных из буфера
 				 */
 				#pragma pack(push, 1)
 				/**
@@ -472,7 +472,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					uint32_t flow;    // Потоковая метка (version, traffic class, flow label)
 					uint16_t plen;    // Длина полезной нагрузки
 					uint8_t  nxt;     // Следующий заголовок
-					uint8_t  hlim;    // Лимитатор времени жизни
+					uint8_t  hlim;    // Лимит времени жизни
 					uint8_t  src[16]; // Адрес источника
 					uint8_t  dst[16]; // Адрес назначения
 				};
@@ -1316,7 +1316,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
-						// Если пользователь является непривилигированным
+						// Если пользователь является непривилегированным
 						if(::getuid() > 0)
 							// Добавляем новое событие клиента ICMP
 							eid = this->_io->event(awh::event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::ICMP);
