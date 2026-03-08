@@ -56,8 +56,16 @@ namespace awh {
 				 * @param sock сетевой сокет
 				 * @return     код ошибки на сокете если присутствует
 				 */
-				int32_t error(const net::socket_t sock) const noexcept;
+				int32_t getError(const net::socket_t sock) const noexcept;
 			public:
+				/**
+				 * @brief Метод получения таймаута сокета
+				 *
+				 * @param sock  сетевой сокет
+				 * @param event событие сокета
+				 * @return      время таймаута в миллисекундах
+				 */
+				uint32_t getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept;
 				/**
 				 * @brief Метод установки таймаута сокета
 				 *
@@ -66,7 +74,7 @@ namespace awh {
 				 * @param msec  время таймаута в миллисекундах
 				 * @return      результат установки таймаута
 				 */
-				bool timeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept;
+				bool setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения размера буфера
@@ -75,7 +83,7 @@ namespace awh {
 				 * @param event событие сокета
 				 * @return      размер буфера сокета
 				 */
-				int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept;
+				int32_t getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept;
 				/**
 				 * @brief Метод установки размеров буфера
 				 *
@@ -84,7 +92,7 @@ namespace awh {
 				 * @param size  размер буфера сокета
 				 * @return      установленный размер буфера сокета
 				 */
-				int32_t bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
+				int32_t setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки сетевого интерфейса для multicast пакетов
@@ -94,7 +102,7 @@ namespace awh {
 				 * @param ifname имя сетевого интерфейса
 				 * @return       результат работы функции
 				 */
-				bool multicastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept;
+				bool setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept;
 			public:
 				/**
 				 * @brief Метод устанавливает постоянное подключение на сокет
@@ -105,10 +113,28 @@ namespace awh {
 				 * @param intvl время между попытками
 				 * @return      результат работы функции
 				 */
-				bool keepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
+				bool setKeepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
 			public:
 				/**
-				 * @brief Метод установки опций сокета
+				 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @return       значение DSCP
+				 */
+				event::dscp_t getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) const noexcept;
+				/**
+				 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param dscp   значение DSCP
+				 * @return       результат работы функции
+				 */
+				bool setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept;
+			public:
+				/**
+				 * @brief Метод переключения опции сокета
 				 *
 				 * @param sock   сетевой сокет
 				 * @param family семейство протоколов (IPv4 или IPv6)
@@ -116,8 +142,35 @@ namespace awh {
 				 * @param option опция сокета
 				 * @return       результат работы функции
 				 */
-				bool setoption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept;
+				bool switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept;
 			public:
+				/**
+				 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @return       режим обнаружения максимального размера пакета (MTU)
+				 */
+				event::mtu_discover_t getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept;
+				/**
+				 * @brief Метод установки обнаружения максимального размера пакета (MTU)
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param mode   режим обнаружения максимального размера пакета (MTU)
+				 * @return       результат работы функции
+				 */
+				bool setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+				 *
+				 * @param sock     сетевой сокет
+				 * @param family   семейство протоколов (IPv4 или IPv6)
+				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+				 * @return         максимальное количество хопов
+				 */
+				event::hops_t getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept;
 				/**
 				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 				 *
@@ -127,7 +180,7 @@ namespace awh {
 				 * @param hops     максимальное количество хопов
 				 * @return         результат работы функции
 				 */
-				bool hops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept;
+				bool setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации мультикаст группы события
@@ -141,24 +194,24 @@ namespace awh {
 				bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept;
 			public:
 				/**
-				 * @brief Метод создания сокета
+				 * @brief Метод выдачи нового сокета
 				 *
 				 * @param family семейство протоколов сокета
 				 * @param type   тип сокета
 				 * @param proto  протокол сокета
 				 * @return       созданный сокет
 				 */
-				net::socket_t create(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
+				net::socket_t issue(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
 			public:
 				/**
-				 * @brief Метод создания пары сокетов
+				 * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
 				 *
 				 * @param family семейство протоколов сокета
 				 * @param type   тип сокета
 				 * @param proto  протокол сокета
 				 * @return       созданный сокет
 				 */
-				array <net::socket_t, 2> pair(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
+				array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

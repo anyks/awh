@@ -74,24 +74,31 @@ TEST_F(EthFixture, EthSuiteTest){
 	awh::net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
 	// Проверяем, что сокет создан
 	ASSERT_NE(sock, awh::net::invalid_socket_t);
+
 	// Устанавливаем таймаут на чтение сокета
-	ASSERT_TRUE(this->_eth->socket.timeout(sock, awh::net::socket_event_t::READ, 32000));
+	ASSERT_TRUE(this->_eth->socket.setTimeout(sock, awh::net::socket_event_t::READ, 32000));
 	// Устанавливаем таймаут на запись сокета
-	ASSERT_TRUE(this->_eth->socket.timeout(sock, awh::net::socket_event_t::WRITE, 32000));
+	ASSERT_TRUE(this->_eth->socket.setTimeout(sock, awh::net::socket_event_t::WRITE, 32000));
+
+	// Получаем таймаут на чтение сокета
+	ASSERT_EQ(32000, this->_eth->socket.getTimeout(sock, awh::net::socket_event_t::READ));
+	// Получаем таймаут на запись сокета
+	ASSERT_EQ(32000, this->_eth->socket.getTimeout(sock, awh::net::socket_event_t::WRITE));
+
 	// Получаем размер буфера на чтение сокета
-	int32_t rcvbuf = this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::READ);
+	int32_t rcvbuf = this->_eth->socket.getBufferSize(sock, awh::net::socket_event_t::READ);
 	// Проверяем, что размер буфера на чтение сокета получен
 	ASSERT_GT(rcvbuf, 0);
 	// Устанавливаем размер буфера на чтение сокета
-	ASSERT_GT(this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::READ, rcvbuf * 2), 0);
+	ASSERT_GT(this->_eth->socket.setBufferSize(sock, awh::net::socket_event_t::READ, rcvbuf * 2), 0);
 	// Получаем размер буфера на запись сокета
-	int32_t sndbuf = this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::WRITE);
+	int32_t sndbuf = this->_eth->socket.getBufferSize(sock, awh::net::socket_event_t::WRITE);
 	// Проверяем, что размер буфера на запись сокета получен
 	ASSERT_GT(sndbuf, 0);
 	// Устанавливаем размер буфера на запись сокета
-	ASSERT_GT(this->_eth->socket.bufferSize(sock, awh::net::socket_event_t::WRITE, sndbuf * 2), 0);
+	ASSERT_GT(this->_eth->socket.setBufferSize(sock, awh::net::socket_event_t::WRITE, sndbuf * 2), 0);
 	// Блокируем сигнал SIGILL
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGILL));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGILL));
 	/**
 	 * Для операционной системы FreeBSD и Linux
 	 */
@@ -120,29 +127,29 @@ TEST_F(EthFixture, EthSuiteTest){
 		ASSERT_FALSE(this->_eth->sctp.status(sock, status));
 	#endif
 	// Получаем код ошибки сокета
-	ASSERT_EQ(0, this->_eth->socket.error(sock));
+	ASSERT_EQ(0, this->_eth->socket.getError(sock));
 	// Включаем режим cork для TCP-сокета
-	ASSERT_FALSE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORK));
+	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORK));
 	// Включаем или отключаем режим отображения IPv4 => IPv6
-	ASSERT_FALSE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
+	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
 	// Устанавливаем повторное использование адреса сокета
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_ADDR));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_ADDR));
 	// Устанавливаем повторное использование порта сокета
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_PORT));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_PORT));
 	// Игнорируем отключение сигнала записи в убитый сокет
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGPIPE));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGPIPE));
 	// Разрешаем широковещательный адрес
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::BROADCAST));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::BROADCAST));
 	// Отключаем алгоритм Нейгла
-	ASSERT_FALSE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_NO_DELAY));
+	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем блокирующий сокет
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем режим автоматического закрытия файлового дескриптора при вызове exec
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::CLOSE_ON_EXEC));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::CLOSE_ON_EXEC));
 	// Устанавливаем постоянное подключение на сокет
-	ASSERT_FALSE(this->_eth->socket.keepalive(sock, 30, 60, 10));
+	ASSERT_FALSE(this->_eth->socket.setKeepalive(sock, 30, 60, 10));
 	// Включаем заголовки в сокете
-	ASSERT_FALSE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::HDRINCL));
+	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::HDRINCL));
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров
@@ -150,11 +157,25 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Проверяем, что название сетевого интерфейса получено
 	ASSERT_FALSE(source.iface.empty());
 	// Устанавливаем интерфейс мультикаст группы по имени
-	ASSERT_TRUE(this->_eth->socket.multicastIface(sock, awh::event::family_t::IPV4, source.iface));
+	ASSERT_TRUE(this->_eth->socket.setMulticastIface(sock, awh::event::family_t::IPV4, source.iface));
 	// Устанавливаем режим обратной петли для multicast пакетов
-	ASSERT_TRUE(this->_eth->socket.setoption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::MULTICAST_LOOPBACK));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::MULTICAST_LOOPBACK));
+
 	// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-	ASSERT_FALSE(this->_eth->socket.hops(sock, awh::event::family_t::IPV4, awh::event::delivery_mode_t::UNICAST, awh::event::hops_t::NETWORK));
+	ASSERT_TRUE(this->_eth->socket.setHops(sock, awh::event::family_t::IPV4, awh::event::delivery_mode_t::UNICAST, awh::event::hops_t::NETWORK));
+	// Получаем максимальное количество хопов, через которые может пройти пакет
+	ASSERT_EQ(awh::event::hops_t::NETWORK, this->_eth->socket.getHops(sock, awh::event::family_t::IPV4, awh::event::delivery_mode_t::UNICAST));
+
+	// Устанавливаем дифференцированные услуги (DSCP) для сокета
+	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock, awh::event::family_t::IPV4, awh::event::dscp_t::CS0));
+	// Получаем дифференцированные услуги (DSCP) для сокета
+	ASSERT_EQ(awh::event::dscp_t::CS0, this->_eth->socket.getDifferentiatedServicesCodePoint(sock, awh::event::family_t::IPV4));
+
+	// Устанавливаем обнаружение максимального размера пакета (MTU) для сокета
+	ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock, awh::event::family_t::IPV4, awh::event::mtu_discover_t::DO));
+	// Получаем обнаружение максимального размера пакета (MTU) для сокета
+	ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock, awh::event::family_t::IPV4));
+
 	// Вычисляем контрольную сумму транспортного уровня с некорректными данными
 	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, nullptr, nullptr, nullptr, 0));
 	// Выполняем проверку принадлежности IP-адреса подсети

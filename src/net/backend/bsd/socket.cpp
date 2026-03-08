@@ -13,6 +13,16 @@
  */
 
 /**
+ * Для операционной системы MacOS X
+ */
+#if __APPLE__ && !__APPLE_USE_RFC_3542
+	/**
+	 * Подключаем экспериментальные функции для получения кода ошибки на сокете
+	 */
+    #define __APPLE_USE_RFC_3542
+#endif
+
+/**
  * Стандартные модули
  */
 #include <random>
@@ -62,7 +72,7 @@ using namespace std;
  * @param sock сетевой сокет
  * @return     код ошибки на сокете если присутствует
  */
-int32_t awh::eth::Socket::error(const net::socket_t sock) const noexcept {
+int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Размер кода ошибки
@@ -92,6 +102,81 @@ int32_t awh::eth::Socket::error(const net::socket_t sock) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод получения таймаута сокета
+ *
+ * @param sock  сетевой сокет
+ * @param event событие сокета
+ * @return      время таймаута в миллисекундах
+ */
+uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+	// Создаём объект таймаута
+	struct timeval timeout{0};
+	// Получаем размер объекта таймаута
+	socklen_t length = sizeof(timeout);
+	/**
+	 * Определяем флаг блокировки
+	 */
+	switch(static_cast <uint8_t> (event)){
+		// Если необходимо установить таймаут на чтение
+		case static_cast <uint8_t> (net::socket_event_t::READ): {
+			// Считываем установленный размер таймаута на чтение данных из сокета
+			if(::getsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, &length) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event)
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+		// Если необходимо установить таймаут на запись
+		case static_cast <uint8_t> (net::socket_event_t::WRITE): {
+			// Считываем установленный размер таймаута на запись данных в сокет
+			if(::getsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, &length) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug(
+						"%s", __PRETTY_FUNCTION__,
+						std::make_tuple(
+							sock,
+							static_cast <uint16_t> (event)
+						), log_t::flag_t::CRITICAL,
+						::strerror(errno)
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+		} break;
+	}
+	// Выводим итоговый результат в миллисекундах
+	return (
+		(static_cast <uint32_t> (timeout.tv_sec) * 1000U) +
+		(static_cast <uint32_t> (timeout.tv_usec) / 1000U)
+	);
+}
+/**
  * @brief Метод установки таймаута сокета
  *
  * @param sock  сетевой сокет
@@ -99,11 +184,11 @@ int32_t awh::eth::Socket::error(const net::socket_t sock) const noexcept {
  * @param msec  время таймаута в миллисекундах
  * @return      результат установки таймаута
  */
-bool awh::eth::Socket::timeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept {
+bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект таймаута
-	struct timeval timeout;
+	struct timeval timeout{0};
 	// Устанавливаем время в секундах
 	timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
 	// Устанавливаем время счётчика (микросекунды)
@@ -177,7 +262,7 @@ bool awh::eth::Socket::timeout(const net::socket_t sock, const net::socket_event
  * @param event событие сокета
  * @return      размер буфера сокета
  */
-int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept {
 	// Результат работы функции
 	int32_t result = 0;
 	/**
@@ -252,7 +337,7 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
  * @param size  размер буфера сокета
  * @return      установленный размер буфера сокета
  */
-int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
+int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	/**
@@ -381,7 +466,7 @@ int32_t awh::eth::Socket::bufferSize(const net::socket_t sock, const net::socket
  * @param ifname имя сетевого интерфейса
  * @return       результат работы функции
  */
-bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
+bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
@@ -535,7 +620,7 @@ bool awh::eth::Socket::multicastIface(const net::socket_t sock, const event::fam
  * @param intvl время между попытками
  * @return      результат работы функции
  */
-bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
+bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если максимальное количество попыток передано неправильно
@@ -688,7 +773,164 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
 	return result;
 }
 /**
- * @brief Метод установки опций сокета
+ * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @return       значение DSCP
+ */
+awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) const noexcept {
+	// Результат работы функции
+	event::dscp_t result = event::dscp_t::CS0;
+	// Если сокет корректен
+	if(sock != net::invalid_socket_t){
+		// Прочитать текущее значение
+		int32_t tclass = 0;
+		// Получаем размер установленного размера буфера
+		socklen_t length = sizeof(tclass);
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Считываем установленный размер буфера
+				if(::getsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, &length) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family)
+							), log_t::flag_t::CRITICAL,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Считываем установленный размер буфера
+				if(::getsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &tclass, &length) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family)
+							), log_t::flag_t::CRITICAL,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+		// Маскируем значение поля Traffic Class (TC) для получения только DSCP
+		result = static_cast <event::dscp_t> (tclass & 0xFC);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param dscp   значение DSCP
+ * @return       результат работы функции
+ */
+bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если сокет корректен
+	if(sock != net::invalid_socket_t){
+		// Преобразуем значение DSCP в тип int32_t для установки параметра сокета
+		const int32_t tclass = static_cast <int32_t> (dscp);
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Устанавливаем значение поля Traffic Class (TC) в заголовке IPv4-пакета, которое включает в себя DSCP
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (dscp)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Устанавливаем значение поля Traffic Class (TC) в заголовке IPv6-пакета, которое включает в себя DSCP
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(tclass))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (dscp)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод переключения опции сокета
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -696,7 +938,7 @@ bool awh::eth::Socket::keepalive(const net::socket_t sock, const int32_t cnt, co
  * @param option опция сокета
  * @return       результат работы функции
  */
-bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept {
+bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если сокет корректен
@@ -1609,6 +1851,345 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
 	return result;
 }
 /**
+ * @brief Метод получения обнаружения максимального размера пакета (MTU)
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @return       режим обнаружения максимального размера пакета (MTU)
+ */
+awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept {
+	// Результат работы функции
+	event::mtu_discover_t result = event::mtu_discover_t::NONE;
+	// Буфер для получения значения опции
+	int32_t value = 0;
+	// Длина буфера для получения значения опции
+	socklen_t length = sizeof(value);
+	/**
+	 * Определяем семейство события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			/**
+			 * Если опция установки режима обнаружения MTU доступна
+			 */
+			#if defined(IP_DONTFRAG)
+				// Получаем режим обнаружения MTU (Dont Fragment flag)
+				if(::getsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, &length) == 0)
+					// Устанавливаем полученный результат
+					result = (value ? event::mtu_discover_t::DO : event::mtu_discover_t::WANT);
+			#endif
+		} break;
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			/**
+			 * Если опция установки режима обнаружения MTU доступна
+			 */
+			#if defined(IPV6_DONTFRAG)
+				// Получаем режим обнаружения MTU (Dont Fragment flag)
+				if(::getsockopt(sock, IPPROTO_IPV6, IPV6_DONTFRAG, &value, &length) == 0)
+					// Устанавливаем полученный результат
+					result = (value ? event::mtu_discover_t::DO : event::mtu_discover_t::WANT);
+			#endif
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки обнаружения максимального размера пакета (MTU)
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param mode   режим обнаружения максимального размера пакета (MTU)
+ * @return       результат работы функции
+ */
+bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Значение опции
+	int32_t value = 0;
+	/**
+	 * Определяем режим обнаружения максимального размера пакета (MTU)
+	 *
+	 * NOTE: В MacOS X и FreeBSD сетевой стек не поддерживает гранулярные режимы MTU Discover,
+	 * аналогичные Linux (IP_PMTUDISC_PROBE, ADAPT и т.д.).
+	 * Доступен только флаг запрета фрагментации (IP_DONTFRAG / IPV6_DONTFRAG).
+	 * Поэтому мы маппим все активные режимы на включение этого флага.
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		/**
+		 * Активные режимы требуют запрета фрагментации
+		 */
+		// Если установлен флаг - выполнять обнаружение MTU и устанавливать оптимальный размер пакетов
+		case static_cast <uint8_t> (event::mtu_discover_t::DO):
+		// Если установлен флаг - выполнять обнаружение MTU и отправлять пробные пакеты для определения оптимального размера
+		case static_cast <uint8_t> (event::mtu_discover_t::PROBE):
+		// Если установлен флаг - выполнять адаптивное обнаружение MTU, автоматически регулируя размер пакетов на основе обратной связи от сети
+		case static_cast <uint8_t> (event::mtu_discover_t::ADAPT):
+		// Если установлен флаг - выполнять строгое обнаружение MTU, отбрасывая пакеты, превышающие установленный размер MTU
+		case static_cast <uint8_t> (event::mtu_discover_t::STRICT):
+		// Если установлен флаг - выполнять агрессивное обнаружение MTU, быстро уменьшая размер пакетов при обнаружении проблем с фрагментацией
+		case static_cast <uint8_t> (event::mtu_discover_t::AGGRESSIVE):
+		// Если установлен флаг - выполнять консервативное обнаружение MTU, медленно уменьшая размер пакетов при возникновении проблем с доставкой
+		case static_cast <uint8_t> (event::mtu_discover_t::CONSERVATIVE):
+		// Если установлен флаг - выполнять интеллектуальное обнаружение MTU, используя алгоритмы машинного обучения для оптимизации размера пакетов на основе исторических данных о сети
+		case static_cast <uint8_t> (event::mtu_discover_t::SMART):
+			// Устанавливаем флаг Don't Fragment
+			value = 1;
+		break;
+		/**
+		 * Пассивные режимы разрешают фрагментацию
+		 */
+		// Если установлен флаг - не выполнять обнаружение MTU
+		case static_cast <uint8_t> (event::mtu_discover_t::DONT):
+		// Если установлен флаг - выполнять обнаружение MTU
+		case static_cast <uint8_t> (event::mtu_discover_t::WANT):
+		default:
+			// Снимаем флаг Don't Fragment
+			value = 0;
+		break;
+	}
+	/**
+	 * Определяем семейство события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			/**
+			 * Если опция установки режима обнаружения MTU доступна
+			 */
+			#if defined(IP_DONTFRAG)
+				// Устанавливаем режим обнаружения MTU (Dont Fragment flag)
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, sizeof(value))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			#endif
+		} break;
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			/**
+			 * Если опция установки режима обнаружения MTU доступна
+			 */
+			#if defined(IPV6_DONTFRAG)
+				// Устанавливаем режим обнаружения MTU (Dont Fragment flag)
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_DONTFRAG, &value, sizeof(value))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							std::make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			#endif
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+ *
+ * @param sock     сетевой сокет
+ * @param family   семейство протоколов (IPv4 или IPv6)
+ * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+ * @return         максимальное количество хопов
+ */
+awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept {
+	// Результат работы функции
+	event::hops_t result = event::hops_t::LOOPBACK;
+	/**
+	 * Определяем семейство события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			/**
+			 * Определяем режим трансляции пакетов
+			 */
+			switch(static_cast <uint8_t> (delivery)){
+				// Если необходимо установить максимальное количество хопов для unicast пакетов
+				case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
+				// Если необходимо установить максимальное количество хопов для broadcast пакетов
+				case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
+					// Флаг для извлечения максимального количества хопов
+					int32_t flag = 0;
+					// Размер буфера для получения значения опции
+					socklen_t length = sizeof(flag);
+					// Считываем максимальное количество хопов, через которые может пройти пакет
+					if(::getsockopt(sock, IPPROTO_IP, IP_TTL, &flag, &length) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (delivery)
+								), log_t::flag_t::CRITICAL,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+					// Формируем итоговый результат
+					result = static_cast <event::hops_t> (flag);
+				} break;
+				// Если необходимо установить максимальное количество хопов для multicast пакетов
+				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
+					// Размер буфера для получения значения опции
+					socklen_t length = sizeof(result);
+					// Считываем максимальное количество хопов, через которые может пройти пакет
+					if(::getsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &result, &length) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (delivery)
+								), log_t::flag_t::CRITICAL,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				} break;
+			}
+		} break;
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			/**
+			 * Определяем режим трансляции пакетов
+			 */
+			switch(static_cast <uint8_t> (delivery)){
+				// Если необходимо установить максимальное количество хопов для unicast пакетов
+				case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
+				// Если необходимо установить максимальное количество хопов для broadcast пакетов
+				case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
+					// Флаг для извлечения максимального количества хопов
+					int32_t flag = 0;
+					// Размер буфера для получения значения опции
+					socklen_t length = sizeof(flag);
+					// Считываем максимальное количество хопов, через которые может пройти пакет
+					if(::getsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &flag, &length) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (delivery)
+								), log_t::flag_t::CRITICAL,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+					// Формируем итоговый результат
+					result = static_cast <event::hops_t> (flag);
+				} break;
+				// Если необходимо установить максимальное количество хопов для multicast пакетов
+				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
+					// Флаг для извлечения максимального количества хопов
+					int32_t flag = 0;
+					// Размер буфера для получения значения опции
+					socklen_t length = sizeof(flag);
+					// Считываем максимальное количество хопов, через которые может пройти пакет
+					if(::getsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &flag, &length) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								std::make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (delivery)
+								), log_t::flag_t::CRITICAL,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+					// Формируем итоговый результат
+					result = static_cast <event::hops_t> (flag);
+				} break;
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод установки максимального количества хопов, через которые может пройти пакет
  *
  * @param sock     сетевой сокет
@@ -1617,7 +2198,7 @@ bool awh::eth::Socket::setoption(const net::socket_t sock, const event::family_t
  * @param hops     максимальное количество хопов
  * @return         результат работы функции
  */
-bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept {
+bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1634,8 +2215,10 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 				case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
 				// Если необходимо установить максимальное количество хопов для broadcast пакетов
 				case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
+					// Получаем флаг содержания максимального количества хопов
+					const int32_t flag = static_cast <int32_t> (hops);
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &hops, sizeof(hops))))){
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &flag, sizeof(flag))))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1696,8 +2279,10 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 				case static_cast <uint8_t> (event::delivery_mode_t::UNICAST):
 				// Если необходимо установить максимальное количество хопов для broadcast пакетов
 				case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
+					// Получаем флаг содержания максимального количества хопов
+					const int32_t flag = static_cast <int32_t> (hops);
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hops, sizeof(hops))))){
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &flag, sizeof(flag))))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1722,8 +2307,10 @@ bool awh::eth::Socket::hops(const net::socket_t sock, const event::family_t fami
 				} break;
 				// Если необходимо установить максимальное количество хопов для multicast пакетов
 				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
+					// Получаем флаг содержания максимального количества хопов
+					const int32_t flag = static_cast <int32_t> (hops);
 					// Устанавливаем максимальное количество хопов, через которые может пройти пакет
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops, sizeof(hops))))){
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &flag, sizeof(flag))))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -2017,14 +2604,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 	return result;
 }
 /**
- * @brief Метод создания сокета
+ * @brief Метод выдачи нового сокета
  *
  * @param family семейство протоколов сокета
  * @param type   тип сокета
  * @param proto  протокол сокета
  * @return       созданный сокет
  */
-awh::net::socket_t awh::eth::Socket::create(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -2499,14 +3086,14 @@ awh::net::socket_t awh::eth::Socket::create(const event::family_t family, const 
 	return net::invalid_socket_t;
 }
 /**
- * @brief Метод создания пары сокетов
+ * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
  *
  * @param family семейство протоколов сокета
  * @param type   тип сокета
  * @param proto  протокол сокета
  * @return       созданный сокет
  */
-array <awh::net::socket_t, 2> awh::eth::Socket::pair(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
 	// Результат работы функции
 	array <net::socket_t, 2> result = {
 		net::invalid_socket_t,
@@ -2700,7 +3287,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::pair(const event::family_t famil
 				// Создаём нужное количество сокетов
 				for(net::socket_t & socket : result)
 					// Создаём сокет по указанным параметрам
-					socket = this->create(family, type, proto);
+					socket = this->issue(family, type, proto);
 			} break;
 		}
 	/**

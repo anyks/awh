@@ -10982,7 +10982,7 @@ namespace io {
 						// Если очередь передачи данных пустая
 						if(ipc->transfer.queue.empty()){
 							// Переводим сокет в блокирующий режим
-							if(eth->socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+							if(eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								/**
 								 * Сбрасываем значение errno перед отправкой данных в сокет
 								 */
@@ -11063,7 +11063,7 @@ namespace io {
 									}
 								}
 								// Переводим сокет обратно в неблокирующий режим
-								eth->socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 							}
 						// Если очередь передачи данных не пуста
 						} else {
@@ -11278,7 +11278,7 @@ namespace io {
 						// Если очередь передачи данных пустая
 						if(ipc->transfer.queue.empty()){
 							// Переводим сокет в блокирующий режим
-							if(eth->socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+							if(eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Выполняем отправку данных в UDP-сокет
 								const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 								// Если данные отправлены успешно
@@ -11371,7 +11371,7 @@ namespace io {
 									}
 								}
 								// Переводим сокет обратно в неблокирующий режим
-								eth->socket.setoption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+								eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 							}
 						// Если очередь передачи данных не пуста
 						} else {
@@ -11845,11 +11845,11 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 						// Переводим сокет в блокирующий режим
-						if(eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+						if(eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 							// Если необходимо активировать таймаут на запись данных в сокет
 							if(peer->timeouts.write.delay > 0)
 								// Устанавливаем таймаут на запись данных в сокет
-								eth->socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
+								eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -11942,7 +11942,7 @@ namespace io {
 										}
 									}
 									// Переводим сокет обратно в неблокирующий режим
-									eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								/**
 								 * Если возникает ошибка
 								 */
@@ -12091,7 +12091,7 @@ namespace io {
 										::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
 									}
 									// Переводим сокет обратно в неблокирующий режим
-									eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -12495,11 +12495,11 @@ namespace io {
 							// Если очередь передачи данных пустая
 							if(peer->transfer.queue.empty()){
 								// Переводим сокет в блокирующий режим
-								if(eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+								if(eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
 									if(peer->timeouts.write.delay > 0)
 										// Устанавливаем таймаут на запись данных в сокет
-										eth->socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
+										eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (peer->timeouts.write.delay));
 									/**
 									 * @brief Функция для отправки данных в сокет
 									 *
@@ -12607,7 +12607,7 @@ namespace io {
 												}
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										/**
 										 * Если возникает ошибка
 										 */
@@ -12707,7 +12707,7 @@ namespace io {
 												::timeout::create(peer->timeouts.write, peer, event::rate_t::DEFERRED, log);
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else {
@@ -13168,11 +13168,11 @@ namespace io {
 						// Если очередь передачи данных пустая
 						if(origin->transfer.queue.empty()){
 							// Переводим сокет в блокирующий режим
-							if(eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+							if(eth->socket.switchOption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Если необходимо активировать таймаут на запись данных в сокет
 								if(origin->timeouts.write.delay > 0)
 									// Устанавливаем таймаут на запись данных в сокет
-									eth->socket.timeout(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (origin->timeouts.write.delay));
+									eth->socket.setTimeout(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (origin->timeouts.write.delay));
 								/**
 								 * @brief Функция для отправки данных в сокет
 								 *
@@ -13291,7 +13291,7 @@ namespace io {
 											}
 										}
 										// Переводим сокет обратно в неблокирующий режим
-										eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+										eth->socket.switchOption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 									/**
 									 * Если возникает ошибка
 									 */
@@ -13369,7 +13369,7 @@ namespace io {
 											::timeout::create(origin->timeouts.write, origin, event::rate_t::DEFERRED, log);
 										}
 										// Переводим сокет обратно в неблокирующий режим
-										eth->socket.setoption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+										eth->socket.switchOption(origin->transfer.fd, origin->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 									}
 								// Если ограничитель пропускной способности на запись данных не установлен
 								} else {
@@ -13707,7 +13707,7 @@ namespace io {
 			// Если событие является полублокирующим
 			} else if(tunnel->state.options & event::options::SM_IO_BLOCK) {
 				// Переводим сокет в блокирующий режим
-				if(eth->socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+				if(eth->socket.switchOption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 					// Устанавливаем размер буфера для записи данных
 					iov[1].iov_len = size;
 					// Устанавливаем буфер для записи данных
@@ -13778,7 +13778,7 @@ namespace io {
 					// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
 					} else result = static_cast <size_t> (bytes);
 					// Переводим сокет обратно в неблокирующий режим
-					eth->socket.setoption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+					eth->socket.switchOption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 				}
 			// Если событие является блокирующим
 			} else {
@@ -14217,11 +14217,11 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(client->state.options & event::options::SM_IO_BLOCK) {
 						// Переводим сокет в блокирующий режим
-						if(eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+						if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 							// Если необходимо активировать таймаут на запись данных в сокет
 							if(client->timeouts.write.delay > 0)
 								// Устанавливаем таймаут на запись данных в сокет
-								eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
+								eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -14314,7 +14314,7 @@ namespace io {
 										}
 									}
 									// Переводим сокет обратно в неблокирующий режим
-									eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								/**
 								 * Если возникает ошибка
 								 */
@@ -14463,7 +14463,7 @@ namespace io {
 										::timeout::create(client->timeouts.write, client, event::rate_t::DEFERRED, log);
 									}
 									// Переводим сокет обратно в неблокирующий режим
-									eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+									eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен
 							} else {
@@ -14853,11 +14853,11 @@ namespace io {
 							// Если очередь передачи данных пустая
 							if(client->transfer.queue.empty()){
 								// Переводим сокет в блокирующий режим
-								if(eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
 									if(client->timeouts.write.delay > 0)
 										// Устанавливаем таймаут на запись данных в сокет
-										eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
+										eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
 									/**
 									 * @brief Функция для отправки данных в сокет
 									 *
@@ -14951,7 +14951,7 @@ namespace io {
 												}
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										/**
 										 * Если возникает ошибка
 										 */
@@ -15051,7 +15051,7 @@ namespace io {
 												::timeout::create(client->timeouts.write, client, event::rate_t::DEFERRED, log);
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else {
@@ -15460,11 +15460,11 @@ namespace io {
 							// Если очередь передачи данных пустая
 							if(client->transfer.queue.empty()){
 								// Переводим сокет в блокирующий режим
-								if(eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
 									if(client->timeouts.write.delay > 0)
 										// Устанавливаем таймаут на запись данных в сокет
-										eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
+										eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
 									/**
 									 * @brief Функция для отправки данных в сокет
 									 *
@@ -15558,7 +15558,7 @@ namespace io {
 												}
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										/**
 										 * Если возникает ошибка
 										 */
@@ -15658,7 +15658,7 @@ namespace io {
 												::timeout::create(client->timeouts.write, client, event::rate_t::DEFERRED, log);
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else {
@@ -16126,11 +16126,11 @@ namespace io {
 							// Если очередь передачи данных пустая
 							if(client->transfer.queue.empty()){
 								// Переводим сокет в блокирующий режим
-								if(eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
 									if(client->timeouts.write.delay > 0)
 										// Устанавливаем таймаут на запись данных в сокет
-										eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
+										eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
 									/**
 									 * @brief Функция для отправки данных в сокет
 									 *
@@ -16251,7 +16251,7 @@ namespace io {
 												}
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										/**
 										 * Если возникает ошибка
 										 */
@@ -16351,7 +16351,7 @@ namespace io {
 												::timeout::create(client->timeouts.write, client, event::rate_t::DEFERRED, log);
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else {
@@ -16814,11 +16814,11 @@ namespace io {
 							// Если очередь передачи данных пустая
 							if(client->transfer.queue.empty()){
 								// Переводим сокет в блокирующий режим
-								if(eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
 									if(client->timeouts.write.delay > 0)
 										// Устанавливаем таймаут на запись данных в сокет
-										eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
+										eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, static_cast <uint32_t> (client->timeouts.write.delay));
 									/**
 									 * @brief Функция для отправки данных в сокет
 									 *
@@ -16939,7 +16939,7 @@ namespace io {
 												}
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										/**
 										 * Если возникает ошибка
 										 */
@@ -17039,7 +17039,7 @@ namespace io {
 												::timeout::create(client->timeouts.write, client, event::rate_t::DEFERRED, log);
 											}
 											// Переводим сокет обратно в неблокирующий режим
-											eth->socket.setoption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+											eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else {
@@ -17394,11 +17394,11 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(server->state.options & event::options::SM_IO_BLOCK) {
 						// Переводим сокет в блокирующий режим
-						if(eth->socket.setoption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+						if(eth->socket.switchOption(server->fd, server->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 							// Если необходимо активировать таймаут на запись данных в сокет
 							if(server->timeouts.write.delay > 0)
 								// Устанавливаем таймаут на запись данных в сокет
-								eth->socket.timeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (server->timeouts.write.delay));
+								eth->socket.setTimeout(server->fd, net::socket_event_t::WRITE, static_cast <uint32_t> (server->timeouts.write.delay));
 							/**
 							 * Сбрасываем значение errno перед отправкой данных в сокет
 							 */
@@ -17490,7 +17490,7 @@ namespace io {
 								}
 							}
 							// Переводим сокет обратно в неблокирующий режим
-							eth->socket.setoption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
+							eth->socket.switchOption(server->fd, server->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 						}
 					// Если событие является блокирующим
 					} else {
@@ -17741,7 +17741,7 @@ namespace io {
 							// Если процесс является основным процессом
 							if(::__awh_pid__ == ::getpid()){
 								// Если в сокете нет ошибок
-								if(eth->socket.error(ipc->transfer.fd) == 0){
+								if(eth->socket.getError(ipc->transfer.fd) == 0){
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Деактивируем событие на чтение данных из сокета
@@ -17782,7 +17782,7 @@ namespace io {
 						// Если дескриптор сокета действительный
 						if(peer->transfer.fd != net::invalid_socket_t){
 							// Если в сокете нет ошибок
-							if(eth->socket.error(peer->transfer.fd) == 0){
+							if(eth->socket.getError(peer->transfer.fd) == 0){
 								// Если активность на чтения данных установлена
 								if(peer->activity & ::activity::READ){
 									// Создаём объект события для Kqueue
@@ -17863,7 +17863,7 @@ namespace io {
 							// Если процесс является основным процессом
 							if(::__awh_pid__ == ::getpid()){
 								// Если в сокете нет ошибок
-								if(eth->socket.error(tunnel->fd) == 0){
+								if(eth->socket.getError(tunnel->fd) == 0){
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Деактивируем событие на чтение данных из сокета
@@ -17941,7 +17941,7 @@ namespace io {
 										// Если дескриптор сокета действительный
 										if(client->transfer.fd != net::invalid_socket_t){
 											// Если в сокете нет ошибок
-											if(eth->socket.error(client->transfer.fd) == 0){
+											if(eth->socket.getError(client->transfer.fd) == 0){
 												// Количество событий подлежащих удалению
 												uint8_t count = 0;
 												// Список объектов события для удаления
@@ -17985,7 +17985,7 @@ namespace io {
 								// Если дескриптор сокета действительный
 								if(client->transfer.fd != net::invalid_socket_t){
 									// Если в сокете нет ошибок
-									if(eth->socket.error(client->transfer.fd) == 0){
+									if(eth->socket.getError(client->transfer.fd) == 0){
 										// Если активность на чтения данных установлена
 										if(client->activity & ::activity::READ){
 											// Создаём объект события для Kqueue
@@ -18030,7 +18030,7 @@ namespace io {
 						// Если дескриптор сокета действительный
 						if(server->fd != net::invalid_socket_t){
 							// Если в сокете нет ошибок
-							if(eth->socket.error(server->fd) == 0){
+							if(eth->socket.getError(server->fd) == 0){
 								// Если активность на чтения данных установлена
 								if(server->activity & ::activity::READ){
 									// Создаём объект события для Kqueue
@@ -18194,14 +18194,14 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Создаём сокет подключения
-					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.create(node->state.family, node->state.type, node->state.protocol);
+					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol);
 					// Возвращаем результат создания сокета
 					return (awh_cast <::io::client_t *> (node)->transfer.fd != net::invalid_socket_t);
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Создаём сокет подключения
-					awh_cast <::io::server_t *> (node)->fd = eth->socket.create(node->state.family, node->state.type, node->state.protocol);
+					awh_cast <::io::server_t *> (node)->fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol);
 					// Возвращаем результат создания сокета
 					return (awh_cast <::io::server_t *> (node)->fd != net::invalid_socket_t);
 				}
@@ -19542,7 +19542,7 @@ namespace io {
 					// Удаляем таймаут ожидания подключения к серверу
 					::timeout::clear(client->timeouts.connect, event::rate_t::INSTANT, log);
 				// Если событие является блокирующим
-				else eth->socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+				else eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 				// Если функция обратного вызова для вывода подключения установлена
 				if(client->callbacks.connect != nullptr)
 					// Вызываем функцию обратного вызова для подключения
@@ -19554,7 +19554,7 @@ namespace io {
 						// Создаём таймаут на ожидание получения данных
 						::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 					// Если событие является блокирующим
-					else eth->socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+					else eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 				}
 				// Выполняем "пинок" для применения изменений
 				result = const_cast <engine::io_t *> (io)->kick();
@@ -20264,7 +20264,7 @@ namespace io {
 										// Создаём таймаут на ожидание получения данных
 										::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 									// Если событие является блокирующим
-									else eth->socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+									else eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								}
 								// Выводим положительный результат
 								return !guard.garbage();
@@ -21257,7 +21257,7 @@ namespace io {
 				// Если в сокете нет ошибок
 				else {
 					// Если в сокете нет ошибок
-					if(eth->socket.error(ev.ident) == 0){
+					if(eth->socket.getError(ev.ident) == 0){
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -21852,7 +21852,7 @@ namespace io {
 								// Создаём таймаут на ожидание получения данных
 								::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
 							// Если событие является блокирующим установки таймаута на чтение данных
-							else eth->socket.timeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
+							else eth->socket.setTimeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
 						}
 						// Выводим положительный результат
 						return !guard.garbage();
@@ -30141,7 +30141,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
-									result = this->_eth.socket.multicastIface(server->fd, server->state.family, name);
+									result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -30189,7 +30189,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
-									result = this->_eth.socket.multicastIface(server->fd, server->state.family, name);
+									result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -35134,7 +35134,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Если событие является мультикастовым
 														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 															// Устанавливаем интерфейс для мультикастовой передачи
-															result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -35186,7 +35186,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Если событие является мультикастовым
 														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 															// Устанавливаем интерфейс для мультикастовой передачи
-															result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -35747,7 +35747,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -36184,7 +36184,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -36622,7 +36622,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -36721,7 +36721,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -38764,7 +38764,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Если событие является мультикастовым
 													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -38816,7 +38816,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Если событие является мультикастовым
 													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -39199,7 +39199,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -39520,7 +39520,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.socket.multicastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -41511,7 +41511,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 	 */
 	try {
 		// Создаём пару сокетов
-		const auto & fds = this->_eth.socket.pair(family, type, protocol);
+		const auto & fds = this->_eth.socket.ipc(family, type, protocol);
 		// Если пара сокетов создана удачно
 		if((fds[0] != net::invalid_socket_t) && (fds[1] != net::invalid_socket_t)){
 			// Переходим по всему списку идентификаторов событий
@@ -41996,13 +41996,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								// Если опция передана как IPV6_V6ONLY
 								if(event::options::IPV6_ONLY & options){
 									// Устанавливаем режим отображения IPv4 => IPv6
-									if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
+									if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::IPV6_ONLY;
 								// Если опция не передана как IPV6_V6ONLY
 								} else {
 									// Снимаем режим отображения IPv4 => IPv6
-									if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::IPV6_ONLY)))
+									if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::IPV6_ONLY)))
 										// Снимаем опцию события
 										i->second->state.options &= ~event::options::IPV6_ONLY;
 								}
@@ -42017,13 +42017,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Если опция передана как NO_SIGILL
 				if(event::options::NO_SIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
+					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NO_SIGILL;
 				// Если опция не передана как NO_SIGILL
 				} else {
 					// Снимаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGILL)))
+					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGILL)))
 						// Снимаем игнорирование сигнала SIGILL
 						i->second->state.options &= ~event::options::NO_SIGILL;
 				}
@@ -42037,13 +42037,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если опция передана как NO_SIGPIPE
 					if(event::options::NO_SIGPIPE & options){
 						// Устанавливаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
+						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::NO_SIGPIPE;
 					// Если опция не передана как NO_SIGPIPE
 					} else {
 						// Снимаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGPIPE)))
+						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGPIPE)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::NO_SIGPIPE;
 					}
@@ -42057,7 +42057,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если событие установлено как блокирующее
 					if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Устанавливаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
+						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
 							// Если установлена опция SM_IO_BLOCK
 							if(event::options::SM_IO_BLOCK & options)
 								// Устанавливаем опцию события
@@ -42086,11 +42086,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если необходимо удалить таймаут на чтение для однорангового узла
 											if(peer->timeouts.read.delay > 0)
 												// Удаляем таймаут на получение данных
-												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
+												this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, 0);
 											// Если необходимо удалить таймаут на запись для однорангового узла
 											if(peer->timeouts.write.delay > 0)
 												// Удаляем таймаут на запись данных
-												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
+												this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 											// Создаём таймаут на ожидание получения данных
 											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
 										}
@@ -42104,11 +42104,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										// Если необходимо удалить таймаут на чтение для клиента
 										if(client->timeouts.read.delay > 0)
 											// Удаляем таймаут на получение данных
-											this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
+											this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
 										// Если необходимо удалить таймаут на запись для клиента
 										if(client->timeouts.write.delay > 0)
 											// Удаляем таймаут на запись данных
-											this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+											this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 										// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
 										if(client->state.status == event::status_t::PENDING)
 											// Создаём таймаут на ожидание подключения к серверу
@@ -42133,11 +42133,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если необходимо удалить таймаут на чтение для сервера
 											if(server->timeouts.read.delay > 0)
 												// Удаляем таймаут на получение данных
-												this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
+												this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, 0);
 											// Если необходимо удалить таймаут на запись для сервера
 											if(server->timeouts.write.delay > 0)
 												// Удаляем таймаут на запись данных
-												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, 0);
+												this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -42151,7 +42151,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если событие установлено как неблокирующее
 					if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Снимаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
+						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
 							// Если установлена опция SM_IO_BLOCK
 							if(i->second->state.options & event::options::SM_IO_BLOCK)
 								// Снимаем опцию события
@@ -42188,11 +42188,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если необходимо активировать таймаут на чтение для однорангового узла
 											if(peer->timeouts.read.delay > 0)
 												// Устанавливаем таймаут на получение данных
-												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+												this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 											// Если необходимо активировать таймаут на запись для однорангового узла
 											if(peer->timeouts.write.delay > 0)
 												// Устанавливаем таймаут на запись данных
-												this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+												this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -42216,11 +42216,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если необходимо активировать таймаут на чтение для клиента
 											if(client->timeouts.read.delay > 0)
 												// Устанавливаем таймаут на получение данных
-												this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+												this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 											// Если необходимо активировать таймаут на запись для клиента
 											if(client->timeouts.write.delay > 0)
 												// Устанавливаем таймаут на запись данных
-												this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+												this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -42236,11 +42236,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если необходимо активировать таймаут на чтение для сервера
 											if(server->timeouts.read.delay > 0)
 												// Устанавливаем таймаут на получение данных
-												this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+												this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 											// Если необходимо активировать таймаут на запись для сервера
 											if(server->timeouts.write.delay > 0)
 												// Устанавливаем таймаут на запись данных
-												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+												this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -42271,13 +42271,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						// Если опция передана как REUSE_ADDR
 						if(event::options::REUSE_ADDR & options){
 							// Устанавливаем режим повторного использования адреса
-							if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
+							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_ADDR;
 						// Если опция не передана как REUSE_ADDR
 						} else {
 							// Снимаем режим повторного использования адреса
-							if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_ADDR)))
+							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_ADDR)))
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::REUSE_ADDR;
 						}
@@ -42288,13 +42288,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						// Если опция передана как REUSE_PORT
 						if(event::options::REUSE_PORT & options){
 							// Устанавливаем режим повторного использования порта
-							if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
+							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_PORT;
 						// Если опция не передана как REUSE_PORT
 						} else {
 							// Снимаем режим повторного использования порта
-							if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_PORT)))
+							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_PORT)))
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::REUSE_PORT;
 						}
@@ -42307,13 +42307,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							// Если опция передана как MULTICAST_LOOPBACK
 							if(event::options::MULTICAST_LOOPBACK & options){
 								// Устанавливаем режим обратной связи многоадресной передачи
-								if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
+								if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
 									// Устанавливаем опцию события
 									i->second->state.options |= event::options::MULTICAST_LOOPBACK;
 							// Если опция не передана как MULTICAST_LOOPBACK
 							} else {
 								// Снимаем режим обратной связи многоадресной передачи
-								if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::MULTICAST_LOOPBACK)))
+								if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::MULTICAST_LOOPBACK)))
 									// Снимаем опцию события
 									i->second->state.options &= ~event::options::MULTICAST_LOOPBACK;
 							}
@@ -42339,13 +42339,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										// Если опция передана как HDRINCL
 										if(event::options::HDRINCL & options){
 											// Устанавливаем режим широковещательной передачи
-											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
+											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::HDRINCL;
 										// Если опция не передана как HDRINCL
 										} else {
 											// Снимаем режим широковещательной передачи
-											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HDRINCL)))
+											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HDRINCL)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::HDRINCL;
 										}
@@ -42371,13 +42371,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_CORK
 											if(event::options::TCP_CORK & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORK;
 											// Если опция не передана как TCP_CORK
 											} else {
 												// Деактивируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 													// Снимаем опцию события
 													i->second->state.options &= ~event::options::TCP_CORK;
 											}
@@ -42388,13 +42388,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_NODELAY
 											if(event::options::TCP_NO_DELAY & options){
 												// Устанавливаем режим отключения алгоритма Нейгла
-												if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_NO_DELAY;
 											// Если опция не передана как TCP_NODELAY
 											} else {
 												// Снимаем режим отключения алгоритма Нейгла
-												if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 													// Снимаем опцию события
 													i->second->state.options &= ~event::options::TCP_NO_DELAY;
 											}
@@ -42420,13 +42420,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									// Если опция передана как BROADCAST
 									if(event::options::BROADCAST & options){
 										// Устанавливаем режим широковещательной передачи
-										if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
+										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::BROADCAST;
 									// Если опция не передана как BROADCAST
 									} else {
 										// Снимаем режим широковещательной передачи
-										if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::BROADCAST)))
+										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::BROADCAST)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::BROADCAST;
 									}
@@ -42451,13 +42451,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_CORK
 											if(event::options::TCP_CORK & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORK;
 											// Если опция не передана как TCP_CORK
 											} else {
 												// Деактивируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 													// Снимаем опцию события
 													i->second->state.options &= ~event::options::TCP_CORK;
 											}
@@ -42469,13 +42469,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										// Если опция передана как TCP_NODELAY
 										if(event::options::TCP_NO_DELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
+											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_NO_DELAY;
 										// Если опция не передана как TCP_NODELAY
 										} else {
 											// Снимаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
+											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_NO_DELAY;
 										}
@@ -42500,13 +42500,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Если опция передана как CLOSE_ON_EXEC
 				if(event::options::CLOSE_ON_EXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
+					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::CLOSE_ON_EXEC;
 				// Если опция не передана как CLOSE_ON_EXEC
 				} else {
 					// Снимаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::CLOSE_ON_EXEC)))
+					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::CLOSE_ON_EXEC)))
 						// Снимаем опцию события
 						i->second->state.options &= ~event::options::CLOSE_ON_EXEC;
 				}
@@ -42642,7 +42642,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Устанавливаем или снимаем режим отображения IPv4 => IPv6
-										if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::IPV6_ONLY))){
+										if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::IPV6_ONLY))){
 											// Если необходимо активировать режим отображения IPv4 => IPv6
 											if(mode)
 												// Устанавливаем опцию события
@@ -42658,7 +42658,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 					// Если опция передана как NO_SIGILL
 					case event::options::NO_SIGILL: {
 						// Отключаем или включаем генерацию сигнала SIGILL при записи в закрытый событие
-						if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGILL))){
+						if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGILL))){
 							// Если необходимо отключить генерацию сигнала SIGILL
 							if(mode)
 								// Устанавливаем опцию события
@@ -42673,7 +42673,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 						if((i->second->state.family != event::family_t::FSYS) &&
 						   (i->second->state.family != event::family_t::PIPE)){
 							// Отключаем или включаем генерацию сигнала SIGPIPE при записи в закрытый событие
-							if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGPIPE))){
+							if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::NO_SIGPIPE))){
 								// Если необходимо отключить генерацию сигнала SIGPIPE
 								if(mode)
 									// Устанавливаем опцию события
@@ -42692,7 +42692,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							// Если событие установлено как блокирующее
 							if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем неблокирующий режим ввода/вывода
-								if((result = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
+								if((result = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
 									// Если установлена опция SM_IO_BLOCK
 									if(option == event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
@@ -42720,11 +42720,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если необходимо удалить таймаут на чтение для однорангового узла
 													if(peer->timeouts.read.delay > 0)
 														// Удаляем таймаут на получение данных
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
+														this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, 0);
 													// Если необходимо удалить таймаут на запись для однорангового узла
 													if(peer->timeouts.write.delay > 0)
 														// Удаляем таймаут на запись данных
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
+														this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 													// Создаём таймаут на ожидание получения данных
 													::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
 												}
@@ -42738,11 +42738,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 												// Если необходимо удалить таймаут на чтение для клиента
 												if(client->timeouts.read.delay > 0)
 													// Удаляем таймаут на получение данных
-													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
+													this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
 												// Если необходимо удалить таймаут на запись для клиента
 												if(client->timeouts.write.delay > 0)
 													// Удаляем таймаут на запись данных
-													this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+													this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 												// Если клиент находится в состоянии ожидания подключения и установлен таймаут на подключение к серверу
 												if(client->state.status == event::status_t::PENDING)
 													// Создаём таймаут на ожидание подключения к серверу
@@ -42767,11 +42767,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если необходимо удалить таймаут на чтение для сервера
 													if(server->timeouts.read.delay > 0)
 														// Удаляем таймаут на получение данных
-														this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
+														this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, 0);
 													// Если необходимо удалить таймаут на запись для сервера
 													if(server->timeouts.write.delay > 0)
 														// Удаляем таймаут на запись данных
-														this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, 0);
+														this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -42785,7 +42785,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							// Если событие установлено как неблокирующее
 							if((i->second->state.options & event::options::NO_IO_BLOCK) || (i->second->state.options & event::options::SM_IO_BLOCK)){
 								// Устанавливаем блокирующий режим ввода/вывода
-								if((result = this->_eth.socket.setoption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
+								if((result = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK))){
 									// Если установлена опция SM_IO_BLOCK
 									if(i->second->state.options & event::options::SM_IO_BLOCK)
 										// Устанавливаем опцию события
@@ -42821,11 +42821,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если необходимо активировать таймаут на чтение для однорангового узла
 													if(peer->timeouts.read.delay > 0)
 														// Устанавливаем таймаут на получение данных
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+														this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 													// Если необходимо активировать таймаут на запись для однорангового узла
 													if(peer->timeouts.write.delay > 0)
 														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+														this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -42849,11 +42849,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если необходимо активировать таймаут на чтение для клиента
 													if(client->timeouts.read.delay > 0)
 														// Устанавливаем таймаут на получение данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+														this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 													// Если необходимо активировать таймаут на запись для клиента
 													if(client->timeouts.write.delay > 0)
 														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+														this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -42869,11 +42869,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если необходимо активировать таймаут на чтение для сервера
 													if(server->timeouts.read.delay > 0)
 														// Устанавливаем таймаут на получение данных
-														this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+														this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 													// Если необходимо активировать таймаут на запись для сервера
 													if(server->timeouts.write.delay > 0)
 														// Устанавливаем таймаут на запись данных
-														this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+														this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -42901,7 +42901,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							// Для других типов узлов
 							default: {
 								// Устанавливаем или снимаем режим повторного использования адреса сокета
-								if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_ADDR))){
+								if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_ADDR))){
 									// Если необходимо активировать режим повторного использования адреса сокета
 									if(mode)
 										// Устанавливаем опцию события
@@ -42929,7 +42929,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							// Для других типов узлов
 							default: {
 								// Устанавливаем или снимаем режим повторного использования порта сокета
-								if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_PORT))){
+								if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::REUSE_PORT))){
 									// Если необходимо активировать режим повторного использования порта сокета
 									if(mode)
 										// Устанавливаем опцию события
@@ -42967,7 +42967,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Устанавливаем или снимаем режим обратной петли для мультикаст-сообщений сокета
-											if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::MULTICAST_LOOPBACK))){
+											if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::MULTICAST_LOOPBACK))){
 												// Если необходимо активировать режим обратной петли для мультикаст-сообщений сокета
 												if(mode)
 													// Устанавливаем опцию события
@@ -43008,7 +43008,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Устанавливаем или снимаем режим включения заголовков для сокета
-											if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::HDRINCL))){
+											if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::HDRINCL))){
 												// Если необходимо активировать режим включения заголовков для сокета
 												if(mode)
 													// Устанавливаем опцию события
@@ -43049,7 +43049,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										// Если событие принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Устанавливаем или снимаем режим широковещательной передачи для сокета
-											if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::BROADCAST))){
+											if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::BROADCAST))){
 												// Если необходимо активировать режим широковещательной передачи для сокета
 												if(mode)
 													// Устанавливаем опцию события
@@ -43096,7 +43096,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM): {
 													// Устанавливаем или снимаем режим алгоритма TCP/CORK
-													if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
+													if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
 														// Если необходимо активировать режим алгоритма TCP/CORK
 														if(mode)
 															// Устанавливаем опцию события
@@ -43112,7 +43112,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если событие принадлежит к типу SEQPACKET
 													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 														// Устанавливаем или снимаем режим алгоритма TCP/CORK
-														if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
+														if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
 															// Если необходимо активировать режим алгоритма TCP/CORK
 															if(mode)
 																// Устанавливаем опцию события
@@ -43160,7 +43160,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 											// Если событие принадлежит к типу STREAM
 											case static_cast <uint8_t> (event::type_t::STREAM): {
 												// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-												if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
+												if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
 													// Если необходимо активировать алгоритм Нейгла для TCP сокета
 													if(mode)
 														// Устанавливаем опцию события
@@ -43176,7 +43176,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
-													if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
+													if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_NO_DELAY))){
 														// Если необходимо активировать алгоритм Нейгла для TCP сокета
 														if(mode)
 															// Устанавливаем опцию события
@@ -43206,7 +43206,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 					// Если опция передана как CLOSE_ON_EXEC
 					case event::options::CLOSE_ON_EXEC: {
 						// Активируем или деактивируем режим закрытия сокета при выполнении exec()
-						if((result = this->_eth.socket.setoption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::CLOSE_ON_EXEC))){
+						if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::CLOSE_ON_EXEC))){
 							// Если необходимо активировать режим закрытия сокета при выполнении exec()
 							if(mode)
 								// Устанавливаем опцию события
@@ -44409,7 +44409,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										// Создаём таймаут на ожидание получения данных
 										::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
 									// Если событие является блокирующим
-									else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+									else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								}
 								// Выводим положительный результат
 								return true;
@@ -44471,7 +44471,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										// Создаём таймаут на ожидание подключения к серверу
 										::timeout::create(client->timeouts.connect, client, event::rate_t::DEFERRED, this->_log);
 									// Если событие является блокирующим
-									else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
+									else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
 								}
 								// Выполняем "пинок" для применения изменений
 								return this->kick();
@@ -47012,7 +47012,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.getBufferSize(ipc->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -47021,7 +47021,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.getBufferSize(ipc->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -47052,7 +47052,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.getBufferSize(peer->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -47061,7 +47061,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.getBufferSize(peer->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -47092,7 +47092,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.getBufferSize(origin->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -47101,7 +47101,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.getBufferSize(origin->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -47132,7 +47132,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -47141,7 +47141,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -47172,7 +47172,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ): {
 									// Устанавливаем размер буфера для чтения
-									const int32_t length = this->_eth.socket.bufferSize(server->fd, net::socket_event_t::READ);
+									const int32_t length = this->_eth.socket.getBufferSize(server->fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на чтение
@@ -47181,7 +47181,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE): {
 									// Устанавливаем размер буфера для записи
-									const int32_t length = this->_eth.socket.bufferSize(server->fd, net::socket_event_t::WRITE);
+									const int32_t length = this->_eth.socket.getBufferSize(server->fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
 										// Выводим размер буфера на запись
@@ -47331,12 +47331,12 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(ipc->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.socket.bufferSize(ipc->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(ipc->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -47363,12 +47363,12 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(peer->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.socket.bufferSize(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(peer->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -47395,12 +47395,12 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(origin->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.socket.bufferSize(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(origin->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -47423,12 +47423,12 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Извлекаем размер буфера для чтения
-									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::READ) > 0);
+									result = (this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::READ) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Извлекаем размер буфера для записи
-									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::WRITE) > 0);
+									result = (this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::WRITE) > 0);
 								break;
 							}
 						} break;
@@ -47445,12 +47445,12 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(client->transfer.fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.socket.bufferSize(client->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(client->transfer.fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -47477,12 +47477,12 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								// Если действие является чтением
 								case static_cast <uint8_t> (event::action_t::READ):
 									// Устанавливаем размер буфера для чтения
-									result = (this->_eth.socket.bufferSize(server->fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(server->fd, net::socket_event_t::READ, static_cast <int32_t> (size)) > 0);
 								break;
 								// Если действие является записью
 								case static_cast <uint8_t> (event::action_t::WRITE):
 									// Устанавливаем размер буфера для записи
-									result = (this->_eth.socket.bufferSize(server->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
+									result = (this->_eth.socket.setBufferSize(server->fd, net::socket_event_t::WRITE, static_cast <int32_t> (size)) > 0);
 								break;
 							}
 						} break;
@@ -48182,7 +48182,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.hops(peer->transfer.fd, family, peer->state.delivery, hops)))
+					if((result = this->_eth.socket.setHops(peer->transfer.fd, family, peer->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						peer->state.hops = hops;
 				} break;
@@ -48191,7 +48191,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.hops(origin->transfer.fd, family, origin->state.delivery, hops)))
+					if((result = this->_eth.socket.setHops(origin->transfer.fd, family, origin->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						origin->state.hops = hops;
 				} break;
@@ -48209,7 +48209,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.hops(client->transfer.fd, family, client->state.delivery, hops)))
+					if((result = this->_eth.socket.setHops(client->transfer.fd, family, client->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						client->state.hops = hops;
 				} break;
@@ -48218,7 +48218,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.hops(server->fd, family, server->state.delivery, hops)))
+					if((result = this->_eth.socket.setHops(server->fd, family, server->state.delivery, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						server->state.hops = hops;
 				} break;
@@ -48521,9 +48521,9 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										::timeout::clear(peer->timeouts.read, event::rate_t::INSTANT, this->_log);
 								}
 								// Обнуляем таймаут для действия чтения, так как неблокирующие сокеты не используют таймауты
-								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
+								this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, 0);
 							// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-							} else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, timeout);
+							} else this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, timeout);
 						} break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE): {
@@ -48539,9 +48539,9 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										::timeout::clear(peer->timeouts.write, event::rate_t::INSTANT, this->_log);
 								}
 								// Обнуляем таймаут для действия записи, так как неблокирующие сокеты не используют таймауты
-								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
+								this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 							// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-							} else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, timeout);
+							} else this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, timeout);
 						} break;
 						// Для остальных типов действий
 						default: {
@@ -48656,9 +48656,9 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										::timeout::clear(client->timeouts.read, event::rate_t::INSTANT, this->_log);
 								}
 								// Обнуляем таймаут для действия чтения, так как неблокирующие сокеты не используют таймауты
-								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
+								this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
 							// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-							} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, timeout);
+							} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, timeout);
 						} break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE): {
@@ -48674,9 +48674,9 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										::timeout::clear(client->timeouts.write, event::rate_t::INSTANT, this->_log);
 								}
 								// Обнуляем таймаут для действия записи, так как неблокирующие сокеты не используют таймауты
-								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+								this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 							// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-							} else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, timeout);
+							} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, timeout);
 						} break;
 						// Если действие является подключением
 						case static_cast <uint8_t> (event::action_t::CONNECT):
@@ -48738,7 +48738,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, timeout);
+									this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, timeout);
 							}
 						} break;
 						// Если действие является записью
@@ -48750,7 +48750,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, timeout);
+									this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, timeout);
 							}
 						} break;
 						// Для остальных типов действий
@@ -49813,7 +49813,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Если необходимо активировать таймаут на чтение для однорангового узла
 									else if(peer->timeouts.read.delay > 0)
 										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-										this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+										this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -49830,7 +49830,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											event::rate_t::INSTANT, this->_log
 										);
 									// Снимаем таймаут на получение данных
-									else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
+									else this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, 0);
 								} break;
 							}
 						} break;
@@ -49856,7 +49856,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Если необходимо активировать таймаут на запись для однорангового узла
 									} else if(peer->timeouts.write.delay > 0)
 										// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-										this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+										this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -49871,7 +49871,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											event::rate_t::INSTANT, this->_log
 										);
 									// Снимаем таймаут на запись данных
-									else this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
+									else this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 								} break;
 							}
 						} break;
@@ -50131,7 +50131,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Если необходимо активировать таймаут на чтение для клиента
 									else if(client->timeouts.read.delay > 0)
 										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-										this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -50148,7 +50148,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											event::rate_t::INSTANT, this->_log
 										);
 									// Снимаем таймаут на получение данных
-									else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
+									else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
 								} break;
 							}
 						} break;
@@ -50174,7 +50174,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Если необходимо активировать таймаут на запись для клиента
 									} else if(client->timeouts.write.delay > 0)
 										// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-										this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -50189,7 +50189,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											event::rate_t::INSTANT, this->_log
 										);
 									// Снимаем таймаут на запись данных
-									else this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+									else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 								} break;
 							}
 						} break;
@@ -50318,7 +50318,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 											if(server->state.status == event::status_t::LAUNCHED)
 												// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-												this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+												this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 										}
 									}
 								} break;
@@ -50333,7 +50333,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										// Удаляем таймаут на ограничение пропускной способности на получение данных
 										::timeout::clear(server->wrate.timeout, event::rate_t::INSTANT, this->_log);
 									// Снимаем таймаут на получение данных
-									else this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
+									else this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, 0);
 								} break;
 							}
 						} break;
@@ -50354,7 +50354,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 											if(server->state.status == event::status_t::LAUNCHED)
 												// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-												this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+												this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 										}
 									}
 								} break;
@@ -50365,7 +50365,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Если событие является блокирующим
 									if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 										// Снимаем таймаут на запись данных
-										this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, 0);
+										this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 								} break;
 							}
 						} break;
@@ -50499,7 +50499,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 				// Если протокол установлен как TCP
 				if(i->second->state.protocol == event::protocol_t::TCP)
 					// Устанавливаем параметры keep-alive для сокета события
-					result = this->_eth.socket.keepalive(socket, cnt, idle, intvl);
+					result = this->_eth.socket.setKeepalive(socket, cnt, idle, intvl);
 			}
 		}
 	/**
@@ -50635,9 +50635,9 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							// Если событие является блокирующим
 							else {
 								// Снимаем таймаут на получение данных
-								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, 0);
+								this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, 0);
 								// Снимаем таймаут на запись данных
-								this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
+								this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -50707,9 +50707,9 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							// Если событие является блокирующим
 							else {
 								// Снимаем таймаут на получение данных
-								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, 0);
+								this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
 								// Снимаем таймаут на запись данных
-								this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+								this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -50743,9 +50743,9 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							// Если событие является блокирующим
 							else {
 								// Снимаем таймаут на получение данных
-								this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, 0);
+								this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, 0);
 								// Снимаем таймаут на запись данных
-								this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, 0);
+								this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -50939,7 +50939,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Если необходимо активировать таймаут на чтение для однорангового узла
 								else if(peer->timeouts.read.delay > 0)
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+									this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 							}
 							// Если событие записи в сокет разрешено
 							if(peer->transfer.actions & ::action::WRITE){
@@ -50955,7 +50955,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Если необходимо активировать таймаут на запись для однорангового узла
 								} else if(peer->timeouts.write.delay > 0)
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+									this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -51021,7 +51021,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Если необходимо активировать таймаут на чтение для клиента
 								else if(client->timeouts.read.delay > 0)
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 							}
 							// Если событие записи в сокет разрешено
 							if(client->transfer.actions & ::action::WRITE){
@@ -51037,7 +51037,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Если необходимо активировать таймаут на запись для клиента
 								} else if(client->timeouts.write.delay > 0)
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 							}
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
@@ -51062,7 +51062,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										// Если необходимо активировать таймаут на чтение для сервера
 										if(server->timeouts.read.delay > 0)
 											// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-											this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 									}
 								}
 							// Если сервер находится в состоянии прослушивания и обрабатывает одноранговые узлы
@@ -51081,7 +51081,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 										if(server->state.stash == event::status_t::LAUNCHED)
 											// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-											this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 									}
 								}
 							}
@@ -51137,7 +51137,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					// Если статус события является успешным
 					if(i->second->state.status == event::status_t::SUCCESS)
 						// Выводим результат проверки
-						return (this->_eth.socket.error(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd) == 0);
+						return (this->_eth.socket.getError(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd) == 0);
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -51176,7 +51176,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					// Если клиент находится в состоянии запущено
 					if(i->second->state.status == event::status_t::LAUNCHED)
 						// Выводим результат проверки
-						return (this->_eth.socket.error(awh_cast <::io::tun_t *> (i->second.get())->fd) == 0);
+						return (this->_eth.socket.getError(awh_cast <::io::tun_t *> (i->second.get())->fd) == 0);
 				} break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -51192,7 +51192,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status == event::status_t::CONNECTED)
 						// Выводим результат проверки
-						return (this->_eth.socket.error(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
+						return (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
 				} break;
 			}
 		}
@@ -51914,7 +51914,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Если необходимо активировать таймаут на чтение для однорангового узла
 								} else if(peer->timeouts.read.delay > 0)
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+									this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 							}
 							// Если событие записи в сокет разрешено
 							if(peer->transfer.actions & ::action::WRITE){
@@ -51941,7 +51941,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Если необходимо активировать таймаут на запись для однорангового узла
 								} else if(peer->timeouts.write.delay > 0)
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
+									this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 							}
 							// Увеличиваем значение итератора
 							++i;
@@ -52124,7 +52124,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Если необходимо активировать таймаут на чтение для клиента
 								} else if(client->timeouts.read.delay > 0)
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 							}
 							// Если событие записи в сокет разрешено
 							if(client->transfer.actions & ::action::WRITE){
@@ -52151,7 +52151,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Если необходимо активировать таймаут на запись для клиента
 								} else if(client->timeouts.write.delay > 0)
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.timeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 							}
 						}
 						// Увеличиваем значение итератора
@@ -52209,7 +52209,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 										// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 										if(server->state.status == event::status_t::LAUNCHED)
 											// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-											this->_eth.socket.timeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
 									}
 								}
 							}
@@ -52222,7 +52222,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 										// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 										if(server->state.status == event::status_t::LAUNCHED)
 											// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-											this->_eth.socket.timeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
+											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 									}
 								}
 							}
