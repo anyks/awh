@@ -66,22 +66,6 @@ namespace awh {
 			virtual bool commit(const event::id_t id) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения порта события
-			 *
-			 * @param id идентификатор события
-			 * @return   порт события
-			 */
-			virtual uint16_t getPort(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки порта события
-			 *
-			 * @param id   идентификатор события
-			 * @param port порт события
-			 * @return     результат выполнения установки
-			 */
-			virtual bool setPort(const event::id_t id, const uint16_t port) noexcept = 0;
-		public:
-			/**
 			 * @brief Метод получения сетевого интерфейса события
 			 *
 			 * @param id идентификатор события
@@ -98,56 +82,20 @@ namespace awh {
 			virtual bool setIface(const event::id_t id, string_view name) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения MTU сетевого интерфейса
+			 * @brief Метод получения порта события
 			 *
 			 * @param id идентификатор события
-			 * @return   MTU сетевого интерфейса
+			 * @return   порт события
 			 */
-			virtual uint16_t getMaximumTransmissionUnit(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getPort(const event::id_t id) const noexcept = 0;
 			/**
-			 * @brief Метод установки MTU сетевого интерфейса
+			 * @brief Метод установки порта события
 			 *
-			 * @param id  идентификатор события
-			 * @param mtu размер MTU интерфейса
-			 * @return    результат установки MTU сетевого интерфейса
+			 * @param id   идентификатор события
+			 * @param port порт события
+			 * @return     результат выполнения установки
 			 */
-			virtual bool setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
-			 *
-			 * @param id     идентификатор события
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @return       значение DSCP
-			 */
-			virtual event::dscp_t getDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family) const noexcept = 0;
-			/**
-			 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
-			 *
-			 * @param id     идентификатор события
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param dscp   значение DSCP
-			 * @return       результат работы функции
-			 */
-			virtual bool setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) const noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения обнаружения максимального размера пакета (MTU)
-			 *
-			 * @param id     идентификатор события
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @return       режим обнаружения максимального размера пакета (MTU)
-			 */
-			virtual event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family) const noexcept = 0;
-			/**
-			 * @brief Метод установки обнаружения максимального размера пакета (MTU)
-			 *
-			 * @param id     идентификатор события
-			 * @param family семейство протоколов (IPv4 или IPv6)
-			 * @param mode   режим обнаружения максимального размера пакета (MTU)
-			 * @return       результат работы функции
-			 */
-			virtual bool setMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) const noexcept = 0;
+			virtual bool setPort(const event::id_t id, const uint16_t port) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины
@@ -220,6 +168,58 @@ namespace awh {
 			virtual bool setAddress(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения MTU сетевого интерфейса
+			 *
+			 * @param id идентификатор события
+			 * @return   MTU сетевого интерфейса
+			 */
+			virtual uint16_t getMaximumTransmissionUnit(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки MTU сетевого интерфейса
+			 *
+			 * @param id  идентификатор события
+			 * @param mtu размер MTU интерфейса
+			 * @return    результат установки MTU сетевого интерфейса
+			 */
+			virtual bool setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       значение DSCP
+			 */
+			virtual event::dscp_t getDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family) const noexcept = 0;
+			/**
+			 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param dscp   значение DSCP
+			 * @return       результат работы функции
+			 */
+			virtual bool setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) const noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       режим обнаружения максимального размера пакета (MTU)
+			 */
+			virtual event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family) const noexcept = 0;
+			/**
+			 * @brief Метод установки обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим обнаружения максимального размера пакета (MTU)
+			 * @return       результат работы функции
+			 */
+			virtual bool setMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) const noexcept = 0;
+		public:
+			/**
 			 * @brief Метод активации/деактивации мультикаст группы события
 			 *
 			 * @param id     идентификатор события
@@ -251,6 +251,16 @@ namespace awh {
 			virtual bool destroy(const event::id_t id) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения пары событий для сокета
+			 *
+			 * @param family   семейство сокета
+			 * @param type     тип сокета
+			 * @param protocol протокол сокета
+			 * @return         пара идентификаторов созданных событий
+			 */
+			virtual std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод создания нового события
 			 *
 			 * @param node     узел события
@@ -260,16 +270,6 @@ namespace awh {
 			 * @return         идентификатор созданного события
 			 */
 			virtual event::id_t event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
-		public:
-			/**
-			 * @brief Метод получения пары событий для сокета
-			 *
-			 * @param family   семейство сокета
-			 * @param type     тип сокета
-			 * @param protocol протокол сокета
-			 * @return         пара идентификаторов созданных событий
-			 */
-			virtual std::array <event::id_t, 2> events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения смещения в файле события
