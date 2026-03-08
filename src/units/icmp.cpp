@@ -275,17 +275,21 @@ void awh::unit::ICMP::create(const event::family_t family) noexcept {
 		// Выполняем блокировку потока для создания события ICMP-клиента
 		const locker_t <> lock(this->_client.mtx);
 		/**
-		 * Для операционной системы MS Windows или FreeBSD
+		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64 || __FreeBSD__
+		#if _WIN32 || _WIN64
 			// Добавляем новое событие клиента ICMP
 			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
-			// Добавляем новое событие клиента UDP
-			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::ICMP);
+			// Если пользователь является непривилигированным
+			if(::getuid() > 0)
+				// Добавляем новое событие клиента UDP
+				this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::ICMP);
+			// Добавляем новое событие клиента ICMP
+			else this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 		#endif
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(this->_client.eid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
@@ -678,113 +682,102 @@ bool awh::unit::ICMP::reset() noexcept {
  * @return результат выполнения операции
  */
 bool awh::unit::ICMP::commit() noexcept {
+	// Результат работы функции
+	bool result = false;
 	/**
-	 * Если операционной системой не является FreeBSD
+	 * Выполняем перехват ошибок
 	 */
-	//#ifndef __FreeBSD__
-		// Результат работы функции
-		bool result = false;
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Если адрес назначения сервера установлен
-			if(this->_client.target != nullptr){
-				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_client.mtx);
-				// Устанавливаем адрес сервера назначения
-				this->_io->setTarget(this->_client.eid, this->_client.target.get());
-				// Если адрес сети для выполнения запроса установлен
-				if(this->_client.source != nullptr){
-					// Получаем семейство IP-адресов текущего события ICMP-клиента
-					const event::family_t family = this->_io->family(this->_client.eid);
-					/**
-					 * Определяем семейство события
-					 */
-					switch(static_cast <uint8_t> (family)){
-						// Для семейства IPv4
-						case static_cast <uint8_t> (event::family_t::IPV4):
-							// Устанавливаем IP-адрес события
-							this->_io->setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
-						break;
-						// Для семейства IPv6
-						case static_cast <uint8_t> (event::family_t::IPV6):
-							// Устанавливаем IP-адрес события
-							this->_io->setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
-						break;
-					}
+	try {
+		// Если адрес назначения сервера установлен
+		if(this->_client.target != nullptr){
+			// Выполняем блокировку потока для установки IP-адреса события
+			const locker_t <> lock(this->_client.mtx);
+			// Устанавливаем адрес сервера назначения
+			this->_io->setTarget(this->_client.eid, this->_client.target.get());
+			// Если адрес сети для выполнения запроса установлен
+			if(this->_client.source != nullptr){
+				// Получаем семейство IP-адресов текущего события ICMP-клиента
+				const event::family_t family = this->_io->family(this->_client.eid);
+				/**
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (family)){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Устанавливаем IP-адрес события
+						this->_io->setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
+					break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Устанавливаем IP-адрес события
+						this->_io->setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
+					break;
 				}
-				// Выполняем фиксацию параметров события и его запуск
-				if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid))){
-					// Удаляем событие ICMP-клиента
-					this->_io->destroy(this->_client.eid);
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
-						#endif
-					}
-				}
-			// Если адрес назначения сервера не установлен
-			} else {
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_client.eid, event::error_t::INVALID_ADDRESS, "Target address is not set");
+			}
+			// Выполняем фиксацию параметров события и его запуск
+			if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid))){
+				// Удаляем событие ICMP-клиента
+				this->_io->destroy(this->_client.eid);
 				// Если функция обратного вызова не установлена
-				else {
+				if(!this->_callback.is("error")){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid), log_t::flag_t::CRITICAL);
+						this->_log->debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("ICMP-client target address is not set", log_t::flag_t::CRITICAL);
+						this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
 					#endif
 				}
 			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+		// Если адрес назначения сервера не установлен
+		} else {
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_client.eid, event::error_t::INVALID_ADDRESS, "Target address is not set");
+			// Если функция обратного вызова не установлена
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ICMP-client target address is not set", log_t::flag_t::CRITICAL);
+				#endif
+			}
 		}
-		// Выводим результат
-		return result;
 	/**
-	 * Если операционной системой является FreeBSD
+	 * Если возникает ошибка
 	 */
-	//#else
-		// Выводим результат по умолчанию
-	//	return true;
-	//#endif
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -1506,133 +1499,128 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					this->_transfer.waiting.erase(id);
 				}
 			} break;
-			/**
-			 * Если операционной системой не является FreeBSD
-			 */
-			// #ifndef __FreeBSD__
-				// Если выполняется асинхронный режим пинга удалённого сервера
-				case static_cast <uint8_t> (mode_t::ASYNC): {
-					{
-						// Выполняем блокировку потока для работы с контейнером активных пакетов
-						const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем пакет в контейнер активных пакетов для отслеживания его выполнения
-						auto ret = this->_transfer.waiting.emplace(id, packet_t());
-						// Если пакет уже существует для данного идентификатора ICMP-клиента
-						if(!ret.second){
-							// Формируем текст выводимой ошибки ICMP-клиента
-							const string error = this->_fmk->format("ICMP request for ID=%d is still in progress, please wait for the result", id);
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_client.eid, event::error_t::INVALID, error);
-							// Если функция вывода ошибки не установлена
-							else {
+			// Если выполняется асинхронный режим пинга удалённого сервера
+			case static_cast <uint8_t> (mode_t::ASYNC): {
+				{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем пакет в контейнер активных пакетов для отслеживания его выполнения
+					auto ret = this->_transfer.waiting.emplace(id, packet_t());
+					// Если пакет уже существует для данного идентификатора ICMP-клиента
+					if(!ret.second){
+						// Формируем текст выводимой ошибки ICMP-клиента
+						const string error = this->_fmk->format("ICMP request for ID=%d is still in progress, please wait for the result", id);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_client.eid, event::error_t::INVALID, error);
+						// Если функция вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, count, static_cast <uint16_t> (mode), timeout), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+						// Выводим результат по умолчанию
+						return false;
+					// Если таймаут успешно добавлен для данного идентификатора ICMP-клиента
+					} else {
+						// Выполняем блокировку потока для установки таймера
+						const locker_t <> lock(this->_client.mtx);
+						// Добавляем новое событие таймаута для ожидания ответа от удаленного сервера
+						const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от удаленного сервера
+						this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
+						// Устанавливаем функцию обратного вызова на событие получения ошибок
+						this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+						// Если не удалось установить таймер для ожидания ответа от удаленного сервера
+						if(!this->_io->commit(tid)){
+							// Удаляем событие таймера
+							this->_io->destroy(tid);
+							// Удаляем пакет из контейнера активных пакетов для данного идентификатора ICMP-клиента
+							this->_transfer.waiting.erase(id);
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, count, static_cast <uint16_t> (mode), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("Failed to commit ICMP timeout", __PRETTY_FUNCTION__, std::make_tuple(id, count, static_cast <uint16_t> (mode), timeout), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									this->_log->print("Failed to commit ICMP timeout", log_t::flag_t::CRITICAL);
 								#endif
 							}
 							// Выводим результат по умолчанию
 							return false;
-						// Если таймаут успешно добавлен для данного идентификатора ICMP-клиента
+						// Если таймер для ожидания ответа от удаленного сервера успешно установлен
 						} else {
-							// Выполняем блокировку потока для установки таймера
-							const locker_t <> lock(this->_client.mtx);
-							// Добавляем новое событие таймаута для ожидания ответа от удаленного сервера
-							const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-							// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от удаленного сервера
-							this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-							// Устанавливаем функцию обратного вызова на событие получения ошибок
-							this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
-							// Если не удалось установить таймер для ожидания ответа от удаленного сервера
-							if(!this->_io->commit(tid)){
-								// Удаляем событие таймера
-								this->_io->destroy(tid);
-								// Удаляем пакет из контейнера активных пакетов для данного идентификатора ICMP-клиента
-								this->_transfer.waiting.erase(id);
-								// Если функция обратного вызова не установлена
-								if(!this->_callback.is("error")){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Failed to commit ICMP timeout", __PRETTY_FUNCTION__, std::make_tuple(id, count, static_cast <uint16_t> (mode), timeout), log_t::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Failed to commit ICMP timeout", log_t::flag_t::CRITICAL);
-									#endif
-								}
-								// Выводим результат по умолчанию
-								return false;
-							// Если таймер для ожидания ответа от удаленного сервера успешно установлен
-							} else {
-								// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-								ret.first->second.eid = tid;
-								// Устанавливаем количество выполняемых запросов
-								ret.first->second.count = count;
-								// Устанавливаем время жизни пакета для отслеживания его выполнения
-								ret.first->second.delay = timeout;
-								// Запоминаем текущее значение времени в миллисекундах для фиксации начала запроса
-								ret.first->second.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-								// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от ICMP-клиента
-								this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&icmp_t::timeout, this, id, _1, _2)));
-								// Запускаем таймер для ожидания ответа от ICMP-клиента
-								this->_io->launch(tid);
-							}
+							// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
+							ret.first->second.eid = tid;
+							// Устанавливаем количество выполняемых запросов
+							ret.first->second.count = count;
+							// Устанавливаем время жизни пакета для отслеживания его выполнения
+							ret.first->second.delay = timeout;
+							// Запоминаем текущее значение времени в миллисекундах для фиксации начала запроса
+							ret.first->second.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+							// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от ICMP-клиента
+							this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&icmp_t::timeout, this, id, _1, _2)));
+							// Запускаем таймер для ожидания ответа от ICMP-клиента
+							this->_io->launch(tid);
 						}
 					}
-					// Подключаем устройство генератора
-					mt19937 generator(::__awh_randev__());
-					// Выполняем генерирование случайного числа
-					uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
-					// Создаём объект заголовков
-					header_t icmp{};
-					// Устанавливаем код запроса
-					icmp.code = 0;
-					/**
-					 * Определяем семейство события
-					 */
-					switch(static_cast <uint8_t> (this->_io->family(this->_client.eid))){
-						// Для семейства IPv4
-						case static_cast <uint8_t> (event::family_t::IPV4):
-							// Выполняем установку типа запроса
-							icmp.type = 8;
-						break;
-						// Для семейства IPv6
-						case static_cast <uint8_t> (event::family_t::IPV6):
-							// Выполняем установку типа запроса
-							icmp.type = 128;
-						break;
-					}
-					// Устанавливаем номер последовательности
-					icmp.meta.echo.sequence = htons(0);
-					// Устанавливаем идентификатор запроса
-					icmp.meta.echo.identifier = htons(id);
-					// Устанавливаем данные полезной нагрузки
-					icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
-					// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
-					icmp.checksum = 0;
-					// Выполняем подсчёт контрольной суммы
-					icmp.checksum = ::checksum(&icmp, sizeof(icmp));
-					// Выполняем блокировку потока для выполнения запроса
-					const locker_t <> lock(this->_client.mtx);
-					// Отправляем сообщение серверу
-					result = (this->_io->send(this->_client.eid, &icmp, sizeof(icmp)) > 0);
-				} break;
-			//#endif
+				}
+				// Подключаем устройство генератора
+				mt19937 generator(::__awh_randev__());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
+				// Создаём объект заголовков
+				header_t icmp{};
+				// Устанавливаем код запроса
+				icmp.code = 0;
+				/**
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (this->_io->family(this->_client.eid))){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Выполняем установку типа запроса
+						icmp.type = 8;
+					break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Выполняем установку типа запроса
+						icmp.type = 128;
+					break;
+				}
+				// Устанавливаем номер последовательности
+				icmp.meta.echo.sequence = htons(0);
+				// Устанавливаем идентификатор запроса
+				icmp.meta.echo.identifier = htons(id);
+				// Устанавливаем данные полезной нагрузки
+				icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
+				// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
+				icmp.checksum = 0;
+				// Выполняем подсчёт контрольной суммы
+				icmp.checksum = ::checksum(&icmp, sizeof(icmp));
+				// Выполняем блокировку потока для выполнения запроса
+				const locker_t <> lock(this->_client.mtx);
+				// Отправляем сообщение серверу
+				result = (this->_io->send(this->_client.eid, &icmp, sizeof(icmp)) > 0);
+			} break;
 		}
 	/**
 	 * Если возникает ошибка

@@ -955,9 +955,9 @@ bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noex
 					// Если данных достаточно в контейнере
 					if((result = ((i->second.size > 0) && (i->second.buffer != nullptr)))){
 						// Выполняем извлечение размеров данных
-						* size = i->second.size;
+						(* size) = i->second.size;
 						// Выполняем извлечение запрашиваемых данных
-						* buffer = i->second.buffer.get();
+						(* buffer) = i->second.buffer.get();
 					// Если контейнер по каким-то причинам оказался битым
 					} else this->_log->print("Metadata [%llu] in container does not match content", log_t::flag_t::CRITICAL, idw);
 				}

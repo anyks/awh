@@ -5449,8 +5449,8 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 					// Если адрес DNS-сервера передан
 					if(server != nullptr){
 						/**
-						* Определяем тип адреса
-						*/
+						 * Определяем тип адреса
+						 */
 						switch(server->size){
 							// Если адрес является IPv4
 							case 4:
