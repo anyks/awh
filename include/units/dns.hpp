@@ -159,18 +159,18 @@ namespace awh {
 					uint32_t delay;
 					// Количество попыток резолвинга доменного имени
 					uint8_t attempt;
-					// Тип DNS-записи, для которой произошёл таймаут
-					record_t record;
 					// Идентификатор события для таймера DNS-резолвера
 					event::id_t eid;
+					// Тип DNS-записи, для которой произошёл таймаут
+					record_t record;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Packet() noexcept :
 					 domain{AWH_SHORT_NAME},
-					 delay(5000), attempt(0),
-					 record(record_t::NONE), eid(0) {}
+					 delay(5000), attempt(0), eid(0),
+					 record(record_t::NONE) {}
 				} packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при резолвинге доменных имён
@@ -187,7 +187,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Transfer() noexcept : attempts(3) {}
+					explicit Transfer() noexcept : attempts(3) {}
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами

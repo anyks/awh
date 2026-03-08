@@ -626,10 +626,10 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 			if(this->commit()){
 				// Сохраняем время ожидания ответа от NTP-сервера (в миллисекундах)
 				const uint32_t delay = packet->delay;
-				// Сохраняем версию протокола NTP для текущего запроса
-				const ver_t version = packet->version;
 				// Сохраняем количество попыток получения ответа от NTP-сервера
 				const uint8_t attempt = packet->attempt;
+				// Сохраняем версию протокола NTP для текущего запроса
+				const version_t version = packet->version;
 				{
 					// Выполняем блокировку потока для работы с контейнером активных пакетов
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
@@ -1842,7 +1842,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
  * @param timeout время ожидания ответа от NTP-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::NTP::sync(const ver_t version, const uint32_t timeout) noexcept {
+bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

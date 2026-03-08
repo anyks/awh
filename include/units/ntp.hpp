@@ -48,7 +48,7 @@ namespace awh {
 				 * @brief Версии протокола NTP
 				 *
 				 */
-				enum class ver_t : uint8_t {
+				enum class version_t : uint8_t {
 					V1 = 0x01, // Версия 1
 					V2 = 0x02, // Версия 2
 					V3 = 0x03, // Версия 3
@@ -140,21 +140,21 @@ namespace awh {
 				 *
 				 */
 				typedef struct Packet {
-					// Версия протокола NTP для выполнения запроса
-					ver_t version;
 					// Время ожидания ответа от NTP-сервера (в миллисекундах)
 					uint32_t delay;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempt;
 					// Идентификатор события для таймера NTP-клиента
 					event::id_t eid;
+					// Версия протокола NTP для выполнения запроса
+					version_t version;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Packet() noexcept :
-					 version(ver_t::V4),
-					 delay(5000), attempt(0), eid(0) {}
+					 delay(5000), attempt(0), eid(0),
+					 version(version_t::V4) {}
 				} packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
@@ -350,7 +350,7 @@ namespace awh {
 				 * @param timeout время ожидания ответа от NTP-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool sync(const ver_t version = ver_t::V4, const uint32_t timeout = 0) noexcept;
+				bool sync(const version_t version = version_t::V4, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
 				 * @brief Конструктор
