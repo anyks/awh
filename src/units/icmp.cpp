@@ -681,7 +681,7 @@ bool awh::unit::ICMP::commit() noexcept {
 	/**
 	 * Если операционной системой не является FreeBSD
 	 */
-	#ifndef __FreeBSD__
+	//#ifndef __FreeBSD__
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -781,10 +781,10 @@ bool awh::unit::ICMP::commit() noexcept {
 	/**
 	 * Если операционной системой является FreeBSD
 	 */
-	#else
+	//#else
 		// Выводим результат по умолчанию
-		return true;
-	#endif
+	//	return true;
+	//#endif
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -1509,7 +1509,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 			/**
 			 * Если операционной системой не является FreeBSD
 			 */
-			#ifndef __FreeBSD__
+			// #ifndef __FreeBSD__
 				// Если выполняется асинхронный режим пинга удалённого сервера
 				case static_cast <uint8_t> (mode_t::ASYNC): {
 					{
@@ -1603,8 +1603,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					// Устанавливаем код запроса
 					icmp.code = 0;
 					/**
-					* Определяем семейство события
-					*/
+					 * Определяем семейство события
+					 */
 					switch(static_cast <uint8_t> (this->_io->family(this->_client.eid))){
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
@@ -1632,7 +1632,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					// Отправляем сообщение серверу
 					result = (this->_io->send(this->_client.eid, &icmp, sizeof(icmp)) > 0);
 				} break;
-			#endif
+			//#endif
 		}
 	/**
 	 * Если возникает ошибка

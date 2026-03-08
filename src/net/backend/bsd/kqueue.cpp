@@ -1791,6 +1791,8 @@ namespace {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
+							// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							case static_cast <uint8_t> (event::type_t::RAW):
 							/**
 							 * Для операционной системы MacOS X, NetBSD, OpenBSD
 							 */
@@ -4690,6 +4692,8 @@ namespace io {
 						::io::destroy(ipc, eth, log);
 					}
 				} break;
+				// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				case static_cast <uint8_t> (event::type_t::RAW):
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM):
 				// Если событие принадлежит к типу SEQPACKET
@@ -6234,6 +6238,7 @@ namespace io {
 			 * Определяем тип сокета
 			 */
 			switch(static_cast <uint8_t> (client->state.type)){
+				#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW): {
 					// Если событие является неблокирующим
@@ -6402,6 +6407,7 @@ namespace io {
 						}
 					}
 				} break;
+				#endif
 				// Если событие принадлежит к типу STREAM
 				case static_cast <uint8_t> (event::type_t::STREAM): {
 					// Если событие является неблокирующим
@@ -6743,6 +6749,8 @@ namespace io {
 						}
 					}
 				} break;
+				// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				case static_cast <uint8_t> (event::type_t::RAW):
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если клиент находится в состоянии подключено
@@ -8360,6 +8368,8 @@ namespace io {
 							}
 						}
 					} break;
+					// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+					case static_cast <uint8_t> (event::type_t::RAW):
 					// Если событие принадлежит к типу DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM):
 					// Если событие принадлежит к типу SEQPACKET
@@ -9942,6 +9952,8 @@ namespace io {
 							}
 						}
 					} break;
+					// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+					case static_cast <uint8_t> (event::type_t::RAW):
 					// Если событие принадлежит к типу DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Размер данных для извлечения из очереди
@@ -10597,6 +10609,8 @@ namespace io {
 								 * Определяем тип сокета
 								 */
 								switch(static_cast <uint8_t> (session.second->state.type)){
+									// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+									case static_cast <uint8_t> (event::type_t::RAW):
 									/**
 									 * Для операционной системы MacOS X, NetBSD, OpenBSD
 									 */
@@ -11311,6 +11325,8 @@ namespace io {
 						}
 					}
 				} break;
+				// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				case static_cast <uint8_t> (event::type_t::RAW):
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM):
 				// Если событие принадлежит к типу SEQPACKET
@@ -13079,6 +13095,7 @@ namespace io {
 			 * Определяем тип сокета
 			 */
 			switch(static_cast <uint8_t> (origin->state.type)){
+				#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW): {
 					// Если событие является неблокирующим
@@ -13364,6 +13381,9 @@ namespace io {
 						}
 					}
 				} break;
+				#endif
+				// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
 				 * Для операционной системы MacOS X, NetBSD, OpenBSD
 				 */
@@ -14336,6 +14356,7 @@ namespace io {
 			 * Определяем тип сокета
 			 */
 			switch(static_cast <uint8_t> (client->state.type)){
+				#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW): {
 					// Если событие является неблокирующим
@@ -14601,6 +14622,7 @@ namespace io {
 						}
 					}
 				} break;
+				#endif
 				// Если событие принадлежит к типу STREAM
 				case static_cast <uint8_t> (event::type_t::STREAM): {
 					// Если размер данных для отправки пустой
@@ -15301,6 +15323,8 @@ namespace io {
 						}
 					}
 				} break;
+				// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				case static_cast <uint8_t> (event::type_t::RAW):
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если клиент находится в состоянии подключено
@@ -17998,6 +18022,7 @@ namespace io {
 			 * Определяем тип сокета
 			 */
 			switch(static_cast <uint8_t> (server->state.type)){
+				#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW): {
 					// Если событие является неблокирующим
@@ -18283,6 +18308,9 @@ namespace io {
 						}
 					}
 				} break;
+				#endif
+				// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
 				 * Для операционной системы MacOS X, NetBSD, OpenBSD
 				 */
@@ -18903,6 +18931,8 @@ namespace io {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
+							// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							case static_cast <uint8_t> (event::type_t::RAW):
 							// Если событие принадлежит к типу STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Если событие принадлежит к типу DATAGRAM
@@ -27311,6 +27341,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Определяем тип сокета
 							 */
 							switch(static_cast <uint8_t> (ipc->state.type)){
+								// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+								case static_cast <uint8_t> (event::type_t::RAW):
 								// Если событие принадлежит к типу PIPE
 								case static_cast <uint8_t> (event::type_t::NONE):
 								// Если событие принадлежит к типу STREAM
@@ -27780,6 +27812,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											 * Определяем тип сокета
 											 */
 											switch(static_cast <uint8_t> (client->state.type)){
+												// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+												case static_cast <uint8_t> (event::type_t::RAW):
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
 												// Если событие принадлежит к типу DATAGRAM
@@ -27825,6 +27859,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															#endif
+															// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+															case static_cast <uint8_t> (event::type_t::RAW):
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
@@ -28137,6 +28173,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 * Определяем тип сокета
 												 */
 												switch(static_cast <uint8_t> (client->state.type)){
+													// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+													case static_cast <uint8_t> (event::type_t::RAW):
 													// Если событие принадлежит к типу STREAM
 													case static_cast <uint8_t> (event::type_t::STREAM):
 													// Если событие принадлежит к типу DATAGRAM
@@ -28225,6 +28263,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															client->transfer.actions |= ::action::DISCONNECT;
 														}
 													} break;
+													#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 													// Если событие принадлежит к типу RAW
 													case static_cast <uint8_t> (event::type_t::RAW): {
 														/**
@@ -28549,6 +28588,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															}
 														}
 													} break;
+													#endif
 													// Для других типов сокетов
 													default: {
 														// Формируем отрицательный результат
@@ -28641,6 +28681,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 * Определяем тип сокета
 												 */
 												switch(static_cast <uint8_t> (client->state.type)){
+													// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+													case static_cast <uint8_t> (event::type_t::RAW):
 													// Если событие принадлежит к типу STREAM
 													case static_cast <uint8_t> (event::type_t::STREAM):
 													// Если событие принадлежит к типу DATAGRAM
@@ -28727,6 +28769,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															client->transfer.actions |= ::action::DISCONNECT;
 														}
 													} break;
+													#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 													// Если событие принадлежит к типу RAW
 													case static_cast <uint8_t> (event::type_t::RAW): {
 														/**
@@ -29049,6 +29092,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															}
 														}
 													} break;
+													#endif
 													// Для других типов сокетов
 													default: {
 														// Формируем отрицательный результат
@@ -29353,6 +29397,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											 * Определяем тип сокета
 											 */
 											switch(static_cast <uint8_t> (server->state.type)){
+												// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+												case static_cast <uint8_t> (event::type_t::RAW):
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
 												// Если событие принадлежит к типу DATAGRAM
@@ -29431,6 +29477,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	::exit(EXIT_FAILURE);
 																}
 															} break;
+															// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+															case static_cast <uint8_t> (event::type_t::RAW):
 															/**
 															 * Для операционной системы MacOS X, NetBSD, OpenBSD
 															 */
@@ -29630,6 +29678,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 * Определяем тип сокета
 												 */
 												switch(static_cast <uint8_t> (server->state.type)){
+													// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+													case static_cast <uint8_t> (event::type_t::RAW):
 													// Если событие принадлежит к типу STREAM
 													case static_cast <uint8_t> (event::type_t::STREAM):
 													// Если событие принадлежит к типу DATAGRAM
@@ -29798,6 +29848,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 * Определяем тип сокета
 												 */
 												switch(static_cast <uint8_t> (server->state.type)){
+													// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+													case static_cast <uint8_t> (event::type_t::RAW):
 													// Если событие принадлежит к типу STREAM
 													case static_cast <uint8_t> (event::type_t::STREAM):
 													// Если событие принадлежит к типу DATAGRAM
@@ -30467,6 +30519,8 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
+										// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+										case static_cast <uint8_t> (event::type_t::RAW):
 										/**
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
@@ -34767,6 +34821,8 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
+										// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+										case static_cast <uint8_t> (event::type_t::RAW):
 										/**
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
@@ -34903,6 +34959,8 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
+										// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+										case static_cast <uint8_t> (event::type_t::RAW):
 										/**
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
@@ -35265,6 +35323,8 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
+											// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+											case static_cast <uint8_t> (event::type_t::RAW):
 											/**
 											 * Для операционной системы MacOS X, NetBSD, OpenBSD
 											 */
@@ -35447,6 +35507,8 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
+											// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+											case static_cast <uint8_t> (event::type_t::RAW):
 											/**
 											 * Для операционной системы MacOS X, NetBSD, OpenBSD
 											 */
@@ -38460,6 +38522,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
+										// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+										case static_cast <uint8_t> (event::type_t::RAW):
 										/**
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
@@ -38592,6 +38656,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
+										// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+										case static_cast <uint8_t> (event::type_t::RAW):
 										/**
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
@@ -38980,6 +39046,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
+											// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+											case static_cast <uint8_t> (event::type_t::RAW):
 											/**
 											 * Для операционной системы MacOS X, NetBSD, OpenBSD
 											 */
@@ -39174,6 +39242,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
+											// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+											case static_cast <uint8_t> (event::type_t::RAW):
 											/**
 											 * Для операционной системы MacOS X, NetBSD, OpenBSD
 											 */
@@ -43229,6 +43299,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (i->second->state.type)){
+							#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 							// Если событие принадлежит к типу RAW
 							case static_cast <uint8_t> (event::type_t::RAW): {
 								/**
@@ -43259,6 +43330,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									} break;
 								}
 							} break;
+							#endif
 							// Если событие принадлежит к типу STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
 								// Если протокол интернета установлен не как SCTP
@@ -43309,6 +43381,8 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									}
 								}
 							} break;
+							// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							case static_cast <uint8_t> (event::type_t::RAW):
 							/**
 							 * Для операционной системы MacOS X, NetBSD, OpenBSD
 							 */
@@ -43884,6 +43958,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							}
 						}
 					} break;
+					#if __AWH_DISABLED__ // !!!!!!!!!!!!!!!!!!!!!!!!!!!!! DISABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 					// Если опция передана как HDRINCL
 					case event::options::HDRINCL: {
 						/**
@@ -43925,6 +44000,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							}
 						}
 					} break;
+					#endif
 					// Если опция передана как BROADCAST
 					case event::options::BROADCAST: {
 						/**
@@ -43947,6 +44023,8 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (i->second->state.type)){
+										// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+										case static_cast <uint8_t> (event::type_t::RAW):
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM):
 										// Если событие принадлежит к типу SEQPACKET
@@ -45415,6 +45493,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (i->second->state.type)){
+							// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							case static_cast <uint8_t> (event::type_t::RAW):
 							// Если событие принадлежит к типу STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Если событие принадлежит к типу DATAGRAM
@@ -45809,6 +45889,8 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Определяем тип сокета
 											 */
 											switch(static_cast <uint8_t> (client->state.type)){
+												// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+												case static_cast <uint8_t> (event::type_t::RAW):
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
 												/**
@@ -52458,6 +52540,8 @@ void awh::engine::IO::clear() noexcept {
 								 * Определяем тип сокета
 								 */
 								switch(static_cast <uint8_t> (client->state.type)){
+									// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+									case static_cast <uint8_t> (event::type_t::RAW):
 									/**
 									 * Для операционной системы MacOS X, NetBSD, OpenBSD
 									 */
@@ -53306,6 +53390,8 @@ bool awh::engine::IO::deinitialize() noexcept {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
+							// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							case static_cast <uint8_t> (event::type_t::RAW):
 							/**
 							 * Для операционной системы MacOS X, NetBSD, OpenBSD
 							 */
@@ -54859,6 +54945,8 @@ awh::engine::IO::~IO() noexcept {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
+							// Если событие принадлежит к типу RAW !!!!!!!!!!!!!!!!!!!!!!!!!!!!! ENABLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							case static_cast <uint8_t> (event::type_t::RAW):
 							/**
 							 * Для операционной системы MacOS X, NetBSD, OpenBSD
 							 */
