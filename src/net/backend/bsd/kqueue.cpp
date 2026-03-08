@@ -30751,6 +30751,302 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 	return false;
 }
 /**
+ * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ *
+ * @param id     идентификатор события
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @return       значение DSCP
+ */
+awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Извлекаем значение поля Differentiated Services Code Point (DSCP) связанного события
+						return this->getDifferentiatedServicesCodePoint(mediator->dest, family);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Извлекаем значение поля Differentiated Services Code Point (DSCP) клиента
+					return this->_eth.socket.getDifferentiatedServicesCodePoint(client->transfer.fd, family);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Извлекаем значение поля Differentiated Services Code Point (DSCP) сервера
+					return this->_eth.socket.getDifferentiatedServicesCodePoint(server->fd, family);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					id, static_cast <uint16_t> (family)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::dscp_t::CS0;
+}
+/**
+ * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ *
+ * @param id     идентификатор события
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param dscp   значение DSCP
+ * @return       результат работы функции
+ */
+bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем значения поля Differentiated Services Code Point (DSCP) связанного события
+						return this->setDifferentiatedServicesCodePoint(mediator->dest, family, dscp);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Устанавливаем значения поля Differentiated Services Code Point (DSCP) клиента
+					return this->_eth.socket.setDifferentiatedServicesCodePoint(client->transfer.fd, family, dscp);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Устанавливаем значения поля Differentiated Services Code Point (DSCP) сервера
+					return this->_eth.socket.setDifferentiatedServicesCodePoint(server->fd, family, dscp);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					id, static_cast <uint16_t> (family),
+					static_cast <uint16_t> (dscp)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения обнаружения максимального размера пакета (MTU)
+ *
+ * @param id     идентификатор события
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @return       режим обнаружения максимального размера пакета (MTU)
+ */
+awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Извлекаем значение поля обнаружения максимального размера пакета (MTU) связанного события
+						return this->getMaximumTransmissionUnitDiscover(mediator->dest, family);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Извлекаем значение поля обнаружения максимального размера пакета (MTU) клиента
+					return this->_eth.socket.getMaximumTransmissionUnitDiscover(client->transfer.fd, family);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Извлекаем значение поля обнаружения максимального размера пакета (MTU) сервера
+					return this->_eth.socket.getMaximumTransmissionUnitDiscover(server->fd, family);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					id, static_cast <uint16_t> (family)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::mtu_discover_t::NONE;
+}
+/**
+ * @brief Метод установки обнаружения максимального размера пакета (MTU)
+ *
+ * @param id     идентификатор события
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param mode   режим обнаружения максимального размера пакета (MTU)
+ * @return       результат работы функции
+ */
+bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем значения поля обнаружения максимального размера пакета (MTU) связанного события
+						return this->setMaximumTransmissionUnitDiscover(mediator->dest, family, mode);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Устанавливаем значения поля обнаружения максимального размера пакета (MTU) клиента
+					return this->_eth.socket.setMaximumTransmissionUnitDiscover(client->transfer.fd, family, mode);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Устанавливаем значения поля обнаружения максимального размера пакета (MTU) сервера
+					return this->_eth.socket.setMaximumTransmissionUnitDiscover(server->fd, family, mode);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				std::make_tuple(
+					id, static_cast <uint16_t> (family),
+					static_cast <uint16_t> (mode)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения адреса хоста целевой машины
  *
  * @param id идентификатор события

@@ -114,6 +114,42 @@ namespace awh {
 			virtual bool setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       значение DSCP
+			 */
+			virtual event::dscp_t getDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family) const noexcept = 0;
+			/**
+			 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param dscp   значение DSCP
+			 * @return       результат работы функции
+			 */
+			virtual bool setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) const noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       режим обнаружения максимального размера пакета (MTU)
+			 */
+			virtual event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family) const noexcept = 0;
+			/**
+			 * @brief Метод установки обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param id     идентификатор события
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим обнаружения максимального размера пакета (MTU)
+			 * @return       результат работы функции
+			 */
+			virtual bool setMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) const noexcept = 0;
+		public:
+			/**
 			 * @brief Метод получения адреса хоста целевой машины
 			 *
 			 * @param id идентификатор события
