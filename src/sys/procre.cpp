@@ -32,7 +32,10 @@
  */
 #elif __FreeBSD__
 	#include <libutil.h>
+	#include <sys/un.h>
 	#include <sys/user.h>
+	#include <sys/sysctl.h>
+	#include <sys/socket.h>
 /**
  * Для операционной системы MacOS X
  */
@@ -146,6 +149,7 @@ void awh::Process_Resolver::scanning() noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+#if __APPLE__ || __MACH__
 		// Список идентификаторов процессов
 		pid_t pids[0x1000];
 		// Получаем список идентификаторов процессов
@@ -395,6 +399,122 @@ void awh::Process_Resolver::scanning() noexcept {
 				}
 			}
 		}
+#elif __FreeBSD__
+		// Массив MIB для получения списка процессов
+		int mib[3] = { CTL_KERN, KERN_PROC, KERN_PROC_PROC };
+		size_t len = 0;
+		// Узнаем размер необходимых данных для kinfo_proc
+		if (::sysctl(mib, 3, nullptr, &len, nullptr, 0) == 0 && len > 0) {
+			// Выделяем память под процессы
+			auto procs = std::make_unique<struct kinfo_proc[]>(len / sizeof(struct kinfo_proc));
+			// Получаем список всех процессов
+			if (::sysctl(mib, 3, procs.get(), &len, nullptr, 0) == 0) {
+				const size_t count = len / sizeof(struct kinfo_proc);
+				info_t info;
+				
+				for (size_t i = 0; i < count; ++i) {
+					pid_t pid = procs[i].ki_pid;
+					
+					// Запрашиваем файловые дескрипторы для конкретного процесса
+					int fmib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, pid };
+					size_t flen = 0;
+					
+					if (::sysctl(fmib, 4, nullptr, &flen, nullptr, 0) == 0 && flen > 0) {
+						auto files = std::make_unique<char[]>(flen);
+						if (::sysctl(fmib, 4, files.get(), &flen, nullptr, 0) == 0) {
+							// Проходим по всем файлам процесса
+							char* ptr = files.get();
+							char* end = ptr + flen;
+							
+							while (ptr < end) {
+								struct kinfo_file* kf = reinterpret_cast<struct kinfo_file*>(ptr);
+								if (kf->kf_structsize == 0) break;
+								
+								// Если файл оказался сокетом
+								if (kf->kf_type == KF_TYPE_SOCKET && kf->kf_sock_domain >= 0) {
+									info = info_t();
+									
+									// Определяем протокол сокета
+									switch (kf->kf_sock_protocol) {
+										case IPPROTO_IP:     info.family = event::family_t::IPV4; break;
+										case IPPROTO_RAW:    info.protocol = event::protocol_t::RAW; break;
+										case IPPROTO_TCP:    info.protocol = event::protocol_t::TCP; break;
+										case IPPROTO_UDP:    info.protocol = event::protocol_t::UDP; break;
+										case IPPROTO_ICMP:   info.protocol = event::protocol_t::ICMP; break;
+										case IPPROTO_IGMP:   info.protocol = event::protocol_t::IGMP; break;
+										case IPPROTO_SCTP:   info.protocol = event::protocol_t::SCTP; break;
+										case IPPROTO_IPV6:   info.family = event::family_t::IPV6; break;
+										case IPPROTO_ICMPV6: info.protocol = event::protocol_t::ICMP; break;
+										default:             info.protocol = event::protocol_t::NONE;
+									}
+
+									// Определяем семейство
+									if (kf->kf_sock_domain == AF_INET) {
+										info.family = event::family_t::IPV4;
+									} else if (kf->kf_sock_domain == AF_INET6) {
+										info.family = event::family_t::IPV6;
+									} else if (kf->kf_sock_domain == AF_UNIX) {
+										info.family = event::family_t::UDS;
+									}
+
+									// Обработка адресов
+									auto src_sa = reinterpret_cast<struct sockaddr*>(&kf->kf_sa_local);
+									auto dst_sa = reinterpret_cast<struct sockaddr*>(&kf->kf_sa_peer);
+									
+									if (info.family == event::family_t::IPV4 && src_sa->sa_family == AF_INET) {
+										auto src_in = reinterpret_cast<struct sockaddr_in*>(src_sa);
+										auto dst_in = reinterpret_cast<struct sockaddr_in*>(dst_sa);
+										
+										info.ports.src = ntohs(src_in->sin_port);
+										info.ports.dst = dst_in ? ntohs(dst_in->sin_port) : 0;
+										
+										info.addresses.src = std::make_unique<net::addr_net_ipv4_t>();
+										info.addresses.dst = std::make_unique<net::addr_net_ipv4_t>();
+										
+										awh_cast<net::addr_net_ipv4_t*>(info.addresses.src.get())->address = src_in->sin_addr.s_addr;
+										if (dst_in) {
+											awh_cast<net::addr_net_ipv4_t*>(info.addresses.dst.get())->address = dst_in->sin_addr.s_addr;
+										}
+									} else if (info.family == event::family_t::IPV6 && src_sa->sa_family == AF_INET6) {
+										auto src_in6 = reinterpret_cast<struct sockaddr_in6*>(src_sa);
+										auto dst_in6 = reinterpret_cast<struct sockaddr_in6*>(dst_sa);
+										
+										info.ports.src = ntohs(src_in6->sin6_port);
+										info.ports.dst = dst_in6 ? ntohs(dst_in6->sin6_port) : 0;
+										
+										info.addresses.src = std::make_unique<net::addr_net_ipv6_t>();
+										info.addresses.dst = std::make_unique<net::addr_net_ipv6_t>();
+										
+										::memcpy(&awh_cast<net::addr_net_ipv6_t*>(info.addresses.src.get())->address[0], &src_in6->sin6_addr, 16);
+										if (dst_in6) {
+											::memcpy(&awh_cast<net::addr_net_ipv6_t*>(info.addresses.dst.get())->address[0], &dst_in6->sin6_addr, 16);
+										}
+									} else if (info.family == event::family_t::UDS && src_sa->sa_family == AF_UNIX) {
+										auto src_un = reinterpret_cast<struct sockaddr_un*>(src_sa);
+										auto dst_un = reinterpret_cast<struct sockaddr_un*>(dst_sa);
+										
+										info.addresses.src = std::make_unique<net::addr_fs_t>();
+										info.addresses.dst = std::make_unique<net::addr_fs_t>();
+										
+										awh_cast<net::addr_fs_t*>(info.addresses.src.get())->address = src_un->sun_path;
+										if (dst_un) {
+											awh_cast<net::addr_fs_t*>(info.addresses.dst.get())->address = dst_un->sun_path;
+										}
+									}
+
+									// Вызываем callback
+									if (this->_callback != nullptr) {
+										this->_callback(pid, info);
+									}
+								}
+								ptr += kf->kf_structsize;
+							}
+						}
+					}
+				}
+			}
+		}
+#endif
 	/**
 	 * Если возникает ошибка
 	 */
