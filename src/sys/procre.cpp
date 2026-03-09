@@ -48,8 +48,11 @@
  * Для операционной системы NetBSD или OpenBSD
  */
 #elif __NetBSD__ || __OpenBSD__
+	#include <memory>
+	#include <vector>
 	#include <fstream>
 	#include <sstream>
+	#include <arpa/inet.h>
 /**
  * Реализация под Sun Solaris
  */
@@ -167,165 +170,260 @@ void awh::Process_Resolver::scanning() noexcept {
 		 */
 		#if __linux__
 			// Сначала читаем информацию о всех сокетах из /proc/net/
-			std::map<ino_t, info_t> sockets_info;
-
-			auto parse_proc_net = [&sockets_info](const char* filename, event::protocol_t proto, event::family_t family) {
-				FILE* fp = ::fopen(filename, "r");
-				if (!fp) return;
-				char line[512];
-				// Пропускаем заголовок
-				if (!::fgets(line, sizeof(line), fp)) { ::fclose(fp); return; }
-				
-				while (::fgets(line, sizeof(line), fp)) {
-					uint32_t local_ip[4] = {0}, rem_ip[4] = {0};
-					int local_port = 0, rem_port = 0, st = 0;
+			map <ino_t, info_t> socketsInfo;
+			/**
+			 * @brief Функция извлечения информации о сокете из файловой системы /proc/net/
+			 *
+			 * @param filename адрес файла для извлечения
+			 * @param proto    протокол сокета
+			 * @param family   семейство адресов сокета
+			 */
+			auto parse = [&socketsInfo](const char* filename, const event::protocol_t proto, const event::family_t family) noexcept -> void {
+				// Открываем файл для чтения
+				FILE * fp = ::fopen(filename, "r");
+				// Если файл не открыт
+				if(fp == nullptr)
+					// Выходим из функции
+					return;
+				// Буфер для чтения строк из файла
+				char buffer[0x200];
+				// Если в файле нет строк для чтения
+				if(!::fgets(buffer, sizeof(buffer), fp)){
+					// Закрываем файл
+					::fclose(fp);
+					// Выходим из функции
+					return;
+				}
+				/**
+				 * Читаем строки из файла и извлекаем информацию о сокете
+				 */
+				while(::fgets(buffer, sizeof(buffer), fp)){
+					// Индексный дескриптор сокета
 					ino_t inode = 0;
-					
-					if (family == event::family_t::IPV4) {
-						if (::sscanf(line, "%*d: %x:%x %x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu",
-									&local_ip[0], &local_port, &rem_ip[0], &rem_port, &st, &inode) == 6) {
-							info_t info;
-							info.family = family;
-							info.protocol = proto;
-							info.ports.src = local_port;
-							info.ports.dst = rem_port;
-							
-							info.addresses.src = std::make_unique<net::addr_net_ipv4_t>();
-							info.addresses.dst = std::make_unique<net::addr_net_ipv4_t>();
-							
-							awh_cast<net::addr_net_ipv4_t*>(info.addresses.src.get())->address = local_ip[0];
-							awh_cast<net::addr_net_ipv4_t*>(info.addresses.dst.get())->address = rem_ip[0];
-							
-							sockets_info[inode] = std::move(info);
-						}
-					} else if (family == event::family_t::IPV6) {
-						if (::sscanf(line, "%*d: %8x%8x%8x%8x:%x %8x%8x%8x%8x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu",
-									&local_ip[0], &local_ip[1], &local_ip[2], &local_ip[3], &local_port,
-									&rem_ip[0], &rem_ip[1], &rem_ip[2], &rem_ip[3], &rem_port, &st, &inode) == 12) {
-							info_t info;
-							info.family = family;
-							info.protocol = proto;
-							info.ports.src = local_port;
-							info.ports.dst = rem_port;
-							
-							info.addresses.src = std::make_unique<net::addr_net_ipv6_t>();
-							info.addresses.dst = std::make_unique<net::addr_net_ipv6_t>();
-							
-							::memcpy(&awh_cast<net::addr_net_ipv6_t*>(info.addresses.src.get())->address[0], local_ip, 16);
-							::memcpy(&awh_cast<net::addr_net_ipv6_t*>(info.addresses.dst.get())->address[0], rem_ip, 16);
-							
-							sockets_info[inode] = std::move(info);
-						}
+					// Состояние сокета
+					int32_t state = 0;
+					// Объект для хранения информации о сокете
+					info_t info{};
+					// Устанавливаем семейство адресов сокета
+					info.family = family;
+					// Устанавливаем протокол сокета
+					info.protocol = proto;
+					/**
+					 * Определяем семейстов IP-адресов сокета
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Буфер для хранения IP-адреса назначения
+							uint32_t target = 0;
+							// Буфер для хранения IP-адреса источника
+							uint32_t source = 0;
+							// Извлекаем информацию о сокете из строки
+							if(::sscanf(buffer, "%*d: %x:%x %x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu", &source, &info.ports.src, &target, &info.ports.dst, &state, &inode) == 6){
+								// Выполняем инициализацию объекта IP-адреса источника процесса
+								info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
+								// Выполняем инициализацию объекта IP-адреса назначения процесса
+								info.addresses.dst = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем IP-адрес источника процесса
+								awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = source;
+								// Устанавливаем IP-адрес назначения процесса
+								awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = target;
+								// Сохраняем информацию о сокете в общем контейнере
+								socketsInfo[inode] = ::move(info);
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Буфер для хранения IP-адреса назначения
+							uint32_t target[4] = {0};
+							// Буфер для хранения IP-адреса источника
+							uint32_t source[4] = {0};
+							// Извлекаем информацию о сокете из строки
+							if(::sscanf(buffer, "%*d: %8x%8x%8x%8x:%x %8x%8x%8x%8x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu",
+							   &source[0], &source[1], &source[2], &source[3], &info.ports.src,
+							   &target[0], &target[1], &target[2], &target[3], &info.ports.dst, &state, &inode) == 12){
+								// Выполняем инициализацию объекта IP-адреса источника процесса
+								info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
+								// Выполняем инициализацию объекта IP-адреса назначения процесса
+								info.addresses.dst = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем IP-адрес источника процесса
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], source, 16);
+								// Устанавливаем IP-адрес назначения процесса
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], target, 16);
+								// Сохраняем информацию о сокете в общем контейнере
+								socketsInfo[inode] = ::move(info);
+							}
+						} break;
 					}
 				}
+				// Закрываем файл
 				::fclose(fp);
 			};
-
-			parse_proc_net("/proc/net/tcp", event::protocol_t::TCP, event::family_t::IPV4);
-			parse_proc_net("/proc/net/udp", event::protocol_t::UDP, event::family_t::IPV4);
-			parse_proc_net("/proc/net/raw", event::protocol_t::RAW, event::family_t::IPV4);
-			
-			parse_proc_net("/proc/net/tcp6", event::protocol_t::TCP, event::family_t::IPV6);
-			parse_proc_net("/proc/net/udp6", event::protocol_t::UDP, event::family_t::IPV6);
-			parse_proc_net("/proc/net/raw6", event::protocol_t::RAW, event::family_t::IPV6);
-
-			// UNIX сокеты
-			if (FILE* fp = ::fopen("/proc/net/unix", "r")) {
-				char line[512];
-				if (::fgets(line, sizeof(line), fp)) {
-					while (::fgets(line, sizeof(line), fp)) {
+			// Выполняем извлечение информации о сокете из файла /proc/net/tcp для протокола TCP и семейства IPv4
+			parse("/proc/net/tcp", event::protocol_t::TCP, event::family_t::IPV4);
+			// Выполняем извлечение информации о сокете из файла /proc/net/udp для протокола UDP и семейства IPv4
+			parse("/proc/net/udp", event::protocol_t::UDP, event::family_t::IPV4);
+			// Выполняем извлечение информации о сокете из файла /proc/net/raw для протокола RAW и семейства IPv4
+			parse("/proc/net/raw", event::protocol_t::RAW, event::family_t::IPV4);
+			// Выполняем извлечение информации о сокете из файла /proc/net/tcp6 для протокола TCP и семейства IPv6
+			parse("/proc/net/tcp6", event::protocol_t::TCP, event::family_t::IPV6);
+			// Выполняем извлечение информации о сокете из файла /proc/net/udp6 для протокола UDP и семейства IPv6
+			parse("/proc/net/udp6", event::protocol_t::UDP, event::family_t::IPV6);
+			// Выполняем извлечение информации о сокете из файла /proc/net/raw6 для протокола RAW и семейства IPv6
+			parse("/proc/net/raw6", event::protocol_t::RAW, event::family_t::IPV6);
+			/**
+			 * Открываем файл для чтения информации о сокете из файловой системы /proc/net/unix для протокола NONE и семейства UDS
+			 */
+			if(FILE * fp = ::fopen("/proc/net/unix", "r")){
+				// Буфер для чтения строк из файла
+				char buffer[512];
+				// Если в файле есть строки для чтения
+				if(::fgets(buffer, sizeof(buffer), fp)){
+					/**
+					 * Читаем строки из файла и извлекаем информацию о сокете
+					 */
+					while(::fgets(buffer, sizeof(buffer), fp)){
+						// Индексный дескриптор сокета
 						ino_t inode = 0;
-						char path[256] = {0};
-						int num_read = ::sscanf(line, "%*p: %*x %*x %*x %*x %*x %lu %255s", &inode, path);
-						if (num_read >= 1 && inode != 0) {
-							info_t info;
+						// Буфер для хранения пути сокета
+						char path[0x100] = {0};
+						// Извлекаем информацию о сокете из строки
+						const int32_t num = ::sscanf(buffer, "%*p: %*x %*x %*x %*x %*x %lu %255s", &inode, path);
+						// Если информация о сокете извлечена успешно
+						if((num >= 1) && (inode != 0)){
+							// Объект для хранения информации о сокете
+							info_t info{};
+							// Устанавливаем семейство адресов сокета
 							info.family = event::family_t::UDS;
-							info.protocol = event::protocol_t::NONE;
-							info.ports.src = 0;
-							info.ports.dst = 0;
-							
-							info.addresses.src = std::make_unique<net::addr_fs_t>();
-							info.addresses.dst = std::make_unique<net::addr_fs_t>();
-							
-							if (num_read == 2) {
-								awh_cast<net::addr_fs_t*>(info.addresses.src.get())->address = path;
-							}
-							
-							sockets_info[inode] = std::move(info);
+							// Выполняем инициализацию объекта UNIX-адреса источника процесса
+							info.addresses.src = make_unique <net::addr_fs_t> ();
+							// Выполняем инициализацию объекта UNIX-адреса назначения процесса
+							info.addresses.dst = make_unique <net::addr_fs_t> ();
+							// Если путь сокета извлечён успешно
+							if(num == 2)
+								// Устанавливаем UNIX-адрес источника процесса
+								awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = path;
+							// Сохраняем информацию о сокете в общем контейнере
+							socketsInfo[inode] = ::move(info);
 						}
 					}
 				}
+				// Закрываем файл
 				::fclose(fp);
 			}
-
-			DIR* proc_dir = ::opendir("/proc");
-			if (proc_dir != nullptr) {
-				struct dirent* proc_entry;
-				while ((proc_entry = ::readdir(proc_dir)) != nullptr) {
-					if (proc_entry->d_type == DT_DIR && std::isdigit(proc_entry->d_name[0])) {
-						pid_t pid = ::atoi(proc_entry->d_name);
-						
-						char fd_path[256];
-						::snprintf(fd_path, sizeof(fd_path), "/proc/%d/fd", pid);
-						
-						DIR* fd_dir = ::opendir(fd_path);
-						if (fd_dir != nullptr) {
-							struct dirent* fd_entry;
-							while ((fd_entry = ::readdir(fd_dir)) != nullptr) {
-								if (fd_entry->d_type == DT_LNK || fd_entry->d_type == DT_UNKNOWN) {
-									char link_path[512];
-									::snprintf(link_path, sizeof(link_path), "/proc/%d/fd/%s", pid, fd_entry->d_name);
-									
-									char target[512];
-									ssize_t len = ::readlink(link_path, target, sizeof(target) - 1);
-									if (len > 0) {
-										target[len] = '\0';
-										if (::strncmp(target, "socket:[", 8) == 0) {
-											ino_t inode = std::strtoull(target + 8, nullptr, 10);
-											
-											auto it = sockets_info.find(inode);
-											if (it != sockets_info.end()) {
-												if (this->_callback != nullptr) {
-													info_t info_clone;
-													info_clone.family = it->second.family;
-													info_clone.protocol = it->second.protocol;
-													info_clone.ports = it->second.ports;
-													
-													if (info_clone.family == event::family_t::IPV4) {
-														info_clone.addresses.src = std::make_unique<net::addr_net_ipv4_t>();
-														info_clone.addresses.dst = std::make_unique<net::addr_net_ipv4_t>();
-														awh_cast<net::addr_net_ipv4_t*>(info_clone.addresses.src.get())->address = awh_cast<net::addr_net_ipv4_t*>(it->second.addresses.src.get())->address;
-														if (it->second.addresses.dst) {
-															awh_cast<net::addr_net_ipv4_t*>(info_clone.addresses.dst.get())->address = awh_cast<net::addr_net_ipv4_t*>(it->second.addresses.dst.get())->address;
-														}
-													} else if (info_clone.family == event::family_t::IPV6) {
-														info_clone.addresses.src = std::make_unique<net::addr_net_ipv6_t>();
-														info_clone.addresses.dst = std::make_unique<net::addr_net_ipv6_t>();
-														::memcpy(&awh_cast<net::addr_net_ipv6_t*>(info_clone.addresses.src.get())->address[0], &awh_cast<net::addr_net_ipv6_t*>(it->second.addresses.src.get())->address[0], 16);
-														if (it->second.addresses.dst) {
-															::memcpy(&awh_cast<net::addr_net_ipv6_t*>(info_clone.addresses.dst.get())->address[0], &awh_cast<net::addr_net_ipv6_t*>(it->second.addresses.dst.get())->address[0], 16);
-														}
-													} else if (info_clone.family == event::family_t::UDS) {
-														info_clone.addresses.src = std::make_unique<net::addr_fs_t>();
-														info_clone.addresses.dst = std::make_unique<net::addr_fs_t>();
-														awh_cast<net::addr_fs_t*>(info_clone.addresses.src.get())->address = awh_cast<net::addr_fs_t*>(it->second.addresses.src.get())->address;
-														if (it->second.addresses.dst) {
-															awh_cast<net::addr_fs_t*>(info_clone.addresses.dst.get())->address = awh_cast<net::addr_fs_t*>(it->second.addresses.dst.get())->address;
-														}
+			// Теперь читаем информацию о всех процессах из /proc и сопоставляем её с информацией о сокете
+			DIR * dir = ::opendir("/proc");
+			// Если каталог открыт удачно
+			if(dir != nullptr){
+				// Буфер для хранения информации о сокете
+				struct dirent * entry = nullptr;
+				/**
+				 * Читаем записи из каталога и извлекаем информацию о процессе
+				 */
+				while((entry = ::readdir(dir)) != nullptr){
+					// Если запись является каталогом и её имя начинается с цифры
+					if((entry->d_type == DT_DIR) && ::isdigit(entry->d_name[0])){
+						// Получаем идентификатор процесса из имени каталога
+						pid_t pid = ::atoi(entry->d_name);
+						// Буфер для хранения названия приложения которому принадлежит процесс
+						char path[0x100];
+						// Выполняем заполнение буфера для получения названия приложения которому принадлежит процесс
+						::snprintf(path, sizeof(path), "/proc/%d/fd", pid);
+						// Открываем каталог для чтения информации о файловых дескрипторах процесса
+						DIR * dir = ::opendir(path);
+						// Если каталог открыт удачно
+						if(dir != nullptr){
+							// Буфер для хранения информации о сокете
+							struct dirent * entry = nullptr;
+							/**
+							 * Читаем записи из каталога и извлекаем информацию о сокете
+							 */
+							while((entry = ::readdir(dir)) != nullptr){
+								// Если запись является символической ссылкой или её тип неизвестен
+								if((entry->d_type == DT_LNK) || (entry->d_type == DT_UNKNOWN)){
+									// Буфер для хранения пути к файловому дескриптору процесса
+									char path[0x200];
+									// Выполняем заполнение буфера для получения пути к файловому дескриптору процесса
+									::snprintf(path, sizeof(path), "/proc/%d/fd/%s", pid, entry->d_name);
+									// Буфер для хранения информации о сокете
+									char target[0x200];
+									// Читаем символическую ссылку для получения информации о сокете
+									const ssize_t length = ::readlink(path, target, sizeof(target) - 1);
+									// Если информация о сокете извлечена успешно
+									if(length > 0){
+										// Завершаем строку нулевым символом
+										target[length] = '\0';
+										// Если путь к сокету начинается с "socket:["
+										if(::strncmp(target, "socket:[", 8) == 0){
+											// Извлекаем индексный дескриптор сокета из пути
+											ino_t inode = ::strtoull(target + 8, nullptr, 10);
+											// Ищем информацию о сокете по индексному дескриптору
+											auto i = socketsInfo.find(inode);
+											// Если информация о сокете найдена
+											if(i != socketsInfo.end()){
+												// Если функция обратного вызова установлена
+												if(this->_callback != nullptr){
+													// Объект для хранения информации о сокете
+													info_t info{};
+													// Устанавливаем порты процесса
+													info.ports = i->second.ports;
+													// Устанавливаем семейство адресов процесса
+													info.family = i->second.family;
+													// Устанавливаем протокол процесса
+													info.protocol = i->second.protocol;
+													/**
+													 * Определяем семейстов IP-адресов сокета
+													 */
+													switch(static_cast <uint8_t> (info.family)){
+														// Для семейства UDS
+														case static_cast <uint8_t> (event::family_t::UDS): {
+															// Выполняем инициализацию объекта UNIX-адреса источника процесса
+															info.addresses.src = make_unique <net::addr_fs_t> ();
+															// Выполняем инициализацию объекта UNIX-адреса назначения процесса
+															info.addresses.dst = make_unique <net::addr_fs_t> ();
+															// Устанавливаем UNIX-адрес источника процесса
+															awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = awh_cast <net::addr_fs_t *> (i->second.addresses.src.get())->address;
+															// Устанавливаем UNIX-адрес назначения процесса
+															awh_cast <net::addr_fs_t *> (info.addresses.dst.get())->address = awh_cast <net::addr_fs_t *> (i->second.addresses.dst.get())->address;
+														} break;
+														// Для семейства IPv4
+														case static_cast <uint8_t> (event::family_t::IPV4): {
+															// Выполняем инициализацию объекта IP-адреса источника процесса
+															info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
+															// Выполняем инициализацию объекта IP-адреса назначения процесса
+															info.addresses.dst = make_unique <net::addr_net_ipv4_t> ();
+															// Устанавливаем IP-адрес источника процесса
+															awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = awh_cast <net::addr_net_ipv4_t *> (i->second.addresses.src.get())->address;
+															// Устанавливаем IP-адрес назначения процесса
+															awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = awh_cast <net::addr_net_ipv4_t *> (i->second.addresses.dst.get())->address;
+														} break;
+														// Для семейства IPv6
+														case static_cast <uint8_t> (event::family_t::IPV6): {
+															// Выполняем инициализацию объекта IP-адреса источника процесса
+															info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
+															// Выполняем инициализацию объекта IP-адреса назначения процесса
+															info.addresses.dst = make_unique <net::addr_net_ipv6_t> ();
+															// Устанавливаем IP-адрес источника процесса
+															::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (i->second.addresses.src.get())->address[0], 16);
+															// Устанавливаем IP-адрес назначения процесса
+															::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (i->second.addresses.dst.get())->address[0], 16);
+														} break;
 													}
-													
-													this->_callback(pid, info_clone);
+													// Выполняем функцию обратного вызова
+													this->_callback(pid, info);
 												}
 											}
 										}
 									}
 								}
 							}
-							::closedir(fd_dir);
+							// Закрываем каталог
+							::closedir(dir);
 						}
 					}
 				}
-				::closedir(proc_dir);
+				// Закрываем каталог
+				::closedir(dir);
 			}
 		/**
 		 * Реализация под Sun Solaris
@@ -801,6 +899,178 @@ void awh::Process_Resolver::scanning() noexcept {
 						}
 					}
 				}
+			}
+		/**
+		 * Для операционной системы NetBSD или OpenBSD
+		 */
+		#elif __NetBSD__ || __OpenBSD__
+			if (this->_callback != nullptr) {
+				// В NetBSD и OpenBSD системные структуры для сокетов часто закрыты или требуют libkvm и прав root.
+				// Надежный способ из пространства пользователя — парсинг вывода штатных системных утилит (sockstat/fstat)
+				
+				/**
+				 * Для операционной системы NetBSD
+				 */
+				#if defined(__NetBSD__)
+					FILE* fp = ::popen("sockstat -n 2>/dev/null", "r");
+					if (fp) {
+						char line[1024];
+						if (::fgets(line, sizeof(line), fp)) {
+							while (::fgets(line, sizeof(line), fp)) {
+								std::istringstream iss(line);
+								std::string user, cmd, pid_str, fd_str, proto, local, foreign;
+								// FORMAT: USER COMMAND PID FD PROTO LOCAL FOREIGN
+								if (iss >> user >> cmd >> pid_str >> fd_str >> proto >> local) {
+									pid_t pid = ::atoi(pid_str.c_str());
+									info_t info = info_t();
+									iss >> foreign;
+									
+									if (proto == "tcp" || proto == "udp") {
+										info.protocol = (proto == "tcp") ? event::protocol_t::TCP : event::protocol_t::UDP;
+										
+										auto parse_addr = [&info](const std::string& addr_port, bool is_src) {
+											if (addr_port == "*.*" || addr_port.empty()) return;
+											auto pos = addr_port.find_last_of('.');
+											if (pos != std::string::npos && pos > 0) {
+												std::string ip = addr_port.substr(0, pos);
+												uint16_t port = static_cast<uint16_t>(::atoi(addr_port.substr(pos + 1).c_str()));
+												
+												if (is_src) info.ports.src = port;
+												else info.ports.dst = port;
+												
+												if (ip.find(':') != std::string::npos) {
+													info.family = event::family_t::IPV6;
+													auto a = std::make_unique<net::addr_net_ipv6_t>();
+													::inet_pton(AF_INET6, ip.c_str(), &a->address);
+													if (is_src) info.addresses.src = std::move(a);
+													else info.addresses.dst = std::move(a);
+												} else {
+													info.family = event::family_t::IPV4;
+													auto a = std::make_unique<net::addr_net_ipv4_t>();
+													::inet_pton(AF_INET, ip.c_str(), &a->address);
+													if (is_src) info.addresses.src = std::move(a);
+													else info.addresses.dst = std::move(a);
+												}
+											}
+										};
+										
+										parse_addr(local, true);
+										parse_addr(foreign, false);
+										if (info.family != event::family_t::NONE) {
+											this->_callback(pid, info);
+										}
+										
+									} else if (local == "local" || proto == "local") {
+										info.family = event::family_t::UDS;
+										info.protocol = event::protocol_t::NONE;
+										info.addresses.src = std::make_unique<net::addr_fs_t>();
+										
+										std::string path = foreign;
+										std::string rest;
+										std::getline(iss, rest);
+										if (!rest.empty()) path += rest;
+										
+										if (!path.empty()) {
+											awh_cast<net::addr_fs_t*>(info.addresses.src.get())->address = path;
+											this->_callback(pid, info);
+										}
+									}
+								}
+							}
+						}
+						::pclose(fp);
+					}
+				/**
+				 * Для операционной системы OpenBSD
+				 */
+				#elif defined(__OpenBSD__)
+					FILE* fp = ::popen("fstat -n 2>/dev/null", "r");
+					if (fp) {
+						char line[1024];
+						if (::fgets(line, sizeof(line), fp)) {
+							while (::fgets(line, sizeof(line), fp)) {
+								std::istringstream iss(line);
+								std::string user, cmd, pid_str, fd_str, mount, mode, proto, sz_dv, local, arrow, foreign;
+								
+								// FORMAT: USER CMD PID FD MOUNT INUM MODE SZ|DV R/W [LOCAL] [<-> FOREIGN]
+								if (iss >> user >> cmd >> pid_str >> fd_str >> mount) {
+									pid_t pid = ::atoi(pid_str.c_str());
+									info_t info = info_t();
+									
+									if (mount == "internet") {
+										iss >> mode >> proto >> sz_dv >> local;
+										
+										info.protocol = (proto == "tcp") ? event::protocol_t::TCP : 
+														(proto == "udp") ? event::protocol_t::UDP : event::protocol_t::NONE;
+										
+										if (iss >> arrow) {
+											if (arrow == "<->") iss >> foreign;
+											else foreign = arrow;
+										}
+										
+										auto parse_addr = [&info](const std::string& addr_port, bool is_src) {
+											if (addr_port == "*:*" || addr_port.empty() || addr_port.find("*:") == 0) return;
+											auto pos = addr_port.find_last_of(':'); 
+											if (pos != std::string::npos && pos > 0) {
+												std::string ip = addr_port.substr(0, pos);
+												uint16_t port = static_cast<uint16_t>(::atoi(addr_port.substr(pos + 1).c_str()));
+												
+												if (ip.front() == '[' && ip.back() == ']') ip = ip.substr(1, ip.size() - 2);
+												
+												if (is_src) info.ports.src = port;
+												else info.ports.dst = port;
+												
+												if (ip.find(':') != std::string::npos) {
+													info.family = event::family_t::IPV6;
+													auto a = std::make_unique<net::addr_net_ipv6_t>();
+													::inet_pton(AF_INET6, ip.c_str(), &a->address);
+													if (is_src) info.addresses.src = std::move(a);
+													else info.addresses.dst = std::move(a);
+												} else {
+													info.family = event::family_t::IPV4;
+													auto a = std::make_unique<net::addr_net_ipv4_t>();
+													::inet_pton(AF_INET, ip.c_str(), &a->address);
+													if (is_src) info.addresses.src = std::move(a);
+													else info.addresses.dst = std::move(a);
+												}
+											}
+										};
+										
+										parse_addr(local, true);
+										parse_addr(foreign, false);
+										if (info.family != event::family_t::NONE) {
+											this->_callback(pid, info);
+										}
+										
+									} else if (mount == "unix") {
+										iss >> mode >> sz_dv >> local;
+										std::string path;
+										std::vector<std::string> parts;
+										parts.push_back(local);
+										std::string part;
+										while (iss >> part) parts.push_back(part);
+										
+										for (auto it = parts.rbegin(); it != parts.rend(); ++it) {
+											if ((*it).find("0x") != 0 && *it != "dgram" && *it != "stream") {
+												path = *it;
+												break;
+											}
+										}
+										
+										if (!path.empty()) {
+											info.family = event::family_t::UDS;
+											info.protocol = event::protocol_t::NONE;
+											info.addresses.src = std::make_unique<net::addr_fs_t>();
+											awh_cast<net::addr_fs_t*>(info.addresses.src.get())->address = path;
+											this->_callback(pid, info);
+										}
+									}
+								}
+							}
+						}
+						::pclose(fp);
+					}
+				#endif
 			}
 		/**
 		 * Для операционной системы MS Windows
