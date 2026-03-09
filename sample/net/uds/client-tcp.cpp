@@ -49,7 +49,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
 	// Добавляем новое событие клиента TCP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM, event::protocol_t::TCP);
+	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::UDS, event::type_t::STREAM);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события

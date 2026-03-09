@@ -19,6 +19,7 @@
 #include <cstring>
 #include <iostream>
 #include <sys/types.h>
+#include <netinet/in.h>
 
 /**
  * Для операционной системы Linux
@@ -136,6 +137,283 @@ using namespace std;
 	};
 #endif
 
+/**
+ * @brief Метод запуска процесса сканирования активных процессов и получения информации о них
+ *
+ */
+void awh::Process_Resolver::scanning() noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Список идентификаторов процессов
+		pid_t pids[0x1000];
+		// Получаем список идентификаторов процессов
+		const int32_t count = ::proc_listpids(PROC_ALL_PIDS, 0, pids, sizeof(pid_t) * 0x1000);
+		// Если список идентификаторов процессов получен
+		if(count < 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+		// Если список идентификаторов процессов получен
+		} else if(count > 0) {
+			// Объект информации о процессе
+			info_t info;
+			// Идентификатор процесса
+			pid_t pid = 0;
+			// Общее и актуальное количество файловых дескрипторов процесса
+			int32_t fds = 0, actual = 0;
+			// Список файловых дескрипторов процесса
+			struct proc_fdinfo fdinfo[0x1000];
+			/**
+			 * Переходим по всему списку идентификаторов процессов
+			 */
+			for(int32_t i = 0; i < count; ++i){
+				// Получаем идентификатор процесса
+				pid = pids[i];
+				// Если идентификатор процесса не получен
+				if(pid == 0)
+					// Продолжем выполнение цикла
+					continue;
+				// Узнаём сколько файловых дескрипторов открыто у процесса
+				fds = ::proc_pidinfo(pid, PROC_PIDLISTFDS, 0, nullptr, 0);
+				// Если количество файловых дескрипторов не получено
+				if(fds <= 0)
+					// Продолжем выполнение цикла
+					continue;
+				// Получаем список актуальных файловых дескрипторов процесса
+				actual = ::proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fdinfo, fds * sizeof(struct proc_fdinfo));
+				// Если список актуальных файловых дескрипторов получен
+				if(actual > 0){
+					// Вычисляем количество файловых дескрипторов процесса
+					actual = (actual / sizeof(struct proc_fdinfo));
+					/**
+					 * Переходим по всему списку файловых дескрипторов процесса
+					 */
+					for(int32_t j = 0; j < actual; ++j){
+						// Если файловый дескриптор является сокетом
+						if(fdinfo[j].proc_fdtype == PROX_FDTYPE_SOCKET){
+							// Объект информации о сокете
+							struct socket_fdinfo si{0};
+							// Получаем информацию о сокете
+							if(::proc_pidfdinfo(pid, fdinfo[j].proc_fd, PROC_PIDFDSOCKETINFO, &si, sizeof(si)) > 0){
+								// Сбрасываем объект информации о процессе
+								info = info_t();
+								/**
+								 * Определяем протокол сокета
+								 */
+								switch(si.psi.soi_protocol){
+									// Если протокол сокета является IP-протоколом
+									case IPPROTO_IP:
+										// Устанавливаем семейство протокола сокета
+										info.family = event::family_t::IPV4;
+									break;
+									// Если протокол сокета является RAW-протоколом
+									case IPPROTO_RAW:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::RAW;
+									break;
+									// Если протокол сокета является TCP-протоколом
+									case IPPROTO_TCP:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::TCP;
+									break;
+									// Если протокол сокета является UDP-протоколом
+									case IPPROTO_UDP:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::UDP;
+									break;
+									// Если протокол сокета является ICMP-протоколом
+									case IPPROTO_ICMP:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::ICMP;
+									break;
+									// Если протокол сокета является IGMP-протоколом
+									case IPPROTO_IGMP:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::IGMP;
+									break;
+									// Если протокол сокета является SCTP-протоколом
+									case IPPROTO_SCTP:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::SCTP;
+									break;
+									// Если протокол сокета является IPv6-протоколом
+									case IPPROTO_IPV6:
+										// Устанавливаем семейство протокола сокета
+										info.family = event::family_t::IPV6;
+									break;
+									// Если протокол сокета является ICMPv6-протоколом
+									case IPPROTO_ICMPV6:
+										// Устанавливаем протокол сокета
+										info.protocol = event::protocol_t::ICMP;
+									break;
+									// Если протокол сокета не определён
+									default : info.protocol = event::protocol_t::NONE;
+								}
+								/**
+								 * Определяем тип сокета
+								 */
+								switch(si.psi.soi_kind){
+									// Если сокет является интернет-сокетом
+									case SOCKINFO_IN: {
+										// Если семейство протокола сокета не определено
+										if((si.psi.soi_proto.pri_in.insi_vflag == 0) &&
+										   (si.psi.soi_protocol != IPPROTO_IP) &&
+										   (si.psi.soi_protocol != IPPROTO_IPV6))
+											// Сбрасываем семейство протокола сокета
+											info.family = event::family_t::NONE;
+										// Если семейство протокола сокета определено
+										else {
+											// Если сокет является IPv4-сокетом
+											if(si.psi.soi_proto.pri_in.insi_vflag & INI_IPV4)
+												// Устанавливаем семейство протокола сокета
+												info.family = event::family_t::IPV4;
+											// Если сокет является IPv6-сокетом
+											if(si.psi.soi_proto.pri_in.insi_vflag & INI_IPV6)
+												// Устанавливаем семейство протокола сокета
+												info.family = event::family_t::IPV6;
+										}
+										// Устанавливаем исходный порт сокета
+										info.ports.src = ntohs(si.psi.soi_proto.pri_in.insi_lport);
+										// Устанавливаем целевой порт сокета
+										info.ports.dst = ntohs(si.psi.soi_proto.pri_in.insi_fport);
+										/**
+										 * Определяем семейстов IP-адресов сокета
+										 */
+										switch(static_cast <uint8_t> (info.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Выполняем инициализацию объекта IP-адреса источника процесса
+												info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
+												// Выполняем инициализацию объекта IP-адреса назначения процесса
+												info.addresses.dst = make_unique <net::addr_net_ipv4_t> ();
+												// Устанавливаем IP-адрес источника процесса
+												awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = si.psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4.s_addr;
+												// Устанавливаем IP-адрес назначения процесса
+												awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = si.psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4.s_addr;
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Выполняем инициализацию объекта IP-адреса источника процесса
+												info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
+												// Выполняем инициализацию объекта IP-адреса назначения процесса
+												info.addresses.dst = make_unique <net::addr_net_ipv6_t> ();
+												// Устанавливаем IP-адрес источника процесса
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], &si.psi.soi_proto.pri_in.insi_laddr.ina_6, 16);
+												// Устанавливаем IP-адрес назначения процесса
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], &si.psi.soi_proto.pri_in.insi_faddr.ina_6, 16);
+											} break;
+										}
+									} break;
+									// Если сокет является TCP-сокетом
+									case SOCKINFO_TCP: {
+										// Если семейство протокола сокета не определено
+										if((si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_vflag == 0) &&
+										   (si.psi.soi_protocol != IPPROTO_IP) &&
+										   (si.psi.soi_protocol != IPPROTO_IPV6))
+											// Сбрасываем семейство протокола сокета
+											info.family = event::family_t::NONE;
+										// Если семейство протокола сокета определено
+										else {
+											// Если сокет является IPv4-сокетом
+											if(si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_vflag & INI_IPV4)
+												// Устанавливаем семейство протокола сокета
+												info.family = event::family_t::IPV4;
+											// Если сокет является IPv6-сокетом
+											if(si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_vflag & INI_IPV6)
+												// Устанавливаем семейство протокола сокета
+												info.family = event::family_t::IPV6;
+										}
+										// Устанавливаем исходный порт сокета
+										info.ports.src = ntohs(si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_lport);
+										// Устанавливаем целевой порт сокета
+										info.ports.dst = ntohs(si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_fport);
+										/**
+										 * Определяем семейстов IP-адресов сокета
+										 */
+										switch(static_cast <uint8_t> (info.family)){
+											// Для семейства IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Выполняем инициализацию объекта IP-адреса источника процесса
+												info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
+												// Выполняем инициализацию объекта IP-адреса назначения процесса
+												info.addresses.dst = make_unique <net::addr_net_ipv4_t> ();
+												// Устанавливаем IP-адрес источника процесса
+												awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_laddr.ina_46.i46a_addr4.s_addr;
+												// Устанавливаем IP-адрес назначения процесса
+												awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_faddr.ina_46.i46a_addr4.s_addr;
+											} break;
+											// Для семейства IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Выполняем инициализацию объекта IP-адреса источника процесса
+												info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
+												// Выполняем инициализацию объекта IP-адреса назначения процесса
+												info.addresses.dst = make_unique <net::addr_net_ipv6_t> ();
+												// Устанавливаем IP-адрес источника процесса
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], &si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_laddr.ina_6, 16);
+												// Устанавливаем IP-адрес назначения процесса
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], &si.psi.soi_proto.pri_tcp.tcpsi_ini.insi_faddr.ina_6, 16);
+											} break;
+										}
+									} break;
+									// Если сокет является UNIX-сокетом
+									case SOCKINFO_UN: {
+										// Устанавливаем семейство протокола сокета
+										info.family = event::family_t::UDS;
+										// Устанавливаем исходный порт сокета
+										info.ports.src = ntohs(0);
+										// Устанавливаем целевой порт сокета
+										info.ports.dst = ntohs(0);
+										// Выполняем инициализацию объекта UNIX-адреса источника процесса
+										info.addresses.src = make_unique <net::addr_fs_t> ();
+										// Выполняем инициализацию объекта UNIX-адреса назначения процесса
+										info.addresses.dst = make_unique <net::addr_fs_t> ();
+										// Устанавливаем UNIX-адрес источника процесса
+										awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = si.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path;
+										// Устанавливаем UNIX-адрес назначения процесса
+										awh_cast <net::addr_fs_t *> (info.addresses.dst.get())->address = si.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path;
+									} break;
+								}
+								// Если функция обратного вызова установлена
+								if(this->_callback != nullptr)
+									// Выполняем функцию обратного вызова
+									this->_callback(pid, info);
+							}
+						}
+					}
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
 /**
  * @brief Метод получения названия приложения по идентификатору процесса
  *
@@ -324,3 +602,23 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Метод установки функции обратного вызова для получения информации о процессе
+ *
+ * @param callback функция обратного вызова
+ */
+void awh::Process_Resolver::on(function <void (const pid_t, const info_t &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback = ::move(callback);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ */
+awh::Process_Resolver::Process_Resolver(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Process_Resolver::~Process_Resolver() noexcept {}
