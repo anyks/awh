@@ -56,12 +56,12 @@ namespace awh {
 					 * @brief Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
 					 *
 					 */
-					using minfo_t = std::function <void (const event::id_t, const net::minfo_t &)>;
+					using minfo_t = std::function <void (const event::id_t, const net::sctp::minfo_t &)>;
 					/**
 					 * @brief Функция обратного вызова срабатывающая при получении событий SCTP
 					 *
 					 */
-					using events_t = std::function <void (const event::id_t, unique_ptr <net::event_t>)>;
+					using events_t = std::function <void (const event::id_t, unique_ptr <net::sctp::event_t>)>;
 				};
 			#endif
 			/**
