@@ -540,9 +540,9 @@ namespace io {
 		 */
 		typedef struct SCTP_Callback {
 			// Функция обратного вызова для получения информационных собщений SCTP-протокола
-			engine::sctp::callback::info_t info;
+			net::sctp::callback::info_t info;
 			// Функция обратного вызова для получения событий SCTP-протокола
-			engine::sctp::callback::events_t events;
+			net::sctp::callback::events_t events;
 			/**
 			 * @brief Конструктор
 			 *
@@ -26201,7 +26201,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::sctp::callback::info_t cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, net::sctp::callback::info_t cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
