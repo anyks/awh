@@ -227,7 +227,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				sctp.on(cid, static_cast <engine::sctp::callback::info_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
+				sctp.on(cid, static_cast <engine::callback::sctp::minfo_t> ([&log](const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					log.print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
