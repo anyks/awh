@@ -540,9 +540,9 @@ namespace io {
 		 */
 		typedef struct SCTP_Callback {
 			// Функция обратного вызова для получения информационных собщений SCTP-протокола
-			net::sctp::callback::info_t info;
+			engine::callback::sctp::minfo_t info;
 			// Функция обратного вызова для получения событий SCTP-протокола
-			net::sctp::callback::events_t events;
+			engine::callback::sctp::events_t events;
 			/**
 			 * @brief Конструктор
 			 *
