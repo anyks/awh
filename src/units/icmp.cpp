@@ -292,9 +292,9 @@ void awh::unit::ICMP::create(const event::family_t family) noexcept {
 			else this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 		#endif
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(this->_client.eid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+		this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(this->_client.eid, static_cast <event::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
+		this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
 		// Если опции события не установлены
 		if(!this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 			// Удаляем событие ICMP-клиента
@@ -554,7 +554,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от удаленного сервера
 					this->_io->setTimeout(tid, event::action_t::NONE, (i->second.delay > 0 ? i->second.delay : 5000));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+					this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
 					// Если не удалось установить таймер для ожидания ответа от удаленного сервера
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
@@ -1324,9 +1324,9 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 						else eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 					#endif
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(eid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+					this->_io->on(eid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие чтения данных
-					this->_io->on(eid, static_cast <event::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode, _2, _3)));
+					this->_io->on(eid, static_cast <engine::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode, _2, _3)));
 					// Если опции события не установлены
 					if(!this->_io->setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 						// Удаляем событие ICMP-клиента
@@ -1541,7 +1541,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от удаленного сервера
 						this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
 						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+						this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
 						// Если не удалось установить таймер для ожидания ответа от удаленного сервера
 						if(!this->_io->commit(tid)){
 							// Удаляем событие таймера
@@ -1577,7 +1577,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							// Запоминаем текущее значение времени в миллисекундах для фиксации начала запроса
 							ret.first->second.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 							// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от ICMP-клиента
-							this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&icmp_t::timeout, this, id, _1, _2)));
+							this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&icmp_t::timeout, this, id, _1, _2)));
 							// Запускаем таймер для ожидания ответа от ICMP-клиента
 							this->_io->launch(tid);
 						}

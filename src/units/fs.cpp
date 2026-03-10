@@ -123,17 +123,17 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 			// Выполняем создание события файловой системы для узла файла
 			result = this->_io->event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем функцию обратного вызова на событие записи сообщений
-			this->_io->on(result, static_cast <event::callback::write_t> (std::bind(&fs_t::write, this, _1, _2)));
+			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&fs_t::write, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие чтения сообщений
-			this->_io->on(result, static_cast <event::callback::read_t> (std::bind(&fs_t::read, this, _1, _2, _3)));
+			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&fs_t::read, this, _1, _2, _3)));
 		} break;
 	}
 	// Устанавливаем функцию обратного вызова на событие изменения статуса
-	this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
+	this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	this->_io->on(result, static_cast <event::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
+	this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на событие изменения состояния каталога
-	this->_io->on(result, static_cast <event::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
+	this->_io->on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
 	// Выводим результат
 	return result;
 }

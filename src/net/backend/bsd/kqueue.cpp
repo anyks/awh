@@ -540,9 +540,9 @@ namespace io {
 		 */
 		typedef struct SCTP_Callback {
 			// Функция обратного вызова для получения информационных собщений SCTP-протокола
-			net::sctp::callback::info_t info;
+			engine::sctp::callback::info_t info;
 			// Функция обратного вызова для получения событий SCTP-протокола
-			net::sctp::callback::events_t events;
+			engine::sctp::callback::events_t events;
 			/**
 			 * @brief Конструктор
 			 *
@@ -589,7 +589,8 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Endpoint() noexcept : size(0), client{0}, server{0} {}
+		explicit Endpoint() noexcept :
+		 size(0), client{0}, server{0} {}
 	} endpoint_t;
 
 	/**
@@ -771,12 +772,12 @@ namespace io {
 	 *
 	 */
 	typedef struct Callbacks {
-		// Обратный вызов при неудачной отправке данных
-		event::callback::spool_t spool;
-		// Обратный вызов при ошибке события
-		event::callback::error_t error;
-		// Обратный вызов при изменении статуса события
-		event::callback::status_t status;
+		// Функция обратного вызова при неудачной отправке данных
+		engine::callback::spool_t spool;
+		// Функция обратного вызова при ошибке события
+		engine::callback::error_t error;
+		// Функция обратного вызова при изменении статуса события
+		engine::callback::status_t status;
 		/**
 		 * @brief Конструктор
 		 *
@@ -795,14 +796,14 @@ namespace io {
 	 *
 	 */
 	typedef struct Filesystem_Callbacks : public callbacks_t {
-		// Обратный вызов при чтении события
-		event::callback::read_t read;
-		// Обратный вызов при записи события
-		event::callback::write_t write;
-		// Обратный вызов при получении общего события
-		event::callback::event_t event;
-		// Обратный вызов при изменении события
-		event::callback::vnode_t vnode;
+		// Функция обратного вызова при чтении события
+		engine::callback::read_t read;
+		// Функция обратного вызова при записи события
+		engine::callback::write_t write;
+		// Функция обратного вызова при получении общего события
+		engine::callback::event_t event;
+		// Функция обратного вызова при изменении события
+		engine::callback::vnode_t vnode;
 		/**
 		 * @brief Конструктор
 		 *
@@ -817,10 +818,10 @@ namespace io {
 	 *
 	 */
 	typedef struct Mediator_Callbacks : public callbacks_t {
-		// Обратный вызов при чтении события
-		event::callback::read_t read;
-		// Обратный вызов при получении общего события
-		event::callback::event_t event;
+		// Функция обратного вызова при чтении события
+		engine::callback::read_t read;
+		// Функция обратного вызова при получении общего события
+		engine::callback::event_t event;
 		/**
 		 * @brief Конструктор
 		 *
@@ -834,12 +835,12 @@ namespace io {
 	 *
 	 */
 	typedef struct Server_Callbacks : public callbacks_t {
-		// Обратный вызов при записи события
-		event::callback::write_t write;
-		// Обратный вызов при получении общего события
-		event::callback::event_t event;
-		// Обратный вызов при принятии события
-		event::callback::accept_t accept;
+		// Функция обратного вызова при записи события
+		engine::callback::write_t write;
+		// Функция обратного вызова при получении общего события
+		engine::callback::event_t event;
+		// Функция обратного вызова при принятии события
+		engine::callback::accept_t accept;
 		/**
 		 * @brief Конструктор
 		 *
@@ -853,13 +854,16 @@ namespace io {
 	 *
 	 */
 	typedef struct Tunnel_Callbacks : public callbacks_t {
-		// Обратный вызов при доступности очереди события
-		event::callback::available_t available;
+		// Функция обратного вызова при получении информации о туннеле
+		engine::callback::tuninfo_t tuninfo;
+		// Функция обратного вызова при доступности очереди события
+		engine::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Tunnel_Callbacks() noexcept : available(nullptr) {}
+		explicit Tunnel_Callbacks() noexcept :
+		 tuninfo(nullptr), available(nullptr) {}
 	} tunnel_callbacks_t;
 
 	/**
@@ -867,16 +871,16 @@ namespace io {
 	 *
 	 */
 	typedef struct Client_Callbacks : public callbacks_t {
-		// Обратный вызов при чтении события
-		event::callback::read_t read;
-		// Обратный вызов при записи события
-		event::callback::write_t write;
-		// Обратный вызов при получении общего события
-		event::callback::event_t event;
-		// Обратный вызов при подключении события
-		event::callback::connect_t connect;
-		// Обратный вызов при доступности очереди события
-		event::callback::available_t available;
+		// Функция обратного вызова при чтении события
+		engine::callback::read_t read;
+		// Функция обратного вызова при записи события
+		engine::callback::write_t write;
+		// Функция обратного вызова при получении общего события
+		engine::callback::event_t event;
+		// Функция обратного вызова при подключении события
+		engine::callback::connect_t connect;
+		// Функция обратного вызова при доступности очереди события
+		engine::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
@@ -891,14 +895,14 @@ namespace io {
 	 *
 	 */
 	typedef struct Peer_Callbacks : public callbacks_t {
-		// Обратный вызов при чтении события
-		event::callback::read_t read;
-		// Обратный вызов при записи события
-		event::callback::write_t write;
-		// Обратный вызов при получении общего события
-		event::callback::event_t event;
-		// Обратный вызов при доступности очереди события
-		event::callback::available_t available;
+		// Функция обратного вызова при чтении события
+		engine::callback::read_t read;
+		// Функция обратного вызова при записи события
+		engine::callback::write_t write;
+		// Функция обратного вызова при получении общего события
+		engine::callback::event_t event;
+		// Функция обратного вызова при доступности очереди события
+		engine::callback::available_t available;
 		/**
 		 * @brief Конструктор
 		 *
@@ -5567,7 +5571,7 @@ namespace io {
 							// Преобразуем к хостовому порядку
 							family = ntohl(family);
 						// Определяем версию по первым 4 битам
-						const uint8_t version = ((::__awh_buffer__[0] >> 4) & 0x0F);
+						const uint8_t version = ((::__awh_buffer__[0] & 0xF0) >> 4); // Маска 1111 0000
 						// Вычисляем размер полезной нагрузки IP-пакета
 						const size_t size = (bytes - static_cast <ssize_t> (sizeof(family)));
 						/**
@@ -5578,14 +5582,94 @@ namespace io {
 							case AF_INET: {
 								// Если данные соответствуют IPv4-пакету
 								if((version == 4) && (size >= 20) && (tunnel->state.family == event::family_t::IPV4)){
-									// Получаем адрес источника IPv4-пакета
-									const uint32_t source = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 12));
+									// Объект для хранения информации пакетах в тоннеле
+									net::tun_info_t info{};
+									// Устанавливаем семейство адресов
+									info.family = event::family_t::IPV4;
+									// Создаём объект для хранения информации о сетевом адресе назначения
+									info.target = make_unique <net::attr_net_t> ();
+									// Создаём объект для хранения информации о сетевом адресе источника
+									info.source = make_unique <net::attr_net_t> ();
+									/**
+									 * Определяем протокол по 10-му байту заголовка IPv4-пакета
+									 */
+									switch(::__awh_buffer__[9]){
+										// Если протокол является ICMP
+										case 1:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::ICMP;
+										break;
+										// Если протокол является IGMP
+										case 2:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::IGMP;
+										break;
+										// Если протокол является TCP
+										case 6:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::TCP;
+										break;
+										// Если протокол является UDP
+										case 17:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::UDP;
+										break;
+										// Если протокол является SCTP
+										case 132:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::SCTP;
+										break;
+										/**
+										 * Если протокол является не поддерживаемым
+										 * (6=TCP, 17=UDP, 1=ICMP, 47=GRE, 132=SCTP, 50=ESP (IPsec), 51=AH (IPsec), 89=OSPF)
+										 */
+										default:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::NONE;
+									}
+									// Устанавливаем количество хопов в IP-пакете
+									info.hops = static_cast <event::hops_t> (::__awh_buffer__[8]);
+									// Получаем объект для хранения информации о сетевом адресе назначения
+									net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+									// Получаем объект для хранения информации о сетевом адресе источника
+									net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+									// Выполняем инициализацию объекта IP-адреса назначения
+									target->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									source->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем IP-адрес назначения
+									awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 16));
+									// Устанавливаем IP-адрес источника
+									awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 12));
+									// Если размер данных больше размера заголовка IPv4-пакета
+									if(size > 20){
+										// Получаем значение IHL (Internet Header Length) из первых 4 битов первого байта заголовка IPv4-пакета, который указывает размер заголовка в 32-битных словах
+										const uint8_t ihl = (::__awh_buffer__[0] & 0x0F); // Маска 0000 1111
+										// ✅ Есть IP-опции, порты сдвинуты
+										if(ihl > 5){
+											/**
+											 * Вычисляем смещение для получения портов
+											 * IHL указывает количество 32-битных слов в заголовке, умножаем на 4 для получения количества байт
+											 */
+											const size_t offset = ihl * 4;
+											// Устанавливаем порт источника, учитывая смещение из-за наличия IP-опций
+											source->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset));
+											// Устанавливаем порт назначения, учитывая смещение из-за наличия IP-опций
+											target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 2));
+										// Если IP-опций нет, порты находятся в стандартных позициях
+										} else {
+											// Устанавливаем порт источника из стандартной позиции в заголовке IPv4-пакета
+											source->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + 20));
+											// Устанавливаем порт назначения из стандартной позиции в заголовке IPv4-пакета
+											target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + 22));
+										}
+									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(source == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+									if(awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Устанавливаем полученный IP-адрес назначения
-										::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 16));
+										::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 										// Формируем идентификатор источника
 										sid.from(::trust_cast <struct sockaddr_in> (tunnel->endpoint.client));
 										// Ищем сессию по идентификатору источника
@@ -5602,6 +5686,10 @@ namespace io {
 												if(mediator->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова с установленным флагом события
 													mediator->callbacks.event(mediator->id, event::action_t::READ);
+												// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+												if(tunnel->callbacks.tuninfo != nullptr)
+													// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+													tunnel->callbacks.tuninfo(tunnel->id, mediator->id, event::action_t::READ, info);
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
@@ -5617,7 +5705,7 @@ namespace io {
 											// Вызываем функцию обратного вызова об ошибке отказа
 											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 										// Устанавливаем полученный IP-адрес
-										const_cast <net_addr_t *> (addr)->v4(source, net_addr_t::endian_t::LITTLE);
+										const_cast <net_addr_t *> (addr)->source(source->ip.get(), net_addr_t::endian_t::LITTLE);
 										// Устанавливаем текст ошибки
 										const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 										// Если установлена функция обратного вызова
@@ -5675,14 +5763,116 @@ namespace io {
 							case AF_INET6: {
 								// Если данные соответствуют IPv6-пакету
 								if((version == 6) && (size >= 40) && (tunnel->state.family == event::family_t::IPV6)){
-									// Получаем адрес источника IPv6-пакета
-									const uint8_t * source = reinterpret_cast <uint8_t *> (::__awh_buffer__ + 8);
+									// Объект для хранения информации пакетах в тоннеле
+									net::tun_info_t info{};
+									// Устанавливаем семейство адресов
+									info.family = event::family_t::IPV6;
+									// Создаём объект для хранения информации о сетевом адресе назначения
+									info.target = make_unique <net::attr_net_t> ();
+									// Создаём объект для хранения информации о сетевом адресе источника
+									info.source = make_unique <net::attr_net_t> ();
+									/**
+									 * Определяем протокол по 10-му байту заголовка IPv6-пакета
+									 */
+									switch(::__awh_buffer__[6]){
+										// Если протокол является TCP
+										case 6:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::TCP;
+										break;
+										// Если протокол является UDP
+										case 17:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::UDP;
+										break;
+										// Если протокол является ICMP
+										case 58:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::ICMP;
+										break;
+										// Если протокол является SCTP
+										case 132:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::SCTP;
+										break;
+										/**
+										 * Если протокол является не поддерживаемым
+										 * (6=TCP, 17=UDP, 58=ICMPv6 + Extension Headers, 0=HOPOPT, 43=Routing, 44=Fragment, 50=ESP (IPsec), 51=AH (IPsec), 59=No Next Header, 60=Destination Options, 135=Mobility, 139=Host Identity Protocol, 140=Shim6 Protocol, 132=SCTP)
+										 */
+										default:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::NONE;
+									}
+									// Устанавливаем количество хопов в IP-пакете
+									info.hops = static_cast <event::hops_t> (::__awh_buffer__[7]);
+									// Получаем объект для хранения информации о сетевом адресе назначения
+									net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+									// Получаем объект для хранения информации о сетевом адресе источника
+									net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+									// Выполняем инициализацию объекта IP-адреса назначения
+									target->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									source->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем IP-адрес назначения
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], reinterpret_cast <uint8_t *> (::__awh_buffer__ + 24), 16);
+									// Устанавливаем IP-адрес источника
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], reinterpret_cast <uint8_t *> (::__awh_buffer__ + 8), 16);
+									// Если размер данных больше размера заголовка IPv6-пакета
+									if(size > 40){
+										// Смещение после основного IPv6-заголовка
+										uint16_t offset = 40;
+										// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
+										uint8_t next = ::__awh_buffer__[6];
+										/**
+										 * Парсим цепочку Extension Headers
+										 */
+										for(;;){
+											// Если следующий заголовок является транспортным протоколом (TCP, UDP, SCTP)
+											if((next == 6) || (next == 17) || (next == 132))
+												// ✅ Нашли транспортный протокол — порты на текущем offset
+												break;
+											// Если следующий заголовок является No Next Header или неподдерживаемым, то выходим, так как не сможем получить порты
+											if((next == 59) || (next == 50) || (next == 51))
+												// ❌ Нет следующего заголовка
+												return result;
+											// Если следующий заголовок является Fragment Header, то порты находятся в следующем заголовке после Fragment Header, который имеет фиксированный размер 8 байт
+											if(next == 44){
+												// Fragment Header — фиксированный размер 8 байт
+												offset += 8;
+												// Следующий заголовок берётся из предыдущего (до фрагмента)
+												break;
+											}
+											// Если следующий заголовок является Hop-by-Hop, Routing или Destination Options, то нужно учитывать их размер для получения портов
+											if((next == 0) || (next == 43) || (next == 60)){
+												// Hop-by-Hop, Routing, Destination Options
+												// Длина в байт 1, измеряется в 8-байтных блоках (без первого)
+												if((offset + 2) > size)
+													// Защита
+													break;
+												// Вычисляем смещение для получения портов, учитывая размер текущего Extension Header
+												const uint8_t length = ::__awh_buffer__[offset + 1];
+												// Следующий заголовок берётся из текущего Extension Header
+												next = ::__awh_buffer__[offset];
+												// Смещаемся на размер текущего Extension Header, который включает 2 байта заголовка и (length * 8) байт данных
+												offset += ((length + 1) * 8);
+											// Неизвестный заголовок — выходим, так как не сможем получить порты
+											} else break;
+										}
+										// Если смещение для получения портов выходит за размер данных, то выходим, так как не сможем получить порты
+										if(size < (offset + 4))
+											// Защита от некорректных данных
+											return result;
+										// Устанавливаем порт источника из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+										source->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 0));
+										// Устанавливаем порт назначения из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+										target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 2));
+									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(::memcmp(source, &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Устанавливаем полученный IP-адрес назначения
-										::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, reinterpret_cast <uint8_t *> (::__awh_buffer__ + 24), 16);
+										::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 										// Формируем идентификатор источника
 										sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
 										// Ищем сессию по идентификатору источника
@@ -5699,6 +5889,10 @@ namespace io {
 												if(mediator->callbacks.event != nullptr)
 													// Вызываем функцию обратного вызова с установленным флагом события
 													mediator->callbacks.event(mediator->id, event::action_t::READ);
+												// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+												if(tunnel->callbacks.tuninfo != nullptr)
+													// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+													tunnel->callbacks.tuninfo(tunnel->id, mediator->id, event::action_t::READ, info);
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
@@ -5713,12 +5907,8 @@ namespace io {
 										if(tunnel->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-										// Бинарный буфер IP-адреса
-										array <uint8_t, 16> buffer;
-										// Копируем полученный IP-адрес в буфер
-										::memcpy(&buffer[0], source, 16);
 										// Устанавливаем полученный IP-адрес
-										const_cast <net_addr_t *> (addr)->v6(buffer, net_addr_t::endian_t::LITTLE);
+										const_cast <net_addr_t *> (addr)->source(source->ip.get(), net_addr_t::endian_t::LITTLE);
 										// Устанавливаем текст ошибки
 										const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 										// Если установлена функция обратного вызова
@@ -5901,7 +6091,7 @@ namespace io {
 						// Преобразуем к хостовому порядку
 						family = ntohl(family);
 					// Определяем версию по первым 4 битам
-					const uint8_t version = ((::__awh_buffer__[0] >> 4) & 0x0F);
+					const uint8_t version = ((::__awh_buffer__[0] & 0xF0) >> 4); // Маска 1111 0000
 					// Вычисляем размер полезной нагрузки IP-пакета
 					const size_t size = (bytes - static_cast <ssize_t> (sizeof(family)));
 					/**
@@ -5912,14 +6102,94 @@ namespace io {
 						case AF_INET: {
 							// Если данные соответствуют IPv4-пакету
 							if((version == 4) && (size >= 20) && (tunnel->state.family == event::family_t::IPV4)){
-								// Получаем адрес источника IPv4-пакета
-								const uint32_t source = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 12));
+								// Объект для хранения информации пакетах в тоннеле
+								net::tun_info_t info{};
+								// Устанавливаем семейство адресов
+								info.family = event::family_t::IPV4;
+								// Создаём объект для хранения информации о сетевом адресе назначения
+								info.target = make_unique <net::attr_net_t> ();
+								// Создаём объект для хранения информации о сетевом адресе источника
+								info.source = make_unique <net::attr_net_t> ();
+								/**
+								 * Определяем протокол по 10-му байту заголовка IPv4-пакета
+								 */
+								switch(::__awh_buffer__[9]){
+									// Если протокол является ICMP
+									case 1:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::ICMP;
+									break;
+									// Если протокол является IGMP
+									case 2:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::IGMP;
+									break;
+									// Если протокол является TCP
+									case 6:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::TCP;
+									break;
+									// Если протокол является UDP
+									case 17:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::UDP;
+									break;
+									// Если протокол является SCTP
+									case 132:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::SCTP;
+									break;
+									/**
+									 * Если протокол является не поддерживаемым
+									 * (6=TCP, 17=UDP, 1=ICMP, 47=GRE, 132=SCTP, 50=ESP (IPsec), 51=AH (IPsec), 89=OSPF)
+									 */
+									default:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::NONE;
+								}
+								// Устанавливаем количество хопов в IP-пакете
+								info.hops = static_cast <event::hops_t> (::__awh_buffer__[8]);
+								// Получаем объект для хранения информации о сетевом адресе назначения
+								net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+								// Получаем объект для хранения информации о сетевом адресе источника
+								net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+								// Выполняем инициализацию объекта IP-адреса назначения
+								target->ip = make_unique <net::addr_net_ipv4_t> ();
+								// Выполняем инициализацию объекта IP-адреса источника
+								source->ip = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем IP-адрес назначения
+								awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 16));
+								// Устанавливаем IP-адрес источника
+								awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 12));
+								// Если размер данных больше размера заголовка IPv4-пакета
+								if(size > 20){
+									// Получаем значение IHL (Internet Header Length) из первых 4 битов первого байта заголовка IPv4-пакета, который указывает размер заголовка в 32-битных словах
+									const uint8_t ihl = (::__awh_buffer__[0] & 0x0F); // Маска 0000 1111
+									// ✅ Есть IP-опции, порты сдвинуты
+									if(ihl > 5){
+										/**
+										 * Вычисляем смещение для получения портов
+										 * IHL указывает количество 32-битных слов в заголовке, умножаем на 4 для получения количества байт
+										 */
+										const size_t offset = ihl * 4;
+										// Устанавливаем порт источника, учитывая смещение из-за наличия IP-опций
+										source->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset));
+										// Устанавливаем порт назначения, учитывая смещение из-за наличия IP-опций
+										target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 2));
+									// Если IP-опций нет, порты находятся в стандартных позициях
+									} else {
+										// Устанавливаем порт источника из стандартной позиции в заголовке IPv4-пакета
+										source->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + 20));
+										// Устанавливаем порт назначения из стандартной позиции в заголовке IPv4-пакета
+										target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + 22));
+									}
+								}
 								// Если адрес сервера совпадает с настройками туннеля
-								if(source == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+								if(awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Устанавливаем полученный IP-адрес назначения
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = (* reinterpret_cast <uint32_t *> (::__awh_buffer__ + 16));
+									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 									// Формируем идентификатор источника
 									sid.from(::trust_cast <struct sockaddr_in> (tunnel->endpoint.client));
 									// Ищем сессию по идентификатору источника
@@ -5936,6 +6206,10 @@ namespace io {
 											if(mediator->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова с установленным флагом события
 												mediator->callbacks.event(mediator->id, event::action_t::READ);
+											// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+											if(tunnel->callbacks.tuninfo != nullptr)
+												// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+												tunnel->callbacks.tuninfo(tunnel->id, mediator->id, event::action_t::READ, info);
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
@@ -5951,7 +6225,7 @@ namespace io {
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 									// Устанавливаем полученный IP-адрес
-									const_cast <net_addr_t *> (addr)->v4(source, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->source(source->ip.get(), net_addr_t::endian_t::LITTLE);
 									// Устанавливаем текст ошибки
 									const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 									// Если установлена функция обратного вызова
@@ -6009,14 +6283,116 @@ namespace io {
 						case AF_INET6: {
 							// Если данные соответствуют IPv6-пакету
 							if((version == 6) && (size >= 40) && (tunnel->state.family == event::family_t::IPV6)){
-								// Получаем адрес источника IPv6-пакета
-								const uint8_t * source = reinterpret_cast <uint8_t *> (::__awh_buffer__ + 8);
+								// Объект для хранения информации пакетах в тоннеле
+								net::tun_info_t info{};
+								// Устанавливаем семейство адресов
+								info.family = event::family_t::IPV6;
+								// Создаём объект для хранения информации о сетевом адресе назначения
+								info.target = make_unique <net::attr_net_t> ();
+								// Создаём объект для хранения информации о сетевом адресе источника
+								info.source = make_unique <net::attr_net_t> ();
+								/**
+								 * Определяем протокол по 10-му байту заголовка IPv6-пакета
+								 */
+								switch(::__awh_buffer__[6]){
+									// Если протокол является TCP
+									case 6:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::TCP;
+									break;
+									// Если протокол является UDP
+									case 17:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::UDP;
+									break;
+									// Если протокол является ICMP
+									case 58:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::ICMP;
+									break;
+									// Если протокол является SCTP
+									case 132:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::SCTP;
+									break;
+									/**
+									 * Если протокол является не поддерживаемым
+									 * (6=TCP, 17=UDP, 58=ICMPv6 + Extension Headers, 0=HOPOPT, 43=Routing, 44=Fragment, 50=ESP (IPsec), 51=AH (IPsec), 59=No Next Header, 60=Destination Options, 135=Mobility, 139=Host Identity Protocol, 140=Shim6 Protocol, 132=SCTP)
+									 */
+									default:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::NONE;
+								}
+								// Устанавливаем количество хопов в IP-пакете
+								info.hops = static_cast <event::hops_t> (::__awh_buffer__[7]);
+								// Получаем объект для хранения информации о сетевом адресе назначения
+								net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+								// Получаем объект для хранения информации о сетевом адресе источника
+								net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+								// Выполняем инициализацию объекта IP-адреса назначения
+								target->ip = make_unique <net::addr_net_ipv6_t> ();
+								// Выполняем инициализацию объекта IP-адреса источника
+								source->ip = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем IP-адрес назначения
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], reinterpret_cast <uint8_t *> (::__awh_buffer__ + 24), 16);
+								// Устанавливаем IP-адрес источника
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], reinterpret_cast <uint8_t *> (::__awh_buffer__ + 8), 16);
+								// Если размер данных больше размера заголовка IPv6-пакета
+								if(size > 40){
+									// Смещение после основного IPv6-заголовка
+									uint16_t offset = 40;
+									// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
+									uint8_t next = ::__awh_buffer__[6];
+									/**
+									 * Парсим цепочку Extension Headers
+									 */
+									for(;;){
+										// Если следующий заголовок является транспортным протоколом (TCP, UDP, SCTP)
+										if((next == 6) || (next == 17) || (next == 132))
+											// ✅ Нашли транспортный протокол — порты на текущем offset
+											break;
+										// Если следующий заголовок является No Next Header или неподдерживаемым, то выходим, так как не сможем получить порты
+										if((next == 59) || (next == 50) || (next == 51))
+											// ❌ Нет следующего заголовка
+											return result;
+										// Если следующий заголовок является Fragment Header, то порты находятся в следующем заголовке после Fragment Header, который имеет фиксированный размер 8 байт
+										if(next == 44){
+											// Fragment Header — фиксированный размер 8 байт
+											offset += 8;
+											// Следующий заголовок берётся из предыдущего (до фрагмента)
+											break;
+										}
+										// Если следующий заголовок является Hop-by-Hop, Routing или Destination Options, то нужно учитывать их размер для получения портов
+										if((next == 0) || (next == 43) || (next == 60)){
+											// Hop-by-Hop, Routing, Destination Options
+											// Длина в байт 1, измеряется в 8-байтных блоках (без первого)
+											if((offset + 2) > size)
+												// Защита
+												break;
+											// Вычисляем смещение для получения портов, учитывая размер текущего Extension Header
+											const uint8_t length = ::__awh_buffer__[offset + 1];
+											// Следующий заголовок берётся из текущего Extension Header
+											next = ::__awh_buffer__[offset];
+											// Смещаемся на размер текущего Extension Header, который включает 2 байта заголовка и (length * 8) байт данных
+											offset += ((length + 1) * 8);
+										// Неизвестный заголовок — выходим, так как не сможем получить порты
+										} else break;
+									}
+									// Если смещение для получения портов выходит за размер данных, то выходим, так как не сможем получить порты
+									if(size < (offset + 4))
+										// Защита от некорректных данных
+										return result;
+									// Устанавливаем порт источника из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+									source->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 0));
+									// Устанавливаем порт назначения из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+									target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 2));
+								}
 								// Если адрес сервера совпадает с настройками туннеля
-								if(::memcmp(source, &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+								if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Устанавливаем полученный IP-адрес назначения
-									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, reinterpret_cast <uint8_t *> (::__awh_buffer__ + 24), 16);
+									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 									// Формируем идентификатор источника
 									sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
 									// Ищем сессию по идентификатору источника
@@ -6033,6 +6409,10 @@ namespace io {
 											if(mediator->callbacks.event != nullptr)
 												// Вызываем функцию обратного вызова с установленным флагом события
 												mediator->callbacks.event(mediator->id, event::action_t::READ);
+											// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+											if(tunnel->callbacks.tuninfo != nullptr)
+												// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+												tunnel->callbacks.tuninfo(tunnel->id, mediator->id, event::action_t::READ, info);
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
@@ -6047,12 +6427,8 @@ namespace io {
 									if(tunnel->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
 										tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
-									// Бинарный буфер IP-адреса
-									array <uint8_t, 16> buffer;
-									// Копируем полученный IP-адрес в буфер
-									::memcpy(&buffer[0], source, 16);
 									// Устанавливаем полученный IP-адрес
-									const_cast <net_addr_t *> (addr)->v6(buffer, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->source(source->ip.get(), net_addr_t::endian_t::LITTLE);
 									// Устанавливаем текст ошибки
 									const string error = fmk->format("Attacker replaced the network interface's IP address with %s, bypassing verified tunnel settings", static_cast <string> (* const_cast <net_addr_t *> (addr)).c_str());
 									// Если установлена функция обратного вызова
@@ -13688,8 +14064,245 @@ namespace io {
 								// Выполняем удаление узла
 								::io::destroy(tunnel, eth, log);
 						}
-					// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-					} else result = static_cast <size_t> (bytes);
+					// Если данные отправлены успешно
+					} else {
+						// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+						result = static_cast <size_t> (bytes);
+						// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+						if(tunnel->callbacks.tuninfo != nullptr){
+							// Идентификатор объекта посредника
+							event::id_t mid = 0;
+							// Объект для хранения информации пакетах в тоннеле
+							net::tun_info_t info{};
+							// Устанавливаем семейство адресов
+							info.family = tunnel->state.family;
+							// Создаём объект для хранения информации о сетевом адресе назначения
+							info.target = make_unique <net::attr_net_t> ();
+							// Создаём объект для хранения информации о сетевом адресе источника
+							info.source = make_unique <net::attr_net_t> ();
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (info.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем протокол по 10-му байту заголовка IPv4-пакета
+									 */
+									switch(reinterpret_cast <const uint8_t *> (buffer)[9]){
+										// Если протокол является ICMP
+										case 1:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::ICMP;
+										break;
+										// Если протокол является IGMP
+										case 2:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::IGMP;
+										break;
+										// Если протокол является TCP
+										case 6:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::TCP;
+										break;
+										// Если протокол является UDP
+										case 17:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::UDP;
+										break;
+										// Если протокол является SCTP
+										case 132:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::SCTP;
+										break;
+										/**
+										 * Если протокол является не поддерживаемым
+										 * (6=TCP, 17=UDP, 1=ICMP, 47=GRE, 132=SCTP, 50=ESP (IPsec), 51=AH (IPsec), 89=OSPF)
+										 */
+										default:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::NONE;
+									}
+									// Устанавливаем количество хопов в IP-пакете
+									info.hops = static_cast <event::hops_t> (reinterpret_cast <const uint8_t *> (buffer)[8]);
+									// Получаем объект для хранения информации о сетевом адресе назначения
+									net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+									// Получаем объект для хранения информации о сетевом адресе источника
+									net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+									// Выполняем инициализацию объекта IP-адреса назначения
+									target->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									source->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем IP-адрес назначения
+									awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = (* reinterpret_cast <const uint32_t *> (reinterpret_cast <const uint8_t *> (buffer) + 16));
+									// Устанавливаем IP-адрес источника
+									awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address = (* reinterpret_cast <const uint32_t *> (reinterpret_cast <const uint8_t *> (buffer) + 12));
+									// Если размер данных больше размера заголовка IPv4-пакета
+									if(size > 20){
+										// Получаем значение IHL (Internet Header Length) из первых 4 битов первого байта заголовка IPv4-пакета, который указывает размер заголовка в 32-битных словах
+										const uint8_t ihl = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x0F); // Маска 0000 1111
+										// ✅ Есть IP-опции, порты сдвинуты
+										if(ihl > 5){
+											/**
+											 * Вычисляем смещение для получения портов
+											 * IHL указывает количество 32-битных слов в заголовке, умножаем на 4 для получения количества байт
+											 */
+											const size_t offset = ihl * 4;
+											// Устанавливаем порт источника, учитывая смещение из-за наличия IP-опций
+											source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset));
+											// Устанавливаем порт назначения, учитывая смещение из-за наличия IP-опций
+											target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer)+ offset + 2));
+										// Если IP-опций нет, порты находятся в стандартных позициях
+										} else {
+											// Устанавливаем порт источника из стандартной позиции в заголовке IPv4-пакета
+											source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + 20));
+											// Устанавливаем порт назначения из стандартной позиции в заголовке IPv4-пакета
+											target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + 22));
+										}
+									}
+									// Если адрес сервера совпадает с настройками туннеля
+									if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+										// Идентификатор сессии источника
+										origin_id_t sid;
+										// Создаём объект для получения идентификатора сессии источника по IP-адресу
+										struct sockaddr_in sin{0};
+										// Устанавливаем семейство адресов IPv4
+										sin.sin_family = AF_INET;
+										// Устанавливаем полученный IP-адрес источника
+										sin.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+										// Формируем идентификатор источника
+										sid.from(sin);
+										// Ищем сессию по идентификатору источника
+										auto i = ::__awh_origin_sessions__.find(sid);
+										// Если сессия найдена
+										if(i != ::__awh_origin_sessions__.end())
+											// Устанавливаем идентификатор объекта посредника, связанного с найденной сессией
+											mid = i->second->id;
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем протокол по 10-му байту заголовка IPv6-пакета
+									 */
+									switch(reinterpret_cast <const uint8_t *> (buffer)[6]){
+										// Если протокол является TCP
+										case 6:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::TCP;
+										break;
+										// Если протокол является UDP
+										case 17:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::UDP;
+										break;
+										// Если протокол является ICMP
+										case 58:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::ICMP;
+										break;
+										// Если протокол является SCTP
+										case 132:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::SCTP;
+										break;
+										/**
+										 * Если протокол является не поддерживаемым
+										 * (6=TCP, 17=UDP, 58=ICMPv6 + Extension Headers, 0=HOPOPT, 43=Routing, 44=Fragment, 50=ESP (IPsec), 51=AH (IPsec), 59=No Next Header, 60=Destination Options, 135=Mobility, 139=Host Identity Protocol, 140=Shim6 Protocol, 132=SCTP)
+										 */
+										default:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::NONE;
+									}
+									// Устанавливаем количество хопов в IP-пакете
+									info.hops = static_cast <event::hops_t> (reinterpret_cast <const uint8_t *> (buffer)[7]);
+									// Получаем объект для хранения информации о сетевом адресе назначения
+									net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+									// Получаем объект для хранения информации о сетевом адресе источника
+									net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+									// Выполняем инициализацию объекта IP-адреса назначения
+									target->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									source->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем IP-адрес назначения
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], reinterpret_cast <const uint8_t *> (reinterpret_cast <const uint8_t *> (buffer) + 24), 16);
+									// Устанавливаем IP-адрес источника
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], reinterpret_cast <const uint8_t *> (reinterpret_cast <const uint8_t *> (buffer) + 8), 16);
+									// Если размер данных больше размера заголовка IPv6-пакета
+									if(size > 40){
+										// Смещение после основного IPv6-заголовка
+										uint16_t offset = 40;
+										// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
+										uint8_t next = reinterpret_cast <const uint8_t *> (buffer)[6];
+										/**
+										 * Парсим цепочку Extension Headers
+										 */
+										for(;;){
+											// Если следующий заголовок является транспортным протоколом (TCP, UDP, SCTP)
+											if((next == 6) || (next == 17) || (next == 132))
+												// ✅ Нашли транспортный протокол — порты на текущем offset
+												break;
+											// Если следующий заголовок является No Next Header или неподдерживаемым, то выходим, так как не сможем получить порты
+											if((next == 59) || (next == 50) || (next == 51))
+												// ❌ Нет следующего заголовка
+												return result;
+											// Если следующий заголовок является Fragment Header, то порты находятся в следующем заголовке после Fragment Header, который имеет фиксированный размер 8 байт
+											if(next == 44){
+												// Fragment Header — фиксированный размер 8 байт
+												offset += 8;
+												// Следующий заголовок берётся из предыдущего (до фрагмента)
+												break;
+											}
+											// Если следующий заголовок является Hop-by-Hop, Routing или Destination Options, то нужно учитывать их размер для получения портов
+											if((next == 0) || (next == 43) || (next == 60)){
+												// Hop-by-Hop, Routing, Destination Options
+												// Длина в байт 1, измеряется в 8-байтных блоках (без первого)
+												if((offset + 2) > size)
+													// Защита
+													break;
+												// Вычисляем смещение для получения портов, учитывая размер текущего Extension Header
+												const uint8_t length = reinterpret_cast <const uint8_t *> (buffer)[offset + 1];
+												// Следующий заголовок берётся из текущего Extension Header
+												next = reinterpret_cast <const uint8_t *> (buffer)[offset];
+												// Смещаемся на размер текущего Extension Header, который включает 2 байта заголовка и (length * 8) байт данных
+												offset += ((length + 1) * 8);
+											// Неизвестный заголовок — выходим, так как не сможем получить порты
+											} else break;
+										}
+										// Если смещение для получения портов выходит за размер данных, то выходим, так как не сможем получить порты
+										if(size < (offset + 4))
+											// Защита от некорректных данных
+											return result;
+										// Устанавливаем порт источника из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+										source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 0));
+										// Устанавливаем порт назначения из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+										target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 2));
+									}
+									// Если адрес сервера совпадает с настройками туннеля
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+										// Идентификатор сессии источника
+										origin_id_t sid;
+										// Создаём объект для получения идентификатора сессии источника по IP-адресу
+										struct sockaddr_in6 sin{0};
+										// Устанавливаем семейство адресов IPv6
+										sin.sin6_family = AF_INET6;
+										// Устанавливаем полученный IP-адрес источника
+										::memcpy(&sin.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+										// Формируем идентификатор источника
+										sid.from(sin);
+										// Ищем сессию по идентификатору источника
+										auto i = ::__awh_origin_sessions__.find(sid);
+										// Если сессия найдена
+										if(i != ::__awh_origin_sessions__.end())
+											// Устанавливаем идентификатор объекта посредника, связанного с найденной сессией
+											mid = i->second->id;
+									}
+								} break;
+							}
+							// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+							tunnel->callbacks.tuninfo(tunnel->id, mid, event::action_t::WRITE, info);
+						}
+					}
 				// Если очередь передачи данных не пуста
 				} else {
 					// Копим данные для дальнейшей отправки
@@ -13775,8 +14388,245 @@ namespace io {
 								return result;
 							}
 						}
-					// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-					} else result = static_cast <size_t> (bytes);
+					// Если данные отправлены успешно
+					} else {
+						// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+						result = static_cast <size_t> (bytes);
+						// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+						if(tunnel->callbacks.tuninfo != nullptr){
+							// Идентификатор объекта посредника
+							event::id_t mid = 0;
+							// Объект для хранения информации пакетах в тоннеле
+							net::tun_info_t info{};
+							// Устанавливаем семейство адресов
+							info.family = tunnel->state.family;
+							// Создаём объект для хранения информации о сетевом адресе назначения
+							info.target = make_unique <net::attr_net_t> ();
+							// Создаём объект для хранения информации о сетевом адресе источника
+							info.source = make_unique <net::attr_net_t> ();
+							/**
+							 * Определяем семейство события
+							 */
+							switch(static_cast <uint8_t> (info.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем протокол по 10-му байту заголовка IPv4-пакета
+									 */
+									switch(reinterpret_cast <const uint8_t *> (buffer)[9]){
+										// Если протокол является ICMP
+										case 1:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::ICMP;
+										break;
+										// Если протокол является IGMP
+										case 2:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::IGMP;
+										break;
+										// Если протокол является TCP
+										case 6:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::TCP;
+										break;
+										// Если протокол является UDP
+										case 17:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::UDP;
+										break;
+										// Если протокол является SCTP
+										case 132:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::SCTP;
+										break;
+										/**
+										 * Если протокол является не поддерживаемым
+										 * (6=TCP, 17=UDP, 1=ICMP, 47=GRE, 132=SCTP, 50=ESP (IPsec), 51=AH (IPsec), 89=OSPF)
+										 */
+										default:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::NONE;
+									}
+									// Устанавливаем количество хопов в IP-пакете
+									info.hops = static_cast <event::hops_t> (reinterpret_cast <const uint8_t *> (buffer)[8]);
+									// Получаем объект для хранения информации о сетевом адресе назначения
+									net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+									// Получаем объект для хранения информации о сетевом адресе источника
+									net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+									// Выполняем инициализацию объекта IP-адреса назначения
+									target->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									source->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем IP-адрес назначения
+									awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = (* reinterpret_cast <const uint32_t *> (reinterpret_cast <const uint8_t *> (buffer) + 16));
+									// Устанавливаем IP-адрес источника
+									awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address = (* reinterpret_cast <const uint32_t *> (reinterpret_cast <const uint8_t *> (buffer) + 12));
+									// Если размер данных больше размера заголовка IPv4-пакета
+									if(size > 20){
+										// Получаем значение IHL (Internet Header Length) из первых 4 битов первого байта заголовка IPv4-пакета, который указывает размер заголовка в 32-битных словах
+										const uint8_t ihl = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x0F); // Маска 0000 1111
+										// ✅ Есть IP-опции, порты сдвинуты
+										if(ihl > 5){
+											/**
+											 * Вычисляем смещение для получения портов
+											 * IHL указывает количество 32-битных слов в заголовке, умножаем на 4 для получения количества байт
+											 */
+											const size_t offset = ihl * 4;
+											// Устанавливаем порт источника, учитывая смещение из-за наличия IP-опций
+											source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset));
+											// Устанавливаем порт назначения, учитывая смещение из-за наличия IP-опций
+											target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer)+ offset + 2));
+										// Если IP-опций нет, порты находятся в стандартных позициях
+										} else {
+											// Устанавливаем порт источника из стандартной позиции в заголовке IPv4-пакета
+											source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + 20));
+											// Устанавливаем порт назначения из стандартной позиции в заголовке IPv4-пакета
+											target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + 22));
+										}
+									}
+									// Если адрес сервера совпадает с настройками туннеля
+									if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+										// Идентификатор сессии источника
+										origin_id_t sid;
+										// Создаём объект для получения идентификатора сессии источника по IP-адресу
+										struct sockaddr_in sin{0};
+										// Устанавливаем семейство адресов IPv4
+										sin.sin_family = AF_INET;
+										// Устанавливаем полученный IP-адрес источника
+										sin.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+										// Формируем идентификатор источника
+										sid.from(sin);
+										// Ищем сессию по идентификатору источника
+										auto i = ::__awh_origin_sessions__.find(sid);
+										// Если сессия найдена
+										if(i != ::__awh_origin_sessions__.end())
+											// Устанавливаем идентификатор объекта посредника, связанного с найденной сессией
+											mid = i->second->id;
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									/**
+									 * Определяем протокол по 10-му байту заголовка IPv6-пакета
+									 */
+									switch(reinterpret_cast <const uint8_t *> (buffer)[6]){
+										// Если протокол является TCP
+										case 6:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::TCP;
+										break;
+										// Если протокол является UDP
+										case 17:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::UDP;
+										break;
+										// Если протокол является ICMP
+										case 58:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::ICMP;
+										break;
+										// Если протокол является SCTP
+										case 132:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::SCTP;
+										break;
+										/**
+										 * Если протокол является не поддерживаемым
+										 * (6=TCP, 17=UDP, 58=ICMPv6 + Extension Headers, 0=HOPOPT, 43=Routing, 44=Fragment, 50=ESP (IPsec), 51=AH (IPsec), 59=No Next Header, 60=Destination Options, 135=Mobility, 139=Host Identity Protocol, 140=Shim6 Protocol, 132=SCTP)
+										 */
+										default:
+											// Устанавливаем протокол передачи данных
+											info.protocol = event::protocol_t::NONE;
+									}
+									// Устанавливаем количество хопов в IP-пакете
+									info.hops = static_cast <event::hops_t> (reinterpret_cast <const uint8_t *> (buffer)[7]);
+									// Получаем объект для хранения информации о сетевом адресе назначения
+									net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+									// Получаем объект для хранения информации о сетевом адресе источника
+									net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+									// Выполняем инициализацию объекта IP-адреса назначения
+									target->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Выполняем инициализацию объекта IP-адреса источника
+									source->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем IP-адрес назначения
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], reinterpret_cast <const uint8_t *> (reinterpret_cast <const uint8_t *> (buffer) + 24), 16);
+									// Устанавливаем IP-адрес источника
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], reinterpret_cast <const uint8_t *> (reinterpret_cast <const uint8_t *> (buffer) + 8), 16);
+									// Если размер данных больше размера заголовка IPv6-пакета
+									if(size > 40){
+										// Смещение после основного IPv6-заголовка
+										uint16_t offset = 40;
+										// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
+										uint8_t next = reinterpret_cast <const uint8_t *> (buffer)[6];
+										/**
+										 * Парсим цепочку Extension Headers
+										 */
+										for(;;){
+											// Если следующий заголовок является транспортным протоколом (TCP, UDP, SCTP)
+											if((next == 6) || (next == 17) || (next == 132))
+												// ✅ Нашли транспортный протокол — порты на текущем offset
+												break;
+											// Если следующий заголовок является No Next Header или неподдерживаемым, то выходим, так как не сможем получить порты
+											if((next == 59) || (next == 50) || (next == 51))
+												// ❌ Нет следующего заголовка
+												return result;
+											// Если следующий заголовок является Fragment Header, то порты находятся в следующем заголовке после Fragment Header, который имеет фиксированный размер 8 байт
+											if(next == 44){
+												// Fragment Header — фиксированный размер 8 байт
+												offset += 8;
+												// Следующий заголовок берётся из предыдущего (до фрагмента)
+												break;
+											}
+											// Если следующий заголовок является Hop-by-Hop, Routing или Destination Options, то нужно учитывать их размер для получения портов
+											if((next == 0) || (next == 43) || (next == 60)){
+												// Hop-by-Hop, Routing, Destination Options
+												// Длина в байт 1, измеряется в 8-байтных блоках (без первого)
+												if((offset + 2) > size)
+													// Защита
+													break;
+												// Вычисляем смещение для получения портов, учитывая размер текущего Extension Header
+												const uint8_t length = reinterpret_cast <const uint8_t *> (buffer)[offset + 1];
+												// Следующий заголовок берётся из текущего Extension Header
+												next = reinterpret_cast <const uint8_t *> (buffer)[offset];
+												// Смещаемся на размер текущего Extension Header, который включает 2 байта заголовка и (length * 8) байт данных
+												offset += ((length + 1) * 8);
+											// Неизвестный заголовок — выходим, так как не сможем получить порты
+											} else break;
+										}
+										// Если смещение для получения портов выходит за размер данных, то выходим, так как не сможем получить порты
+										if(size < (offset + 4))
+											// Защита от некорректных данных
+											return result;
+										// Устанавливаем порт источника из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+										source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 0));
+										// Устанавливаем порт назначения из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+										target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 2));
+									}
+									// Если адрес сервера совпадает с настройками туннеля
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+										// Идентификатор сессии источника
+										origin_id_t sid;
+										// Создаём объект для получения идентификатора сессии источника по IP-адресу
+										struct sockaddr_in6 sin{0};
+										// Устанавливаем семейство адресов IPv6
+										sin.sin6_family = AF_INET6;
+										// Устанавливаем полученный IP-адрес источника
+										::memcpy(&sin.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+										// Формируем идентификатор источника
+										sid.from(sin);
+										// Ищем сессию по идентификатору источника
+										auto i = ::__awh_origin_sessions__.find(sid);
+										// Если сессия найдена
+										if(i != ::__awh_origin_sessions__.end())
+											// Устанавливаем идентификатор объекта посредника, связанного с найденной сессией
+											mid = i->second->id;
+									}
+								} break;
+							}
+							// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+							tunnel->callbacks.tuninfo(tunnel->id, mid, event::action_t::WRITE, info);
+						}
+					}
 					// Переводим сокет обратно в неблокирующий режим
 					eth->socket.switchOption(tunnel->fd, tunnel->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 				}
@@ -13846,8 +14696,245 @@ namespace io {
 							// Выполняем удаление узла
 							::io::destroy(tunnel, eth, log);
 					}
-				// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-				} else result = static_cast <size_t> (bytes);
+				// Если данные отправлены успешно
+				} else {
+					// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
+					result = static_cast <size_t> (bytes);
+					// Если функция обратного вызова для вывода информации о пакетах в тоннеле установлена
+					if(tunnel->callbacks.tuninfo != nullptr){
+						// Идентификатор объекта посредника
+						event::id_t mid = 0;
+						// Объект для хранения информации пакетах в тоннеле
+						net::tun_info_t info{};
+						// Устанавливаем семейство адресов
+						info.family = tunnel->state.family;
+						// Создаём объект для хранения информации о сетевом адресе назначения
+						info.target = make_unique <net::attr_net_t> ();
+						// Создаём объект для хранения информации о сетевом адресе источника
+						info.source = make_unique <net::attr_net_t> ();
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (info.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4): {
+								/**
+								 * Определяем протокол по 10-му байту заголовка IPv4-пакета
+								 */
+								switch(reinterpret_cast <const uint8_t *> (buffer)[9]){
+									// Если протокол является ICMP
+									case 1:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::ICMP;
+									break;
+									// Если протокол является IGMP
+									case 2:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::IGMP;
+									break;
+									// Если протокол является TCP
+									case 6:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::TCP;
+									break;
+									// Если протокол является UDP
+									case 17:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::UDP;
+									break;
+									// Если протокол является SCTP
+									case 132:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::SCTP;
+									break;
+									/**
+									 * Если протокол является не поддерживаемым
+									 * (6=TCP, 17=UDP, 1=ICMP, 47=GRE, 132=SCTP, 50=ESP (IPsec), 51=AH (IPsec), 89=OSPF)
+									 */
+									default:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::NONE;
+								}
+								// Устанавливаем количество хопов в IP-пакете
+								info.hops = static_cast <event::hops_t> (reinterpret_cast <const uint8_t *> (buffer)[8]);
+								// Получаем объект для хранения информации о сетевом адресе назначения
+								net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+								// Получаем объект для хранения информации о сетевом адресе источника
+								net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+								// Выполняем инициализацию объекта IP-адреса назначения
+								target->ip = make_unique <net::addr_net_ipv4_t> ();
+								// Выполняем инициализацию объекта IP-адреса источника
+								source->ip = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем IP-адрес назначения
+								awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = (* reinterpret_cast <const uint32_t *> (reinterpret_cast <const uint8_t *> (buffer) + 16));
+								// Устанавливаем IP-адрес источника
+								awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address = (* reinterpret_cast <const uint32_t *> (reinterpret_cast <const uint8_t *> (buffer) + 12));
+								// Если размер данных больше размера заголовка IPv4-пакета
+								if(size > 20){
+									// Получаем значение IHL (Internet Header Length) из первых 4 битов первого байта заголовка IPv4-пакета, который указывает размер заголовка в 32-битных словах
+									const uint8_t ihl = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x0F); // Маска 0000 1111
+									// ✅ Есть IP-опции, порты сдвинуты
+									if(ihl > 5){
+										/**
+										 * Вычисляем смещение для получения портов
+										 * IHL указывает количество 32-битных слов в заголовке, умножаем на 4 для получения количества байт
+										 */
+										const size_t offset = ihl * 4;
+										// Устанавливаем порт источника, учитывая смещение из-за наличия IP-опций
+										source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset));
+										// Устанавливаем порт назначения, учитывая смещение из-за наличия IP-опций
+										target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer)+ offset + 2));
+									// Если IP-опций нет, порты находятся в стандартных позициях
+									} else {
+										// Устанавливаем порт источника из стандартной позиции в заголовке IPv4-пакета
+										source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + 20));
+										// Устанавливаем порт назначения из стандартной позиции в заголовке IPv4-пакета
+										target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + 22));
+									}
+								}
+								// Если адрес сервера совпадает с настройками туннеля
+								if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+									// Идентификатор сессии источника
+									origin_id_t sid;
+									// Создаём объект для получения идентификатора сессии источника по IP-адресу
+									struct sockaddr_in sin{0};
+									// Устанавливаем семейство адресов IPv4
+									sin.sin_family = AF_INET;
+									// Устанавливаем полученный IP-адрес источника
+									sin.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+									// Формируем идентификатор источника
+									sid.from(sin);
+									// Ищем сессию по идентификатору источника
+									auto i = ::__awh_origin_sessions__.find(sid);
+									// Если сессия найдена
+									if(i != ::__awh_origin_sessions__.end())
+										// Устанавливаем идентификатор объекта посредника, связанного с найденной сессией
+										mid = i->second->id;
+								}
+							} break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6): {
+								/**
+								 * Определяем протокол по 10-му байту заголовка IPv6-пакета
+								 */
+								switch(reinterpret_cast <const uint8_t *> (buffer)[6]){
+									// Если протокол является TCP
+									case 6:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::TCP;
+									break;
+									// Если протокол является UDP
+									case 17:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::UDP;
+									break;
+									// Если протокол является ICMP
+									case 58:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::ICMP;
+									break;
+									// Если протокол является SCTP
+									case 132:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::SCTP;
+									break;
+									/**
+									 * Если протокол является не поддерживаемым
+									 * (6=TCP, 17=UDP, 58=ICMPv6 + Extension Headers, 0=HOPOPT, 43=Routing, 44=Fragment, 50=ESP (IPsec), 51=AH (IPsec), 59=No Next Header, 60=Destination Options, 135=Mobility, 139=Host Identity Protocol, 140=Shim6 Protocol, 132=SCTP)
+									 */
+									default:
+										// Устанавливаем протокол передачи данных
+										info.protocol = event::protocol_t::NONE;
+								}
+								// Устанавливаем количество хопов в IP-пакете
+								info.hops = static_cast <event::hops_t> (reinterpret_cast <const uint8_t *> (buffer)[7]);
+								// Получаем объект для хранения информации о сетевом адресе назначения
+								net::attr_net_t * target = awh_cast <net::attr_net_t *> (info.target.get());
+								// Получаем объект для хранения информации о сетевом адресе источника
+								net::attr_net_t * source = awh_cast <net::attr_net_t *> (info.source.get());
+								// Выполняем инициализацию объекта IP-адреса назначения
+								target->ip = make_unique <net::addr_net_ipv6_t> ();
+								// Выполняем инициализацию объекта IP-адреса источника
+								source->ip = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем IP-адрес назначения
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], reinterpret_cast <const uint8_t *> (reinterpret_cast <const uint8_t *> (buffer) + 24), 16);
+								// Устанавливаем IP-адрес источника
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], reinterpret_cast <const uint8_t *> (reinterpret_cast <const uint8_t *> (buffer) + 8), 16);
+								// Если размер данных больше размера заголовка IPv6-пакета
+								if(size > 40){
+									// Смещение после основного IPv6-заголовка
+									uint16_t offset = 40;
+									// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
+									uint8_t next = reinterpret_cast <const uint8_t *> (buffer)[6];
+									/**
+									 * Парсим цепочку Extension Headers
+									 */
+									for(;;){
+										// Если следующий заголовок является транспортным протоколом (TCP, UDP, SCTP)
+										if((next == 6) || (next == 17) || (next == 132))
+											// ✅ Нашли транспортный протокол — порты на текущем offset
+											break;
+										// Если следующий заголовок является No Next Header или неподдерживаемым, то выходим, так как не сможем получить порты
+										if((next == 59) || (next == 50) || (next == 51))
+											// ❌ Нет следующего заголовка
+											return result;
+										// Если следующий заголовок является Fragment Header, то порты находятся в следующем заголовке после Fragment Header, который имеет фиксированный размер 8 байт
+										if(next == 44){
+											// Fragment Header — фиксированный размер 8 байт
+											offset += 8;
+											// Следующий заголовок берётся из предыдущего (до фрагмента)
+											break;
+										}
+										// Если следующий заголовок является Hop-by-Hop, Routing или Destination Options, то нужно учитывать их размер для получения портов
+										if((next == 0) || (next == 43) || (next == 60)){
+											// Hop-by-Hop, Routing, Destination Options
+											// Длина в байт 1, измеряется в 8-байтных блоках (без первого)
+											if((offset + 2) > size)
+												// Защита
+												break;
+											// Вычисляем смещение для получения портов, учитывая размер текущего Extension Header
+											const uint8_t length = reinterpret_cast <const uint8_t *> (buffer)[offset + 1];
+											// Следующий заголовок берётся из текущего Extension Header
+											next = reinterpret_cast <const uint8_t *> (buffer)[offset];
+											// Смещаемся на размер текущего Extension Header, который включает 2 байта заголовка и (length * 8) байт данных
+											offset += ((length + 1) * 8);
+										// Неизвестный заголовок — выходим, так как не сможем получить порты
+										} else break;
+									}
+									// Если смещение для получения портов выходит за размер данных, то выходим, так как не сможем получить порты
+									if(size < (offset + 4))
+										// Защита от некорректных данных
+										return result;
+									// Устанавливаем порт источника из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+									source->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 0));
+									// Устанавливаем порт назначения из заголовка TCP/UDP/SCTP, который следует после всех Extension Headers
+									target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 2));
+								}
+								// Если адрес сервера совпадает с настройками туннеля
+								if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+									// Идентификатор сессии источника
+									origin_id_t sid;
+									// Создаём объект для получения идентификатора сессии источника по IP-адресу
+									struct sockaddr_in6 sin{0};
+									// Устанавливаем семейство адресов IPv6
+									sin.sin6_family = AF_INET6;
+									// Устанавливаем полученный IP-адрес источника
+									::memcpy(&sin.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+									// Формируем идентификатор источника
+									sid.from(sin);
+									// Ищем сессию по идентификатору источника
+									auto i = ::__awh_origin_sessions__.find(sid);
+									// Если сессия найдена
+									if(i != ::__awh_origin_sessions__.end())
+										// Устанавливаем идентификатор объекта посредника, связанного с найденной сессией
+										mid = i->second->id;
+								}
+							} break;
+						}
+						// Вызываем функцию обратного вызова для вывода информации о пакетах в тоннеле
+						tunnel->callbacks.tuninfo(tunnel->id, mid, event::action_t::WRITE, info);
+					}
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -25114,7 +26201,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, const net::sctp::callback::info_t & cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::sctp::callback::info_t cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -25187,7 +26274,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, const net::sctp::callback::events_t & cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::sctp::callback::events_t cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -33720,7 +34807,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -33892,7 +34979,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -34078,7 +35165,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -34193,7 +35280,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -37421,7 +38508,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -37605,7 +38692,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -37799,7 +38886,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -37918,7 +39005,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Функция обратного вызова ошибки события
 						 */
-						event::callback::error_t callback = nullptr;
+						engine::callback::error_t callback = nullptr;
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -53232,7 +54319,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::read_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53325,7 +54412,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::read_t & c
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53418,7 +54505,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::write_t & 
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::spool_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53506,7 +54593,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::spool_t & 
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::event_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53609,7 +54696,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::event_t & 
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::error_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53724,7 +54811,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::error_t & 
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::vnode_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53792,7 +54879,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::vnode_t & 
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::status_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53907,7 +54994,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::status_t &
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::accept_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -53970,7 +55057,7 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::accept_t &
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::connect_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -54028,12 +55115,75 @@ void awh::engine::IO::on(const event::id_t id, const event::callback::connect_t 
 	}
 }
 /**
+ * @brief Методы установки функции обратного вызова на получение информации о пакетах в туннеле
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL):
+					// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
+					awh_cast <::io::tun_t *> (i->second.get())->callbacks.tuninfo = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A tuninfo callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A tuninfo callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Методы установки функции обратного вызова на доступность очереди события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
  */
-void awh::engine::IO::on(const event::id_t id, const event::callback::available_t & cb) noexcept {
+void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

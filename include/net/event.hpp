@@ -168,7 +168,7 @@ namespace awh {
 			COMPANY   = 0x20, // Внутри организации
 			REGION    = 0x40, // Внутри региона
 			CONTINENT = 0x80, // Внутри континента
-			WORLD     = 0xff  // Глобально (максимум)
+			WORLD     = 0xFF  // Глобально (максимум)
 		};
 		/**
 		 * @brief Статусы событий
@@ -429,62 +429,6 @@ namespace awh {
 			 *
 			 */
 			static constexpr uint16_t MULTICAST_LOOPBACK = 0x2000;
-		};
-		/**
-		 * @brief пространство имён работы с обратными вызовами
-		 *
-		 */
-		namespace callback {
-			/**
-			 * @brief Функция обратного вызова срабатывающая при подключении события
-			 *
-			 */
-			using connect_t = std::function <void (const event::id_t, const bool)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при записи в событие
-			 *
-			 */
-			using write_t = std::function <void (const event::id_t, const size_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при принятии события
-			 *
-			 */
-			using accept_t = std::function <void (const event::id_t, const event::id_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при общем событии
-			 *
-			 */
-			using event_t = std::function <void (const event::id_t, const event::action_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при изменении статуса события
-			 *
-			 */
-			using status_t = std::function <void (const event::id_t, const event::status_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при чтении из события
-			 *
-			 */
-			using read_t = std::function <void (const event::id_t, const uint8_t *, const size_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при доступности очереди на отправку данных
-			 *
-			 */
-			using available_t = std::function <void (const event::id_t, const event::status_t, const size_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при ошибке события
-			 *
-			 */
-			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
-			/**
-			 * @brief Функция обратного вызова возвращающая неотправленные данные события
-			 *
-			 */
-			using spool_t = std::function <void (const event::id_t, const send_error_t, const uint8_t *, const size_t)>;
-			/**
-			 * @brief Функция обратного вызова срабатывающая при изменении каталога
-			 *
-			 */
-			using vnode_t = std::function <void (const event::id_t, const action_t, const vnode_t, const std::string &)>;
 		};
 	};
 };

@@ -459,9 +459,9 @@ void awh::unit::NTP::create(const event::family_t family) noexcept {
 		// Добавляем новое событие клиента UDP
 		this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(this->_client.eid, static_cast <event::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
+		this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(this->_client.eid, static_cast <event::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
+		this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
 		// Если опции события не установлены
 		if(!this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 			// Удаляем событие NTP-клиента
@@ -676,7 +676,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от NTP-сервера
 						this->_io->setTimeout(tid, event::action_t::NONE, (delay > 0 ? delay : 5000));
 						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
+						this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
 						// Если не удалось установить таймер для ожидания ответа от NTP-сервера
 						if(!this->_io->commit(tid)){
 							// Удаляем событие таймера
@@ -712,7 +712,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 							// Устанавливаем количество попыток получения ответа от NTP-сервера
 							ret.first->second.attempt = (attempt + 1);
 							// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от NTP-сервера
-							this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&ntp_t::timeout, this, _1, _2, &ret.first->second)));
+							this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&ntp_t::timeout, this, _1, _2, &ret.first->second)));
 							// Запускаем таймер для ожидания ответа от NTP-сервера
 							this->_io->launch(tid);
 						}
@@ -1889,7 +1889,7 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от NTP-сервера
 					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
+					this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
 					// Если не удалось установить таймер для ожидания ответа от NTP-сервера
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
@@ -1923,7 +1923,7 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 						// Устанавливаем версию протокола NTP для выполнения запроса
 						ret.first->second.version = version;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от NTP-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&ntp_t::timeout, this, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&ntp_t::timeout, this, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от NTP-сервера
 						this->_io->launch(tid);
 					}

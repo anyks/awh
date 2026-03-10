@@ -29,7 +29,7 @@
  * Наши модули
  */
 #include "addr.hpp"
-#include "event.hpp"
+#include "callback.hpp"
 #include "eth/eth.hpp"
 
 /**
@@ -622,70 +622,77 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::read_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::read_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на запись события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::write_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::write_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на возврат неотправленных данных события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::spool_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::spool_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на получение общего события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::event_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::event_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на ошибку события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::error_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::error_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на изменение события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::vnode_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::vnode_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на изменение статуса события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::status_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::status_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на принятие события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::accept_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::accept_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на подключение события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::connect_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::connect_t cb) noexcept = 0;
+			/**
+			 * @brief Методы установки функции обратного вызова на получение информации о пакетах в туннеле
+			 *
+			 * @param id идентификатор события
+			 * @param cb функция обратного вызова
+			 */
+			virtual void on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept = 0;
 			/**
 			 * @brief Методы установки функции обратного вызова на доступность очереди события
 			 *
 			 * @param id идентификатор события
 			 * @param cb функция обратного вызова
 			 */
-			virtual void on(const event::id_t id, const event::callback::available_t & cb) noexcept = 0;
+			virtual void on(const event::id_t id, engine::callback::available_t cb) noexcept = 0;
 		public:
 			/**
 			 * @brief Конструктор

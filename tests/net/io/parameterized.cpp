@@ -176,7 +176,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	// Устанавливаем адрес сервера назначения
 	ASSERT_TRUE(this->_io->setTarget(eid, this->_parameter.target));
 	// Устанавливаем функцию обратного вызова на запись в событие
-	this->_io->on(eid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+	this->_io->on(eid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 		// Выводим сообщение о переподключении события
 		this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 	}));
@@ -636,7 +636,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(mfds[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(mfds[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Выводим сообщение о переподключении события
 						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 					}));
@@ -870,7 +870,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(cfds[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(cfds[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Выводим сообщение о переподключении события
 						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 					}));
@@ -1130,7 +1130,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(events[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(events[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Выводим сообщение о переподключении события
 						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 					}));
@@ -1359,7 +1359,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Выводим сообщение о переподключении события
 						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 					}));

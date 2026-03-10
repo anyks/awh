@@ -101,15 +101,15 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 	// Выполняем фиксацию настроек события сервера
 	if(this->_io->commit(result)){
 		// Устанавливаем функцию обратного вызова на событие записи сообщений
-		this->_io->on(result, static_cast <event::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
+		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие чтения сообщений
-		this->_io->on(result, static_cast <event::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
+		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие изменения состояния
-		this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
+		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <event::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
+		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-		this->_io->on(result, static_cast <event::callback::available_t> (std::bind(&notifier_t::available, this, _1, _2, _3)));
+		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&notifier_t::available, this, _1, _2, _3)));
 		// Запускаем работу события уведомителя
 		if(!this->_io->launch(result)){
 			// Удаляем событие уведомителя

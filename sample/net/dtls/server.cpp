@@ -155,7 +155,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
-			io.on(eid, static_cast <event::callback::accept_t> ([cts, &tls, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
+			io.on(eid, static_cast <engine::callback::accept_t> ([cts, &tls, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
 				// Создаём идентификатор транспортного уровня DTLS
@@ -332,7 +332,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				io.on(cid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
+				io.on(cid, static_cast <engine::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о записи данных
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));

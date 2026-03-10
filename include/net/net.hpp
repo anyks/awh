@@ -281,6 +281,31 @@ namespace awh {
 			 path(make_unique <addr_fs_t> ()) {}
 		} attr_uds_t;
 		/**
+		 * @brief Структура информации о пакетах в тоннеле
+		 *
+		 */
+		typedef struct Tunnel_Info {
+			// Количество хопов
+			event::hops_t hops;
+			// Семейство адресов
+			event::family_t family;
+			// Протокол подключения
+			event::protocol_t protocol;
+			// Адрес назначения подключения
+			unique_ptr <attr_t> target;
+			// Адрес источника подключения
+			unique_ptr <attr_t> source;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Tunnel_Info() noexcept :
+			 hops(event::hops_t::WORLD),
+			 family(event::family_t::NONE),
+			 protocol(event::protocol_t::NONE),
+			 target(nullptr), source(nullptr) {}
+		} tun_info_t;
+		/**
 		 * @brief Структура сетевого интерфейса
 		 *
 		 */
@@ -813,22 +838,6 @@ namespace awh {
 					 */
 					virtual ~Event_Stream_Change() = default;
 				} event_stream_change_t;
-				/**
-				 * @brief пространство имён работы с обратными вызовами
-				 *
-				 */
-				namespace callback {
-					/**
-					 * @brief Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
-					 *
-					 */
-					using info_t = std::function <void (const event::id_t, const minfo_t &)>;
-					/**
-					 * @brief Функция обратного вызова срабатывающая при получении событий SCTP
-					 *
-					 */
-					using events_t = std::function <void (const event::id_t, unique_ptr <event_t>)>;
-				};
 			};
 			/**
 			 * @brief Создаём тип данных SCTP события

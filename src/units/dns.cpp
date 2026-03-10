@@ -1378,9 +1378,9 @@ void awh::unit::DNS::create(const event::family_t family) noexcept {
 		// Добавляем новое событие клиента UDP
 		this->_resolver.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(this->_resolver.eid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+		this->_io->on(this->_resolver.eid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(this->_resolver.eid, static_cast <event::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
+		this->_io->on(this->_resolver.eid, static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
 		// Если опции события не установлены
 		if(!this->_io->setOptions(this->_resolver.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 			// Удаляем событие DNS-резолвера
@@ -2620,7 +2620,7 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 			// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
 			this->_io->setTimeout(packet->eid, event::action_t::NONE, (packet->delay > 0 ? packet->delay : 5000));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(packet->eid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+			this->_io->on(packet->eid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 			// Если не удалось установить таймер для ожидания ответа от DNS-сервера
 			if(!this->_io->commit(packet->eid)){
 				// Удаляем событие таймера
@@ -2646,7 +2646,7 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 			// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 			} else {
 				// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-				this->_io->on(packet->eid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, packet)));
+				this->_io->on(packet->eid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, packet)));
 				// Запускаем таймер для ожидания ответа от DNS-сервера
 				this->_io->launch(packet->eid);
 			}
@@ -4541,9 +4541,9 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 			// Добавляем новое событие файла для мониторинга изменений в файле локальных хостов
 			::__awh_cache__.fid = this->_io->event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем функцию обратного вызова на чтение из события
-			this->_io->on(::__awh_cache__.fid, static_cast <event::callback::read_t> (std::bind(&dns_t::hosts, this, _1, _2, _3)));
+			this->_io->on(::__awh_cache__.fid, static_cast <engine::callback::read_t> (std::bind(&dns_t::hosts, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(::__awh_cache__.fid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+			this->_io->on(::__awh_cache__.fid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 			// Устанавливаем путь к отслеживаемому файлу
 			if(this->_io->setAddress(::__awh_cache__.fid, event::address_t::FS, filename)){
 				// Выполняем фиксацию настроек события сервера
@@ -4707,9 +4707,9 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 				// Устанавливаем таймаут таймера
 				this->_io->setTimeout(::__awh_cache__.tid, event::action_t::NONE, ::__awh_cache__.interval);
 				// Устанавливаем обработчик события таймера для сохранения дампа кэша
-				this->_io->on(::__awh_cache__.tid, static_cast <event::callback::status_t> (std::bind(&dns_t::dumping, this, _1, _2)));
+				this->_io->on(::__awh_cache__.tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::dumping, this, _1, _2)));
 				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(::__awh_cache__.tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+				this->_io->on(::__awh_cache__.tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 				// Если не удалось установить интервал сохранения дампа кэша, то удаляем событие интервала
 				if(!this->_io->commit(::__awh_cache__.tid) || !this->_io->launch(::__awh_cache__.tid)){
 					// Удаляем событие интервала
@@ -5926,7 +5926,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
 					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+					this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
@@ -5960,7 +5960,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 						// Устанавливаем тип записи для отслеживания передачи пакета
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 					}
@@ -6143,7 +6143,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
 					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+					this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
@@ -6179,7 +6179,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 						// Устанавливаем тип записи для отслеживания передачи пакета
 						ret.first->second.record = record_t::PTR;
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 					}
@@ -6271,7 +6271,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
 				this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
 				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+				this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
 				if(!this->_io->commit(tid)){
 					// Удаляем событие таймера
@@ -6307,7 +6307,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 					// Устанавливаем тип записи для отслеживания передачи пакета
 					ret.first->second.record = record;
 					// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-					this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
+					this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 					// Запускаем таймер для ожидания ответа от DNS-сервера
 					this->_io->launch(tid);
 				}
@@ -6450,7 +6450,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
 					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(tid, static_cast <event::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+					this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
 					if(!this->_io->commit(tid)){
 						// Удаляем событие таймера
@@ -6499,7 +6499,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							break;
 						}
 						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
+						this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
 						// Запускаем таймер для ожидания ответа от DNS-сервера
 						this->_io->launch(tid);
 					}
@@ -6605,7 +6605,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 		// Устанавливаем интервал таймера по умолчанию на 1 минуту для периодической очистки кэша
 		this->_io->setTimeout(tid, event::action_t::NONE, 60000);
 		// Устанавливаем обработчик события таймера для периодической очистки кэша
-		this->_io->on(tid, static_cast <event::callback::status_t> (std::bind(&dns_t::collector, this, _1, _2)));
+		this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::collector, this, _1, _2)));
 		// Если не удалось установить таймер для периодической очистки кэша
 		if(!this->_io->commit(tid) || !this->_io->launch(tid)){
 			// Удаляем событие таймера

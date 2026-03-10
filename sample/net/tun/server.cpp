@@ -316,7 +316,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на подключение нового клиента
-				io.on(eid, static_cast <event::callback::accept_t> ([tid, mid, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
+				io.on(eid, static_cast <engine::callback::accept_t> ([tid, mid, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 					// Объединяем с пиром
 					io.splice(mid, cid);
 					// Выводим сообщение о принятии события
@@ -395,7 +395,7 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					io.on(cid, static_cast <event::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
+					io.on(cid, static_cast <engine::callback::write_t> ([&log](const event::id_t eid, const size_t size) noexcept -> void {
 						// Выводим сообщение о записи данных
 						log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 					}));
@@ -666,6 +666,163 @@ int32_t main(int32_t argc, char * argv[]){
 							// Выводим сообщение об ошибке события
 							log.print("Объект события туннеля не найден: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
 						break;
+					}
+				});
+				// Устанавливаем функцию обратного вызова на получение информации пакетов в туннеле
+				io.on(tid, [&addr, &fmk, &log](const event::id_t tid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept -> void {
+					// Количество хопов до процесса
+					string hops = "";
+					// Семейство адресов процесса
+					string family = "";
+					// Протокол процесса
+					string protocol = "";
+					// Адрес источника процесса
+					string source = "";
+					// Адрес назначения процесса
+					string destination = "";
+					/**
+					 * Определяем семейстов адресов сокета
+					 */
+					switch(static_cast <uint8_t> (info.family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+							// Устанавливаем семейство адресов процесса
+							family = "IPv4";
+						break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+							// Устанавливаем семейство адресов процесса
+							family = "IPv6";
+						break;
+					}
+					/**
+					 * Определяем количество хопов до процесса
+					 */
+					switch(static_cast <uint8_t> (info.hops)){
+						case static_cast <uint8_t> (event::hops_t::LOOPBACK):
+							// Устанавливаем количество хопов до процесса
+							hops = "LOOPBACK";
+						break;
+						case static_cast <uint8_t> (event::hops_t::NETWORK):
+							// Устанавливаем количество хопов до процесса
+							hops = "NETWORK";
+						break;
+						case static_cast <uint8_t> (event::hops_t::COMPANY):
+							// Устанавливаем количество хопов до процесса
+							hops = "COMPANY";
+						break;
+						case static_cast <uint8_t> (event::hops_t::REGION):
+							// Устанавливаем количество хопов до процесса
+							hops = "REGION";
+						break;
+						case static_cast <uint8_t> (event::hops_t::CONTINENT):
+							// Устанавливаем количество хопов до процесса
+							hops = "CONTINENT";
+						break;
+						case static_cast <uint8_t> (event::hops_t::WORLD):
+							// Устанавливаем количество хопов до процесса
+							hops = "WORLD";
+						break;
+					}
+					/**
+					 * Определяем протокол сокета
+					 */
+					switch(static_cast <uint8_t> (info.protocol)){
+						// Если протокол сокета является TCP-протоколом
+						case static_cast <uint8_t> (event::protocol_t::TCP):
+							// Устанавливаем протокол сокета
+							protocol = "TCP";
+						break;
+						// Если протокол сокета является UDP-протоколом
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+							// Устанавливаем протокол сокета
+							protocol = "UDP";
+						break;
+						// Если протокол сокета является ICMP-протоколом
+						case static_cast <uint8_t> (event::protocol_t::ICMP):
+							// Устанавливаем протокол сокета
+							protocol = "ICMP";
+						break;
+						// Если протокол сокета является IGMP-протоколом
+						case static_cast <uint8_t> (event::protocol_t::IGMP):
+							// Устанавливаем протокол сокета
+							protocol = "IGMP";
+						break;
+						// Если протокол сокета является SCTP-протоколом
+						case static_cast <uint8_t> (event::protocol_t::SCTP):
+							// Устанавливаем протокол сокета
+							protocol = "SCTP";
+						break;
+						// Если протокол сокета не определён
+						default : protocol = "NONE";
+					}
+					// Получаем объект для хранения информации о сетевом адресе назначения
+					net::attr_net_t * targetAddress = awh_cast <net::attr_net_t *> (info.target.get());
+					// Получаем объект для хранения информации о сетевом адресе источника
+					net::attr_net_t * sourceAddress = awh_cast <net::attr_net_t *> (info.source.get());
+					// Если порты процесса определены
+					if((targetAddress->port > 0) && (sourceAddress->port > 0)){
+						// Устанавливаем адрес источника процесса
+						addr.source(sourceAddress->ip.get());
+						// Формируем адрес источника процесса с портом
+						source = fmk.format("%s:%u", static_cast <string> (addr).c_str(), sourceAddress->port);
+						// Устанавливаем адрес назначения процесса
+						addr.source(targetAddress->ip.get());
+						// Формируем адрес назначения процесса с портом
+						destination = fmk.format("%s:%u", static_cast <string> (addr).c_str(), targetAddress->port);
+					// Если только порт назначения процесса определён
+					} else if(targetAddress->port > 0) {
+						// Устанавливаем адрес назначения процесса
+						addr.source(targetAddress->ip.get());
+						// Формируем адрес назначения процесса с портом
+						destination = fmk.format("%s:%u", static_cast <string> (addr).c_str(), targetAddress->port);
+					// Если только порт источника процесса определён
+					} else if(sourceAddress->port > 0) {
+						// Устанавливаем адрес источника процесса
+						addr.source(sourceAddress->ip.get());
+						// Формируем адрес источника процесса с портом
+						source = fmk.format("%s:%u", static_cast <string> (addr).c_str(), sourceAddress->port);
+					}
+					// Если адрес источника процесса определён
+					if(!source.empty()){
+						// Если адрес источника процесса не определён а адрес назначения процесса определён
+						if(!destination.empty()){
+							// Выводим информацию о процессе
+							log.print("Package: (TID=%u, MID=%u), SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s, TTL=%s, ACTION=%s",
+								log_t::flag_t::INFO,
+								tid, mid,
+								source.c_str(),
+								destination.c_str(),
+								family.c_str(),
+								protocol.c_str(),
+								hops.c_str(),
+								(action == event::action_t::READ ? "READ" : "WRITE")
+							);
+						// Если адрес назначения процесса не определён
+						} else {
+							// Выводим информацию о процессе
+							log.print("Package: (TID=%u, MID=%u), SOURCE=%s, FAMILY=%s, PROTOCOL=%s, TTL=%s, ACTION=%s",
+								log_t::flag_t::INFO,
+								tid, mid,
+								source.c_str(),
+								family.c_str(),
+								protocol.c_str(),
+								hops.c_str(),
+								(action == event::action_t::READ ? "READ" : "WRITE")
+							);
+						}
+					// Если адрес источника процесса не определён а адрес назначения процесса определён
+					} else if(!destination.empty()) {
+						// Выводим информацию о процессе
+						log.print("Package: (TID=%u, MID=%u), DEST=%s, FAMILY=%s, PROTOCOL=%s, TTL=%s, ACTION=%s",
+							log_t::flag_t::INFO,
+							tid, mid,
+							destination.c_str(),
+							family.c_str(),
+							protocol.c_str(),
+							hops.c_str(),
+							(action == event::action_t::READ ? "READ" : "WRITE")
+						);
 					}
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события посредника

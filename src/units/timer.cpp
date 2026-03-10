@@ -103,7 +103,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 	// Выполняем фиксацию настроек события таймера
 	if(this->_io->commit(result)){
 		// Устанавливаем функцию обратного вызова на событие таймера
-		this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
+		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
 		// Запускаем работу события таймера
 		if(!this->_io->launch(result)){
 			// Удаляем событие таймера
@@ -162,7 +162,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 	// Выполняем фиксацию настроек события таймера
 	if(this->_io->commit(result)){
 		// Устанавливаем функцию обратного вызова на событие таймера
-		this->_io->on(result, static_cast <event::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
+		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
 		// Запускаем работу события таймера
 		if(!this->_io->launch(result)){
 			// Удаляем событие таймера

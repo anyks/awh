@@ -681,7 +681,7 @@ TEST_F(IoFixture, IoTCPTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Устананавливаем опции события
@@ -689,7 +689,7 @@ TEST_F(IoFixture, IoTCPTest){
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -936,7 +936,7 @@ TEST_F(IoFixture, IoTCPTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -1008,7 +1008,7 @@ TEST_F(IoFixture, IoTCPTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -1222,7 +1222,7 @@ TEST_F(IoFixture, IoUDPTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -1299,7 +1299,7 @@ TEST_F(IoFixture, IoUDPTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -1660,7 +1660,7 @@ TEST_F(IoFixture, IoUDPTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -1938,7 +1938,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -2015,7 +2015,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -2376,7 +2376,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -2448,7 +2448,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -2711,7 +2711,7 @@ TEST_F(IoFixture, IoUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(sid, static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, sid, cid, this->_io->getAddress(cid, awh::event::address_t::UDS).c_str());
 			// Устананавливаем опции события
@@ -2957,7 +2957,7 @@ TEST_F(IoFixture, IoUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -3029,7 +3029,7 @@ TEST_F(IoFixture, IoUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(cid, static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(cid, static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -3234,7 +3234,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(sid, static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::UDS).c_str());
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -3311,7 +3311,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -3668,7 +3668,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -3740,7 +3740,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(cid, static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(cid, static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -3950,7 +3950,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -4027,7 +4027,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -4413,7 +4413,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -4697,7 +4697,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -4774,7 +4774,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -5137,7 +5137,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -5209,7 +5209,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([fid, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([fid, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -5756,7 +5756,7 @@ TEST_F(IoFixture, IoFsTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(fid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(fid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -6012,7 +6012,7 @@ TEST_F(IoFixture, IoEventsTest){
 		}
 	});
 	// Устанавливаем функцию обратного вызова на запись в событие
-	this->_io->on(eid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+	this->_io->on(eid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 		// Выводим сообщение о переподключении события
 		this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 	}));
@@ -6289,7 +6289,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -6366,7 +6366,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -6528,7 +6528,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 			});
 		}));
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -7037,7 +7037,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
@@ -7114,7 +7114,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -7253,7 +7253,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 			});
 		}));
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[1], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -7814,7 +7814,7 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
@@ -7914,7 +7914,7 @@ TEST_F(IoFixture, IoTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -8274,7 +8274,7 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -8346,7 +8346,7 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -8652,7 +8652,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([cts1, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts1, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
@@ -8752,7 +8752,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -9112,7 +9112,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -9184,7 +9184,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -9473,7 +9473,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
@@ -9575,7 +9575,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
@@ -9933,7 +9933,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Выводим сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
@@ -10005,7 +10005,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Выводим сообщение о принятии события
 			this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -10282,7 +10282,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
@@ -10307,7 +10307,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -10384,7 +10384,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
-				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
 					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 				}));
@@ -10652,12 +10652,12 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -10818,7 +10818,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 				// Если подключение успешно
@@ -11093,7 +11093,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
@@ -11118,7 +11118,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -11195,7 +11195,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
-				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
 					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 				}));
@@ -11473,12 +11473,12 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -11639,7 +11639,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 				// Если подключение успешно
@@ -11935,7 +11935,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
@@ -11973,7 +11973,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -12050,7 +12050,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
-				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
 					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 				}));
@@ -12366,12 +12366,12 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -12542,7 +12542,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 				// Если подключение успешно
@@ -12836,7 +12836,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
@@ -12929,7 +12929,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -13036,7 +13036,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
-				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
 					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 				}));
@@ -13426,12 +13426,12 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -13592,7 +13592,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 				// Если подключение успешно
@@ -13884,7 +13884,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::event::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Выводим информацию о сообщении SCTP-сокета
@@ -13973,7 +13973,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -14080,7 +14080,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
-				this->_io->on(cid, static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+				this->_io->on(cid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 					// Выводим сообщение о переподключении события
 					this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 				}));
@@ -14460,12 +14460,12 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на запись в событие
-			this->_io->on(events[0], static_cast <awh::event::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
 				// Выводим сообщение о переподключении события
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::net::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -14626,7 +14626,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-			this->_io->on(events[0], static_cast <awh::event::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие подключения: ID=%u, результат: %s", awh::log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 				// Если подключение успешно
