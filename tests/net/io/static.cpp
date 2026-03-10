@@ -10307,7 +10307,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -10657,7 +10657,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -11118,7 +11118,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -11478,7 +11478,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -11973,7 +11973,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Выводим сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -12371,7 +12371,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -12929,7 +12929,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -13431,7 +13431,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -13973,7 +13973,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				this->_sctp->on(cid, static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+				this->_sctp->on(cid, static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 					// Выводим информацию о сообщении SCTP-сокета
 					this->_log->print(
 						"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
@@ -14465,7 +14465,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-			this->_sctp->on(events[0], static_cast <awh::engine::sctp::callback::info_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
+			this->_sctp->on(events[0], static_cast <awh::engine::callback::sctp::minfo_t> ([this](const awh::event::id_t eid, const awh::net::sctp::minfo_t & minfo) noexcept -> void {
 				// Выводим информацию о сообщении SCTP-сокета
 				this->_log->print(
 					"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",

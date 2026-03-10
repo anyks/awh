@@ -56,69 +56,69 @@ namespace awh {
 					 * @brief Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
 					 *
 					 */
-					using minfo_t = std::function <void (const event::id_t, const net::sctp::minfo_t &)>;
+					using minfo_t = function <void (const event::id_t, const net::sctp::minfo_t &)>;
 					/**
 					 * @brief Функция обратного вызова срабатывающая при получении событий SCTP
 					 *
 					 */
-					using events_t = std::function <void (const event::id_t, unique_ptr <net::sctp::event_t>)>;
+					using events_t = function <void (const event::id_t, unique_ptr <net::sctp::event_t>)>;
 				};
 			#endif
 			/**
 			 * @brief Функция обратного вызова срабатывающая при подключении события
 			 *
 			 */
-			using connect_t = std::function <void (const event::id_t, const bool)>;
+			using connect_t = function <void (const event::id_t, const bool)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при записи в событие
 			 *
 			 */
-			using write_t = std::function <void (const event::id_t, const size_t)>;
+			using write_t = function <void (const event::id_t, const size_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при принятии события
 			 *
 			 */
-			using accept_t = std::function <void (const event::id_t, const event::id_t)>;
+			using accept_t = function <void (const event::id_t, const event::id_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при общем событии
 			 *
 			 */
-			using event_t = std::function <void (const event::id_t, const event::action_t)>;
+			using event_t = function <void (const event::id_t, const event::action_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при изменении статуса события
 			 *
 			 */
-			using status_t = std::function <void (const event::id_t, const event::status_t)>;
+			using status_t = function <void (const event::id_t, const event::status_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при чтении из события
 			 *
 			 */
-			using read_t = std::function <void (const event::id_t, const uint8_t *, const size_t)>;
+			using read_t = function <void (const event::id_t, const uint8_t *, const size_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при доступности очереди на отправку данных
 			 *
 			 */
-			using available_t = std::function <void (const event::id_t, const event::status_t, const size_t)>;
+			using available_t = function <void (const event::id_t, const event::status_t, const size_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при ошибке события
 			 *
 			 */
-			using error_t = std::function <void (const event::id_t, const event::error_t, const std::string &)>;
+			using error_t = function <void (const event::id_t, const event::error_t, const string &)>;
 			/**
 			 * @brief Функция обратного вызова возвращающая неотправленные данные события
 			 *
 			 */
-			using spool_t = std::function <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)>;
+			using spool_t = function <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при изменении каталога
 			 *
 			 */
-			using vnode_t = std::function <void (const event::id_t, const event::action_t, const event::vnode_t, const std::string &)>;
+			using vnode_t = function <void (const event::id_t, const event::action_t, const event::vnode_t, const string &)>;
 			/**
 			 * @brief Функция обратного вызова срабатывающая при получении информации о пакетах в туннельном интерфейсе
 			 *
 			 */
-			using tuninfo_t = std::function <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)>;
+			using tuninfo_t = function <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)>;
 		};
 	};
 };
