@@ -22,12 +22,27 @@
  *
  */
 void ProcreFixture::SetUp(){
+	// Создаём объект фреймворка
+	this->_fmk = std::make_unique <awh::fmk_t> ();
+	// Создаём объект логов
+	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект для работы с процессами
-	this->_procre = std::make_unique <awh::procre_t> (nullptr);
+	this->_procre = std::make_unique <awh::procre_t> (this->_log.get());
+	// Создаём объект для работы с сетевыми адресами
+	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
 }
 
 /**
  * @brief Метод очистки тестового окружения
  *
  */
-void ProcreFixture::TearDown() {}
+void ProcreFixture::TearDown() {
+	// Сбрасываем объект для работы с процессами
+	this->_procre.reset();
+	// Сбрасываем объект для работы с сетевыми адресами
+	this->_addr.reset();
+	// Сбрасываем объект логов
+	this->_log.reset();
+	// Сбрасываем объект фреймворка
+	this->_fmk.reset();
+}

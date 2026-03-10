@@ -98,7 +98,7 @@ using namespace std;
 	 */
 	namespace procre {
 		/**
-		 * @brief Функция извлечения данных записи
+		 * @brief Функция извлечения данных из файла
 		 *
 		 * @param filename адрес файла для извлечения
 		 * @param log      объект для работы с логами
@@ -218,8 +218,13 @@ void awh::Process_Resolver::scanning() noexcept {
 							uint32_t target = 0;
 							// Буфер для хранения IP-адреса источника
 							uint32_t source = 0;
+							// Буферы для хранения портов (для предотвращения переполнения стека при sscanf %x)
+							uint32_t srcPort = 0, dstPort = 0;
 							// Извлекаем информацию о сокете из строки
-							if(::sscanf(buffer, "%*d: %x:%x %x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu", &source, &info.ports.src, &target, &info.ports.dst, &state, &inode) == 6){
+							if(::sscanf(buffer, "%*d: %x:%x %x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu", &source, &srcPort, &target, &dstPort, &state, &inode) == 6){
+								// Устанавливаем порты
+								info.ports.src = static_cast <uint16_t> (srcPort);
+								info.ports.dst = static_cast <uint16_t> (dstPort);
 								// Выполняем инициализацию объекта IP-адреса источника процесса
 								info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
 								// Выполняем инициализацию объекта IP-адреса назначения процесса
@@ -238,10 +243,15 @@ void awh::Process_Resolver::scanning() noexcept {
 							uint32_t target[4] = {0};
 							// Буфер для хранения IP-адреса источника
 							uint32_t source[4] = {0};
+							// Буферы для хранения портов (для предотвращения переполнения стека при sscanf %x)
+							uint32_t srcPort = 0, dstPort = 0;
 							// Извлекаем информацию о сокете из строки
 							if(::sscanf(buffer, "%*d: %8x%8x%8x%8x:%x %8x%8x%8x%8x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu",
-							   &source[0], &source[1], &source[2], &source[3], &info.ports.src,
-							   &target[0], &target[1], &target[2], &target[3], &info.ports.dst, &state, &inode) == 12){
+							   &source[0], &source[1], &source[2], &source[3], &srcPort,
+							   &target[0], &target[1], &target[2], &target[3], &dstPort, &state, &inode) == 12){
+								// Устанавливаем порты
+								info.ports.src = static_cast <uint16_t> (srcPort);
+								info.ports.dst = static_cast <uint16_t> (dstPort);
 								// Выполняем инициализацию объекта IP-адреса источника процесса
 								info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
 								// Выполняем инициализацию объекта IP-адреса назначения процесса
@@ -1167,7 +1177,7 @@ void awh::Process_Resolver::scanning() noexcept {
 													info.ports.src = port;
 												// Устанавливаем порт назначения
 												else info.ports.dst = port;
-												// Если IP-адрес пирадлежит к семейству IPv6
+												// Если IP-адрес принадлежит к семейству IPv6
 												if(ip.find(':') != std::string::npos){
 													// Устанавливаем семейство протокола сокета
 													info.family = event::family_t::IPV6;
@@ -1629,7 +1639,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		 * Для операционной системы FreeBSD
 		 */
 		#elif __FreeBSD__
-			// Выполняем получение данные процесса
+			// Выполняем получение данных процесса
 			struct kinfo_proc * proc = ::kinfo_getproc(pid);
 			// Если данные процесса получены
 			if(proc != nullptr){

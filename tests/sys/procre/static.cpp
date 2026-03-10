@@ -62,4 +62,158 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 	if(::geteuid() == 0)
 		// Проверяем что имя не пустое
 		ASSERT_FALSE(name.empty());
+
+	// Устанавливаем функцию обратного вызова для получения информации о процессе
+	this->_procre->on([this](const pid_t pid, const awh::procre_t::info_t & info){
+		// Семейство адресов процесса
+		std::string family = "";
+		// Протокол процесса
+		std::string protocol = "";
+		// Адрес источника процесса
+		std::string source = "";
+		// Адрес назначения процесса
+		std::string destination = "";
+		/**
+		 * Определяем семейстов адресов сокета
+		 */
+		switch(static_cast <uint8_t> (info.family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (awh::event::family_t::IPV4):
+				// Устанавливаем семейство адресов процесса
+				family = "IPv4";
+			break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (awh::event::family_t::IPV6):
+				// Устанавливаем семейство адресов процесса
+				family = "IPv6";
+			break;
+			// Для семейства UDS
+			case static_cast <uint8_t> (awh::event::family_t::UDS):
+				// Устанавливаем семейство адресов процесса
+				family = "UDS";
+			break;
+		}
+		/**
+		 * Определяем семейстов адресов сокета
+		 */
+		switch(static_cast <uint8_t> (info.family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (awh::event::family_t::IPV4): {
+				// Устанавливаем IP-адрес источника процесса
+				this->_addr->source(info.addresses.src.get());
+				// Извлекаем IP-адрес источника процесса
+				source = static_cast <std::string> (* this->_addr.get());
+				// Устанавливаем IP-адрес назначения процесса
+				this->_addr->source(info.addresses.dst.get());
+				// Извлекаем IP-адрес назначения процесса
+				destination = static_cast <std::string> (* this->_addr.get());
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (awh::event::family_t::IPV6): {
+				// Устанавливаем IP-адрес источника процесса
+				this->_addr->source(info.addresses.src.get());
+				// Извлекаем IP-адрес источника процесса
+				source = this->_fmk->format("[%s]", static_cast <std::string> (* this->_addr.get()).c_str());
+				// Устанавливаем IP-адрес назначения процесса
+				this->_addr->source(info.addresses.dst.get());
+				// Извлекаем IP-адрес назначения процесса
+				destination = this->_fmk->format("[%s]", static_cast <std::string> (* this->_addr.get()).c_str());
+			} break;
+			// Для семейства UDS
+			case static_cast <uint8_t> (awh::event::family_t::UDS): {
+				// Устанавливаем адрес источника процесса
+				source = awh_cast <awh::net::addr_fs_t *> (info.addresses.src.get())->address;
+				// Устанавливаем адрес назначения процесса
+				destination = awh_cast <awh::net::addr_fs_t *> (info.addresses.dst.get())->address;
+			} break;
+		}
+		/**
+		 * Определяем протокол сокета
+		 */
+		switch(static_cast <uint8_t> (info.protocol)){
+			// Если протокол сокета является RAW-протоколом
+			case static_cast <uint8_t> (awh::event::protocol_t::RAW):
+				// Устанавливаем протокол сокета
+				protocol = "RAW";
+			break;
+			// Если протокол сокета является TCP-протоколом
+			case static_cast <uint8_t> (awh::event::protocol_t::TCP):
+				// Устанавливаем протокол сокета
+				protocol = "TCP";
+			break;
+			// Если протокол сокета является UDP-протоколом
+			case static_cast <uint8_t> (awh::event::protocol_t::UDP):
+				// Устанавливаем протокол сокета
+				protocol = "UDP";
+			break;
+			// Если протокол сокета является ICMP-протоколом
+			case static_cast <uint8_t> (awh::event::protocol_t::ICMP):
+				// Устанавливаем протокол сокета
+				protocol = "ICMP";
+			break;
+			// Если протокол сокета является IGMP-протоколом
+			case static_cast <uint8_t> (awh::event::protocol_t::IGMP):
+				// Устанавливаем протокол сокета
+				protocol = "IGMP";
+			break;
+			// Если протокол сокета является SCTP-протоколом
+			case static_cast <uint8_t> (awh::event::protocol_t::SCTP):
+				// Устанавливаем протокол сокета
+				protocol = "SCTP";
+			break;
+			// Если протокол сокета не определён
+			default : protocol = "NONE";
+		}
+		// Если порты процесса определены
+		if((info.ports.dst > 0) && (info.ports.src > 0)){
+			// Формируем адрес источника процесса с портом
+			source = this->_fmk->format("%s:%u", source.c_str(), info.ports.src);
+			// Формируем адрес назначения процесса с портом
+			destination = this->_fmk->format("%s:%u", destination.c_str(), info.ports.dst);
+		// Если только порт назначения процесса определён
+		} else if(info.ports.dst > 0)
+			// Формируем адрес назначения процесса с портом
+			destination = this->_fmk->format("%s:%u", destination.c_str(), info.ports.dst);
+		// Если только порт источника процесса определён
+		else if(info.ports.src > 0)
+			// Формируем адрес источника процесса с портом
+			source = this->_fmk->format("%s:%u", source.c_str(), info.ports.src);
+		// Если адрес источника процесса определён
+		if(!source.empty()){
+			// Если адрес источника процесса не определён а адрес назначения процесса определён
+			if(!destination.empty()){
+				// Выводим информацию о процессе
+				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
+					awh::log_t::flag_t::INFO,
+					this->_procre->name(pid).c_str(),
+					source.c_str(),
+					destination.c_str(),
+					family.c_str(),
+					protocol.c_str()
+				);
+			// Если адрес назначения процесса не определён
+			} else {
+				// Выводим информацию о процессе
+				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
+					awh::log_t::flag_t::INFO,
+					this->_procre->name(pid).c_str(),
+					source.c_str(),
+					family.c_str(),
+					protocol.c_str()
+				);
+			}
+		// Если адрес источника процесса не определён а адрес назначения процесса определён
+		} else if(!destination.empty()) {
+			// Выводим информацию о процессе
+			this->_log->print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
+				awh::log_t::flag_t::INFO,
+				this->_procre->name(pid).c_str(),
+				destination.c_str(),
+				family.c_str(),
+				protocol.c_str()
+			);
+		}
+	});
+	// Запускаем процесс сканирования активных процессов и получения информации о них
+	this->_procre->scanning();
 }
