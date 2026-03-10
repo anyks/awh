@@ -180,8 +180,12 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			source = this->_fmk->format("%s:%u", source.c_str(), info.ports.src);
 		// Если адрес источника процесса определён
 		if(!source.empty()){
+			// Проверяем что адрес источника процесса не пустой
+			ASSERT_FALSE(source.empty());
 			// Если адрес источника процесса не определён а адрес назначения процесса определён
 			if(!destination.empty()){
+				// Проверяем что адрес назначения процесса не пустой
+				ASSERT_FALSE(destination.empty());
 				// Выводим информацию о процессе
 				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
 					awh::log_t::flag_t::INFO,
@@ -204,6 +208,8 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			}
 		// Если адрес источника процесса не определён а адрес назначения процесса определён
 		} else if(!destination.empty()) {
+			// Проверяем что адрес назначения процесса не пустой
+			ASSERT_FALSE(destination.empty());
 			// Выводим информацию о процессе
 			this->_log->print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
 				awh::log_t::flag_t::INFO,
