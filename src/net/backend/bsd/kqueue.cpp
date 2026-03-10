@@ -26201,7 +26201,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, net::sctp::callback::info_t cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::callback::sctp::minfo_t cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26274,7 +26274,7 @@ namespace sctp {
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
 	 */
-	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::sctp::callback::events_t cb) noexcept {
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::callback::sctp::events_t cb) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */

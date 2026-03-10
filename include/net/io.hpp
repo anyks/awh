@@ -170,14 +170,14 @@ namespace awh {
 					 * @param id идентификатор события
 					 * @param cb функция обратного вызова
 					 */
-					void on(const event::id_t id, net::sctp::callback::info_t cb) noexcept;
+					void on(const event::id_t id, engine::callback::sctp::minfo_t cb) noexcept;
 					/**
 					 * @brief Методы установки функции обратного вызова на получение SCTP событий
 					 *
 					 * @param id идентификатор события
 					 * @param cb функция обратного вызова
 					 */
-					void on(const event::id_t id, net::sctp::callback::events_t cb) noexcept;
+					void on(const event::id_t id, engine::callback::sctp::events_t cb) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
