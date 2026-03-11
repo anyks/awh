@@ -197,6 +197,9 @@ namespace awh {
 			// Адрес файла для сохранения логов
 			string _filename;
 		private:
+			// Счётчик для сброса накопленных логов
+			mutable atomic_uint8_t _counter;
+		private:
 			// Список доступных флагов
 			std::unordered_set <mode_t> _mode;
 		private:

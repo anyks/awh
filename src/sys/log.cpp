@@ -305,12 +305,12 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 					// Если размер текста соответствует размеру лога
 					if(payload.text.length() >= this->_sepSize)
 						// Выводим обозначение начала вывода лога
-						std::cout << "*************** START ***************" << std::endl << std::endl << std::flush;
+						cout << "*************** START ***************" << endl << endl;
 				} break;
 				// Если разделитель нужно отобразить всегда
 				case static_cast <uint8_t> (separator_t::ALWAYS):
 					// Выводим обозначение начала вывода лога
-					std::cout << "*************** START ***************" << std::endl << std::endl << std::flush;
+					cout << "*************** START ***************" << endl << endl;
 				break;
 			}
 		}
@@ -321,22 +321,22 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 			// Выводим сообщение так-как оно есть
 			case static_cast <uint8_t> (flag_t::NONE):
 				// Формируем текстовый вид лога
-				std::cout << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << std::flush;
+				cout << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
 			// Выводим информационное сообщение
 			case static_cast <uint8_t> (flag_t::INFO):
 				// Формируем текстовый вид лога
-				std::cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << std::flush;
+				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
 			// Выводим сообщение об ошибке
 			case static_cast <uint8_t> (flag_t::CRITICAL):
 				// Формируем текстовый вид лога
-				std::cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << std::flush;
+				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
 			// Выводим сообщение предупреждения
 			case static_cast <uint8_t> (flag_t::WARNING):
 				// Формируем текстовый вид лога
-				std::cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << std::flush;
+				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
 		}
 		// Если тип сообщение не является пустым
@@ -350,15 +350,21 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 					// Если размер текста соответствует размеру лога
 					if(payload.text.length() >= this->_sepSize)
 						// Выводим обозначение конца вывода лога
-						std::cout << "---------------- END ----------------" << std::endl << std::endl << std::flush;
+						cout << "---------------- END ----------------" << endl << endl;
 				} break;
 				// Если разделитель нужно отобразить всегда
 				case static_cast <uint8_t> (separator_t::ALWAYS):
 					// Выводим обозначение конца вывода лога
-					std::cout << "---------------- END ----------------" << std::endl << std::endl << std::flush;
+					cout << "---------------- END ----------------" << endl << endl;
 				break;
 			}
 		}
+		// Увеличиваем счётчик для принудительной ротации логов
+		this->_counter.fetch_add(1, std::memory_order_relaxed);
+		// Если мы прошли полный круг
+		if(this->_counter.load(std::memory_order_acquire) == 0)
+			// Выполняем сброс накопленных логов
+			cout << flush;
 	}
 	// Если файл для вывода лога указан
 	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
@@ -1118,7 +1124,7 @@ void awh::Logging::subscribe(function <void (const flag_t, string_view)> callbac
 awh::Logging::Logging(const fmk_t * fmk, string_view filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),
  _level(level_t::ALL), _sep(separator_t::ALWAYS), _chrono(fmk, this),
- _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
+ _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename}, _counter{1},
  _screen(Screen <payload_t>::health_t::DEAD), _callback(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = ::getpid();
