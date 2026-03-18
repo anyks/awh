@@ -253,7 +253,7 @@ namespace awh {
 			/**
 			 * @brief Метод получения пары событий для сокета
 			 *
-			 * @param family   семейство сокета
+			 * @param family   семейство адресов
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
 			 * @return         пара идентификаторов созданных событий
@@ -264,7 +264,7 @@ namespace awh {
 			 * @brief Метод создания нового события
 			 *
 			 * @param node     узел события
-			 * @param family   семейство сокета
+			 * @param family   семейство адресов
 			 * @param type     тип сокета
 			 * @param protocol протокол сокета
 			 * @return         идентификатор созданного события
@@ -356,10 +356,10 @@ namespace awh {
 			virtual bool listen(const event::id_t id, const uint16_t max) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод приёма данных события
+			 * @brief Метод получения данных события
 			 *
 			 * @param id идентификатор события
-			 * @return   результат выполнения приёма
+			 * @return   результат получения данных
 			 */
 			virtual bool recv(const event::id_t id) noexcept = 0;
 			/**
@@ -597,7 +597,7 @@ namespace awh {
 			 * @brief Метод получения семейства события
 			 *
 			 * @param id идентификатор события
-			 * @return   семейство события
+			 * @return   семейство адресов
 			 */
 			virtual event::family_t family(const event::id_t id) const noexcept = 0;
 			/**

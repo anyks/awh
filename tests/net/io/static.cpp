@@ -7672,7 +7672,7 @@ TEST_F(IoFixture, IoTLSTest){
 		// Устанавливаем файл центра сертификации TLS
 		this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_tls->validateHostname(cts, false);
+		this->_tls->validateServerNameIndication(cts, false);
 		// Устанавливаем клиентский сертификат TLS
 		this->_tls->certificate(cts, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
@@ -7847,7 +7847,7 @@ TEST_F(IoFixture, IoTLSTest){
 						// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->serverNameIndication(id) << std::endl << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 						std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
 						std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
@@ -8089,9 +8089,9 @@ TEST_F(IoFixture, IoTLSTest){
 		// Устанавливаем файл центра сертификации TLS
 		this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_tls->validateHostname(cts, false);
+		this->_tls->validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		this->_tls->hostname(cts, "anyks.com");
+		this->_tls->serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
 		this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
@@ -8494,8 +8494,8 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		this->_tls->mode(cts1, awh::tls_t::mode_t::MULTICERT);
 		this->_tls->mode(cts2, awh::tls_t::mode_t::MULTICERT);
 		// Включаем проверку имени хоста TLS
-		this->_tls->validateHostname(cts1, false);
-		this->_tls->validateHostname(cts2, false);
+		this->_tls->validateServerNameIndication(cts1, false);
+		this->_tls->validateServerNameIndication(cts2, false);
 		// Устанавливаем ALPN протоколы TLS
 		this->_tls->alpn(cts1, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		this->_tls->alpn(cts2, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
@@ -8509,7 +8509,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		this->_tls->privateKey(cts1, "../sh/certificates/example/key.pem");
 		this->_tls->privateKey(cts2, "../sh/certificates/server/key.pem");
 		// Устанавливаем имя хоста TLS (Указывать нужно после установки режима работы мультисертификатного TLS!!!!!!!)
-		this->_tls->hostname(cts2, "anyks.com");
+		this->_tls->serverNameIndication(cts2, "anyks.com");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
 		this->_tls->on(cts1, [this](const awh::tls_t::id_t id, const awh::tls_t::error_t error, const std::string & message) noexcept -> void {
 			// Выводим сообщение о предупреждающей ошибке TLS
@@ -8685,7 +8685,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 						// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->serverNameIndication(id) << std::endl << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 						std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
 						std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
@@ -8927,9 +8927,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Устанавливаем файл центра сертификации TLS
 		this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_tls->validateHostname(cts, false);
+		this->_tls->validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		this->_tls->hostname(cts, "anyks.com");
+		this->_tls->serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
 		this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
@@ -9331,7 +9331,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Устанавливаем файл центра сертификации TLS
 		this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_tls->validateHostname(cts, false);
+		this->_tls->validateServerNameIndication(cts, false);
 		// Устанавливаем клиентский сертификат TLS
 		this->_tls->certificate(cts, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
@@ -9506,7 +9506,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->serverNameIndication(id) << std::endl << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 						std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
 						std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
@@ -9748,9 +9748,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Устанавливаем файл центра сертификации TLS
 		this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_tls->validateHostname(cts, false);
+		this->_tls->validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		this->_tls->hostname(cts, "anyks.com");
+		this->_tls->serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
 		this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
@@ -12685,7 +12685,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем файл центра сертификации DTLS
 			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_tls->validateHostname(cts, false);
+			this->_tls->validateServerNameIndication(cts, false);
 			// Устанавливаем клиентский сертификат DTLS
 			this->_tls->certificate(cts, "../sh/certificates/server/cert.pem");
 			// Устанавливаем приватный ключ DTLS
@@ -12910,7 +12910,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
 							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
 							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
-							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->serverNameIndication(id) << std::endl << std::endl;
 							std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 							std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
 							std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
@@ -13229,9 +13229,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем файл центра сертификации DTLS
 			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_tls->validateHostname(cts, false);
+			this->_tls->validateServerNameIndication(cts, false);
 			// Устанавливаем имя хоста DTLS
-			this->_tls->hostname(cts, "server.anyks.com");
+			this->_tls->serverNameIndication(cts, "server.anyks.com");
 			// Устанавливаем клиентский сертификат DTLS
 			this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
 			// Устанавливаем приватный ключ DTLS
@@ -13733,7 +13733,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем файл центра сертификации DTLS
 			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_tls->validateHostname(cts, false);
+			this->_tls->validateServerNameIndication(cts, false);
 			// Устанавливаем клиентский сертификат DTLS
 			this->_tls->certificate(cts, "../sh/certificates/server/cert.pem");
 			// Устанавливаем приватный ключ DTLS
@@ -13958,7 +13958,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
 							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_tls->info(id) << std::endl;
 							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_tls->alpn(id)) << std::endl;
-							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->hostname(id) << std::endl << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_tls->serverNameIndication(id) << std::endl << std::endl;
 							std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 							std::cout << "Версия OpenSSL: " << this->_tls->version() << std::endl << std::endl;
 							std::cout << "Cipher: " << this->_tls->cipherInfo(id) << std::endl << std::endl;
@@ -14263,9 +14263,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем файл центра сертификации DTLS
 			this->_tls->ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_tls->validateHostname(cts, false);
+			this->_tls->validateServerNameIndication(cts, false);
 			// Устанавливаем имя хоста DTLS
-			this->_tls->hostname(cts, "server.anyks.com");
+			this->_tls->serverNameIndication(cts, "server.anyks.com");
 			// Устанавливаем клиентский сертификат TLS
 			this->_tls->certificate(cts, "../sh/certificates/client/cert.pem");
 			// Устанавливаем приватный ключ TLS

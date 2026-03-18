@@ -87,6 +87,13 @@ namespace awh {
 				event::id_t interval(const uint32_t delay) noexcept;
 			public:
 				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
+			public:
+				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка

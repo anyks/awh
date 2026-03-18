@@ -96,6 +96,8 @@ void awh::unit::Notifier::available(const event::id_t eid, const event::status_t
  * @return идентификатор события уведомителя
  */
 awh::event::id_t awh::unit::Notifier::create() noexcept {
+	// Выполняем блокировку потока для создания события уведомителя
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем создание события уведомителя
 	event::id_t result = this->_io->event(event::node_t::NOTIFY, event::family_t::USER);
 	// Выполняем фиксацию настроек события сервера
@@ -129,7 +131,8 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 				// Выводим сообщение об ошибке запуска события
 				this->_log->print("Notifier event could not be launched", log_t::flag_t::WARNING);
 			#endif
-		}
+		// Добавляем идентификатор события уведомителя в список событий уведомителя
+		} else this->_events.emplace(result);
 	// Если событие уведомителя не может быть создано
 	} else {
 		// Удаляем событие уведомителя
@@ -159,8 +162,34 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
  * @param eid идентификатор события уведомителя
  */
 void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
-	// Удаляем событие уведомителя
-	this->_io->destroy(eid);
+	// Выполняем поиск идентификатора события уведомителя в списке событий уведомителя
+	auto i = this->_events.find(eid);
+	// Если идентификатор события уведомителя найден в списке событий уведомителя
+	if(i != this->_events.end()){
+		// Выполняем блокировку потока для удаления события уведомителя
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем событие уведомителя
+		this->_io->destroy(* i);
+		// Удаляем идентификатор события уведомителя из списка событий уведомителя
+		this->_events.erase(i);
+	}
+}
+/**
+ * @brief Метод установки функций обратного вызова
+ *
+ * @param callback функции обратного вызова
+ */
+void awh::unit::Notifier::callback(const callback_t & callback) noexcept {
+	// Устанавливаем функций обратного вызова для родительского юнита
+	unit_t::callback(callback);
+	// Выполняем установку функции обратного вызова при изменении состояния события уведомителя
+	this->_callback.set("state", callback);
+	// Выполняем установку функции обратного вызова при получении сообщения события уведомителя
+	this->_callback.set("notify", callback);
+	// Выполняем установку функции обратного вызова при триггере события уведомителя
+	this->_callback.set("trigger", callback);
+	// Выполняем установку функции обратного вызова при доступности очереди сообщений события уведомителя
+	this->_callback.set("available", callback);
 }
 /**
  * @brief Метод триггера события уведомителя
@@ -171,6 +200,8 @@ void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
  * @return       количество отправленных байт
  */
 size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept {
+	// Выполняем блокировку потока для триггера события уведомителя
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Триггерим событие уведомителя
 	return this->_io->send(eid, buffer, size);
 }
@@ -185,4 +216,11 @@ awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : u
  * @brief Деструктор
  *
  */
-awh::unit::Notifier::~Notifier() noexcept {}
+awh::unit::Notifier::~Notifier() noexcept {
+	// Выполняем блокировку потока для удаления всех событий уведомителя
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем удаление всех событий уведомителя
+	for(const auto & eid : this->_events)
+		// Удаляем событие уведомителя
+		this->_io->destroy(eid);
+}

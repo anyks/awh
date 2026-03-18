@@ -1,0 +1,501 @@
+/**
+ * @file: client.hpp
+ * @date: 2026-03-15
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_UNIT_CLIENT__
+#define __AWH_UNIT_CLIENT__
+
+/**
+ * Наши модули
+ */
+#include "unit.hpp"
+
+/**
+ * @brief Основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * @brief Пространство имён узла источника
+	 *
+	 */
+	namespace unit {
+		/**
+		 * Подписываемся на стандартное пространство имён
+		 */
+		using namespace std;
+		/**
+		 * @brief Класс клиента
+		 *
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Client : public unit_t {
+			private:
+				// Список идентификаторов событий клиента
+				unordered_set <event::id_t> _events;
+			private:
+				/**
+				 * @brief Метод обработки событий подключения клиента к удалённому серверу
+				 *
+				 * @param eid идентификатор события
+				 * @param ok  результат подключения
+				 */
+				void connect(const event::id_t eid, const bool ok) noexcept;
+				/**
+				 * @brief Метод обработки событий записи данных клиентом
+				 *
+				 * @param eid  идентификатор события
+				 * @param size размер данных для записи
+				 */
+				void write(const event::id_t eid, const size_t size) noexcept;
+				/**
+				 * @brief Метод обработки действий клиента
+				 *
+				 * @param eid    идентификатор события
+				 * @param action действие клиента
+				 */
+				void action(const event::id_t eid, const event::action_t action) noexcept;
+				/**
+				 * @brief Метод обработки событий изменения статуса клиента
+				 *
+				 * @param eid    идентификатор события
+				 * @param status новый статус клиента
+				 */
+				void status(const event::id_t eid, const event::status_t status) noexcept;
+				/**
+				 * @brief Метод обработки событий получения данных клиентом
+				 *
+				 * @param eid  идентификатор события
+				 * @param data данные события получения данных клиентом
+				 * @param size размер данных события получения данных клиентом
+				 */
+				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * @brief Метод обработки событий ошибок клиента
+				 *
+				 * @param eid         идентификатор события
+				 * @param error       тип ошибки
+				 * @param description описание ошибки
+				 */
+				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
+			public:
+				/**
+				 * @brief Метод фиксации настроек клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    результат выполнения фиксации
+				 */
+				bool commit(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод приостановки работы клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    результат выполнения приостановки работы
+				 */
+				bool pause(const event::id_t eid) noexcept;
+				/**
+				 * @brief Метод возобновления работы клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    результат выполнения возобновления работы
+				 */
+				bool resume(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод отключения клиента от удалённого сервера
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    результат выполнения отключения
+				 */
+				bool disconnect(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Шаблон метода мультиподключения клиентов к удалённым хостам
+				 *
+				 * @tparam Args список идентификаторов клиентов для подключения
+				 */
+				template <typename... Args>
+				/**
+				 * @brief Метод мультиподключения клиентов к удалённым хостам
+				 *
+				 * @param args список идентификаторов событий для подключения
+				 * @return     результат выполнения подключения
+				 */
+				bool connect(Args&&... args) noexcept {
+					// Выполняем подключение к списку удалённых серверов
+					return this->connect({args...});
+				}
+				/**
+				 * @brief Метод мультиподключения клиентов к удалённым хостам
+				 *
+				 * @param ids список идентификаторов событий для подключения
+				 * @return    результат выполнения подключения
+				 */
+				bool connect(const vector <event::id_t> & ids) noexcept;
+			public:
+				/**
+				 * @brief Метод получения данных от сервера
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    результат получения данных
+				 */
+				bool recv(const event::id_t eid) noexcept;
+				/**
+				 * @brief Метод отправки данных серверу
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param buffer буфер данных для отправки
+				 * @param size   размер данных для отправки
+				 * @return       количество байт данных, отправленных серверу
+				 */
+				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод перемещения данных между клиентом и другим событием
+				 *
+				 * @param eid  идентификатор события-источника
+				 * @param dest идентификатор события-приёмника
+				 * @return     результат выполнения перемещения
+				 */
+				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
+			public:
+				/**
+				 * @brief Метод получения опций клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    опции клиента
+				 */
+				uint16_t getOptions(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки опций клиента
+				 *
+				 * @param eid     идентификатор события клиента
+				 * @param options опции клиента для установки
+				 * @return        результат выполнения установки
+				 */
+				bool setOptions(const event::id_t eid, const uint16_t options) noexcept;
+				/**
+				 * @brief Метод установки опции клиента
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param option опция клиента для установки
+				 * @param mode   режим установки опции клиента
+				 * @return       результат выполнения установки
+				 */
+				bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
+			public:
+				/**
+				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    максимальное количество хопов
+				 */
+				event::hops_t getHops(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param hops максимальное количество хопов
+				 * @return     результат работы функции
+				 */
+				bool setHops(const event::id_t eid, const event::hops_t hops) noexcept;
+			public:
+				/**
+				 * @brief Метод получения сетевого интерфейса клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    сетевой интерфейс клиента
+				 */
+				string getIface(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки сетевого интерфейса клиента
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param name имя сетевого интерфейса для установки
+				 * @return     результат выполнения установки
+				 */
+				bool setIface(const event::id_t eid, string_view name) noexcept;
+			public:
+				/**
+				 * @brief Метод получения порта удаленного сервера
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    порт удаленного сервера
+				 */
+				uint16_t getPort(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки порта удаленного сервера
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param port порт удаленного сервера для установки
+				 * @return     результат выполнения установки
+				 */
+				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
+			public:
+				/**
+				 * @brief Метод получения адреса хоста целевой машины
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    адрес хоста целевой машины
+				 */
+				string getTarget(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки адреса хоста целевой машины
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param target адрес хоста целевой машины
+				 * @return       результат выполнения установки
+				 */
+				bool setTarget(const event::id_t eid, string_view target) noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса хоста целевой машины
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param target адрес хоста целевой машины
+				 * @return       результат выполнения установки
+				 */
+				bool setTarget(const event::id_t eid, const net::addr_t * target) noexcept;
+				/**
+				 * @brief Метод получения адреса хоста целевой машины
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param target объект для извлечения адреса хоста целевой машины
+				 * @return       результат выполнения извлечения адреса хоста целевой машины
+				 */
+				bool getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения адреса клиента
+				 *
+				 * @param eid     идентификатор события клиента
+				 * @param address тип адреса клиента
+				 * @return        значение адреса клиента
+				 */
+				string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
+				/**
+				 * @brief Метод установки адреса клиента
+				 *
+				 * @param eid     идентификатор события клиента
+				 * @param address тип адреса клиента
+				 * @param value   значение адреса клиента
+				 * @return        результат выполнения установки
+				 */
+				bool setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса клиента
+				 *
+				 * @param eid     идентификатор события клиента
+				 * @param address тип адреса клиента
+				 * @param value   значение адреса клиента
+				 * @return        результат выполнения установки
+				 */
+				bool setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept;
+				/**
+				 * @brief Метод получения адреса клиента
+				 *
+				 * @param eid     идентификатор события клиента
+				 * @param address тип адреса клиента
+				 * @param value   объект для извлечения адреса клиента
+				 * @return        результат выполнения извлечения адреса клиента
+				 */
+				bool getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения MTU сетевого интерфейса
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    MTU сетевого интерфейса
+				 */
+				uint16_t getMaximumTransmissionUnit(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки MTU сетевого интерфейса
+				 *
+				 * @param eid идентификатор события клиента
+				 * @param mtu размер MTU интерфейса
+				 * @return    результат установки MTU сетевого интерфейса
+				 */
+				bool setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения режима трансляции пакетов клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+				 */
+				event::delivery_mode_t getDelivery(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки режима трансляции пакетов клиента
+				 *
+				 * @param eid      идентификатор события клиента
+				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+				 * @return         результат выполнения установки
+				 */
+				bool setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept;
+			public:
+				/**
+				 * @brief Метод получения размера буфера клиента
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param action тип действия клиента
+				 * @return       размер буфера клиента
+				 */
+				size_t getBufferSize(const event::id_t eid, const event::action_t action) const noexcept;
+				/**
+				 * @brief Метод установки размера буфера клиента
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param action тип действия клиента
+				 * @param size   размер буфера клиента
+				 * @return       результат выполнения установки
+				 */
+				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод получения таймаута клиента
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param action тип действия клиента
+				 * @return       значение таймаута в миллисекундах
+				 */
+				uint32_t getTimeout(const event::id_t eid, const event::action_t action) const noexcept;
+				/**
+				 * @brief Метод установки таймаута клиента
+				 *
+				 * @param eid     идентификатор события клиента
+				 * @param action  тип действия клиента
+				 * @param timeout значение таймаута в миллисекундах
+				 */
+				void setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept;
+			public:
+				/**
+				 * @brief Метод установки пропускной способности клиента
+				 *
+				 * @param eid       идентификатор события клиента
+				 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
+				 * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+				 * @return          результат выполнения установки
+				 */
+				bool bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept;
+			public:
+				/**
+				 * @brief Метод установки параметров keep-alive для клиента
+				 *
+				 * @param eid   идентификатор события клиента
+				 * @param cnt   количество пакетов keep-alive
+				 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
+				 * @param intvl интервал между пакетами keep-alive в секундах
+				 * @return      результат выполнения установки
+				 */
+				bool keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
+			public:
+				/**
+				 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    значение DSCP
+				 */
+				event::dscp_t getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param dscp значение DSCP
+				 * @return     результат работы функции
+				 */
+				bool setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    режим обнаружения максимального размера пакета (MTU)
+				 */
+				event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки обнаружения максимального размера пакета (MTU)
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param mode режим обнаружения максимального размера пакета (MTU)
+				 * @return     результат работы функции
+				 */
+				bool setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept;
+			public:
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param mode   режим активации/деактивации
+				 * @param group  мультикаст-группа для активации/деактивации
+				 * @param source адрес сетевого интерфейса с которого выполняется подписка
+				 * @param port   порт мультикаст-группы с которого выполняется подписка
+				 * @return       результат выполнения установки
+				 */
+				bool membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port = 0) noexcept;
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param mode   режим активации/деактивации
+				 * @param group  мультикаст-группа для активации/деактивации
+				 * @param source адрес сетевого интерфейса с которого выполняется подписка
+				 * @param port   порт мультикаст-группы с которого выполняется подписка
+				 * @return       результат выполнения установки
+				 */
+				bool membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
+			public:
+				/**
+				 * @brief Метод уничтожения события клиента
+				 *
+				 * @param eid идентификатор события для уничтожения
+				 */
+				void destroy(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод получения идентификатора клиента для выполнения запросов к серверу
+				 *
+				 * @param family   семейство адресов
+				 * @param type     тип сокета
+				 * @param protocol протокол сокета
+				 * @return         идентификатор созданного клиента
+				 */
+				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Client(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Client() noexcept;
+		} client_t;
+	};
+};
+
+#endif // __AWH_UNIT_CLIENT__

@@ -62,6 +62,8 @@ void awh::unit::Timer::clear() noexcept {
 			if(this->_callback.is(eid))
 				// Удаляем функцию обратного вызова для события таймера
 				this->_callback.erase(eid);
+			// Выполняем блокировку потока для удаления события таймера
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие таймера
 			this->_io->destroy(eid);
 		}
@@ -83,6 +85,8 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 		if(this->_callback.is(eid))
 			// Удаляем функцию обратного вызова для события таймера
 			this->_callback.erase(eid);
+		// Выполняем блокировку потока для удаления события таймера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Удаляем событие таймера
 		this->_io->destroy(eid);
 		// Удаляем идентификатор таймера из списка активных таймеров
@@ -96,6 +100,8 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
  * @return      идентификатор таймера
  */
 awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
+	// Выполняем блокировку потока для создания события таймера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Создаём новое событие таймера
 	event::id_t result = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Добавляем новое событие таймера
@@ -155,6 +161,8 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
  * @return      идентификатор таймера
  */
 awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
+	// Выполняем блокировку потока для создания события таймера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Создаём новое событие таймера
 	event::id_t result = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Добавляем новое событие таймера
@@ -206,6 +214,22 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * @brief Метод установки функций обратного вызова
+ *
+ * @param callback функции обратного вызова
+ */
+void awh::unit::Timer::callback(const callback_t & callback) noexcept {
+	// Устанавливаем функций обратного вызова для родительского юнита
+	unit_t::callback(callback);
+	// Переходим по всему списку активных таймеров
+	for(auto & eid : this->_timers){
+		// Если функция обратного вызова установлена
+		if(callback.is(eid))
+			// Устанавливаем функцию обратного вызова для события таймера
+			this->_callback.set(eid, callback);
+	}
 }
 /**
  * @brief Конструктор

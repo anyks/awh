@@ -67,9 +67,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем файл центра сертификации TLS
 		tls.ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		tls.validateHostname(cts, false);
+		tls.validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		tls.hostname(cts, "anyks.com");
+		tls.serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
 		tls.certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS

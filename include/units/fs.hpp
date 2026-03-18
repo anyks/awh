@@ -53,6 +53,9 @@ namespace awh {
 					FILE = 0x02  // Тип ноды файловой системы принадлежит к файлам
 				};
 			private:
+				// Список идентификаторов событий файловой системы
+				unordered_set <event::id_t> _events;
+			private:
 				/**
 				 * @brief Метод обработки событий записи в файл
 				 *
@@ -118,6 +121,13 @@ namespace awh {
 				 * @return    тип ноды файловой системы
 				 */
 				type_t type(const event::id_t eid) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса события

@@ -19,6 +19,11 @@
 #define __AWH_ENGINE_CALLBACK__
 
 /**
+ * Стандартные модули
+ */
+#include <functional>
+
+/**
  * Наши модули
  */
 #include "net.hpp"

@@ -2237,9 +2237,9 @@ namespace verify {
 };
 
 /**
- * @brief Метод получения версии протокола TLS
+ * @brief Метод получения версии OpenSSL
  *
- * @return версия протокола TLS
+ * @return версия OpenSSL
  */
 string awh::Transport_Layer_Security::version() const noexcept {
 	// Возвращаем версию OpenSSL
@@ -3777,12 +3777,12 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 	return false;
 }
 /**
- * @brief Метод установки проверки хоста сервера
+ * @brief Метод установки проверки доменного имени сервера
  *
  * @param id   идентификатор события
- * @param mode режим проверки хоста сервера
+ * @param mode режим проверки доменного имени сервера
  */
-void awh::Transport_Layer_Security::validateHostname(const id_t id, const bool mode) noexcept {
+void awh::Transport_Layer_Security::validateServerNameIndication(const id_t id, const bool mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4057,12 +4057,12 @@ void awh::Transport_Layer_Security::mode(const id_t id, const mode_t mode) noexc
 	}
 }
 /**
- * @brief Метод получения имени хоста сервера
+ * @brief Метод получения доменного имени сервера
  *
  * @param id идентификатор события
- * @return   имя хоста сервера
+ * @return   доменное имя сервера
  */
-string awh::Transport_Layer_Security::hostname(const id_t id) const noexcept {
+string awh::Transport_Layer_Security::serverNameIndication(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4105,18 +4105,18 @@ string awh::Transport_Layer_Security::hostname(const id_t id) const noexcept {
 	return "";
 }
 /**
- * @brief Метод установки имени хоста сервера
+ * @brief Метод установки доменного имени сервера
  *
- * @param id       идентификатор события
- * @param hostname имя хоста сервера
+ * @param id  идентификатор события
+ * @param sni доменное имя сервера
  */
-void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname) noexcept {
+void awh::Transport_Layer_Security::serverNameIndication(const id_t id, string_view sni) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если имя хоста сервера не пустое
-		if(!hostname.empty()){
+		if(!sni.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				/**
@@ -4147,11 +4147,11 @@ void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname
 										::__awh_ssl_splice_map__.erase(i);
 								}
 								// Добавляем новую запись в глобальную карту сопоставления имён хостов и идентификаторов узлов TLS
-								::__awh_ssl_splice_map__.emplace(make_pair(member->proto, hostname), id);
+								::__awh_ssl_splice_map__.emplace(make_pair(member->proto, sni), id);
 							}
 						}
 						// Устанавливаем хост для уровня защищённых сокетов
-						member->host = hostname;
+						member->host = sni;
 					} break;
 					// Если уровень является транспортной передачей данных
 					case static_cast <uint8_t> (layer_t::CTL): {
@@ -4164,16 +4164,16 @@ void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
 							// Устанавливаем имя хоста для SNI расширения
-							::SSL_set_tlsext_host_name(member->ssl, hostname.data());
+							::SSL_set_tlsext_host_name(member->ssl, sni.data());
 							/**
 							 * Если версия OpenSSL соответствует или выше версии 1.1.1
 							 */
 							#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 								// Устанавливаем имя хоста для проверки
-								::SSL_set1_host(member->ssl, hostname.data());
+								::SSL_set1_host(member->ssl, sni.data());
 							#endif
 							// Активируем верификацию доменного имени
-							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), hostname.data(), 0) != 1){
+							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), sni.data(), 0) != 1){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -4191,7 +4191,7 @@ void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sni), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -4205,7 +4205,7 @@ void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname
 							}
 						}
 						// Устанавливаем хост для уровня защищённых сокетов
-						member->host.name = hostname;
+						member->host.name = sni;
 					} break;
 				}
 			}
@@ -4219,7 +4219,7 @@ void awh::Transport_Layer_Security::hostname(const id_t id, string_view hostname
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, hostname), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sni), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

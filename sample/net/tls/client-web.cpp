@@ -68,10 +68,10 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем файл центра сертификации TLS
 		tls.ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		// tls.validateHostname(cts, false);
+		// tls.validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		// tls.hostname(cts, "contms.ru");
-		tls.hostname(cts, "www.google.com");
+		// tls.serverNameIndication(cts, "contms.ru");
+		tls.serverNameIndication(cts, "www.google.com");
 		// Создаём идентификатор транспортного уровня DTLS
 		tls_t::id_t ctl = tls.transport(cts);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS

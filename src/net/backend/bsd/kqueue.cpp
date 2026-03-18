@@ -1680,7 +1680,7 @@ namespace {
 					// Идентификатор сессии источника
 					origin_id_t sid;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (origin->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -1733,7 +1733,7 @@ namespace {
 					// Идентификатор сессии источника
 					origin_id_t sid;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (mediator->state.family)){
 						// Для семейства IPv4
@@ -4396,7 +4396,7 @@ namespace io {
 				// Если событие принадлежит к типу PIPE
 				case static_cast <uint8_t> (event::type_t::NONE): {
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
@@ -4885,7 +4885,7 @@ namespace io {
 							// Если токены для получения данных присутствуют
 							if(peer->bandwidth.read.tokens >= 1.){
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
@@ -5032,7 +5032,7 @@ namespace io {
 										// Достаточное количество токенов для получения данных
 										double tokens = 0.;
 										/**
-										 * Определяем семейство события
+										 * Определяем семейство адресов
 										 */
 										switch(static_cast <uint8_t> (peer->state.family)){
 											// Для семейства IPv4
@@ -6625,7 +6625,7 @@ namespace io {
 							// Если токены для получения данных присутствуют
 							if(client->bandwidth.read.tokens >= 1.){
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (client->state.family)){
 									// Для семейства IPv4
@@ -6772,7 +6772,7 @@ namespace io {
 										// Достаточное количество токенов для получения данных
 										double tokens = 0.;
 										/**
-										 * Определяем семейство события
+										 * Определяем семейство адресов
 										 */
 										switch(static_cast <uint8_t> (client->state.family)){
 											// Для семейства IPv4
@@ -8292,7 +8292,7 @@ namespace io {
 					// Если событие принадлежит к типу PIPE
 					case static_cast <uint8_t> (event::type_t::NONE): {
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (ipc->state.family)){
 							// Для семейства межпроцессных соединений
@@ -8918,7 +8918,7 @@ namespace io {
 								// Достаточное количество токенов для отправки данных
 								double tokens = 0.;
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
@@ -8939,7 +8939,7 @@ namespace io {
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (peer->state.family)){
 										// Для семейства IPv4
@@ -9681,7 +9681,7 @@ namespace io {
 				// Устанавливаем длину буфера
 				iov[0].iov_len = sizeof(family);
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (tunnel->state.family)){
 					// Для семейства IPv4
@@ -10022,7 +10022,7 @@ namespace io {
 								// Достаточное количество токенов для отправки данных
 								double tokens = 0.;
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (client->state.family)){
 									// Для семейства IPv4
@@ -10043,7 +10043,7 @@ namespace io {
 									// Количество байт данных для отправки в сокет
 									size_t bytes = 0;
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
@@ -12047,7 +12047,7 @@ namespace io {
 								// Достаточное количество токенов для отправки данных
 								double tokens = 0.;
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
@@ -12345,7 +12345,7 @@ namespace io {
 								// Достаточное количество токенов для отправки данных
 								double tokens = 0.;
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
@@ -13960,7 +13960,7 @@ namespace io {
 			// Устанавливаем длину буфера
 			iov[0].iov_len = sizeof(family);
 			/**
-			 * Определяем семейство события
+			 * Определяем семейство адресов
 			 */
 			switch(static_cast <uint8_t> (tunnel->state.family)){
 				// Для семейства IPv4
@@ -14081,7 +14081,7 @@ namespace io {
 							// Создаём объект для хранения информации о сетевом адресе источника
 							info.source = make_unique <net::attr_net_t> ();
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (info.family)){
 								// Для семейства IPv4
@@ -14405,7 +14405,7 @@ namespace io {
 							// Создаём объект для хранения информации о сетевом адресе источника
 							info.source = make_unique <net::attr_net_t> ();
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (info.family)){
 								// Для семейства IPv4
@@ -14713,7 +14713,7 @@ namespace io {
 						// Создаём объект для хранения информации о сетевом адресе источника
 						info.source = make_unique <net::attr_net_t> ();
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (info.family)){
 							// Для семейства IPv4
@@ -15130,7 +15130,7 @@ namespace io {
 								// Достаточное количество токенов для отправки данных
 								double tokens = 0.;
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (client->state.family)){
 									// Для семейства IPv4
@@ -15428,7 +15428,7 @@ namespace io {
 								// Достаточное количество токенов для отправки данных
 								double tokens = 0.;
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (client->state.family)){
 									// Для семейства IPv4
@@ -19769,7 +19769,7 @@ namespace io {
 						// Если событие принадлежит к типу STREAM
 						case static_cast <uint8_t> (event::type_t::STREAM): {
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (peer->state.family)){
 								// Для семейства IPv4
@@ -19901,7 +19901,7 @@ namespace io {
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (peer->state.family)){
 									// Для семейства IPv4
@@ -20049,7 +20049,7 @@ namespace io {
 						// Если событие принадлежит к типу DATAGRAM
 						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (origin->state.family)){
 								// Для семейства IPv4
@@ -20113,7 +20113,7 @@ namespace io {
 						// Если событие принадлежит к типу STREAM
 						case static_cast <uint8_t> (event::type_t::STREAM): {
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (client->state.family)){
 								// Для семейства IPv4
@@ -20245,7 +20245,7 @@ namespace io {
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (client->state.family)){
 								// Для семейства IPv4
@@ -20390,7 +20390,7 @@ namespace io {
 						// Если событие принадлежит к типу DATAGRAM
 						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
@@ -20730,7 +20730,7 @@ namespace io {
 					// Если событие принадлежит к типу STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM): {
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -20866,7 +20866,7 @@ namespace io {
 						peer->state.node = event::node_t::PEER;
 						// Устанавливаем тип сокета
 						peer->state.type = server->state.type;
-						// Устанавливаем семейство события
+						// Устанавливаем семейство адресов
 						peer->state.family = server->state.family;
 						// Устанавливаем тип адреса события
 						peer->state.address = server->state.address;
@@ -20875,7 +20875,7 @@ namespace io {
 						// Выполняем инициализацию объекта MAC-адреса
 						peer->mac = make_unique <net::addr_mac_t> ();
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (peer->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -22412,7 +22412,7 @@ namespace io {
 		// Идентификатор сессии источника
 		origin_id_t sid;
 		/**
-		 * Определяем семейство события
+		 * Определяем семейство адресов
 		 */
 		switch(static_cast <uint8_t> (server->state.family)){
 			// Для семейства UNIX-доменных сокетов
@@ -22488,7 +22488,7 @@ namespace io {
 				origin->state.node = event::node_t::ORIGIN;
 				// Устанавливаем тип сокета
 				origin->state.type = server->state.type;
-				// Устанавливаем семейство события
+				// Устанавливаем семейство адресов
 				origin->state.family = server->state.family;
 				// Устанавливаем тип адреса события
 				origin->state.address = server->state.address;
@@ -22505,7 +22505,7 @@ namespace io {
 				// Выполняем инициализацию объекта MAC-адреса
 				origin->mac = make_unique <net::addr_mac_t> ();
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (origin->state.family)){
 					// Для семейства UNIX-доменных сокетов
@@ -27501,7 +27501,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Если файловый дескриптор туннеля существует
 						if((result = (tunnel->fd != net::invalid_socket_t))){
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (tunnel->state.family)){
 								// Для семейства IPv4
@@ -27622,7 +27622,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Идентификатор сессии источника
 							origin_id_t sid;
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (mediator->state.family)){
 								// Для семейства IPv4
@@ -27705,7 +27705,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Для типа трансляции пакетов MULTICAST
 								case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
@@ -27867,7 +27867,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Для типа трансляции пакетов BROADCAST
 								case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства UNIX-доменных сокетов
@@ -29382,7 +29382,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Для типа трансляции пакетов MULTICAST
 								case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (server->state.family)){
 										// Для семейства IPv4
@@ -29532,7 +29532,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Для типа трансляции пакетов BROADCAST
 								case static_cast <uint8_t> (event::delivery_mode_t::BROADCAST): {
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (server->state.family)){
 										// Для семейства UNIX-доменных сокетов
@@ -30634,7 +30634,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства IPv4
@@ -30820,7 +30820,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства IPv4
@@ -30918,7 +30918,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства IPv4
@@ -31060,7 +31060,7 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
-			 * Определяем семейство события
+			 * Определяем семейство адресов
 			 */
 			switch(static_cast <uint8_t> (i->second->state.family)){
 				// Для семейства IPv4
@@ -31122,7 +31122,7 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 								// Прерываем выполнение
 								break;
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
@@ -31213,7 +31213,7 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
-			 * Определяем семейство события
+			 * Определяем семейство адресов
 			 */
 			switch(static_cast <uint8_t> (i->second->state.family)){
 				// Для семейства IPv4
@@ -31242,7 +31242,7 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 								// Создаём новый объект адреса удалённого узла
 								client->target = make_unique <net::attr_net_t> ();
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (client->state.family)){
 									// Для семейства IPv4
@@ -31271,7 +31271,7 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 								// Создаём новый объект адреса сервера
 								server->host = make_unique <net::attr_net_t> ();
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (server->state.family)){
 									// Для семейства IPv4
@@ -31384,7 +31384,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (peer->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -31485,7 +31485,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (origin->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -31586,7 +31586,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (tunnel->state.family)){
 						// Для семейства IPv4
@@ -31680,7 +31680,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (mediator->state.family)){
 						// Для семейства IPv4
@@ -31774,7 +31774,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -31875,7 +31875,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -32181,7 +32181,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 						// Получаем объект туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (tunnel->state.family)){
 							// Для семейства IPv4
@@ -32275,7 +32275,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 						// Получаем объект посредника
 						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (mediator->state.family)){
 							// Для семейства IPv4
@@ -32369,7 +32369,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -32517,7 +32517,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -32747,7 +32747,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (peer->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -32856,7 +32856,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (origin->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -32965,7 +32965,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (tunnel->state.family)){
 						// Для семейства IPv4
@@ -33063,7 +33063,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (mediator->state.family)){
 						// Для семейства IPv4
@@ -33161,7 +33161,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -33270,7 +33270,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 						// Прерываем выполнение
 						break;
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -33524,7 +33524,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 						// Получаем объект туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (tunnel->state.family)){
 							// Для семейства IPv4
@@ -33564,7 +33564,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 						// Получаем объект посредника
 						::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (mediator->state.family)){
 							// Для семейства IPv4
@@ -33604,7 +33604,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -33665,7 +33665,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -33845,7 +33845,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Прерываем выполнение
 								break;
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (peer->state.family)){
 								// Для семейства IPv4
@@ -34002,7 +34002,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.status != nullptr)
@@ -34042,7 +34042,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Прерываем выполнение
 								break;
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (origin->state.family)){
 								// Для семейства IPv4
@@ -34199,7 +34199,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(origin->callbacks.status != nullptr)
@@ -34248,7 +34248,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Прерываем выполнение
 								break;
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (client->state.family)){
 								// Для семейства IPv4
@@ -34401,7 +34401,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
@@ -34441,7 +34441,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Прерываем выполнение
 								break;
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
@@ -34716,7 +34716,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
@@ -34935,7 +34935,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Получаем объект адреса сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (server->state.family)){
 									// Для семейства IPv4
@@ -35117,7 +35117,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Получаем объект адреса сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (server->state.family)){
 									// Для семейства IPv6
@@ -35549,7 +35549,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем полученный MAC-адрес
 										if(this->_addr.parse(value, net_addr_t::type_t::MAC)){
 											/**
-											 * Определяем семейство события
+											 * Определяем семейство адресов
 											 */
 											switch(static_cast <uint8_t> (client->state.family)){
 												// Для семейства IPv4
@@ -35692,7 +35692,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем полученный MAC-адрес
 										if(this->_addr.parse(value, net_addr_t::type_t::MAC)){
 											/**
-											 * Определяем семейство события
+											 * Определяем семейство адресов
 											 */
 											switch(static_cast <uint8_t> (server->state.family)){
 												// Для семейства IPv4
@@ -37538,7 +37538,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Создаём новый объект MAC-адреса
 								value = make_unique <net::addr_mac_t> ();
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (peer->state.family)){
 								// Для семейства IPv4
@@ -37691,7 +37691,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.status != nullptr)
@@ -37735,7 +37735,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Создаём новый объект MAC-адреса
 								value = make_unique <net::addr_mac_t> ();
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (origin->state.family)){
 								// Для семейства IPv4
@@ -37888,7 +37888,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(origin->callbacks.status != nullptr)
@@ -37941,7 +37941,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Создаём новый объект MAC-адреса
 								value = make_unique <net::addr_mac_t> ();
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (client->state.family)){
 								// Для семейства IPv4
@@ -38090,7 +38090,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
@@ -38134,7 +38134,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Создаём новый объект MAC-адреса
 								value = make_unique <net::addr_mac_t> ();
 							/**
-							 * Определяем семейство события
+							 * Определяем семейство адресов
 							 */
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
@@ -38401,7 +38401,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										}
 									}
 								} break;
-								// Если семейство события не определено
+								// Если семейство адресов не определено
 								default: {
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
@@ -38646,7 +38646,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Получаем объект адреса сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (server->state.family)){
 									// Для семейства IPv4
@@ -38840,7 +38840,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Получаем объект адреса сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (server->state.family)){
 									// Для семейства IPv6
@@ -39210,7 +39210,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Получаем объект клиента
 										::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 										/**
-										 * Определяем семейство события
+										 * Определяем семейство адресов
 										 */
 										switch(static_cast <uint8_t> (client->state.family)){
 											// Для семейства IPv4
@@ -39322,7 +39322,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Получаем объект сервера
 										::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 										/**
-										 * Определяем семейство события
+										 * Определяем семейство адресов
 										 */
 										switch(static_cast <uint8_t> (server->state.family)){
 											// Для семейства IPv4
@@ -40325,7 +40325,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства IPv4
@@ -40578,7 +40578,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства IPv4
@@ -41054,7 +41054,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						// Получаем объект клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства IPv4
@@ -41316,7 +41316,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						// Получаем объект сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства IPv4
@@ -41696,7 +41696,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						// Получаем объект клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства IPv4
@@ -41826,7 +41826,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						// Получаем объект сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства IPv4
@@ -42083,7 +42083,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 /**
  * @brief Метод получения пары событий для сокета
  *
- * @param family   семейство события
+ * @param family   семейство адресов
  * @param type     тип сокета
  * @param protocol протокол сокета
  * @return         пара идентификаторов созданных событий
@@ -42102,7 +42102,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 			// Переходим по всему списку идентификаторов событий
 			for(uint8_t i = 0; i < 2; i++){
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства PIPE
@@ -42163,7 +42163,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 								// Устанавливаем тип очереди туннеля
 								else client->transfer.queue.type(net_queue_t::type_t::UDP);
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (family)){
 									// Для семейства IPv4
@@ -42205,7 +42205,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (family)){
 									// Для семейства IPv4
@@ -42264,7 +42264,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
  * @brief Метод создания нового события
  *
  * @param node     узел события
- * @param family   семейство события
+ * @param family   семейство адресов
  * @param type     тип сокета
  * @param protocol протокол сокета
  * @return         идентификатор созданного события
@@ -42281,7 +42281,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является туннелем
 			case static_cast <uint8_t> (event::node_t::TUNNEL): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства IPv4
@@ -42359,7 +42359,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является посредником
 			case static_cast <uint8_t> (event::node_t::MEDIATOR): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства IPv4
@@ -42427,7 +42427,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является пользовательским событием
 			case static_cast <uint8_t> (event::node_t::NOTIFY): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства пользовательских событий
@@ -42482,7 +42482,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является интервалом
 			case static_cast <uint8_t> (event::node_t::INTERVAL): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства таймеров
@@ -42531,7 +42531,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является директорией
 			case static_cast <uint8_t> (event::node_t::DIR): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства директорий
@@ -42582,7 +42582,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является файловой системой
 			case static_cast <uint8_t> (event::node_t::FILE): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства директорий
@@ -42633,7 +42633,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является клиентом
 			case static_cast <uint8_t> (event::node_t::CLIENT): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства UNIX-доменных сокетов
@@ -42770,7 +42770,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 										break;
 									}
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (client->state.family)){
 										// Для семейства IPv4
@@ -42851,7 +42851,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			// Если узел является сервером
 			case static_cast <uint8_t> (event::node_t::SERVER): {
 				/**
-				 * Определяем семейство события
+				 * Определяем семейство адресов
 				 */
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства UNIX-доменных сокетов
@@ -43371,7 +43371,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Для других типов узлов
 					default: {
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (i->second->state.family)){
 							// Для семейства IPv6
@@ -43712,7 +43712,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							// Если событие принадлежит к типу RAW
 							case static_cast <uint8_t> (event::type_t::RAW): {
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (i->second->state.family)){
 									// Для семейства IPv4
@@ -43744,7 +43744,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								// Если протокол интернета установлен не как SCTP
 								if(i->second->state.protocol != event::protocol_t::SCTP){
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (i->second->state.family)){
 										// Для семейства IPv4
@@ -44019,7 +44019,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							// Для других типов узлов
 							default: {
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (i->second->state.family)){
 									// Для семейства IPv6
@@ -44342,7 +44342,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 								// Для типа трансляции пакетов MULTICAST
 								if(i->second->state.delivery == event::delivery_mode_t::MULTICAST){
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (i->second->state.family)){
 										// Для семейства IPv4
@@ -44383,7 +44383,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 								// Если тип сокета является RAW
 								if(i->second->state.type == event::type_t::RAW){
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (i->second->state.family)){
 										// Для семейства IPv4
@@ -44465,7 +44465,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 								// Если протокол интернета установлен не как SCTP
 								if(i->second->state.protocol != event::protocol_t::SCTP){
 									/**
-									 * Определяем семейство события
+									 * Определяем семейство адресов
 									 */
 									switch(static_cast <uint8_t> (i->second->state.family)){
 										// Для семейства IPv4
@@ -44529,7 +44529,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							// Для других типов узлов
 							default: {
 								/**
-								 * Определяем семейство события
+								 * Определяем семейство адресов
 								 */
 								switch(static_cast <uint8_t> (i->second->state.family)){
 									// Для семейства IPv4
@@ -48010,10 +48010,10 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 	return result;
 }
 /**
- * @brief Метод приёма данных события
+ * @brief Метод получения данных события
  *
  * @param id идентификатор события
- * @return   результат выполнения приёма
+ * @return   результат получения данных
  */
 bool awh::engine::IO::recv(const event::id_t id) noexcept {
 	/**
@@ -48375,7 +48375,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					// Получаем текущее значение объекта межпроцессного соединения
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
@@ -48419,7 +48419,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (peer->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48459,7 +48459,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (origin->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48499,7 +48499,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48539,7 +48539,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48693,7 +48693,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					// Получаем текущее значение объекта межпроцессного соединения
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
@@ -48730,7 +48730,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (peer->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48762,7 +48762,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (origin->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48794,7 +48794,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства межпроцессных соединений
@@ -48844,7 +48844,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					/**
-					 * Определяем семейство события
+					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (server->state.family)){
 						// Для семейства UNIX-доменных сокетов
@@ -48993,7 +48993,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					// Если событие является неблокирующим
 					if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (peer->state.family)){
 							// Для семейства IPv4
@@ -49075,7 +49075,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					// Если событие является неблокирующим
 					if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (origin->state.family)){
 							// Для семейства IPv4
@@ -49164,7 +49164,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					// Если событие является неблокирующим
 					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (client->state.family)){
 							// Для семейства IPv4
@@ -49246,7 +49246,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					// Если событие является неблокирующим
 					if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства IPv4
@@ -52531,7 +52531,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 						// Идентификатор сессии источника
 						origin_id_t sid;
 						/**
-						 * Определяем семейство события
+						 * Определяем семейство адресов
 						 */
 						switch(static_cast <uint8_t> (origin->state.family)){
 							// Для семейства UNIX-доменных сокетов
@@ -54130,7 +54130,7 @@ awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
  * @brief Метод получения семейства события
  *
  * @param id идентификатор события
- * @return   семейство события
+ * @return   семейство адресов
  */
 awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcept {
 	/**
@@ -54141,7 +54141,7 @@ awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcep
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден
 		if(i != ::__awh_nodes__.end())
-			// Возвращаем семейство события
+			// Возвращаем семейство адресов
 			return i->second->state.family;
 	/**
 	 * Если возникает ошибка

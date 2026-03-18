@@ -22,7 +22,6 @@
  * Стандартные модули
  */
 #include <cstdint>
-#include <functional>
 
 /**
  * @brief Основное пространство имён

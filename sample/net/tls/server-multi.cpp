@@ -65,9 +65,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем режим работы TLS
 		tls.mode(cts2, tls_t::mode_t::MULTICERT);
 		// Включаем проверку имени хоста TLS
-		tls.validateHostname(cts1, false);
+		tls.validateServerNameIndication(cts1, false);
 		// Включаем проверку имени хоста TLS
-		tls.validateHostname(cts2, false);
+		tls.validateServerNameIndication(cts2, false);
 		// Устанавливаем ALPN протоколы TLS
 		tls.alpn(cts1, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// Устанавливаем ALPN протоколы TLS
@@ -81,7 +81,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем приватный ключ TLS
 		tls.privateKey(cts1, "../sh/certificates/example/key.pem");
 		// Устанавливаем имя хоста TLS (Указывать нужно после установки режима работы мультисертификатного TLS!!!!!!!)
-		tls.hostname(cts2, "anyks.com");
+		tls.serverNameIndication(cts2, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
 		tls.certificate(cts2, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
@@ -263,7 +263,7 @@ int32_t main(int32_t argc, char * argv[]){
 								// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 								cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
 								cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
-								cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.hostname(id) << endl << endl;
+								cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.serverNameIndication(id) << endl << endl;
 								cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 								cout << "Версия OpenSSL: " << tls.version() << endl << endl;
 								cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;

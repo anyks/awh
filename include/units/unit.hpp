@@ -82,6 +82,13 @@ namespace awh {
 				 * @param sig идентификатор сигнала
 				 */
 				void signal(const int32_t sig) const noexcept;
+			protected:
+				/**
+				 * @brief Метод получения мютекса для блокировки потока
+				 *
+				 * @return объект мютекса для блокировки потока
+				 */
+				lock_state_t <std::shared_mutex> & mtx() const noexcept;
 			public:
 				/**
 				 * @brief Метод принудительного пинка базе событий
@@ -135,6 +142,13 @@ namespace awh {
 				virtual void start() noexcept;
 			public:
 				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				virtual void threadSafety(const bool mode) noexcept;
+			public:
+				/**
 				 * @brief Метод получения типа события
 				 *
 				 * @param eid идентификатор события
@@ -152,7 +166,7 @@ namespace awh {
 				 * @brief Метод получения семейства события
 				 *
 				 * @param eid идентификатор события
-				 * @return    семейство события
+				 * @return    семейство адресов
 				 */
 				event::family_t family(const event::id_t eid) const noexcept;
 				/**
@@ -162,6 +176,14 @@ namespace awh {
 				 * @return    статус события
 				 */
 				event::status_t status(const event::id_t eid) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки пропускной способности события
+				 *
+				 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
+				 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+				 */
+				void bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
 			public:
 				/**
 				 * @brief Метод установки времени блокировки базы событий в ожидании событий

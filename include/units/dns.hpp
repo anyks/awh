@@ -138,8 +138,6 @@ namespace awh {
 					servers_t nameServers;
 					// Адрес сети для выполнения запроса
 					unique_ptr <net::addr_t> source;
-					// Мьютекс для блокировки потока
-					lock_state_t <std::mutex> mtx;
 					/**
 					 * @brief Конструктор
 					 *
@@ -264,6 +262,13 @@ namespace awh {
 				 * @param mode флаг режима безопасности потоков
 				 */
 				void threadSafety(const bool mode) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
 				 * @brief Метод установки количества попыток резолвинга доменного имени

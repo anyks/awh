@@ -189,6 +189,11 @@ using namespace placeholders;
  */
 namespace {
 	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Идентификатор юнита который запустил работу цикла событий
 	 *
 	 */
@@ -204,10 +209,20 @@ namespace {
 	 */
 	atomic_uint16_t __awh_count_refs__ = 0;
 	/**
+	 * @brief Мютекс для блокировки потока
+	 *
+	 */
+	lock_state_t <std::shared_mutex> __awh_mtx__;
+	/**
 	 * @brief Объект рабочей базы событий
 	 *
 	 */
 	unique_ptr <awh::engine::io_t> __awh_event_base__ = nullptr;
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
 };
 
 /**
@@ -268,11 +283,22 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 	}
 }
 /**
+ * @brief Метод получения мютекса для блокировки потока
+ *
+ * @return объект мютекса для блокировки потока
+ */
+awh::lock_state_t <std::shared_mutex> & awh::unit::Unit::mtx() const noexcept {
+	// Выводим объект мютекса для блокировки потока
+	return ::__awh_mtx__;
+}
+/**
  * @brief Метод принудительного пинка базе событий
  *
  * @return результат выполнения операции
  */
 bool awh::unit::Unit::kick() noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем принудительный пинок базе событий
 	return ::__awh_event_base__->kick();
 }
@@ -299,6 +325,8 @@ bool awh::unit::Unit::working() const noexcept {
  *
  */
 void awh::unit::Unit::clear() noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем очистку базы событий
 	::__awh_event_base__->clear();
 }
@@ -307,6 +335,8 @@ void awh::unit::Unit::clear() noexcept {
  *
  */
 void awh::unit::Unit::reinit() noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем реинициализацию базы событий, если реинициализация не выполнена
 	if(!::__awh_event_base__->reinitialize()){
 		/**
@@ -330,6 +360,8 @@ void awh::unit::Unit::reinit() noexcept {
  * @return количество событий
  */
 size_t awh::unit::Unit::events() const noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим количество событий в базе событий
 	return ::__awh_event_base__->eventsCount();
 }
@@ -348,6 +380,8 @@ void awh::unit::Unit::stop() noexcept {
 			if(::__awh_launcher__ == static_cast <uint64_t> (reinterpret_cast <uintptr_t> (this))){
 				// Выполняем остановку работы цикла базы событий
 				::__awh_working__.store(false, std::memory_order_release);
+				// Выполняем блокировку потока для работы с базой событий
+				const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Разблокируем работу базы событий
 				::__awh_event_base__->kick();
 			// Если базу событий запустил не этот юнит
@@ -451,12 +485,27 @@ void awh::unit::Unit::start() noexcept {
 	}
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::unit::Unit::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для функций обратного вызова
+	this->_callback.threadSafety(mode);
+	// Устанавливаем режим безопасности работы потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
+	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+/**
  * @brief Метод получения типа события
  *
  * @param eid идентификатор события
  * @return    тип события
  */
 awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим тип события
 	return ::__awh_event_base__->type(eid);
 }
@@ -467,6 +516,8 @@ awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
  * @return    тип узла события
  */
 awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим тип узла события
 	return ::__awh_event_base__->node(eid);
 }
@@ -474,10 +525,12 @@ awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
  * @brief Метод получения семейства события
  *
  * @param eid идентификатор события
- * @return    семейство события
+ * @return    семейство адресов
  */
 awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexcept {
-	// Выводим семейство события
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим семейство адресов
 	return ::__awh_event_base__->family(eid);
 }
 /**
@@ -487,8 +540,22 @@ awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexce
  * @return    статус события
  */
 awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим статус события
 	return ::__awh_event_base__->status(eid);
+}
+/**
+ * @brief Метод установки пропускной способности события
+ *
+ * @param limiting  режим ограничения пропускной способности события (egress или ingress)
+ * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ */
+void awh::unit::Unit::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем установку пропускной способности события для события
+	::__awh_event_base__->bandwidth(limiting, bandwidth);
 }
 /**
  * @brief Метод установки времени блокировки базы событий в ожидании событий
@@ -496,6 +563,8 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
  * @param timeout время ожидания событий в миллисекундах
  */
 void awh::unit::Unit::rate(const int32_t timeout) noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем время блокировки базы событий
 	this->_timeout = timeout;
 }

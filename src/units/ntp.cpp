@@ -455,7 +455,7 @@ void awh::unit::NTP::create(const event::family_t family) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока для создания события NTP-клиента
-		const locker_t <> lock(this->_client.mtx);
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Добавляем новое событие клиента UDP
 		this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
@@ -541,7 +541,7 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 			// Если активный пакет найден в контейнере активных пакетов
 			if(i != this->_transfer.waiting.end()){
 				// Выполняем блокировку потока для уничтожения события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Удаляем событие таймера для ожидания ответа от NTP-сервера
 				this->_io->destroy(i->second.eid);
 				// Удаляем активный пакет из контейнера активных пакетов
@@ -614,7 +614,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 		const event::family_t family = this->_io->family(eid);
 		{
 			// Выполняем блокировку потока для уничтожения события NTP-клиента
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие NTP-клиента
 			this->_io->destroy(eid);
 		}
@@ -670,7 +670,7 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
 					// Если пакет успешно добавлен для данного идентификатора NTP-клиента
 					} else {
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Добавляем новое событие таймаута для ожидания ответа от NTP-сервера
 						const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от NTP-сервера
@@ -786,14 +786,27 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::status_t status
  * @param mode флаг режима безопасности потоков
  */
 void awh::unit::NTP::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для родительского юнита
+	unit_t::threadSafety(mode);
 	// Устанавливаем режим безопасности работы потоков
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
 	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с NTP-клиентом
-	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с контейнером активных пакетов
 	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+/**
+ * @brief Метод установки функций обратного вызова
+ *
+ * @param callback функции обратного вызова
+ */
+void awh::unit::NTP::callback(const callback_t & callback) noexcept {
+	// Устанавливаем функций обратного вызова для родительского юнита
+	unit_t::callback(callback);
+	// Выполняем установку функции обратного вызова для количества попыток получения ответа от NTP-сервера
+	this->_callback.set("attempts", callback);
+	// Выполняем установку функции обратного вызова для синхронизации с NTP-сервером
+	this->_callback.set("timestamp", callback);
 }
 /**
  * @brief Метод установки количества попыток получения ответа от NTP-сервера
@@ -813,7 +826,7 @@ void awh::unit::NTP::setAttempts(const uint8_t attempts) noexcept {
  */
 void awh::unit::NTP::setPrefixEnvironment(string_view prefix) noexcept {
 	// Выполняем блокировку потока для установки IP-адреса события
-	const locker_t <> lock(this->_client.mtx);
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Если префикс переменной окружения передан
 	if(!prefix.empty())
 		// Устанавливаем префикс переменной окружения
@@ -831,7 +844,7 @@ bool awh::unit::NTP::reset() noexcept {
 	const event::family_t family = this->_io->family(this->_client.eid);
 	{
 		// Выполняем блокировку потока для уничтожения события NTP-клиента
-		const locker_t <> lock(this->_client.mtx);
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Удаляем событие NTP-клиента
 		this->_io->destroy(this->_client.eid);
 	}
@@ -853,7 +866,7 @@ bool awh::unit::NTP::commit() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока для установки IP-адреса события
-		const locker_t <> lock(this->_client.mtx);
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Устанавливаем порт события
 		this->_io->setPort(this->_client.eid, this->_client.port);
 		// Получаем семейство IP-адресов текущего события NTP-клиента
@@ -975,7 +988,7 @@ void awh::unit::NTP::setPort(const uint16_t port) noexcept {
 	// Если порт для установки передан
 	if(port > 0){
 		// Выполняем блокировку потока для установки порта события
-		const locker_t <> lock(this->_client.mtx);
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Устанавливаем порт события
 		this->_client.port = port;
 	}
@@ -997,7 +1010,7 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
 				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -1019,7 +1032,7 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 		// Если адрес NTP-сервера не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
 			// Очищаем список IP-адресов события для семейства IPv6
@@ -1063,7 +1076,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 				// Если адрес является IPv4
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(event::family_t::IPV4);
 					// Устанавливаем IP-адрес события
@@ -1072,7 +1085,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(event::family_t::IPV6);
 					// Устанавливаем IP-адрес события
@@ -1082,7 +1095,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 		// Если адрес NTP-сервера не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
 			// Очищаем список IP-адресов события для семейства IPv6
@@ -1131,7 +1144,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Очищаем список IP-адресов события для семейства IPv4
 						this->_client.servers.reset(event::family_t::IPV4);
 						// Устанавливаем IP-адрес события
@@ -1145,7 +1158,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Очищаем список IP-адресов события для семейства IPv6
 						this->_client.servers.reset(event::family_t::IPV6);
 						// Устанавливаем IP-адрес события
@@ -1162,14 +1175,14 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(event::family_t::IPV4);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(event::family_t::IPV6);
 				} break;
@@ -1211,7 +1224,7 @@ void awh::unit::NTP::addServer(string_view server) noexcept {
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
 				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Устанавливаем IP-адрес события
 				this->_client.servers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 			}
@@ -1254,14 +1267,14 @@ void awh::unit::NTP::addServer(const net::addr_t * server) noexcept {
 				// Если адрес является IPv4
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Устанавливаем IP-адрес события
 					this->_client.servers.push(server);
 				} break;
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Устанавливаем IP-адрес события
 					this->_client.servers.push(server);
 				} break;
@@ -1310,7 +1323,7 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем IP-адрес события
 						this->_client.servers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 					}
@@ -1322,7 +1335,7 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем IP-адрес события
 						this->_client.servers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 					}
@@ -1395,7 +1408,7 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 			// Если парсинг всех адресов выполнен успешно
 			if(result){
 				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
 					// Сбрасываем список IP-адресов события для семейства IPv4
@@ -1417,7 +1430,7 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 		// Если адреса NTP-серверов не переданы
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
 			// Очищаем список IP-адресов события для семейства IPv6
@@ -1484,7 +1497,7 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 			// Если необходимо сбросить список IPv4 или IPv6
 			if(resetIPv4 || resetIPv6){
 				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
 					// Сбрасываем список IP-адресов события для семейства IPv4
@@ -1520,7 +1533,7 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 		// Если адрес NTP-сервера не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Очищаем список IP-адресов события для семейства IPv4
 			this->_client.servers.reset(event::family_t::IPV4);
 			// Очищаем список IP-адресов события для семейства IPv6
@@ -1565,7 +1578,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(event::family_t::IPV4);
 					/**
@@ -1585,7 +1598,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(event::family_t::IPV6);
 					/**
@@ -1612,14 +1625,14 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv4
 					this->_client.servers.reset(family);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Очищаем список IP-адресов события для семейства IPv6
 					this->_client.servers.reset(family);
 				} break;
@@ -1667,14 +1680,14 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					} break;
@@ -1683,7 +1696,7 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
 		}
@@ -1725,7 +1738,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 				// Если адрес является IPv4
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
 					this->_client.source = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
@@ -1734,7 +1747,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
 					this->_client.source = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
@@ -1744,7 +1757,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
 		}
@@ -1791,7 +1804,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV4)){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					}
@@ -1803,7 +1816,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV6)){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					}
@@ -1812,7 +1825,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
 		}
@@ -1883,7 +1896,7 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 				// Если таймаут успешно добавлен для данного идентификатора NTP-клиента
 				} else {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Добавляем новое событие таймаута для ожидания ответа от NTP-сервера
 					const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от NTP-сервера
@@ -1930,7 +1943,7 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 				}
 			}
 			// Выполняем блокировку потока для выполнения запроса
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Создаём объект пакета запроса
 			::ntp::packet_t packet{};
 			/**
@@ -1981,8 +1994,6 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
  */
 awh::unit::NTP::NTP(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _addr(fmk, log) {
-	// Активируем работу мьютекса блокировки потока при работе с клиентом
-	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с контейнером активных пакетов
 	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Если общие NTP-серверы ещё не добавлены в глобальный список
@@ -2013,4 +2024,21 @@ awh::unit::NTP::NTP(const event::family_t family, const fmk_t * fmk, const log_t
  * @brief Деструктор
  *
  */
-awh::unit::NTP::~NTP() noexcept {}
+awh::unit::NTP::~NTP() noexcept {
+	// Выполняем блокировку потока для удаления события NTP-клиента
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Если событие NTP-клиента активно
+	if(this->_client.eid > 0)
+		// Удаляем событие NTP-клиента
+		this->_io->destroy(this->_client.eid);
+	// Если контейнер пакетов для отслеживания выполнения запросов не пустой
+	if(!this->_transfer.waiting.empty()){
+		// Выполняем перебор всех пакетов в контейнере пакетов
+		for(auto i = this->_transfer.waiting.begin(); i != this->_transfer.waiting.end(); ++i){
+			// Если событие таймаута для ожидания ответа от NTP-клиента активно
+			if(i->second.eid > 0)
+				// Удаляем событие таймаута для ожидания ответа от NTP-клиента
+				this->_io->destroy(i->second.eid);
+		}
+	}
+}

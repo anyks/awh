@@ -43,6 +43,9 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Notifier : public unit_t {
 			private:
+				// Список идентификаторов событий файловой системы
+				unordered_set <event::id_t> _events;
+			private:
 				/**
 				 * @brief Метод обработки событий записи сообщений уведомителя
 				 *
@@ -98,6 +101,13 @@ namespace awh {
 				 * @param eid идентификатор события уведомителя
 				 */
 				void destroy(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
 				 * @brief Метод триггера события уведомителя

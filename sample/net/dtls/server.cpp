@@ -63,7 +63,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем файл центра сертификации DTLS
 		tls.ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста DTLS
-		tls.validateHostname(cts, false);
+		tls.validateServerNameIndication(cts, false);
 		// Устанавливаем клиентский сертификат DTLS
 		tls.certificate(cts, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ DTLS
@@ -204,7 +204,7 @@ int32_t main(int32_t argc, char * argv[]){
 							// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
 							cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
 							cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
-							cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.hostname(id) << endl << endl;
+							cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.serverNameIndication(id) << endl << endl;
 							cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
 							cout << "Версия OpenSSL: " << tls.version() << endl << endl;
 							cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;

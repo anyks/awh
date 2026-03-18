@@ -97,8 +97,17 @@ void awh::unit::Filesystem::vnode(const event::id_t eid, const event::action_t a
  * @param eid идентификатор события файловой системы
  */
 void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
-	// Удаляем событие файловой системы
-	this->_io->destroy(eid);
+	// Выполняем поиск идентификатора события файловой системы в списке событий файловой системы
+	auto i = this->_events.find(eid);
+	// Если идентификатор события файловой системы найден в списке событий файловой системы
+	if(i != this->_events.end()){
+		// Выполняем блокировку потока для уничтожения события файловой системы
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем событие файловой системы
+		this->_io->destroy(* i);
+		// Удаляем идентификатор события файловой системы из списка событий файловой системы
+		this->_events.erase(i);
+	}
 }
 /**
  * @brief Метод создания события файловой системы
@@ -109,6 +118,8 @@ void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
 awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 	// Результат работы функции
 	event::id_t result = 0;
+	// Выполняем блокировку потока для создания события файловой системы
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	/**
 	 * Определяем тип файловой системы для создания
 	 */
@@ -134,6 +145,8 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 	this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на событие изменения состояния каталога
 	this->_io->on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
+	// Добавляем идентификатор события файловой системы в список событий файловой системы
+	this->_events.emplace(result);
 	// Выводим результат
 	return result;
 }
@@ -161,12 +174,31 @@ awh::unit::Filesystem::type_t awh::unit::Filesystem::type(const event::id_t eid)
 	return type_t::NONE;
 }
 /**
+ * @brief Метод установки функций обратного вызова
+ *
+ * @param callback функции обратного вызова
+ */
+void awh::unit::Filesystem::callback(const callback_t & callback) noexcept {
+	// Устанавливаем функций обратного вызова для родительского юнита
+	unit_t::callback(callback);
+	// Выполняем установку функции обратного вызова при чтении из файла
+	this->_callback.set("read", callback);
+	// Выполняем установку функции обратного вызова при записи в файл
+	this->_callback.set("write", callback);
+	// Выполняем установку функции обратного вызова при изменении состояния события файловой системы
+	this->_callback.set("state", callback);
+	// Выполняем установку функции обратного вызова при изменении состояния узла файловой системы
+	this->_callback.set("vnode", callback);
+}
+/**
  * @brief Метод получения адреса события
  *
  * @param eid идентификатор события файловой системы
  * @return    значение адреса события
  */
 string awh::unit::Filesystem::getAddress(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для извлечения адреса события файловой системы
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение адреса события
 	return this->_io->getAddress(eid, event::address_t::FS);
 }
@@ -178,6 +210,8 @@ string awh::unit::Filesystem::getAddress(const event::id_t eid) const noexcept {
  * @return      результат выполнения установки
  */
 bool awh::unit::Filesystem::setAddress(const event::id_t eid, const string & value) noexcept {
+	// Выполняем блокировку потока для установки адреса события файловой системы
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Результат работы функции
 	bool result = this->_io->setAddress(eid, event::address_t::FS, value);
 	// Если результат выполнения установки адреса события является успешным
@@ -196,6 +230,8 @@ bool awh::unit::Filesystem::setAddress(const event::id_t eid, const string & val
  * @return       количество отправленных байт
  */
 size_t awh::unit::Filesystem::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
+	// Выполняем блокировку потока для отправки данных в файл
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем отправку данных в файл
 	return this->_io->send(eid, buffer, size);
 }
@@ -207,6 +243,8 @@ size_t awh::unit::Filesystem::send(const event::id_t eid, const void * buffer, c
  * @return     смещение в файле события
  */
 size_t awh::unit::Filesystem::getSeek(const event::id_t eid, const event::seek_t seek) noexcept {
+	// Выполняем блокировку потока для получения смещения в файле события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение смещения в файле события
 	return this->_io->getSeek(eid, seek);
 }
@@ -219,6 +257,8 @@ size_t awh::unit::Filesystem::getSeek(const event::id_t eid, const event::seek_t
  * @return       результат выполнения установки
  */
 bool awh::unit::Filesystem::setSeek(const event::id_t eid, const event::seek_t seek, const size_t offset) noexcept {
+	// Выполняем блокировку потока для установки смещения в файле события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку смещения в файле события
 	return this->_io->setSeek(eid, seek, offset);
 }
@@ -229,6 +269,8 @@ bool awh::unit::Filesystem::setSeek(const event::id_t eid, const event::seek_t s
  * @return    опции события
  */
 uint16_t awh::unit::Filesystem::getOptions(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для получения опций события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение опций события
 	return this->_io->getOptions(eid);
 }
@@ -240,6 +282,8 @@ uint16_t awh::unit::Filesystem::getOptions(const event::id_t eid) const noexcept
  * @return        результат выполнения установки
  */
 bool awh::unit::Filesystem::setOptions(const event::id_t eid, const uint16_t options) noexcept {
+	// Выполняем блокировку потока для установки опций события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку опций события
 	return this->_io->setOptions(eid, options);
 }
@@ -252,6 +296,8 @@ bool awh::unit::Filesystem::setOptions(const event::id_t eid, const uint16_t opt
  * @return       результат выполнения установки
  */
 bool awh::unit::Filesystem::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
+	// Выполняем блокировку потока для установки опции события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку опции события
 	return this->_io->setOption(eid, option, mode);
 }
@@ -263,6 +309,8 @@ bool awh::unit::Filesystem::setOption(const event::id_t eid, const uint16_t opti
  * @return       размер буфера события
  */
 size_t awh::unit::Filesystem::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
+	// Выполняем блокировку потока для получения размера буфера события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение размера буфера события
 	return this->_io->getBufferSize(eid, action);
 }
@@ -275,6 +323,8 @@ size_t awh::unit::Filesystem::getBufferSize(const event::id_t eid, const event::
  * @return       результат выполнения установки
  */
 bool awh::unit::Filesystem::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
+	// Выполняем блокировку потока для установки размера буфера события
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку размера буфера события
 	return this->_io->setBufferSize(eid, action, size);
 }
@@ -289,4 +339,11 @@ awh::unit::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept
  * @brief Деструктор
  *
  */
-awh::unit::Filesystem::~Filesystem() noexcept {}
+awh::unit::Filesystem::~Filesystem() noexcept {
+	// Выполняем блокировку потока для уничтожения событий
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем удаление всех событий файловой системы
+	for(const auto & eid : this->_events)
+		// Удаляем событие файловой системы
+		this->_io->destroy(eid);
+}

@@ -153,9 +153,9 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * @brief Метод получения версии протокола TLS
+			 * @brief Метод получения версии OpenSSL
 			 *
-			 * @return версия протокола TLS
+			 * @return версия OpenSSL
 			 */
 			string version() const noexcept;
 		public:
@@ -212,12 +212,12 @@ namespace awh {
 			bool validateCertificate(const id_t id) const noexcept;
 		public:
 			/**
-			 * @brief Метод установки проверки хоста сервера
+			 * @brief Метод установки проверки доменного имени сервера
 			 *
 			 * @param id   идентификатор события
-			 * @param mode режим проверки хоста сервера
+			 * @param mode режим проверки доменного имени сервера
 			 */
-			void validateHostname(const id_t id, const bool mode) noexcept;
+			void validateServerNameIndication(const id_t id, const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод получения режима работы TLS
@@ -235,19 +235,19 @@ namespace awh {
 			void mode(const id_t id, const mode_t mode) noexcept;
 		public:
 			/**
-			 * @brief Метод получения имени хоста сервера
+			 * @brief Метод получения доменного имени сервера
 			 *
 			 * @param id идентификатор события
-			 * @return   имя хоста сервера
+			 * @return   доменное имя сервера
 			 */
-			string hostname(const id_t id) const noexcept;
+			string serverNameIndication(const id_t id) const noexcept;
 			/**
-			 * @brief Метод установки имени хоста сервера
+			 * @brief Метод установки доменного имени сервера
 			 *
-			 * @param id       идентификатор события
-			 * @param hostname имя хоста сервера
+			 * @param id  идентификатор события
+			 * @param sni доменное имя сервера
 			 */
-			void hostname(const id_t id, string_view hostname) noexcept;
+			void serverNameIndication(const id_t id, string_view sni) noexcept;
 		public:
 			/**
 			 * @brief Метод установки адреса и порта отдалённого узла

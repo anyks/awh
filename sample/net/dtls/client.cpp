@@ -64,9 +64,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем файл центра сертификации DTLS
 		tls.ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста DTLS
-		tls.validateHostname(cts, false);
+		tls.validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста DTLS
-		tls.hostname(cts, "server.anyks.com");
+		tls.serverNameIndication(cts, "server.anyks.com");
 		// Устанавливаем клиентский сертификат DTLS
 		tls.certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ DTLS

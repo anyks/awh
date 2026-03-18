@@ -273,7 +273,7 @@ void awh::unit::ICMP::create(const event::family_t family) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока для создания события ICMP-клиента
-		const locker_t <> lock(this->_client.mtx);
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -370,7 +370,7 @@ void awh::unit::ICMP::timeout(const id_t id, [[maybe_unused]] const event::id_t,
 		const event::family_t family = this->_io->family(eid);
 		{
 			// Выполняем блокировку потока для уничтожения события ICMP-клиента
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие ICMP-клиента
 			this->_io->destroy(eid);
 		}
@@ -505,7 +505,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 				// Результат полученных данных
 				icmp = reinterpret_cast <const header_t *> (data);
 				// Выполняем блокировку потока для установки IP-адреса события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 				// Извлекаем IP-адрес установленный в событии
 				this->_io->getTarget(eid, address);
 			}
@@ -544,7 +544,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 			// Если выполняется синхронный режим пинга удалённого сервера
 			if(mode == mode_t::ASYNC){
 				// Выполняем блокировку потока для уничтожения события
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Удаляем событие таймера для ожидания ответа от удалённого сервера
 				this->_io->destroy(i->second.eid);
 				// Если номер последовательности запроса меньше количества отправленных запросов
@@ -648,14 +648,25 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
  * @param mode флаг режима безопасности потоков
  */
 void awh::unit::ICMP::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для родительского юнита
+	unit_t::threadSafety(mode);
 	// Устанавливаем режим безопасности работы потоков
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
 	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Активируем работу мьютекса блокировки потока при работе с ICMP-клиентом
-	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с активными пакетами
 	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+/**
+ * @brief Метод установки функций обратного вызова
+ *
+ * @param callback функции обратного вызова
+ */
+void awh::unit::ICMP::callback(const callback_t & callback) noexcept {
+	// Устанавливаем функций обратного вызова для родительского юнита
+	unit_t::callback(callback);
+	// Выполняем установку функции обратного вызова при получении ответа от удалённого сервера
+	this->_callback.set("ping", callback);
 }
 /**
  * @brief Метод сброса ICMP-клиента
@@ -667,7 +678,7 @@ bool awh::unit::ICMP::reset() noexcept {
 	const event::family_t family = this->_io->family(this->_client.eid);
 	{
 		// Выполняем блокировку потока для уничтожения события ICMP-клиента
-		const locker_t <> lock(this->_client.mtx);
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Удаляем событие ICMP-клиента
 		this->_io->destroy(this->_client.eid);
 	}
@@ -691,7 +702,7 @@ bool awh::unit::ICMP::commit() noexcept {
 		// Если адрес назначения сервера установлен
 		if(this->_client.target != nullptr){
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Устанавливаем адрес сервера назначения
 			this->_io->setTarget(this->_client.eid, this->_client.target.get());
 			// Если адрес сети для выполнения запроса установлен
@@ -805,7 +816,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					// Выполняем парсинг IPv4-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV4))){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим полученный результат
@@ -819,7 +830,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					// Выполняем парсинг IPv6-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV6))){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим полученный результат
@@ -841,7 +852,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 								// Если IP-адрес принадлежит к IPv4
 								if((result = (ip->size == 4))){
 									// Выполняем блокировку потока для установки IP-адреса события
-									const locker_t <> lock(this->_client.mtx);
+									const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 									// Устанавливаем адрес сервера назначения
 									this->_client.target = ::move(ip);
 									// Выводим полученный результат
@@ -853,7 +864,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 								// Если IP-адрес принадлежит к IPv6
 								if((result = (ip->size == 16))){
 									// Выполняем блокировку потока для установки IP-адреса события
-									const locker_t <> lock(this->_client.mtx);
+									const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 									// Устанавливаем адрес сервера назначения
 									this->_client.target = ::move(ip);
 									// Выводим полученный результат
@@ -906,7 +917,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 				// Если адрес является IPv4
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
 					this->_client.target = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
@@ -917,7 +928,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
 					this->_client.target = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
@@ -975,7 +986,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 					// Выполняем парсинг IPv4-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV4))){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим полученный результат
@@ -989,7 +1000,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 					// Выполняем парсинг IPv6-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV6))){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим полученный результат
@@ -1045,7 +1056,7 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим результат
@@ -1054,7 +1065,7 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим результат
@@ -1065,7 +1076,7 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
 		}
@@ -1110,7 +1121,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 				// Если адрес является IPv4
 				case 4: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
 					this->_client.source = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
@@ -1121,7 +1132,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для установки IP-адреса события
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
 					this->_client.source = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
@@ -1133,7 +1144,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
 			// Выводим положительный результат
@@ -1187,7 +1198,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 					// Выполняем парсинг IPv4-адреса
 					if((result = this->_addr.parse(source, net_addr_t::type_t::IPV4))){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим результат
@@ -1201,7 +1212,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 					// Выполняем парсинг IPv6-адреса
 					if((result = this->_addr.parse(source, net_addr_t::type_t::IPV6))){
 						// Выполняем блокировку потока для установки IP-адреса события
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 						// Выводим результат
@@ -1212,7 +1223,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для установки IP-адреса события
-			const locker_t <> lock(this->_client.mtx);
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
 		}
@@ -1301,7 +1312,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 				// Если таймаут успешно добавлен для данного идентификатора ICMP-клиента
 				} else {
 					// Выполняем блокировку потока для создания события ICMP-клиента
-					const locker_t <> lock(this->_client.mtx);
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 					// Получаем семейство IP-адресов текущего события ICMP-клиента
 					const event::family_t family = this->_io->family(this->_client.eid);
 					// Идентификатор события
@@ -1535,7 +1546,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					// Если таймаут успешно добавлен для данного идентификатора ICMP-клиента
 					} else {
 						// Выполняем блокировку потока для установки таймера
-						const locker_t <> lock(this->_client.mtx);
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Добавляем новое событие таймаута для ожидания ответа от удаленного сервера
 						const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от удаленного сервера
@@ -1617,7 +1628,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 				// Выполняем подсчёт контрольной суммы
 				icmp.checksum = ::checksum(&icmp, sizeof(icmp));
 				// Выполняем блокировку потока для выполнения запроса
-				const locker_t <> lock(this->_client.mtx);
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Отправляем сообщение серверу
 				result = (this->_io->send(this->_client.eid, &icmp, sizeof(icmp)) > 0);
 			} break;
@@ -1659,8 +1670,6 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
  */
 awh::unit::ICMP::ICMP(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _addr(fmk, log) {
-	// Активируем работу мьютекса блокировки потока при работе с клиентом
-	this->_client.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с активными пакетами
 	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
@@ -1674,4 +1683,21 @@ awh::unit::ICMP::ICMP(const event::family_t family, const fmk_t * fmk, const log
  * @brief Деструктор
  *
  */
-awh::unit::ICMP::~ICMP() noexcept {}
+awh::unit::ICMP::~ICMP() noexcept {
+	// Выполняем блокировку потока для удаления события ICMP-клиента и событий таймаута для отслеживания выполнения запросов
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Если событие ICMP-клиента активно
+	if(this->_client.eid > 0)
+		// Удаляем событие ICMP-клиента
+		this->_io->destroy(this->_client.eid);
+	// Если контейнер пакетов для отслеживания выполнения запросов не пустой
+	if(!this->_transfer.waiting.empty()){
+		// Выполняем перебор всех пакетов в контейнере пакетов
+		for(auto i = this->_transfer.waiting.begin(); i != this->_transfer.waiting.end(); ++i){
+			// Если событие таймаута для ожидания ответа от ICMP-клиента активно
+			if(i->second.eid > 0)
+				// Удаляем событие таймаута для ожидания ответа от ICMP-клиента
+				this->_io->destroy(i->second.eid);
+		}
+	}
+}
