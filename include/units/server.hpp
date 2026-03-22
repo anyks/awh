@@ -186,8 +186,8 @@ namespace awh {
 				 *
 				 * @param eid   идентификатор события
 				 * @param error тип ошибки отправки данных
-				 * @param data  данные которые не получилось отправить
-				 * @param size  размер данных которые не получилось отправить
+				 * @param data  данные, которые не получилось отправить
+				 * @param size  размер данных, которые не получилось отправить
 				 */
 				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
 			public:

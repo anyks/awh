@@ -460,8 +460,8 @@ void awh::unit::Server::error(const event::id_t eid, const event::error_t error,
  *
  * @param eid   идентификатор события
  * @param error тип ошибки отправки данных
- * @param data  данные которые не получилось отправить
- * @param size  размер данных которые не получилось отправить
+ * @param data  данные, которые не получилось отправить
+ * @param size  размер данных, которые не получилось отправить
  */
 void awh::unit::Server::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
@@ -1257,12 +1257,12 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Server::destroy(const event::id_t eid) noexcept {
+	// Выполняем блокировку потока для уничтожения события сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем поиск идентификатора события сервера в списке событий сервера
 	auto i = this->_events.find(eid);
 	// Если идентификатор события сервера найден в списке событий сервера
 	if(i != this->_events.end()){
-		// Выполняем блокировку потока для уничтожения события сервера
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Удаляем событие сервера
 		this->_io->destroy(* i);
 		// Удаляем идентификатор события сервера из списка событий сервера

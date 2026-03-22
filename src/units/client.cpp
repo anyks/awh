@@ -119,8 +119,8 @@ void awh::unit::Client::error(const event::id_t eid, const event::error_t error,
  *
  * @param eid   идентификатор события
  * @param error тип ошибки отправки данных
- * @param data  данные которые не получилось отправить
- * @param size  размер данных которые не получилось отправить
+ * @param data  данные, которые не получилось отправить
+ * @param size  размер данных, которые не получилось отправить
  */
 void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
@@ -719,7 +719,7 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
  * @param callback функции обратного вызова
  */
 void awh::unit::Client::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при получении данных от сервера
 	this->_callback.set("read", callback);
@@ -729,7 +729,7 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("state", callback);
 	// Выполняем установку функции обратного вызова при получении события неотправленных данных
 	this->_callback.set("spool", callback);
-	// Выполняем установку функции обратного вызова при обработки действий клиента
+	// Выполняем установку функции обратного вызова при обработке действий клиента
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к серверу
 	this->_callback.set("connect", callback);
@@ -742,12 +742,12 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Client::destroy(const event::id_t eid) noexcept {
+	// Выполняем блокировку потока для уничтожения события клиента
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем поиск идентификатора события клиента в списке событий клиента
 	auto i = this->_events.find(eid);
 	// Если идентификатор события клиента найден в списке событий клиента
 	if(i != this->_events.end()){
-		// Выполняем блокировку потока для уничтожения события клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Удаляем событие клиента
 		this->_io->destroy(* i);
 		// Удаляем идентификатор события клиента из списка событий клиента
