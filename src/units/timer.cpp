@@ -221,7 +221,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::Timer::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Переходим по всему списку активных таймеров
 	for(auto & eid : this->_timers){

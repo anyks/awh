@@ -552,7 +552,7 @@ namespace awh {
 				void clusterName(string_view name) noexcept;
 			public:
 				/**
-				 * @brief Меод получения семейства кластера
+				 * @brief Метод получения семейства кластера
 				 *
 				 * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
 				 */

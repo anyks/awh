@@ -2718,7 +2718,7 @@ void awh::unit::DNS::threadSafety(const bool mode) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::DNS::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при получении серверов имён
 	this->_callback.set("ns", callback);

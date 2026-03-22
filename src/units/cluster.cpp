@@ -1307,7 +1307,7 @@ unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса
 	this->_callback.set("exit", callback);

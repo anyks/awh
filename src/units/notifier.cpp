@@ -180,7 +180,7 @@ void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::Notifier::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при изменении состояния события уведомителя
 	this->_callback.set("state", callback);

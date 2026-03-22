@@ -801,7 +801,7 @@ void awh::unit::NTP::threadSafety(const bool mode) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::NTP::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова для количества попыток получения ответа от NTP-сервера
 	this->_callback.set("attempts", callback);

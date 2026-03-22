@@ -179,7 +179,7 @@ awh::unit::Filesystem::type_t awh::unit::Filesystem::type(const event::id_t eid)
  * @param callback функции обратного вызова
  */
 void awh::unit::Filesystem::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при чтении из файла
 	this->_callback.set("read", callback);

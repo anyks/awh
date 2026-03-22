@@ -176,7 +176,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				}
 			#endif
 		} break;
-		// Если работа кластера подлежит уничтожение
+		// Если работа кластера подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("serverStatus")){
@@ -488,14 +488,12 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 		 * Для операционной системы Linux или FreeBSD
 		 */
 		#if __linux__ || __FreeBSD__
-			// Если класет активен, значит нам необходимо проверить опции сервера
+			// Если кластер активен, значит нам необходимо проверить опции сервера
 			if(this->_clusterMode == event::mode_t::ENABLED){
-				// Извлекаем опции события сервера
-				const uint16_t options = this->_io->getOptions(eid);
 				// Если не установлена опция переиспользования портов
-				if(!(options & event::options::REUSE_PORT))
+				if(!(this->_io->getOptions(eid) & event::options::REUSE_PORT))
 					// Выполняем установку опции для события сервера
-					this->_io->setOptions(eid, options | event::options::REUSE_PORT);
+					this->_io->setOption(eid, event::options::REUSE_PORT, true);
 			}
 		#endif
 		// Выполняем фиксацию параметров события
@@ -1218,7 +1216,7 @@ void awh::unit::Server::start() noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::Server::callback(const callback_t & callback) noexcept {
-	// Устанавливаем функций обратного вызова для родительского юнита
+	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при получении данных от клиента
 	this->_callback.set("read", callback);
@@ -1228,7 +1226,7 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("state", callback);
 	// Выполняем установку функции обратного вызова при получении события неотправленных данных
 	this->_callback.set("spool", callback);
-	// Выполняем установку функции обратного вызова при обработки действий сервера
+	// Выполняем установку функции обратного вызова при обработке действий сервера
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при принятии нового подключения
 	this->_callback.set("accept", callback);
@@ -1242,7 +1240,7 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("clusterState", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса кластера
 	this->_callback.set("clusterRebase", callback);
-	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса кластера
+	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКЕ процесса кластера
 	this->_callback.set("clusterEvents", callback);
 	// Выполняем установку функции обратного вызова при отправке сообщения кластера
 	this->_callback.set("clusterSending", callback);
@@ -1350,7 +1348,7 @@ void awh::unit::Server::clusterName(string_view name) noexcept {
 	this->_cluster.name(name);
 }
 /**
- * @brief Меод получения семейства кластера
+ * @brief Метод получения семейства кластера
  *
  * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
  */
@@ -1404,17 +1402,19 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 	try {
 		// Выполняем блокировку потока для работы с событием кластера
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Локальная переменная для работы с количеством процессов
+		uint16_t currentCount = count;
 		// Если количество процессов передано пустое
-		if(count == 0){
+		if(currentCount == 0){
 			// Устанавливаем количество доступных ядер в системе
-			const_cast <uint16_t &> (count) = static_cast <uint16_t> (thread::hardware_concurrency());
-			// Если количество доступных воркеров больше 1-х, уменьшаем пополам
-			if(count > 1)
+			currentCount = static_cast <uint16_t> (thread::hardware_concurrency());
+			// Если количество доступных воркеров больше одного, уменьшаем пополам
+			if(currentCount > 1)
 				// Уменьшаем количество воркеров в два раза
-				const_cast <uint16_t &> (count) /= 2;
+				currentCount /= 2;
 		}
 		// Устанавливаем максимальное количество процессов кластера
-		this->_cluster.count(count);
+		this->_cluster.count(currentCount);
 	/**
 	 * Если возникает ошибка
 	 */
