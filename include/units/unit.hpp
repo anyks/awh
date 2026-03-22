@@ -317,6 +317,18 @@ namespace awh {
 				 * @param mode флаг активации
 				 */
 				void interception(const event::mode_t mode) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				Unit(const Unit &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				Unit & operator = (const Unit &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

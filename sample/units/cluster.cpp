@@ -86,7 +86,7 @@ int32_t main(int32_t argc, char * argv[]){
 		log.print("Cluster process [%u] has been reborn as process [%u]", log_t::flag_t::INFO, old_pid, new_pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	cluster.on <void (const pid_t, const event::error_t, const string)> ("error", [&cluster, &log](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
+	cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", [&cluster, &log](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
 		// Выводим событие получения ошибки
 		log.print("Cluster process [%u] has received error [%d]: %s", log_t::flag_t::CRITICAL, pid, static_cast <uint16_t >(error), message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);

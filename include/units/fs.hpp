@@ -215,6 +215,18 @@ namespace awh {
 				 * @return       результат выполнения установки
 				 */
 				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				Filesystem(const Filesystem &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				Filesystem & operator = (const Filesystem &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

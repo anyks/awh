@@ -490,6 +490,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/notifier.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"

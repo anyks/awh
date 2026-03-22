@@ -92,6 +92,18 @@ namespace awh {
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				Timer(const Timer &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				Timer & operator = (const Timer &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

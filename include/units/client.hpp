@@ -83,6 +83,14 @@ namespace awh {
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
+				 * @brief Метод обработки события доступности/недоступности очереди исходящих данных клиента
+				 *
+				 * @param eid    идентификатор события
+				 * @param status статус доступности очереди
+				 * @param size   размер доступных данных очереди
+				 */
+				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+				/**
 				 * @brief Метод обработки событий ошибок клиента
 				 *
 				 * @param eid         идентификатор события
@@ -90,6 +98,15 @@ namespace awh {
 				 * @param description описание ошибки
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
+				/**
+				 * @brief Метод обработки события неотправленных данных клиента
+				 *
+				 * @param eid   идентификатор события
+				 * @param error тип ошибки отправки данных
+				 * @param data  данные которые не получилось отправить
+				 * @param size  размер данных которые не получилось отправить
+				 */
+				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек клиента
@@ -481,6 +498,18 @@ namespace awh {
 				 * @return         идентификатор созданного клиента
 				 */
 				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				Client(const Client &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				Client & operator = (const Client &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

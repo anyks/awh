@@ -118,6 +118,18 @@ namespace awh {
 				 * @return       количество отправленных байт
 				 */
 				size_t trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				Notifier(const Notifier &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				Notifier & operator = (const Notifier &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

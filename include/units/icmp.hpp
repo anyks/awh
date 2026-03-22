@@ -271,6 +271,18 @@ namespace awh {
 				 * @return        результат выполнения запроса
 				 */
 				bool ping(const id_t id, const uint16_t count, const mode_t mode, const uint32_t timeout = 0) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				ICMP(const ICMP &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				ICMP & operator = (const ICMP &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

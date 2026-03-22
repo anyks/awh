@@ -640,6 +640,18 @@ namespace awh {
 				 * @return        результат выполнения запроса
 				 */
 				bool resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t timeout = 0) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				DNS(const DNS &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				DNS & operator = (const DNS &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

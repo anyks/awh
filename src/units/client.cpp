@@ -89,6 +89,19 @@ void awh::unit::Client::read(const event::id_t eid, const uint8_t * data, const 
 		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
 }
 /**
+ * @brief Метод обработки события доступности/недоступности очереди исходящих данных клиента
+ *
+ * @param eid    идентификатор события
+ * @param status статус доступности очереди
+ * @param size   размер доступных данных очереди
+ */
+void awh::unit::Client::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("available"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+}
+/**
  * @brief Метод обработки событий ошибок клиента
  *
  * @param eid         идентификатор события
@@ -100,6 +113,20 @@ void awh::unit::Client::error(const event::id_t eid, const event::error_t error,
 	if(this->_callback.is("error"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+}
+/**
+ * @brief Метод обработки события неотправленных данных клиента
+ *
+ * @param eid   идентификатор события
+ * @param error тип ошибки отправки данных
+ * @param data  данные которые не получилось отправить
+ * @param size  размер данных которые не получилось отправить
+ */
+void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("spool"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, data, size);
 }
 /**
  * @brief Метод фиксации настроек клиента
@@ -698,12 +725,16 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("read", callback);
 	// Выполняем установку функции обратного вызова при отправке данных на сервер
 	this->_callback.set("write", callback);
-	// Выполняем установку функции обратного вызова при получении состояния процесса
+	// Выполняем установку функции обратного вызова при получении состояния клиента
 	this->_callback.set("state", callback);
+	// Выполняем установку функции обратного вызова при получении события неотправленных данных
+	this->_callback.set("spool", callback);
 	// Выполняем установку функции обратного вызова при обработки действий клиента
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к серверу
 	this->_callback.set("connect", callback);
+	// Выполняем установку функции обратного вызова при получении событий доступности/недоступности очереди исходящих данных клиента
+	this->_callback.set("available", callback);
 }
 /**
  * @brief Метод уничтожения события клиента
@@ -752,6 +783,10 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+		this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
+		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 		this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
 		// Добавляем идентификатор события клиента в список событий клиента

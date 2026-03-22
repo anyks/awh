@@ -356,6 +356,18 @@ namespace awh {
 				 * @return        результат выполнения запроса
 				 */
 				bool sync(const version_t version = version_t::V4, const uint32_t timeout = 0) noexcept;
+			private:
+				/**
+				 * @brief Конструктор копирования (запрещаем)
+				 *
+				 */
+				NTP(const NTP &) = delete;
+				/**
+				 * @brief Оператор копирования (запрещаем)
+				 *
+				 * @return текущее значение объекта
+				 */
+				NTP & operator = (const NTP &) = delete;
 			public:
 				/**
 				 * @brief Конструктор
