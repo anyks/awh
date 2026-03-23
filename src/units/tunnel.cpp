@@ -40,6 +40,19 @@ void awh::unit::Tunnel::status(const event::id_t eid, const event::status_t stat
 		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
+ * @brief Метод обработки события доступности/недоступности очереди исходящих данных туннеля
+ *
+ * @param eid    идентификатор события
+ * @param status статус доступности очереди
+ * @param size   размер доступных данных очереди
+ */
+void awh::unit::Tunnel::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("available"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+}
+/**
  * @brief Метод обработки событий ошибок туннеля
  *
  * @param eid         идентификатор события
@@ -352,8 +365,10 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
 	unit_t::callback(callback);
 	// Выполняем установку функции обратного вызова при получении информации о пакетах в туннеле
 	this->_callback.set("info", callback);
-	// Выполняем установку функции обратного вызова при получении состояния клиента
+	// Выполняем установку функции обратного вызова при получении состояния туннеля
 	this->_callback.set("state", callback);
+	// Выполняем установку функции обратного вызова при получении событий доступности/недоступности очереди исходящих данных туннеля
+	this->_callback.set("available", callback);
 }
 /**
  * @brief Метод уничтожения события туннеля
@@ -394,6 +409,8 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
+		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
 		// Добавляем идентификатор события туннеля в список событий туннеля
 		this->_events.emplace(result);
 	/**

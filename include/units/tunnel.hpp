@@ -54,6 +54,14 @@ namespace awh {
 				 */
 				void status(const event::id_t eid, const event::status_t status) noexcept;
 				/**
+				 * @brief Метод обработки события доступности/недоступности очереди исходящих данных туннеля
+				 *
+				 * @param eid    идентификатор события
+				 * @param status статус доступности очереди
+				 * @param size   размер доступных данных очереди
+				 */
+				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+				/**
 				 * @brief Метод обработки событий ошибок туннеля
 				 *
 				 * @param eid         идентификатор события
