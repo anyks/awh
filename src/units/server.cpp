@@ -178,6 +178,15 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 		} break;
 		// Если работа кластера подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
+			// Если в списке событий сервера есть события
+			if(!this->_events.empty()){
+				// Выполняем блокировку потока для уничтожения событий
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем удаление всех событий сервера
+				for(const auto & eid : this->_events)
+					// Удаляем событие сервера
+					this->_io->destroy(eid);
+			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("serverStatus")){
 				// Выполняем функцию обратного вызова
@@ -252,6 +261,12 @@ void awh::unit::Server::write(const event::id_t eid, const size_t size) noexcept
  * @param cid идентификатор клиента
  */
 void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
+	{
+		// Выполняем блокировку потока для работы с событием сервера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Добавляем идентификатор события однорангового узла в список событий сервера
+		this->_events.emplace(cid);
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("accept"))
 		// Выполняем функцию обратного вызова
