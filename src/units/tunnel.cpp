@@ -55,16 +55,16 @@ void awh::unit::Tunnel::error(const event::id_t eid, const event::error_t error,
 /**
  * @brief Метод обработки событий получения информации о пакетах в туннеле
  *
- * @param tid    идентификатор события туннеля
+ * @param eid    идентификатор события туннеля
  * @param mid    идентификатор события посредника
  * @param action действие туннеля
  * @param info   информация о пакетах в туннеле
  */
-void awh::unit::Tunnel::info(const event::id_t tid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept {
+void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("info"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)> ("info", tid, mid, action, info);
+		this->_callback.call <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)> ("info", eid, mid, action, info);
 }
 /**
  * @brief Метод фиксации настроек туннеля

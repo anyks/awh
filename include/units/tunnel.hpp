@@ -64,12 +64,12 @@ namespace awh {
 				/**
 				 * @brief Метод обработки событий получения информации о пакетах в туннеле
 				 *
-				 * @param tid    идентификатор события туннеля
+				 * @param eid    идентификатор события туннеля
 				 * @param mid    идентификатор события посредника
 				 * @param action действие туннеля
 				 * @param info   информация о пакетах в туннеле
 				 */
-				void info(const event::id_t tid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept;
+				void info(const event::id_t eid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек туннеля
