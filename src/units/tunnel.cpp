@@ -376,16 +376,19 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
-	// Выполняем блокировку потока для уничтожения события туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем поиск идентификатора события туннеля в списке событий туннеля
-	auto i = this->_events.find(eid);
-	// Если идентификатор события туннеля найден в списке событий туннеля
-	if(i != this->_events.end()){
-		// Удаляем событие туннеля
-		this->_io->destroy(* i);
-		// Удаляем идентификатор события туннеля из списка событий туннеля
-		this->_events.erase(i);
+	// Если в списке событий туннеля есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения события туннеля
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем поиск идентификатора события туннеля в списке событий туннеля
+		auto i = this->_events.find(eid);
+		// Если идентификатор события туннеля найден в списке событий туннеля
+		if(i != this->_events.end()){
+			// Удаляем событие туннеля
+			this->_io->destroy(* i);
+			// Удаляем идентификатор события туннеля из списка событий туннеля
+			this->_events.erase(i);
+		}
 	}
 }
 /**
@@ -446,10 +449,13 @@ awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_
  *
  */
 awh::unit::Tunnel::~Tunnel() noexcept {
-	// Выполняем блокировку потока для уничтожения событий
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем удаление всех событий туннеля
-	for(const auto & eid : this->_events)
-		// Удаляем событие туннеля
-		this->_io->destroy(eid);
+	// Если в списке событий туннеля есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения событий
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем удаление всех событий туннеля
+		for(const auto & eid : this->_events)
+			// Удаляем событие туннеля
+			this->_io->destroy(eid);
+	}
 }

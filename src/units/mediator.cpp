@@ -295,16 +295,19 @@ void awh::unit::Mediator::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Mediator::destroy(const event::id_t eid) noexcept {
-	// Выполняем блокировку потока для уничтожения события посредника
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем поиск идентификатора события посредника в списке событий посредника
-	auto i = this->_events.find(eid);
-	// Если идентификатор события посредника найден в списке событий посредника
-	if(i != this->_events.end()){
-		// Удаляем событие посредника
-		this->_io->destroy(* i);
-		// Удаляем идентификатор события посредника из списка событий посредника
-		this->_events.erase(i);
+	// Если в списке событий посредника есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения события посредника
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем поиск идентификатора события посредника в списке событий посредника
+		auto i = this->_events.find(eid);
+		// Если идентификатор события посредника найден в списке событий посредника
+		if(i != this->_events.end()){
+			// Удаляем событие посредника
+			this->_io->destroy(* i);
+			// Удаляем идентификатор события посредника из списка событий посредника
+			this->_events.erase(i);
+		}
 	}
 }
 /**
@@ -367,10 +370,13 @@ awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : u
  *
  */
 awh::unit::Mediator::~Mediator() noexcept {
-	// Выполняем блокировку потока для уничтожения событий
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем удаление всех событий посредника
-	for(const auto & eid : this->_events)
-		// Удаляем событие посредника
-		this->_io->destroy(eid);
+	// Если в списке событий посредника есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения событий
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем удаление всех событий посредника
+		for(const auto & eid : this->_events)
+			// Удаляем событие посредника
+			this->_io->destroy(eid);
+	}
 }

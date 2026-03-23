@@ -97,16 +97,19 @@ void awh::unit::Filesystem::vnode(const event::id_t eid, const event::action_t a
  * @param eid идентификатор события файловой системы
  */
 void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
-	// Выполняем поиск идентификатора события файловой системы в списке событий файловой системы
-	auto i = this->_events.find(eid);
-	// Если идентификатор события файловой системы найден в списке событий файловой системы
-	if(i != this->_events.end()){
-		// Выполняем блокировку потока для уничтожения события файловой системы
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Удаляем событие файловой системы
-		this->_io->destroy(* i);
-		// Удаляем идентификатор события файловой системы из списка событий файловой системы
-		this->_events.erase(i);
+	// Если в списке событий файловой системы есть события
+	if(!this->_events.empty()){
+		// Выполняем поиск идентификатора события файловой системы в списке событий файловой системы
+		auto i = this->_events.find(eid);
+		// Если идентификатор события файловой системы найден в списке событий файловой системы
+		if(i != this->_events.end()){
+			// Выполняем блокировку потока для уничтожения события файловой системы
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Удаляем событие файловой системы
+			this->_io->destroy(* i);
+			// Удаляем идентификатор события файловой системы из списка событий файловой системы
+			this->_events.erase(i);
+		}
 	}
 }
 /**
@@ -340,10 +343,13 @@ awh::unit::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept
  *
  */
 awh::unit::Filesystem::~Filesystem() noexcept {
-	// Выполняем блокировку потока для уничтожения событий
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем удаление всех событий файловой системы
-	for(const auto & eid : this->_events)
-		// Удаляем событие файловой системы
-		this->_io->destroy(eid);
+	// Если в списке событий файловой системы есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения событий
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем удаление всех событий файловой системы
+		for(const auto & eid : this->_events)
+			// Удаляем событие файловой системы
+			this->_io->destroy(eid);
+	}
 }

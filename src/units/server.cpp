@@ -1370,16 +1370,19 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Server::destroy(const event::id_t eid) noexcept {
-	// Выполняем блокировку потока для уничтожения события сервера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем поиск идентификатора события сервера в списке событий сервера
-	auto i = this->_events.find(eid);
-	// Если идентификатор события сервера найден в списке событий сервера
-	if(i != this->_events.end()){
-		// Удаляем событие сервера
-		this->_io->destroy(* i);
-		// Удаляем идентификатор события сервера из списка событий сервера
-		this->_events.erase(i);
+	// Если в списке событий сервера есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения события сервера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем поиск идентификатора события сервера в списке событий сервера
+		auto i = this->_events.find(eid);
+		// Если идентификатор события сервера найден в списке событий сервера
+		if(i != this->_events.end()){
+			// Удаляем событие сервера
+			this->_io->destroy(* i);
+			// Удаляем идентификатор события сервера из списка событий сервера
+			this->_events.erase(i);
+		}
 	}
 }
 /**
@@ -1638,10 +1641,13 @@ awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::unit::Server::~Server() noexcept {
-	// Выполняем блокировку потока для уничтожения событий
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем удаление всех событий сервера
-	for(const auto & eid : this->_events)
-		// Удаляем событие сервера
-		this->_io->destroy(eid);
+	// Если в списке событий сервера есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения событий
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем удаление всех событий сервера
+		for(const auto & eid : this->_events)
+			// Удаляем событие сервера
+			this->_io->destroy(eid);
+	}
 }

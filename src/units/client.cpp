@@ -742,16 +742,19 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Client::destroy(const event::id_t eid) noexcept {
-	// Выполняем блокировку потока для уничтожения события клиента
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем поиск идентификатора события клиента в списке событий клиента
-	auto i = this->_events.find(eid);
-	// Если идентификатор события клиента найден в списке событий клиента
-	if(i != this->_events.end()){
-		// Удаляем событие клиента
-		this->_io->destroy(* i);
-		// Удаляем идентификатор события клиента из списка событий клиента
-		this->_events.erase(i);
+	// Если в списке событий клиента есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения события клиента
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем поиск идентификатора события клиента в списке событий клиента
+		auto i = this->_events.find(eid);
+		// Если идентификатор события клиента найден в списке событий клиента
+		if(i != this->_events.end()){
+			// Удаляем событие клиента
+			this->_io->destroy(* i);
+			// Удаляем идентификатор события клиента из списка событий клиента
+			this->_events.erase(i);
+		}
 	}
 }
 /**
@@ -824,10 +827,13 @@ awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_
  *
  */
 awh::unit::Client::~Client() noexcept {
-	// Выполняем блокировку потока для уничтожения событий
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем удаление всех событий клиента
-	for(const auto & eid : this->_events)
-		// Удаляем событие клиента
-		this->_io->destroy(eid);
+	// Если в списке событий клиента есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для уничтожения событий
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем удаление всех событий клиента
+		for(const auto & eid : this->_events)
+			// Удаляем событие клиента
+			this->_io->destroy(eid);
+	}
 }

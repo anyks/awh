@@ -162,16 +162,19 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
  * @param eid идентификатор события уведомителя
  */
 void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
-	// Выполняем поиск идентификатора события уведомителя в списке событий уведомителя
-	auto i = this->_events.find(eid);
-	// Если идентификатор события уведомителя найден в списке событий уведомителя
-	if(i != this->_events.end()){
+	// Если в списке событий уведомителя есть события
+	if(!this->_events.empty()){
 		// Выполняем блокировку потока для удаления события уведомителя
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Удаляем событие уведомителя
-		this->_io->destroy(* i);
-		// Удаляем идентификатор события уведомителя из списка событий уведомителя
-		this->_events.erase(i);
+		// Выполняем поиск идентификатора события уведомителя в списке событий уведомителя
+		auto i = this->_events.find(eid);
+		// Если идентификатор события уведомителя найден в списке событий уведомителя
+		if(i != this->_events.end()){
+			// Удаляем событие уведомителя
+			this->_io->destroy(* i);
+			// Удаляем идентификатор события уведомителя из списка событий уведомителя
+			this->_events.erase(i);
+		}
 	}
 }
 /**
@@ -217,10 +220,13 @@ awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : u
  *
  */
 awh::unit::Notifier::~Notifier() noexcept {
-	// Выполняем блокировку потока для удаления всех событий уведомителя
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем удаление всех событий уведомителя
-	for(const auto & eid : this->_events)
-		// Удаляем событие уведомителя
-		this->_io->destroy(eid);
+	// Если в списке событий уведомителя есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для удаления всех событий уведомителя
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем удаление всех событий уведомителя
+		for(const auto & eid : this->_events)
+			// Удаляем событие уведомителя
+			this->_io->destroy(eid);
+	}
 }
