@@ -470,6 +470,106 @@ void awh::unit::Server::spool(const event::id_t eid, const event::send_error_t e
 		this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, data, size);
 }
 /**
+ * @brief Метод очистки чёрного списка события
+ *
+ * @param eid идентификатор события
+ * @return    результат выполнения очистки
+ */
+bool awh::unit::Server::clearBlacklist(const event::id_t eid) noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем очистку чёрного списка события
+	return this->_io->blacklist.clear(eid);
+}
+/**
+ * @brief Метод очистки белого списка события
+ *
+ * @param eid идентификатор события
+ * @return    результат выполнения очистки
+ */
+bool awh::unit::Server::clearWhitelist(const event::id_t eid) noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем очистку белого списка события
+	return this->_io->whitelist.clear(eid);
+}
+/**
+ * @brief Метод добавления адреса в чёрный список события
+ *
+ * @param eid   идентификатор события
+ * @param value значение адреса события
+ * @return      результат выполнения установки
+ */
+bool awh::unit::Server::addToBlacklist(const event::id_t eid, string_view value) noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем добавление адреса в чёрный список события
+	return this->_io->blacklist.add(eid, value);
+}
+/**
+ * @brief Метод добавления адреса в белый список события
+ *
+ * @param eid   идентификатор события
+ * @param value значение адреса события
+ * @return      результат выполнения установки
+ */
+bool awh::unit::Server::addToWhitelist(const event::id_t eid, string_view value) noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем добавление адреса в белый список события
+	return this->_io->whitelist.add(eid, value);
+}
+/**
+ * @brief Метод удаления адреса из чёрного списка события
+ *
+ * @param eid   идентификатор события
+ * @param value адрес для удаления из чёрного списка
+ * @return      результат выполнения удаления
+ */
+bool awh::unit::Server::removeFromBlacklist(const event::id_t eid, string_view value) noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем удаление адреса из чёрного списка события
+	return this->_io->blacklist.remove(eid, value);
+}
+/**
+ * @brief Метод удаления адреса из белого списка события
+ *
+ * @param eid   идентификатор события
+ * @param value адрес для удаления из белого списка
+ * @return      результат выполнения удаления
+ */
+bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view value) noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем удаление адреса из белого списка события
+	return this->_io->whitelist.remove(eid, value);
+}
+/**
+ * @brief Метод получения чёрного списка события
+ *
+ * @param eid идентификатор события
+ * @return    чёрный список события
+ */
+const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromBlacklist(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Возвращаем чёрный список события
+	return this->_io->blacklist.get(eid);
+}
+/**
+ * @brief Метод получения белого списка события
+ *
+ * @param eid идентификатор события
+ * @return    белый список события
+ */
+const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromWhitelist(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для работы с событием сервера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Возвращаем белый список события
+	return this->_io->whitelist.get(eid);
+}
+/**
  * @brief Метод фиксации настроек сервера
  *
  * @param eid идентификатор события сервера

@@ -59,7 +59,7 @@ namespace awh {
 				 * @param status статус запуска/остановки кластера
 				 */
 				void launch(const event::status_t status) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки события пересоздания процесса
 				 *
@@ -67,7 +67,7 @@ namespace awh {
 				 * @param pid текущий идентификатор процесса
 				 */
 				void rebase(const pid_t old, const pid_t pid) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод получения события завершения работы процесса
 				 *
@@ -75,7 +75,7 @@ namespace awh {
 				 * @param signal сигнал с которым завершился процесс
 				 */
 				void exit(const pid_t pid, const int32_t signal) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки события отправки сообщения процессу кластера
 				 *
@@ -90,7 +90,7 @@ namespace awh {
 				 * @param size размер данных для записи
 				 */
 				void write(const event::id_t eid, const size_t size) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки события разрешения подключения
 				 *
@@ -98,7 +98,7 @@ namespace awh {
 				 * @param cid идентификатор клиента
 				 */
 				void accept(const event::id_t eid, const event::id_t cid) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки действий сервера
 				 *
@@ -106,7 +106,7 @@ namespace awh {
 				 * @param action действие сервера
 				 */
 				void action(const event::id_t eid, const event::action_t action) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки событий изменения статуса кластера
 				 *
@@ -121,7 +121,7 @@ namespace awh {
 				 * @param status новый статус сервера
 				 */
 				void status(const event::id_t eid, const event::status_t status) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод получения событий активации/деактивации кластера
 				 *
@@ -129,7 +129,7 @@ namespace awh {
 				 * @param event флаг события кластера
 				 */
 				void cluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки события получения сообщения от процесса кластера
 				 *
@@ -146,7 +146,7 @@ namespace awh {
 				 * @param size размер данных события получения данных сервером
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки события доступности/недоступности очереди исходящих сообщений кластера
 				 *
@@ -163,7 +163,7 @@ namespace awh {
 				 * @param size   размер доступных данных очереди
 				 */
 				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки событий ошибок кластера
 				 *
@@ -180,7 +180,7 @@ namespace awh {
 				 * @param description описание ошибки
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
-			public:
+			private:
 				/**
 				 * @brief Метод обработки события неотправленных данных сервера
 				 *
@@ -190,6 +190,70 @@ namespace awh {
 				 * @param size  размер данных, которые не получилось отправить
 				 */
 				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод очистки чёрного списка события
+				 *
+				 * @param eid идентификатор события
+				 * @return    результат выполнения очистки
+				 */
+				bool clearBlacklist(const event::id_t eid) noexcept;
+				/**
+				 * @brief Метод очистки белого списка события
+				 *
+				 * @param eid идентификатор события
+				 * @return    результат выполнения очистки
+				 */
+				bool clearWhitelist(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод добавления адреса в чёрный список события
+				 *
+				 * @param eid   идентификатор события
+				 * @param value значение адреса события
+				 * @return      результат выполнения установки
+				 */
+				bool addToBlacklist(const event::id_t eid, string_view value) noexcept;
+				/**
+				 * @brief Метод добавления адреса в белый список события
+				 *
+				 * @param eid   идентификатор события
+				 * @param value значение адреса события
+				 * @return      результат выполнения установки
+				 */
+				bool addToWhitelist(const event::id_t eid, string_view value) noexcept;
+			public:
+				/**
+				 * @brief Метод удаления адреса из чёрного списка события
+				 *
+				 * @param eid   идентификатор события
+				 * @param value адрес для удаления из чёрного списка
+				 * @return      результат выполнения удаления
+				 */
+				bool removeFromBlacklist(const event::id_t eid, string_view value) noexcept;
+				/**
+				 * @brief Метод удаления адреса из белого списка события
+				 *
+				 * @param eid   идентификатор события
+				 * @param value адрес для удаления из белого списка
+				 * @return      результат выполнения удаления
+				 */
+				bool removeFromWhitelist(const event::id_t eid, string_view value) noexcept;
+			public:
+				/**
+				 * @brief Метод получения чёрного списка события
+				 *
+				 * @param eid идентификатор события
+				 * @return    чёрный список события
+				 */
+				const std::unordered_map <string, event::address_t> & getFromBlacklist(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод получения белого списка события
+				 *
+				 * @param eid идентификатор события
+				 * @return    белый список события
+				 */
+				const std::unordered_map <string, event::address_t> & getFromWhitelist(const event::id_t eid) const noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек сервера

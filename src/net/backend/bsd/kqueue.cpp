@@ -26357,7 +26357,7 @@ namespace sctp {
 #endif
 
 /**
- * @brief Метод очистки белого списка события
+ * @brief Метод очистки контрольного списка события
  *
  * @param id идентификатор события
  * @return   результат выполнения очистки
@@ -26465,7 +26465,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 	return false;
 }
 /**
- * @brief Метод добавления адреса в белый список события
+ * @brief Метод добавления адреса в контрольный список события
  *
  * @param id    идентификатор события
  * @param value значение адреса события
@@ -26749,10 +26749,10 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 	return false;
 }
 /**
- * @brief Метод удаления адреса из белого списка события
+ * @brief Метод удаления адреса из контрольного списка события
  *
  * @param id    идентификатор события
- * @param value адрес для удаления из белого списка
+ * @param value адрес для удаления из контрольного списка
  * @return      результат выполнения удаления
  */
 bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view value) noexcept {
@@ -26911,10 +26911,10 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 	return result;
 }
 /**
- * @brief Метод получения белого списка события
+ * @brief Метод получения контрольного списка события
  *
  * @param id идентификатор события
- * @return   белый список события
+ * @return   контрольный список события
  */
 const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
 	// Результат работы функции
@@ -27013,7 +27013,7 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 /**
  * @brief Конструктор
  *
- * @param type тип списка контрольного списка
+ * @param type тип контрольного списка
  */
 awh::engine::IO::Control_List::Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _type(type), _fmk(fmk), _log(log) {}
