@@ -138,12 +138,78 @@ namespace uri {
 					// Если встретили разделитель схемы
 					if(letter == ':'){
 						// Если до разделителя были символы, и схема валидна
-						if((ptr > tokenBegin) && schemeValid)
-							// Сохраняем схему URI
+						if((ptr > tokenBegin) && schemeValid){
+							/**
+							 * Проверяем, содержит ли кандидат точку.
+							 * Настоящие схемы URI (http, ftp, mailto, ...) точек не содержат.
+							 * Если точка есть — это доменное имя (www.example.com:443/...),
+							 * а не схема, и мы переходим к разбору хоста.
+							 */
+							bool hasDot = false;
+							// Ищем точку в кандидате на схему
+							for(const char * s = tokenBegin; s < ptr; ++s){
+								// Если нашли точку
+								if(* s == '.'){
+									// Устанавливаем флаг
+									hasDot = true;
+									// Прерываем поиск
+									break;
+								}
+							}
+							// Если точка найдена — это домен, а не схема
+							if(hasDot){
+								// Помечаем наличие authority без //
+								hasAuthority = true;
+								// Переходим к чтению хоста
+								state = state_t::HOST;
+								// Начало хоста — начало строки
+								hostBegin = tokenBegin;
+								// Начало userinfo — то же место
+								userinfoBegin = tokenBegin;
+								// Обработать : в состоянии HOST (оно найдёт порт)
+								continue;
+							}
+							// Иначе сохраняем схему URI
 							scheme = string_view(tokenBegin, ptr - tokenBegin);
-						// Если схема не валидна, или до разделителя не было символов, считаем что это относительный путь
-						else {
-							// Устанавливаем начало токена на начало строки, чтобы обработать весь URI как путь
+						/**
+						 * Если схема не валидна (например токен начинается с цифры: 127.0.0.1),
+						 * проверяем наличие точки — тогда это IP/домен, а не путь
+						 */
+						} else if(ptr > tokenBegin) {
+							// Флаг наличия точки в кандидате на схему
+							bool hasDot = false;
+							// Ищем точку в кандидате
+							for(const char * s = tokenBegin; s < ptr; ++s){
+								// Если нашли точку
+								if(* s == '.'){
+									// Устанавливаем флаг
+									hasDot = true;
+									// Прерываем поиск
+									break;
+								}
+							}
+							// Если точка найдена — это host:port (например 127.0.0.1:443)
+							if(hasDot){
+								// Помечаем наличие authority без //
+								hasAuthority = true;
+								// Переходим к чтению хоста
+								state = state_t::HOST;
+								// Начало хоста — начало строки
+								hostBegin = tokenBegin;
+								// Начало userinfo — то же место
+								userinfoBegin = tokenBegin;
+								// Обработать : в состоянии HOST (оно найдёт порт)
+								continue;
+							}
+							// Точки нет — это не хост, идём в путь
+							tokenBegin = begin;
+							// Сбрасываем состояние
+							state = state_t::PATH;
+							// Обработать текущий символ в контексте PATH
+							continue;
+						// Если до разделителя не было символов, и это не начало схемы — это может быть путь, начинающийся с : (например :/path)
+						} else {
+							// До разделителя не было символов — путь
 							tokenBegin = begin; 
 							// Сбрасываем состояние, идем в путь с начала строки
 							state = state_t::PATH;
@@ -154,14 +220,60 @@ namespace uri {
 						state = state_t::AUTHORITY;
 						// Устанавливаем начало токена на следующий символ после ":"
 						tokenBegin = (ptr + 1);
-					// Если встретили разделитель пути, запроса или фрагмента до разделителя схемы, то это относительный URI или путь
+					// Если встретили разделитель пути, запроса или фрагмента до разделителя схемы
 					} else if((letter == '/') || (letter == '?') || (letter == '#')) {
+						/**
+						 * Проверяем, есть ли точка в части до разделителя.
+						 * Если есть — это домен без схемы (www.example.com/path),
+						 * и токен до разделителя является хостом, а не частью пути.
+						 */
+						bool hasDot = false;
+						// Ищем точку только если перед разделителем что-то есть
+						if(ptr > tokenBegin){
+							// Ищем точку в кандидате
+							for(const char * s = tokenBegin; s < ptr; ++s){
+								// Если нашли точку
+								if(* s == '.'){
+									// Устанавливаем флаг
+									hasDot = true;
+									// Прерываем поиск
+									break;
+								}
+							}
+						}
+						// Если точка найдена — это домен, переходим к разбору хоста
+						if(hasDot){
+							// Помечаем наличие authority без //
+							hasAuthority = true;
+							// Переходим к чтению хоста
+							state = state_t::HOST;
+							// Начало хоста и userinfo — начало строки
+							hostBegin = tokenBegin;
+							// Начало userinfo — то же место
+							userinfoBegin = tokenBegin;
+							// Обработать / в состоянии HOST (оно сохранит хост и уйдёт в PATH)
+							continue;
+						}
 						// Устанавливаем начало токена на начало строки, чтобы обработать весь URI как путь
 						tokenBegin = begin;
 						// Схема не найдена, это относительный URI или путь
 						state = state_t::PATH;
 						// Обработать символ в новом состоянии
 						continue;
+					// Если встретили @ — это userinfo@host без схемы (например user@example.com)
+					} else if(letter == '@') {
+						// Всё до @ — userinfo
+						userinfo = string_view(tokenBegin, ptr - tokenBegin);
+						// Помечаем наличие authority
+						hasAuthority = true;
+						// Переходим к чтению хоста
+						state = state_t::HOST;
+						// Начало хоста — символ после @
+						tokenBegin = (ptr + 1);
+						// Устанавливаем начало хоста
+						hostBegin = tokenBegin;
+						// userinfoBegin уже не нужен, но на всякий случай
+						userinfoBegin = tokenBegin;
 					// Если это не разделитель, то проверяем валидность символов схемы
 					} else {
 						// Если это первый символ схемы, проверяем его на допустимость для первой позиции (должна быть буква)
@@ -401,13 +513,32 @@ namespace uri {
 		 */
 		switch(static_cast <uint8_t> (state)){
 			// Если мы закончили на чтении схемы, то это может быть схема без : или путь без схемы
-			case static_cast <uint8_t> (state_t::SCHEME):
+			case static_cast <uint8_t> (state_t::SCHEME): {
 				/**
-				 * Строка без разделителей, считаем путем или схемой?
-				 * По стандарту если нет : то это относительный путь
+				 * Строка без разделителей (нет ни : ни / ни ? ни # ни @).
+				 * Проверяем, содержит ли строка @: тогда это userinfo@host без схемы.
+				 * Иначе — относительный путь.
 				 */
-				path = string_view(begin, end - begin);
-			break;
+				const char * atSign = nullptr;
+				// Ищем @ в строке
+				for(const char * s = tokenBegin; s < end; ++s){
+					// Если нашли @
+					if(* s == '@'){
+						// Сохраняем указатель
+						atSign = s;
+						// Прерываем поиск
+						break;
+					}
+				}
+				// Если @ найден — это userinfo@host
+				if(atSign != nullptr){
+					// Сохраняем userinfo
+					userinfo = string_view(tokenBegin, atSign - tokenBegin);
+					// Сохраняем host (всё после @)
+					host = string_view(atSign + 1, end - (atSign + 1));
+				// Устанавливаем путь URI
+				} else path = string_view(begin, end - begin);
+			} break;
 			// Если мы закончили на чтении авторити, то это может быть авторити без пути или портом, или просто путь
 			case static_cast <uint8_t> (state_t::AUTHORITY):
 				// Было scheme: но не было //
