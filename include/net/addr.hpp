@@ -616,7 +616,7 @@ namespace awh {
 			Network_Address & operator = (const std::array <uint8_t, 16> & addr) noexcept;
 		public:
 			/**
-			 * @brief конструктор
+			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -624,10 +624,10 @@ namespace awh {
 			explicit Network_Address(const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
-			 * @brief деструктор
+			 * @brief Деструктор
 			 *
 			 */
-			~Network_Address() noexcept {}
+			~Network_Address() noexcept;
 	} net_addr_t;
 	/**
 	 * @brief Оператор [>>] чтения из потока IP-адреса

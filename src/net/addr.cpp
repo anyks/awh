@@ -5527,13 +5527,18 @@ awh::Network_Address & awh::Network_Address::operator = (const std::array <uint8
 	return (* this);
 }
 /**
- * @brief конструктор
+ * @brief Конструктор
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
 awh::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
  _type(type_t::NONE), _fmk(fmk), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Network_Address::~Network_Address() noexcept {}
 /**
  * @brief Оператор [>>] чтения из потока IP-адреса
  *

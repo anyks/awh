@@ -434,7 +434,7 @@ namespace uri {
 							tokenBegin = (ptr + 1);
 						}
 					/**
-					 * Иначе : является частью userinfo (пароль), продолжаем чтение хоста
+					 * Иначе : является частью userinfo (например разделитель логина и пароля), продолжаем чтение хоста
 					 * Если встретили /, ?, # и мы не внутри IPv6-адреса, то это конец авторити и начало пути, запроса или фрагмента
 					 */
 					} else if((letter == '/') || (letter == '?') || (letter == '#')) {
@@ -453,7 +453,7 @@ namespace uri {
 							tokenBegin = ptr;
 						// Если это был разделитель запроса или фрагмента, то путь начинается после разделителя
 						else tokenBegin = (ptr + 1);
-						// Обработать разделитель в новом стейте
+						// Обработать разделитель в новом состоянии
 						continue;
 					}
 				} break;
@@ -474,7 +474,7 @@ namespace uri {
 							tokenBegin = ptr;
 						// Если это был разделитель запроса или фрагмента, то путь начинается после разделителя
 						else tokenBegin = (ptr + 1);
-						// Обработать разделитель в новом стейте
+						// Обработать разделитель в новом состоянии
 						continue;
 					}
 				// Иначе просто продолжаем копить порт (валидацию цифр можно сделать позже)
@@ -1028,7 +1028,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 						this->_attr = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип атрибутов URI адреса
 						this->_attr->type = net::type_t::IPV4;
-					// Если атрибуты URI не инициализированы
+					// Если атрибуты URI уже инициализированы — сохраняем текущий порт, чтобы не потерять его при обновлении хоста
 					} else if(this->_attr != nullptr)
 						// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
 						port = awh_cast <net::attr_net_t *> (this->_attr.get())->port;
@@ -1041,7 +1041,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 						this->_attr = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип атрибутов URI адреса
 						this->_attr->type = net::type_t::IPV6;
-					// Если атрибуты URI не инициализированы
+					// Если атрибуты URI уже инициализированы — сохраняем текущий порт, чтобы не потерять его при обновлении хоста
 					} else if(this->_attr != nullptr)
 						// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
 						port = awh_cast <net::attr_net_t *> (this->_attr.get())->port;
@@ -1073,7 +1073,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 					// Копируем путь к сокету из атрибутов URI адреса
 					awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address = host;
 				} break;
-				// Если хости URI является доменным именем
+				// Если хост URI является доменным именем
 				default: {
 					// Порт хоста в атрибутах URI адреса
 					uint16_t port = 0;
@@ -1083,7 +1083,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 						this->_attr = make_unique <net::attr_fqdn_t> ();
 						// Устанавливаем тип атрибутов URI адреса
 						this->_attr->type = net::type_t::FQDN;
-					// Если атрибуты URI не инициализированы
+					// Если атрибуты URI уже инициализированы — сохраняем текущий порт, чтобы не потерять его при обновлении хоста
 					} else if(this->_attr != nullptr)
 						// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
 						port = awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port;
@@ -3415,9 +3415,9 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 			}
 			// Если пути URI равны
 			if(result){
-				// Выполняем сравнение размеров путей URI
-				result = (this->_path.size() == uri._path.size());
-				// Если пути URI равны
+				// Выполняем сравнение размеров параметров URI
+				result = (this->_query.size() == uri._query.size());
+				// Если размеры параметров URI равны
 				if(result && !this->_query.empty()){
 					// Выполняем сравнение размеров параметров URI
 					for(auto & [key, value] : this->_query){
@@ -3570,9 +3570,9 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 			}
 			// Если пути URI равны
 			if(!result){
-				// Выполняем сравнение размеров путей URI
-				result = (this->_path.size() != uri._path.size());
-				// Если пути URI равны
+				// Выполняем сравнение размеров параметров URI
+				result = (this->_query.size() != uri._query.size());
+				// Если размеры параметров URI равны
 				if(!result && !this->_query.empty()){
 					// Выполняем сравнение размеров параметров URI
 					for(auto & [key, value] : this->_query){
@@ -3618,7 +3618,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 	return (* this);
 }
 /**
- * @brief Оператор  установки параметров пользователя URI
+ * @brief Оператор установки параметров пользователя URI
  *
  * @param user параметры пользователя URI для установки
  * @return     текущий объект
@@ -3714,7 +3714,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 	return (* this);
 }
 /**
- * @brief Оператор [=] присванивания параметров URI
+ * @brief Оператор [=] присваивания параметров URI
  *
  * @param uri объект URI для получения параметров
  * @return    параметры URI
@@ -4008,7 +4008,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 	}
 }
 /**
- * @brief конструктор
+ * @brief Конструктор
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -4020,7 +4020,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk,
 	this->_addr = make_unique <net_addr_t> (fmk, log);
 }
 /**
- * @brief деструктор
+ * @brief Деструктор
  *
  */
 awh::Uniform_Resource_Identifier::~Uniform_Resource_Identifier() noexcept {}

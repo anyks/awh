@@ -375,7 +375,7 @@ namespace awh {
 			 */
 			Uniform_Resource_Identifier & operator = (string_view uri) noexcept;
 			/**
-			 * @brief Оператор  установки параметров пользователя URI
+			 * @brief Оператор установки параметров пользователя URI
 			 *
 			 * @param user параметры пользователя URI для установки
 			 * @return     текущий объект
@@ -411,7 +411,7 @@ namespace awh {
 			 */
 			Uniform_Resource_Identifier & operator = (Uniform_Resource_Identifier && uri) noexcept;
 			/**
-			 * @brief Оператор [=] присванивания параметров URI
+			 * @brief Оператор [=] присваивания параметров URI
 			 *
 			 * @param uri объект URI для получения параметров
 			 * @return    параметры URI
@@ -432,7 +432,7 @@ namespace awh {
 			explicit Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept;
 		public:
 			/**
-			 * @brief конструктор
+			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -440,7 +440,7 @@ namespace awh {
 			explicit Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
-			 * @brief деструктор
+			 * @brief Деструктор
 			 *
 			 */
 			~Uniform_Resource_Identifier() noexcept;
