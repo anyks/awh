@@ -1487,7 +1487,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 					// Если сегмент пути URI не пустой, то добавляем его в путь URI
 					if(!segment.empty())
 						// Добавляем сегмент пути URI в путь URI
-						this->_path.push_back(string{segment});
+						this->_path.push_back(uri::decode(segment, this->_log));
 					// Обновляем позицию начала следующего сегмента
 					start = end + 1;
 				}
@@ -1496,7 +1496,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				// Если последний сегмент пути URI не пустой, то добавляем его в путь URI
 				if(!segment.empty())
 					// Добавляем последний сегмент пути URI в путь URI
-					this->_path.push_back(string{segment});
+					this->_path.push_back(uri::decode(segment, this->_log));
 			}
 			// Если параметры URI не пустые
 			if(!query.empty()){
@@ -1519,9 +1519,9 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 						// Если в паре ключ-значение параметров URI есть символ "=", то разделяем её на ключ и значение
 						if(pos != string_view::npos)
 							// Добавляем пару ключ-значение параметров URI в параметры URI
-							this->_query.emplace(string{pair.substr(0, pos)}, string{pair.substr(pos + 1)});
+							this->_query.emplace(uri::decode(pair.substr(0, pos), this->_log), uri::decode(pair.substr(pos + 1), this->_log));
 						// Если в паре ключ-значение параметров URI нет символа "=", то добавляем её как ключ с пустым значением
-						else this->_query.emplace(string{pair}, "");
+						else this->_query.emplace(uri::decode(pair, this->_log), "");
 					}
 					// Обновляем позицию начала следующей пары ключ-значение параметров URI
 					start = (end + 1);
@@ -1535,15 +1535,15 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 					// Если в последней паре ключ-значение параметров URI есть символ "=", то разделяем её на ключ и значение
 					if(pos != string_view::npos)
 						// Добавляем последнюю пару ключ-значение параметров URI в параметры URI
-						this->_query.emplace(string{pair.substr(0, pos)}, string{pair.substr(pos + 1)});
+						this->_query.emplace(uri::decode(pair.substr(0, pos), this->_log), uri::decode(pair.substr(pos + 1), this->_log));
 					// Если в последней паре ключ-значение параметров URI нет символа "=", то добавляем её как ключ с пустым значением
-					else this->_query.emplace(string{pair}, "");
+					else this->_query.emplace(uri::decode(pair, this->_log), "");
 				}
 			}
 			// Если якорь URI не пустой
 			if(!fragment.empty())
 				// Устанавливаем якорь URI
-				this->_fragment = fragment;
+				this->_fragment = uri::decode(fragment, this->_log);
 			// Если якорь URI пустой, то очищаем его
 			else this->_fragment.clear();
 		}
@@ -1637,11 +1637,13 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
 	return "";
 }
 /**
- * @brief Метод получения относительного URI-запроса
+ * @brief Метод генерации строки URI
  *
- * @return относительный URI-запрос
+ * @param item   режим элемента URI для генерации
+ * @param format режим формата URI для генерации
+ * @return       строка URI
  */
-string awh::Uniform_Resource_Identifier::request() const noexcept {
+string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t format) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -1649,52 +1651,42 @@ string awh::Uniform_Resource_Identifier::request() const noexcept {
 	 */
 	try {
 		/**
-		 * Определяем тип URI адреса по схеме URI
+		 * Определяем режим элемента URI для генерации
 		 */
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
-			case static_cast <uint8_t> (type_t::NONE):
-			case static_cast <uint8_t> (type_t::WS):
-			case static_cast <uint8_t> (type_t::WSS):
-			case static_cast <uint8_t> (type_t::FTP):
-			case static_cast <uint8_t> (type_t::UDS):
-			case static_cast <uint8_t> (type_t::FILE):
-			case static_cast <uint8_t> (type_t::MQTT):
-			case static_cast <uint8_t> (type_t::HTTP):
-			case static_cast <uint8_t> (type_t::HTTPS):
-			case static_cast <uint8_t> (type_t::REDIS):
-			case static_cast <uint8_t> (type_t::MYSQL):
-			case static_cast <uint8_t> (type_t::SOCKS5):
-			case static_cast <uint8_t> (type_t::POSTGRESQL): {
-				// Если путь URI не пустой, то добавляем его в результат
-				if(!this->_path.empty()){
-					// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-					for(const string & segment : this->_path){
-						// Добавляем символ "/" перед сегментом пути URI
-						result.append(1, '/');
-						// Добавляем сегмент пути URI в результат
-						result.append(segment);
+		switch(static_cast <uint8_t> (item)){
+			// Если режим элемента URI для генерации является полным, то генерируем полный URI
+			case static_cast <uint8_t> (item_t::URI): {
+				// Если схема URI не пустая, то добавляем её в результат
+				if(!this->_scheme.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::MQTT):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL):
+							// Добавляем схему URI в результат
+							result.append(this->_fmk->format("%s://", this->_scheme.c_str()));
+						break;
+						// Если тип URI является SSH, E-mail или Scheme, то добавляем схему URI в результат без "://"
+						case static_cast <uint8_t> (type_t::SSH):
+						case static_cast <uint8_t> (type_t::EMAIL):
+						case static_cast <uint8_t> (type_t::SCHEME):
+							// Добавляем схему URI в результат
+							result.append(this->_fmk->format("%s:", this->_scheme.c_str()));
+						break;
 					}
-				// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
-				} else result.append(1, '/');
-				// Если параметры URI не пустые, то добавляем их в результат
-				if(!this->_query.empty()){
-					// Добавляем символ "?" перед первой парой ключ-значение параметров URI
-					result.append("?");
-					// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
-					for(const auto & [key, value] : this->_query)
-						// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-						result.append(this->_fmk->format("%s=%s&", key.c_str(), value.c_str()));
-					// Удаляем последний символ "&" из результата
-					result.pop_back();
 				}
-				// Если якорь URI не пустой, то добавляем его в результат
-				if(!this->_fragment.empty())
-					// Добавляем якорь URI в результат, предваряя его символом "#"
-					result.append(this->_fmk->format("#%s", this->_fragment.c_str()));
-			} break;
-			// Если тип URI является E-mail или Scheme, то добавляем схему URI в результат без "://"
-			case static_cast <uint8_t> (type_t::EMAIL): {
 				// Если пользователь URI не пустой, то добавляем его в результат
 				if(!this->_user.login.empty()){
 					// Добавляем логин пользователя URI в результат
@@ -1706,63 +1698,1499 @@ string awh::Uniform_Resource_Identifier::request() const noexcept {
 					// Добавляем символ "@" после параметров пользователя URI
 					result.append("@");
 				}
-				/**
-				 * Определяем тип атрибутов URI адреса
-				 */
-				switch(static_cast <uint8_t> (this->_attr->type)){
-					// Если атрибуты URI адреса являются FQDN-адресом
-					case static_cast <uint8_t> (net::type_t::FQDN): {
-						// Извлекаем атрибуты URI адреса как FQDN-адрес
-						net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-						// Выводим доменное имя хоста из атрибутов URI адреса
-						result.append(attr->domain);
-						// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
-						if((attr->port != 0) && (attr->port != 25))
-							// Добавляем порт хоста в результат, если он не равен 0
-							result.append(this->_fmk->format(":%u", attr->port));
-					} break;
-					// Если атрибуты URI адреса являются IPv4-адресом
-					case static_cast <uint8_t> (net::type_t::IPV4): {
-						// Извлекаем атрибуты URI адреса как сетевой адрес
-						net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-						// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-						this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-						// Выводим IP-адрес хоста в виде строки
-						result.append(static_cast <string> (* this->_addr.get()));
-						// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
-						if((attr->port != 0) && (attr->port != 25))
-							// Добавляем порт хоста в результат, если он не равен 0
-							result.append(this->_fmk->format(":%u", attr->port));
-					} break;
-					// Если атрибуты URI адреса являются IPv6-адресом
-					case static_cast <uint8_t> (net::type_t::IPV6): {
-						// Извлекаем атрибуты URI адреса как сетевой адрес
-						net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-						// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-						this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-						// Выводим IP-адрес хоста в виде строки
-						result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
-						// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
-						if((attr->port != 0) && (attr->port != 25))
-							// Добавляем порт хоста в результат, если он не равен 0
-							result.append(this->_fmk->format(":%u", attr->port));
-					} break;
+				// Если атрибуты URI не пустые
+				if(this->_attr != nullptr){
+					/**
+					 * Определяем режим формата URI для генерации
+					 */
+					switch(static_cast <uint8_t> (format)){
+						// Если режим формата URI для генерации является полным, то генерируем полный URI
+						case static_cast <uint8_t> (format_t::FULL): {
+							/**
+							 * Определяем тип атрибутов URI адреса
+							 */
+							switch(static_cast <uint8_t> (this->_attr->type)){
+								// Если атрибуты URI адреса являются адресом файловой системы
+								case static_cast <uint8_t> (net::type_t::FS):
+									// Выводим путь к сокету из атрибутов URI адреса
+									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
+								break;
+								// Если атрибуты URI адреса являются FQDN-адресом
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Извлекаем атрибуты URI адреса как FQDN-адрес
+									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+									// Выводим доменное имя хоста из атрибутов URI адреса
+									result.append(attr->domain);
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+								// Если атрибуты URI адреса являются IPv4-адресом
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(static_cast <string> (* this->_addr.get()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+								// Если атрибуты URI адреса являются IPv6-адресом
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+							}
+						} break;
+						// Если режим формата URI для генерации является умным, то генерируем краткий URI
+						case static_cast <uint8_t> (format_t::SMART): {
+							/**
+							 * Определяем тип атрибутов URI адреса
+							 */
+							switch(static_cast <uint8_t> (this->_attr->type)){
+								// Если атрибуты URI адреса являются адресом файловой системы
+								case static_cast <uint8_t> (net::type_t::FS):
+									// Выводим путь к сокету из атрибутов URI адреса
+									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
+								break;
+								// Если атрибуты URI адреса являются FQDN-адресом
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Извлекаем атрибуты URI адреса как FQDN-адрес
+									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+									// Выводим доменное имя хоста из атрибутов URI адреса
+									result.append(attr->domain);
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+								// Если атрибуты URI адреса являются IPv4-адресом
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(static_cast <string> (* this->_addr.get()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+								// Если атрибуты URI адреса являются IPv6-адресом
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+							}
+						} break;
+					}
 				}
-			} break;
-			// Если тип URI является SSH или Scheme
-			case static_cast <uint8_t> (type_t::SSH):
-			case static_cast <uint8_t> (type_t::SCHEME): {
 				// Если путь URI не пустой, то добавляем его в результат
 				if(!this->_path.empty()){
-					// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-					for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-						// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-						if(i != this->_path.begin())
-							// Добавляем символ "/" перед сегментом пути URI
-							result.append(1, '/');
-						// Добавляем сегмент пути URI в результат
-						result.append(* i);
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL): {
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(const string & segment : this->_path){
+								// Добавляем символ "/" перед сегментом пути URI
+								result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(segment, this->_log));
+							}
+						} break;
+						// Если тип URI является SSH
+						case static_cast <uint8_t> (type_t::SSH): {
+							// Добавляем символ ":" перед сегментом пути URI
+							result.append(1, ':');
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
+								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
+								if(i != this->_path.begin())
+									// Добавляем символ "/" перед сегментом пути URI
+									result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(* i, this->_log));
+							}
+						} break;
+						// Если тип URI является Scheme
+						case static_cast <uint8_t> (type_t::SCHEME): {
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
+								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
+								if(i != this->_path.begin())
+									// Добавляем символ "/" перед сегментом пути URI
+									result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(* i, this->_log));
+							}
+						} break;
 					}
+				// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
+				} else if(!this->_query.empty() || !this->_fragment.empty()) {
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL):
+							// Добавляем символ "/" в результат перед параметрами URI
+							result.append(1, '/');
+						break;
+					}
+				}
+				// Если параметры URI не пустые, то добавляем их в результат
+				if(!this->_query.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, FTP, SSH, REDIS, MySQL, Scheme, SOCKS5, PostgreSQL, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::SSH):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SCHEME):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL): {
+							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
+							result.append("?");
+							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							for(const auto & [key, value] : this->_query)
+								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
+								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr)
+								// Вызываем функцию обратного вызова и добавляем её результат в результат
+								result.append(this->_callback(this));
+							// Удаляем последний символ "&" из результата
+							else result.pop_back();
+						} break;
+					}
+				}
+				// Если якорь URI не пустой, то добавляем его в результат
+				if(!this->_fragment.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, Scheme, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::SCHEME):
+							// Добавляем якорь URI в результат, предваряя его символом "#"
+							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, this->_log).c_str()));
+						break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является схемой, то генерируем схему URI
+			case static_cast <uint8_t> (item_t::SCHEME): {
+				// Если схема URI не пустая, то добавляем её в результат
+				if(!this->_scheme.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::MQTT):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL):
+							// Добавляем схему URI в результат
+							result.append(this->_fmk->format("%s://", this->_scheme.c_str()));
+						break;
+						// Если тип URI является SSH, E-mail или Scheme, то добавляем схему URI в результат без "://"
+						case static_cast <uint8_t> (type_t::SSH):
+						case static_cast <uint8_t> (type_t::EMAIL):
+						case static_cast <uint8_t> (type_t::SCHEME):
+							// Добавляем схему URI в результат
+							result.append(this->_fmk->format("%s:", this->_scheme.c_str()));
+						break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является пользователем, то генерируем параметры пользователя URI
+			case static_cast <uint8_t> (item_t::USER): {
+				// Если пользователь URI не пустой, то добавляем его в результат
+				if(!this->_user.login.empty()){
+					// Добавляем логин пользователя URI в результат
+					result.append(this->_user.login);
+					// Если пароль пользователя URI не пустой, то добавляем его в результат
+					if(!this->_user.pass.empty())
+						// Добавляем пароль пользователя URI в результат
+						result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+					// Добавляем символ "@" после параметров пользователя URI
+					result.append("@");
+				}
+			} break;
+			// Если режим элемента URI для генерации является хостом, то генерируем хост URI
+			case static_cast <uint8_t> (item_t::HOST): {
+				// Если атрибуты URI не пустые
+				if(this->_attr != nullptr){
+					/**
+					 * Определяем режим формата URI для генерации
+					 */
+					switch(static_cast <uint8_t> (format)){
+						// Если режим формата URI для генерации является полным, то генерируем полный URI
+						case static_cast <uint8_t> (format_t::FULL): {
+							/**
+							 * Определяем тип атрибутов URI адреса
+							 */
+							switch(static_cast <uint8_t> (this->_attr->type)){
+								// Если атрибуты URI адреса являются адресом файловой системы
+								case static_cast <uint8_t> (net::type_t::FS):
+									// Выводим путь к сокету из атрибутов URI адреса
+									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
+								break;
+								// Если атрибуты URI адреса являются FQDN-адресом
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Извлекаем атрибуты URI адреса как FQDN-адрес
+									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+									// Выводим доменное имя хоста из атрибутов URI адреса
+									result.append(attr->domain);
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+								// Если атрибуты URI адреса являются IPv4-адресом
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(static_cast <string> (* this->_addr.get()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+								// Если атрибуты URI адреса являются IPv6-адресом
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+							}
+						} break;
+						// Если режим формата URI для генерации является умным, то генерируем краткий URI
+						case static_cast <uint8_t> (format_t::SMART): {
+							/**
+							 * Определяем тип атрибутов URI адреса
+							 */
+							switch(static_cast <uint8_t> (this->_attr->type)){
+								// Если атрибуты URI адреса являются адресом файловой системы
+								case static_cast <uint8_t> (net::type_t::FS):
+									// Выводим путь к сокету из атрибутов URI адреса
+									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
+								break;
+								// Если атрибуты URI адреса являются FQDN-адресом
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Извлекаем атрибуты URI адреса как FQDN-адрес
+									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+									// Выводим доменное имя хоста из атрибутов URI адреса
+									result.append(attr->domain);
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+								// Если атрибуты URI адреса являются IPv4-адресом
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(static_cast <string> (* this->_addr.get()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+								// Если атрибуты URI адреса являются IPv6-адресом
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+							}
+						} break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является путём, то генерируем путь URI
+			case static_cast <uint8_t> (item_t::PATH): {
+				// Если путь URI не пустой, то добавляем его в результат
+				if(!this->_path.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL): {
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(const string & segment : this->_path){
+								// Добавляем символ "/" перед сегментом пути URI
+								result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(segment, this->_log));
+							}
+						} break;
+						// Если тип URI является SSH
+						case static_cast <uint8_t> (type_t::SSH): {
+							// Добавляем символ ":" перед сегментом пути URI
+							result.append(1, ':');
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
+								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
+								if(i != this->_path.begin())
+									// Добавляем символ "/" перед сегментом пути URI
+									result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(* i, this->_log));
+							}
+						} break;
+						// Если тип URI является Scheme
+						case static_cast <uint8_t> (type_t::SCHEME): {
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
+								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
+								if(i != this->_path.begin())
+									// Добавляем символ "/" перед сегментом пути URI
+									result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(* i, this->_log));
+							}
+						} break;
+					}
+				// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
+				} else if(!this->_query.empty() || !this->_fragment.empty()) {
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL):
+							// Добавляем символ "/" в результат перед параметрами URI
+							result.append(1, '/');
+						break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является параметрами, то генерируем параметры URI
+			case static_cast <uint8_t> (item_t::QUERY): {
+				// Если параметры URI не пустые, то добавляем их в результат
+				if(!this->_query.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, FTP, SSH, REDIS, MySQL, Scheme, SOCKS5, PostgreSQL, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::SSH):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SCHEME):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL): {
+							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
+							result.append("?");
+							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							for(const auto & [key, value] : this->_query)
+								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
+								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
+							// Удаляем последний символ "&" из результата
+							result.pop_back();
+						} break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является якорем, то генерируем якорь URI
+			case static_cast <uint8_t> (item_t::FRAGMENT): {
+				// Если якорь URI не пустой, то добавляем его в результат
+				if(!this->_fragment.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, Scheme, HTTP или HTTPS
+						case static_cast <uint8_t> (type_t::NONE):
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::SCHEME):
+							// Добавляем якорь URI в результат, предваряя его символом "#"
+							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, this->_log).c_str()));
+						break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является происхождением, то генерируем происхождение URI
+			case static_cast <uint8_t> (item_t::ORIGIN): {
+				// Если схема URI не пустая, то добавляем её в результат
+				if(!this->_scheme.empty()){
+					/**
+					 * Определяем тип URI адреса по схеме URI
+					 */
+					switch(static_cast <uint8_t> (this->_type)){
+						// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
+						case static_cast <uint8_t> (type_t::WS):
+						case static_cast <uint8_t> (type_t::WSS):
+						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::UDS):
+						case static_cast <uint8_t> (type_t::FILE):
+						case static_cast <uint8_t> (type_t::MQTT):
+						case static_cast <uint8_t> (type_t::HTTP):
+						case static_cast <uint8_t> (type_t::HTTPS):
+						case static_cast <uint8_t> (type_t::REDIS):
+						case static_cast <uint8_t> (type_t::MYSQL):
+						case static_cast <uint8_t> (type_t::SOCKS5):
+						case static_cast <uint8_t> (type_t::POSTGRESQL):
+							// Добавляем схему URI в результат
+							result.append(this->_fmk->format("%s://", this->_scheme.c_str()));
+						break;
+						// Если тип URI является SSH, E-mail или Scheme, то добавляем схему URI в результат без "://"
+						case static_cast <uint8_t> (type_t::SSH):
+						case static_cast <uint8_t> (type_t::EMAIL):
+						case static_cast <uint8_t> (type_t::SCHEME):
+							// Добавляем схему URI в результат
+							result.append(this->_fmk->format("%s:", this->_scheme.c_str()));
+						break;
+					}
+				}
+				// Если пользователь URI не пустой, то добавляем его в результат
+				if(!this->_user.login.empty()){
+					// Добавляем логин пользователя URI в результат
+					result.append(this->_user.login);
+					// Если пароль пользователя URI не пустой, то добавляем его в результат
+					if(!this->_user.pass.empty())
+						// Добавляем пароль пользователя URI в результат
+						result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+					// Добавляем символ "@" после параметров пользователя URI
+					result.append("@");
+				}
+				// Если атрибуты URI не пустые
+				if(this->_attr != nullptr){
+					/**
+					 * Определяем режим формата URI для генерации
+					 */
+					switch(static_cast <uint8_t> (format)){
+						// Если режим формата URI для генерации является полным, то генерируем полный URI
+						case static_cast <uint8_t> (format_t::FULL): {
+							/**
+							 * Определяем тип атрибутов URI адреса
+							 */
+							switch(static_cast <uint8_t> (this->_attr->type)){
+								// Если атрибуты URI адреса являются адресом файловой системы
+								case static_cast <uint8_t> (net::type_t::FS):
+									// Выводим путь к сокету из атрибутов URI адреса
+									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
+								break;
+								// Если атрибуты URI адреса являются FQDN-адресом
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Извлекаем атрибуты URI адреса как FQDN-адрес
+									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+									// Выводим доменное имя хоста из атрибутов URI адреса
+									result.append(attr->domain);
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+								// Если атрибуты URI адреса являются IPv4-адресом
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(static_cast <string> (* this->_addr.get()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+								// Если атрибуты URI адреса являются IPv6-адресом
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0)
+										// Добавляем порт хоста в результат, если он не равен 0
+										result.append(this->_fmk->format(":%u", attr->port));
+								} break;
+							}
+						} break;
+						// Если режим формата URI для генерации является умным, то генерируем краткий URI
+						case static_cast <uint8_t> (format_t::SMART): {
+							/**
+							 * Определяем тип атрибутов URI адреса
+							 */
+							switch(static_cast <uint8_t> (this->_attr->type)){
+								// Если атрибуты URI адреса являются адресом файловой системы
+								case static_cast <uint8_t> (net::type_t::FS):
+									// Выводим путь к сокету из атрибутов URI адреса
+									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
+								break;
+								// Если атрибуты URI адреса являются FQDN-адресом
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Извлекаем атрибуты URI адреса как FQDN-адрес
+									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+									// Выводим доменное имя хоста из атрибутов URI адреса
+									result.append(attr->domain);
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+								// Если атрибуты URI адреса являются IPv4-адресом
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(static_cast <string> (* this->_addr.get()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+								// Если атрибуты URI адреса являются IPv6-адресом
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Извлекаем атрибуты URI адреса как сетевой адрес
+									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Выводим IP-адрес хоста в виде строки
+									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
+									if(attr->port != 0){
+										/**
+										 * Определяем тип URI адреса по схеме URI
+										 */
+										switch(static_cast <uint8_t> (this->_type)){
+											// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
+											case static_cast <uint8_t> (type_t::WS):
+											case static_cast <uint8_t> (type_t::HTTP):
+												// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
+												if(attr->port != 80)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
+											case static_cast <uint8_t> (type_t::WSS):
+											case static_cast <uint8_t> (type_t::HTTPS):
+												// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
+												if(attr->port != 443)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является SSH, то устанавливаем порт URI как 22
+											case static_cast <uint8_t> (type_t::SSH):
+												// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
+												if(attr->port != 22)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является FTP, то устанавливаем порт URI как 21
+											case static_cast <uint8_t> (type_t::FTP):
+												// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
+												if(attr->port != 21)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MQTT, то устанавливаем порт URI как 1883
+											case static_cast <uint8_t> (type_t::MQTT):
+												// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
+												if(attr->port != 1883)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является E-mail, то устанавливаем порт URI как 25
+											case static_cast <uint8_t> (type_t::EMAIL):
+												// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
+												if(attr->port != 25)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является Socks5, то устанавливаем порт URI как 1080
+											case static_cast <uint8_t> (type_t::SOCKS5):
+												// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
+												if(attr->port != 1080)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является REDIS, то устанавливаем порт URI как 6379
+											case static_cast <uint8_t> (type_t::REDIS):
+												// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
+												if(attr->port != 6379)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является MySQL, то устанавливаем порт URI как 3306
+											case static_cast <uint8_t> (type_t::MYSQL):
+												// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
+												if(attr->port != 3306)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+											// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
+											case static_cast <uint8_t> (type_t::POSTGRESQL):
+												// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
+												if(attr->port != 5432)
+													// Добавляем порт хоста в результат, если он не равен 0
+													result.append(this->_fmk->format(":%u", attr->port));
+											break;
+										}
+									}
+								} break;
+							}
+						} break;
+					}
+				}
+			} break;
+			// Если режим элемента URI для генерации является запросом, то генерируем относительный URI-запрос
+			case static_cast <uint8_t> (item_t::REQUEST): {
+				/**
+				 * Определяем тип URI адреса по схеме URI
+				 */
+				switch(static_cast <uint8_t> (this->_type)){
+					// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
+					case static_cast <uint8_t> (type_t::NONE):
+					case static_cast <uint8_t> (type_t::WS):
+					case static_cast <uint8_t> (type_t::WSS):
+					case static_cast <uint8_t> (type_t::FTP):
+					case static_cast <uint8_t> (type_t::UDS):
+					case static_cast <uint8_t> (type_t::FILE):
+					case static_cast <uint8_t> (type_t::MQTT):
+					case static_cast <uint8_t> (type_t::HTTP):
+					case static_cast <uint8_t> (type_t::HTTPS):
+					case static_cast <uint8_t> (type_t::REDIS):
+					case static_cast <uint8_t> (type_t::MYSQL):
+					case static_cast <uint8_t> (type_t::SOCKS5):
+					case static_cast <uint8_t> (type_t::POSTGRESQL): {
+						// Если путь URI не пустой, то добавляем его в результат
+						if(!this->_path.empty()){
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(const string & segment : this->_path){
+								// Добавляем символ "/" перед сегментом пути URI
+								result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(segment, this->_log));
+							}
+						// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
+						} else result.append(1, '/');
+						// Если параметры URI не пустые, то добавляем их в результат
+						if(!this->_query.empty()){
+							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
+							result.append("?");
+							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							for(const auto & [key, value] : this->_query)
+								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
+								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
+							// Если функция обратного вызова установлена
+							if(this->_callback != nullptr)
+								// Вызываем функцию обратного вызова и добавляем её результат в результат
+								result.append(this->_callback(this));
+							// Удаляем последний символ "&" из результата
+							else result.pop_back();
+						}
+						// Если якорь URI не пустой, то добавляем его в результат
+						if(!this->_fragment.empty())
+							// Добавляем якорь URI в результат, предваряя его символом "#"
+							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, this->_log).c_str()));
+					} break;
+					// Если тип URI является E-mail или Scheme, то добавляем схему URI в результат без "://"
+					case static_cast <uint8_t> (type_t::EMAIL): {
+						// Если пользователь URI не пустой, то добавляем его в результат
+						if(!this->_user.login.empty()){
+							// Добавляем логин пользователя URI в результат
+							result.append(this->_user.login);
+							// Если пароль пользователя URI не пустой, то добавляем его в результат
+							if(!this->_user.pass.empty())
+								// Добавляем пароль пользователя URI в результат
+								result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+							// Добавляем символ "@" после параметров пользователя URI
+							result.append("@");
+						}
+						/**
+						 * Определяем тип атрибутов URI адреса
+						 */
+						switch(static_cast <uint8_t> (this->_attr->type)){
+							// Если атрибуты URI адреса являются FQDN-адресом
+							case static_cast <uint8_t> (net::type_t::FQDN): {
+								// Извлекаем атрибуты URI адреса как FQDN-адрес
+								net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
+								// Выводим доменное имя хоста из атрибутов URI адреса
+								result.append(attr->domain);
+								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
+								if((attr->port != 0) && (attr->port != 25))
+									// Добавляем порт хоста в результат, если он не равен 0
+									result.append(this->_fmk->format(":%u", attr->port));
+							} break;
+							// Если атрибуты URI адреса являются IPv4-адресом
+							case static_cast <uint8_t> (net::type_t::IPV4): {
+								// Извлекаем атрибуты URI адреса как сетевой адрес
+								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+								// Выводим IP-адрес хоста в виде строки
+								result.append(static_cast <string> (* this->_addr.get()));
+								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
+								if((attr->port != 0) && (attr->port != 25))
+									// Добавляем порт хоста в результат, если он не равен 0
+									result.append(this->_fmk->format(":%u", attr->port));
+							} break;
+							// Если атрибуты URI адреса являются IPv6-адресом
+							case static_cast <uint8_t> (net::type_t::IPV6): {
+								// Извлекаем атрибуты URI адреса как сетевой адрес
+								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+								// Выводим IP-адрес хоста в виде строки
+								result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
+								if((attr->port != 0) && (attr->port != 25))
+									// Добавляем порт хоста в результат, если он не равен 0
+									result.append(this->_fmk->format(":%u", attr->port));
+							} break;
+						}
+					} break;
+					// Если тип URI является SSH или Scheme
+					case static_cast <uint8_t> (type_t::SSH):
+					case static_cast <uint8_t> (type_t::SCHEME): {
+						// Если путь URI не пустой, то добавляем его в результат
+						if(!this->_path.empty()){
+							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
+								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
+								if(i != this->_path.begin())
+									// Добавляем символ "/" перед сегментом пути URI
+									result.append(1, '/');
+								// Добавляем сегмент пути URI в результат
+								result.append(uri::encode(* i, this->_log));
+							}
+						}
+					} break;
 				}
 			} break;
 		}
@@ -1775,544 +3203,6 @@ string awh::Uniform_Resource_Identifier::request() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод генерации строки URI
- *
- * @param format режим формата URI для генерации
- * @return       строка URI
- */
-string awh::Uniform_Resource_Identifier::print(const format_t format) const noexcept {
-	// Результат работы функции
-	string result = "";
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если схема URI не пустая, то добавляем её в результат
-		if(!this->_scheme.empty()){
-			/**
-			 * Определяем тип URI адреса по схеме URI
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
-				case static_cast <uint8_t> (type_t::WS):
-				case static_cast <uint8_t> (type_t::WSS):
-				case static_cast <uint8_t> (type_t::FTP):
-				case static_cast <uint8_t> (type_t::UDS):
-				case static_cast <uint8_t> (type_t::FILE):
-				case static_cast <uint8_t> (type_t::MQTT):
-				case static_cast <uint8_t> (type_t::HTTP):
-				case static_cast <uint8_t> (type_t::HTTPS):
-				case static_cast <uint8_t> (type_t::REDIS):
-				case static_cast <uint8_t> (type_t::MYSQL):
-				case static_cast <uint8_t> (type_t::SOCKS5):
-				case static_cast <uint8_t> (type_t::POSTGRESQL):
-					// Добавляем схему URI в результат
-					result.append(this->_fmk->format("%s://", this->_scheme.c_str()));
-				break;
-				// Если тип URI является SSH, E-mail или Scheme, то добавляем схему URI в результат без "://"
-				case static_cast <uint8_t> (type_t::SSH):
-				case static_cast <uint8_t> (type_t::EMAIL):
-				case static_cast <uint8_t> (type_t::SCHEME):
-					// Добавляем схему URI в результат
-					result.append(this->_fmk->format("%s:", this->_scheme.c_str()));
-				break;
-			}
-		}
-		// Если пользователь URI не пустой, то добавляем его в результат
-		if(!this->_user.login.empty()){
-			// Добавляем логин пользователя URI в результат
-			result.append(this->_user.login);
-			// Если пароль пользователя URI не пустой, то добавляем его в результат
-			if(!this->_user.pass.empty())
-				// Добавляем пароль пользователя URI в результат
-				result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
-			// Добавляем символ "@" после параметров пользователя URI
-			result.append("@");
-		}
-		// Если атрибуты URI не пустые
-		if(this->_attr != nullptr){
-			/**
-			 * Определяем режим формата URI для генерации
-			 */
-			switch(static_cast <uint8_t> (format)){
-				// Если режим формата URI для генерации является полным, то генерируем полный URI
-				case static_cast <uint8_t> (format_t::FULL): {
-					/**
-					 * Определяем тип атрибутов URI адреса
-					 */
-					switch(static_cast <uint8_t> (this->_attr->type)){
-						// Если атрибуты URI адреса являются адресом файловой системы
-						case static_cast <uint8_t> (net::type_t::FS):
-							// Выводим путь к сокету из атрибутов URI адреса
-							result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
-						break;
-						// Если атрибуты URI адреса являются FQDN-адресом
-						case static_cast <uint8_t> (net::type_t::FQDN): {
-							// Извлекаем атрибуты URI адреса как FQDN-адрес
-							net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-							// Выводим доменное имя хоста из атрибутов URI адреса
-							result.append(attr->domain);
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0)
-								// Добавляем порт хоста в результат, если он не равен 0
-								result.append(this->_fmk->format(":%u", attr->port));
-						} break;
-						// Если атрибуты URI адреса являются IPv4-адресом
-						case static_cast <uint8_t> (net::type_t::IPV4): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(static_cast <string> (* this->_addr.get()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0)
-								// Добавляем порт хоста в результат, если он не равен 0
-								result.append(this->_fmk->format(":%u", attr->port));
-						} break;
-						// Если атрибуты URI адреса являются IPv6-адресом
-						case static_cast <uint8_t> (net::type_t::IPV6): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0)
-								// Добавляем порт хоста в результат, если он не равен 0
-								result.append(this->_fmk->format(":%u", attr->port));
-						} break;
-					}
-				} break;
-				// Если режим формата URI для генерации является умным, то генерируем краткий URI
-				case static_cast <uint8_t> (format_t::SMART): {
-					/**
-					 * Определяем тип атрибутов URI адреса
-					 */
-					switch(static_cast <uint8_t> (this->_attr->type)){
-						// Если атрибуты URI адреса являются адресом файловой системы
-						case static_cast <uint8_t> (net::type_t::FS):
-							// Выводим путь к сокету из атрибутов URI адреса
-							result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
-						break;
-						// Если атрибуты URI адреса являются FQDN-адресом
-						case static_cast <uint8_t> (net::type_t::FQDN): {
-							// Извлекаем атрибуты URI адреса как FQDN-адрес
-							net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-							// Выводим доменное имя хоста из атрибутов URI адреса
-							result.append(attr->domain);
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0){
-								/**
-								 * Определяем тип URI адреса по схеме URI
-								 */
-								switch(static_cast <uint8_t> (this->_type)){
-									// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
-									case static_cast <uint8_t> (type_t::WS):
-									case static_cast <uint8_t> (type_t::HTTP):
-										// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
-										if(attr->port != 80)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
-									case static_cast <uint8_t> (type_t::WSS):
-									case static_cast <uint8_t> (type_t::HTTPS):
-										// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
-										if(attr->port != 443)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является SSH, то устанавливаем порт URI как 22
-									case static_cast <uint8_t> (type_t::SSH):
-										// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
-										if(attr->port != 22)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является FTP, то устанавливаем порт URI как 21
-									case static_cast <uint8_t> (type_t::FTP):
-										// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
-										if(attr->port != 21)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MQTT, то устанавливаем порт URI как 1883
-									case static_cast <uint8_t> (type_t::MQTT):
-										// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
-										if(attr->port != 1883)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является E-mail, то устанавливаем порт URI как 25
-									case static_cast <uint8_t> (type_t::EMAIL):
-										// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
-										if(attr->port != 25)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является Socks5, то устанавливаем порт URI как 1080
-									case static_cast <uint8_t> (type_t::SOCKS5):
-										// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
-										if(attr->port != 1080)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является REDIS, то устанавливаем порт URI как 6379
-									case static_cast <uint8_t> (type_t::REDIS):
-										// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
-										if(attr->port != 6379)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MySQL, то устанавливаем порт URI как 3306
-									case static_cast <uint8_t> (type_t::MYSQL):
-										// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
-										if(attr->port != 3306)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
-									case static_cast <uint8_t> (type_t::POSTGRESQL):
-										// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
-										if(attr->port != 5432)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-								}
-							}
-						} break;
-						// Если атрибуты URI адреса являются IPv4-адресом
-						case static_cast <uint8_t> (net::type_t::IPV4): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(static_cast <string> (* this->_addr.get()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0){
-								/**
-								 * Определяем тип URI адреса по схеме URI
-								 */
-								switch(static_cast <uint8_t> (this->_type)){
-									// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
-									case static_cast <uint8_t> (type_t::WS):
-									case static_cast <uint8_t> (type_t::HTTP):
-										// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
-										if(attr->port != 80)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
-									case static_cast <uint8_t> (type_t::WSS):
-									case static_cast <uint8_t> (type_t::HTTPS):
-										// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
-										if(attr->port != 443)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является SSH, то устанавливаем порт URI как 22
-									case static_cast <uint8_t> (type_t::SSH):
-										// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
-										if(attr->port != 22)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является FTP, то устанавливаем порт URI как 21
-									case static_cast <uint8_t> (type_t::FTP):
-										// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
-										if(attr->port != 21)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MQTT, то устанавливаем порт URI как 1883
-									case static_cast <uint8_t> (type_t::MQTT):
-										// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
-										if(attr->port != 1883)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является E-mail, то устанавливаем порт URI как 25
-									case static_cast <uint8_t> (type_t::EMAIL):
-										// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
-										if(attr->port != 25)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является Socks5, то устанавливаем порт URI как 1080
-									case static_cast <uint8_t> (type_t::SOCKS5):
-										// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
-										if(attr->port != 1080)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является REDIS, то устанавливаем порт URI как 6379
-									case static_cast <uint8_t> (type_t::REDIS):
-										// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
-										if(attr->port != 6379)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MySQL, то устанавливаем порт URI как 3306
-									case static_cast <uint8_t> (type_t::MYSQL):
-										// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
-										if(attr->port != 3306)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
-									case static_cast <uint8_t> (type_t::POSTGRESQL):
-										// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
-										if(attr->port != 5432)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-								}
-							}
-						} break;
-						// Если атрибуты URI адреса являются IPv6-адресом
-						case static_cast <uint8_t> (net::type_t::IPV6): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0){
-								/**
-								 * Определяем тип URI адреса по схеме URI
-								 */
-								switch(static_cast <uint8_t> (this->_type)){
-									// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
-									case static_cast <uint8_t> (type_t::WS):
-									case static_cast <uint8_t> (type_t::HTTP):
-										// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
-										if(attr->port != 80)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
-									case static_cast <uint8_t> (type_t::WSS):
-									case static_cast <uint8_t> (type_t::HTTPS):
-										// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
-										if(attr->port != 443)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является SSH, то устанавливаем порт URI как 22
-									case static_cast <uint8_t> (type_t::SSH):
-										// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
-										if(attr->port != 22)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является FTP, то устанавливаем порт URI как 21
-									case static_cast <uint8_t> (type_t::FTP):
-										// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
-										if(attr->port != 21)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MQTT, то устанавливаем порт URI как 1883
-									case static_cast <uint8_t> (type_t::MQTT):
-										// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
-										if(attr->port != 1883)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является E-mail, то устанавливаем порт URI как 25
-									case static_cast <uint8_t> (type_t::EMAIL):
-										// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
-										if(attr->port != 25)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является Socks5, то устанавливаем порт URI как 1080
-									case static_cast <uint8_t> (type_t::SOCKS5):
-										// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
-										if(attr->port != 1080)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является REDIS, то устанавливаем порт URI как 6379
-									case static_cast <uint8_t> (type_t::REDIS):
-										// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
-										if(attr->port != 6379)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MySQL, то устанавливаем порт URI как 3306
-									case static_cast <uint8_t> (type_t::MYSQL):
-										// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
-										if(attr->port != 3306)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
-									case static_cast <uint8_t> (type_t::POSTGRESQL):
-										// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
-										if(attr->port != 5432)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-								}
-							}
-						} break;
-					}
-				} break;
-			}
-		}
-		// Если путь URI не пустой, то добавляем его в результат
-		if(!this->_path.empty()){
-			/**
-			 * Определяем тип URI адреса по схеме URI
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
-				case static_cast <uint8_t> (type_t::NONE):
-				case static_cast <uint8_t> (type_t::WS):
-				case static_cast <uint8_t> (type_t::WSS):
-				case static_cast <uint8_t> (type_t::UDS):
-				case static_cast <uint8_t> (type_t::FTP):
-				case static_cast <uint8_t> (type_t::FILE):
-				case static_cast <uint8_t> (type_t::HTTP):
-				case static_cast <uint8_t> (type_t::HTTPS):
-				case static_cast <uint8_t> (type_t::REDIS):
-				case static_cast <uint8_t> (type_t::MYSQL):
-				case static_cast <uint8_t> (type_t::SOCKS5):
-				case static_cast <uint8_t> (type_t::POSTGRESQL): {
-					// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-					for(const string & segment : this->_path){
-						// Добавляем символ "/" перед сегментом пути URI
-						result.append(1, '/');
-						// Добавляем сегмент пути URI в результат
-						result.append(segment);
-					}
-				} break;
-				// Если тип URI является SSH
-				case static_cast <uint8_t> (type_t::SSH): {
-					// Добавляем символ ":" перед сегментом пути URI
-					result.append(1, ':');
-					// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-					for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-						// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-						if(i != this->_path.begin())
-							// Добавляем символ "/" перед сегментом пути URI
-							result.append(1, '/');
-						// Добавляем сегмент пути URI в результат
-						result.append(* i);
-					}
-				} break;
-				// Если тип URI является Scheme
-				case static_cast <uint8_t> (type_t::SCHEME): {
-					// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-					for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-						// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-						if(i != this->_path.begin())
-							// Добавляем символ "/" перед сегментом пути URI
-							result.append(1, '/');
-						// Добавляем сегмент пути URI в результат
-						result.append(* i);
-					}
-				} break;
-			}
-		// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
-		} else if(!this->_query.empty() || !this->_fragment.empty()) {
-			/**
-			 * Определяем тип URI адреса по схеме URI
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
-				case static_cast <uint8_t> (type_t::NONE):
-				case static_cast <uint8_t> (type_t::WS):
-				case static_cast <uint8_t> (type_t::WSS):
-				case static_cast <uint8_t> (type_t::UDS):
-				case static_cast <uint8_t> (type_t::FTP):
-				case static_cast <uint8_t> (type_t::FILE):
-				case static_cast <uint8_t> (type_t::HTTP):
-				case static_cast <uint8_t> (type_t::HTTPS):
-				case static_cast <uint8_t> (type_t::REDIS):
-				case static_cast <uint8_t> (type_t::MYSQL):
-				case static_cast <uint8_t> (type_t::SOCKS5):
-				case static_cast <uint8_t> (type_t::POSTGRESQL):
-					// Добавляем символ "/" в результат перед параметрами URI
-					result.append(1, '/');
-				break;
-			}
-		}
-		// Если параметры URI не пустые, то добавляем их в результат
-		if(!this->_query.empty()){
-			/**
-			 * Определяем тип URI адреса по схеме URI
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип URI является WS, WSS, FTP, SSH, REDIS, MySQL, Scheme, SOCKS5, PostgreSQL, HTTP или HTTPS
-				case static_cast <uint8_t> (type_t::NONE):
-				case static_cast <uint8_t> (type_t::WS):
-				case static_cast <uint8_t> (type_t::WSS):
-				case static_cast <uint8_t> (type_t::FTP):
-				case static_cast <uint8_t> (type_t::SSH):
-				case static_cast <uint8_t> (type_t::HTTP):
-				case static_cast <uint8_t> (type_t::HTTPS):
-				case static_cast <uint8_t> (type_t::REDIS):
-				case static_cast <uint8_t> (type_t::MYSQL):
-				case static_cast <uint8_t> (type_t::SCHEME):
-				case static_cast <uint8_t> (type_t::SOCKS5):
-				case static_cast <uint8_t> (type_t::POSTGRESQL): {
-					// Добавляем символ "?" перед первой парой ключ-значение параметров URI
-					result.append("?");
-					// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
-					for(const auto & [key, value] : this->_query)
-						// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-						result.append(this->_fmk->format("%s=%s&", key.c_str(), value.c_str()));
-					// Удаляем последний символ "&" из результата
-					result.pop_back();
-				} break;
-			}
-		}
-		// Если якорь URI не пустой, то добавляем его в результат
-		if(!this->_fragment.empty()){
-			/**
-			 * Определяем тип URI адреса по схеме URI
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип URI является WS, WSS, Scheme, HTTP или HTTPS
-				case static_cast <uint8_t> (type_t::NONE):
-				case static_cast <uint8_t> (type_t::WS):
-				case static_cast <uint8_t> (type_t::WSS):
-				case static_cast <uint8_t> (type_t::HTTP):
-				case static_cast <uint8_t> (type_t::HTTPS):
-				case static_cast <uint8_t> (type_t::SCHEME):
-					// Добавляем якорь URI в результат, предваряя его символом "#"
-					result.append(this->_fmk->format("#%s", this->_fragment.c_str()));
-				break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
@@ -2326,416 +3216,13 @@ string awh::Uniform_Resource_Identifier::print(const format_t format) const noex
 	return result;
 }
 /**
- * @brief Метод создания заголовка [origin], для HTTP запроса
+ * @brief Метод установки функции обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
  *
- * @param format режим формата URI для генерации
- * @return       заголовок [origin]
+ * @param cb функция обратного вызова для генерации параметра URI
  */
-string awh::Uniform_Resource_Identifier::origin(const format_t format) const noexcept {
-	// Результат работы функции
-	string result = "";
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если схема URI не пустая, то добавляем её в результат
-		if(!this->_scheme.empty()){
-			/**
-			 * Определяем тип URI адреса по схеме URI
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если тип URI является WS, WSS, FTP, UDS, FILE, MQTT, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS, то добавляем схему URI в результат с "://"
-				case static_cast <uint8_t> (type_t::WS):
-				case static_cast <uint8_t> (type_t::WSS):
-				case static_cast <uint8_t> (type_t::FTP):
-				case static_cast <uint8_t> (type_t::UDS):
-				case static_cast <uint8_t> (type_t::FILE):
-				case static_cast <uint8_t> (type_t::MQTT):
-				case static_cast <uint8_t> (type_t::HTTP):
-				case static_cast <uint8_t> (type_t::HTTPS):
-				case static_cast <uint8_t> (type_t::REDIS):
-				case static_cast <uint8_t> (type_t::MYSQL):
-				case static_cast <uint8_t> (type_t::SOCKS5):
-				case static_cast <uint8_t> (type_t::POSTGRESQL):
-					// Добавляем схему URI в результат
-					result.append(this->_fmk->format("%s://", this->_scheme.c_str()));
-				break;
-				// Если тип URI является SSH, E-mail или Scheme, то добавляем схему URI в результат без "://"
-				case static_cast <uint8_t> (type_t::SSH):
-				case static_cast <uint8_t> (type_t::EMAIL):
-				case static_cast <uint8_t> (type_t::SCHEME):
-					// Добавляем схему URI в результат
-					result.append(this->_fmk->format("%s:", this->_scheme.c_str()));
-				break;
-			}
-		}
-		// Если пользователь URI не пустой, то добавляем его в результат
-		if(!this->_user.login.empty()){
-			// Добавляем логин пользователя URI в результат
-			result.append(this->_user.login);
-			// Если пароль пользователя URI не пустой, то добавляем его в результат
-			if(!this->_user.pass.empty())
-				// Добавляем пароль пользователя URI в результат
-				result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
-			// Добавляем символ "@" после параметров пользователя URI
-			result.append("@");
-		}
-		// Если атрибуты URI не пустые
-		if(this->_attr != nullptr){
-			/**
-			 * Определяем режим формата URI для генерации
-			 */
-			switch(static_cast <uint8_t> (format)){
-				// Если режим формата URI для генерации является полным, то генерируем полный URI
-				case static_cast <uint8_t> (format_t::FULL): {
-					/**
-					 * Определяем тип атрибутов URI адреса
-					 */
-					switch(static_cast <uint8_t> (this->_attr->type)){
-						// Если атрибуты URI адреса являются адресом файловой системы
-						case static_cast <uint8_t> (net::type_t::FS):
-							// Выводим путь к сокету из атрибутов URI адреса
-							result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
-						break;
-						// Если атрибуты URI адреса являются FQDN-адресом
-						case static_cast <uint8_t> (net::type_t::FQDN): {
-							// Извлекаем атрибуты URI адреса как FQDN-адрес
-							net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-							// Выводим доменное имя хоста из атрибутов URI адреса
-							result.append(attr->domain);
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0)
-								// Добавляем порт хоста в результат, если он не равен 0
-								result.append(this->_fmk->format(":%u", attr->port));
-						} break;
-						// Если атрибуты URI адреса являются IPv4-адресом
-						case static_cast <uint8_t> (net::type_t::IPV4): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(static_cast <string> (* this->_addr.get()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0)
-								// Добавляем порт хоста в результат, если он не равен 0
-								result.append(this->_fmk->format(":%u", attr->port));
-						} break;
-						// Если атрибуты URI адреса являются IPv6-адресом
-						case static_cast <uint8_t> (net::type_t::IPV6): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0)
-								// Добавляем порт хоста в результат, если он не равен 0
-								result.append(this->_fmk->format(":%u", attr->port));
-						} break;
-					}
-				} break;
-				// Если режим формата URI для генерации является умным, то генерируем краткий URI
-				case static_cast <uint8_t> (format_t::SMART): {
-					/**
-					 * Определяем тип атрибутов URI адреса
-					 */
-					switch(static_cast <uint8_t> (this->_attr->type)){
-						// Если атрибуты URI адреса являются адресом файловой системы
-						case static_cast <uint8_t> (net::type_t::FS):
-							// Выводим путь к сокету из атрибутов URI адреса
-							result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
-						break;
-						// Если атрибуты URI адреса являются FQDN-адресом
-						case static_cast <uint8_t> (net::type_t::FQDN): {
-							// Извлекаем атрибуты URI адреса как FQDN-адрес
-							net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-							// Выводим доменное имя хоста из атрибутов URI адреса
-							result.append(attr->domain);
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0){
-								/**
-								 * Определяем тип URI адреса по схеме URI
-								 */
-								switch(static_cast <uint8_t> (this->_type)){
-									// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
-									case static_cast <uint8_t> (type_t::WS):
-									case static_cast <uint8_t> (type_t::HTTP):
-										// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
-										if(attr->port != 80)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
-									case static_cast <uint8_t> (type_t::WSS):
-									case static_cast <uint8_t> (type_t::HTTPS):
-										// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
-										if(attr->port != 443)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является SSH, то устанавливаем порт URI как 22
-									case static_cast <uint8_t> (type_t::SSH):
-										// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
-										if(attr->port != 22)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является FTP, то устанавливаем порт URI как 21
-									case static_cast <uint8_t> (type_t::FTP):
-										// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
-										if(attr->port != 21)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MQTT, то устанавливаем порт URI как 1883
-									case static_cast <uint8_t> (type_t::MQTT):
-										// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
-										if(attr->port != 1883)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является E-mail, то устанавливаем порт URI как 25
-									case static_cast <uint8_t> (type_t::EMAIL):
-										// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
-										if(attr->port != 25)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является Socks5, то устанавливаем порт URI как 1080
-									case static_cast <uint8_t> (type_t::SOCKS5):
-										// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
-										if(attr->port != 1080)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является REDIS, то устанавливаем порт URI как 6379
-									case static_cast <uint8_t> (type_t::REDIS):
-										// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
-										if(attr->port != 6379)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MySQL, то устанавливаем порт URI как 3306
-									case static_cast <uint8_t> (type_t::MYSQL):
-										// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
-										if(attr->port != 3306)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
-									case static_cast <uint8_t> (type_t::POSTGRESQL):
-										// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
-										if(attr->port != 5432)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-								}
-							}
-						} break;
-						// Если атрибуты URI адреса являются IPv4-адресом
-						case static_cast <uint8_t> (net::type_t::IPV4): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(static_cast <string> (* this->_addr.get()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0){
-								/**
-								 * Определяем тип URI адреса по схеме URI
-								 */
-								switch(static_cast <uint8_t> (this->_type)){
-									// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
-									case static_cast <uint8_t> (type_t::WS):
-									case static_cast <uint8_t> (type_t::HTTP):
-										// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
-										if(attr->port != 80)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
-									case static_cast <uint8_t> (type_t::WSS):
-									case static_cast <uint8_t> (type_t::HTTPS):
-										// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
-										if(attr->port != 443)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является SSH, то устанавливаем порт URI как 22
-									case static_cast <uint8_t> (type_t::SSH):
-										// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
-										if(attr->port != 22)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является FTP, то устанавливаем порт URI как 21
-									case static_cast <uint8_t> (type_t::FTP):
-										// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
-										if(attr->port != 21)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MQTT, то устанавливаем порт URI как 1883
-									case static_cast <uint8_t> (type_t::MQTT):
-										// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
-										if(attr->port != 1883)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является E-mail, то устанавливаем порт URI как 25
-									case static_cast <uint8_t> (type_t::EMAIL):
-										// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
-										if(attr->port != 25)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является Socks5, то устанавливаем порт URI как 1080
-									case static_cast <uint8_t> (type_t::SOCKS5):
-										// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
-										if(attr->port != 1080)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является REDIS, то устанавливаем порт URI как 6379
-									case static_cast <uint8_t> (type_t::REDIS):
-										// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
-										if(attr->port != 6379)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MySQL, то устанавливаем порт URI как 3306
-									case static_cast <uint8_t> (type_t::MYSQL):
-										// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
-										if(attr->port != 3306)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
-									case static_cast <uint8_t> (type_t::POSTGRESQL):
-										// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
-										if(attr->port != 5432)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-								}
-							}
-						} break;
-						// Если атрибуты URI адреса являются IPv6-адресом
-						case static_cast <uint8_t> (net::type_t::IPV6): {
-							// Извлекаем атрибуты URI адреса как сетевой адрес
-							net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-							// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-							this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-							// Выводим IP-адрес хоста в виде строки
-							result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
-							// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
-							if(attr->port != 0){
-								/**
-								 * Определяем тип URI адреса по схеме URI
-								 */
-								switch(static_cast <uint8_t> (this->_type)){
-									// Если тип URI является WS или HTTP, то устанавливаем порт URI как 80
-									case static_cast <uint8_t> (type_t::WS):
-									case static_cast <uint8_t> (type_t::HTTP):
-										// Если порт URI является 80, то это может быть HTTP, иначе добавляем порт в результат
-										if(attr->port != 80)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является WSS или HTTPS, то устанавливаем порт URI как 443
-									case static_cast <uint8_t> (type_t::WSS):
-									case static_cast <uint8_t> (type_t::HTTPS):
-										// Если порт URI является 443, то это может быть HTTPS, иначе добавляем порт в результат
-										if(attr->port != 443)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является SSH, то устанавливаем порт URI как 22
-									case static_cast <uint8_t> (type_t::SSH):
-										// Если порт URI является 22, то это может быть SSH, иначе добавляем порт в результат
-										if(attr->port != 22)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является FTP, то устанавливаем порт URI как 21
-									case static_cast <uint8_t> (type_t::FTP):
-										// Если порт URI является 21, то это может быть FTP, иначе добавляем порт в результат
-										if(attr->port != 21)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MQTT, то устанавливаем порт URI как 1883
-									case static_cast <uint8_t> (type_t::MQTT):
-										// Если порт URI является 1883, то это может быть MQTT, иначе добавляем порт в результат
-										if(attr->port != 1883)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является E-mail, то устанавливаем порт URI как 25
-									case static_cast <uint8_t> (type_t::EMAIL):
-										// Если порт URI является 25, то это может быть E-mail, иначе добавляем порт в результат
-										if(attr->port != 25)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является Socks5, то устанавливаем порт URI как 1080
-									case static_cast <uint8_t> (type_t::SOCKS5):
-										// Если порт URI является 1080, то это может быть Socks5, иначе добавляем порт в результат
-										if(attr->port != 1080)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является REDIS, то устанавливаем порт URI как 6379
-									case static_cast <uint8_t> (type_t::REDIS):
-										// Если порт URI является 6379, то это может быть REDIS, иначе добавляем порт в результат
-										if(attr->port != 6379)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является MySQL, то устанавливаем порт URI как 3306
-									case static_cast <uint8_t> (type_t::MYSQL):
-										// Если порт URI является 3306, то это может быть MySQL, иначе добавляем порт в результат
-										if(attr->port != 3306)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-									// Если тип URI является PostgreSQL, то устанавливаем порт URI как 5432
-									case static_cast <uint8_t> (type_t::POSTGRESQL):
-										// Если порт URI является 5432, то это может быть PostgreSQL, иначе добавляем порт в результат
-										if(attr->port != 5432)
-											// Добавляем порт хоста в результат, если он не равен 0
-											result.append(this->_fmk->format(":%u", attr->port));
-									break;
-								}
-							}
-						} break;
-					}
-				} break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
+void awh::Uniform_Resource_Identifier::callback(function <string (const Uniform_Resource_Identifier *)> cb) noexcept {
+	// Устанавливаем функцию обратного вызова для генерации параметра URI
+	this->_callback = ::move(cb);
 }
 /**
  * @brief Оператор проверки на существование данных
@@ -3342,7 +3829,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  * @param uri параметры URI для перемещения
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
- _type(type_t::NONE), _scheme{""}, _fragment{""}, _addr(nullptr), _attr(nullptr), _fmk(nullptr), _log(nullptr) {
+ _type(type_t::NONE), _scheme{""}, _fragment{""},
+ _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -3394,7 +3882,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  * @param uri параметры URI для копирования
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
- _type(type_t::NONE), _scheme{""}, _fragment{""}, _addr(nullptr), _attr(nullptr), _fmk(nullptr), _log(nullptr) {
+ _type(type_t::NONE), _scheme{""}, _fragment{""},
+ _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -3517,7 +4006,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  * @param log объект для работы с логами
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _scheme{""}, _fragment{""}, _addr(nullptr), _attr(nullptr), _fmk(fmk), _log(log) {
+ _type(type_t::NONE), _scheme{""}, _fragment{""},
+ _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
 	// Инициализируем объект работы с сетевыми адресами
 	this->_addr = make_unique <net_addr_t> (fmk, log);
 }

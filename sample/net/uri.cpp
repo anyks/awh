@@ -38,6 +38,11 @@ int32_t main(int32_t argc, char * argv[]){
 	uri_t uri(&fmk, &log);
 	// Генерируем ETag для строки "Hello, World!" и выводим его
 	cout << " ETag: " << "W/" << uri.etag("Hello, World!", 8) << endl;
+	// Устанавливаем функцию обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
+	uri.callback([&fmk](const uri_t * uri) -> string {
+		// Генерируем контрольную сумму для строки URI и возвращаем её в виде параметра "checksum"
+		return fmk.format("%s=%s", "checksum", uri->etag(uri->print(uri_t::item_t::QUERY)).c_str());
+	});
 
 	cout << endl << endl;
 
@@ -46,7 +51,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -55,7 +60,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -64,7 +69,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -73,7 +78,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", ORIGIN: " << uri.origin(uri_t::format_t::SMART) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", ORIGIN: " << uri.print(uri_t::item_t::ORIGIN) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -82,7 +87,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -91,7 +96,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -100,7 +105,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -109,7 +114,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -118,7 +123,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -127,7 +132,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -136,7 +141,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -145,7 +150,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -154,7 +159,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -163,7 +168,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -172,7 +177,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -181,7 +186,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -190,7 +195,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -199,7 +204,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -208,7 +213,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -217,7 +222,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -226,7 +231,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -235,7 +240,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -244,7 +249,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -253,7 +258,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -262,7 +267,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -271,7 +276,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -280,7 +285,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -289,7 +294,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -298,7 +303,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -307,7 +312,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -316,7 +321,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -325,7 +330,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -334,7 +339,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -343,7 +348,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -352,7 +357,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -361,7 +366,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -370,7 +375,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -379,7 +384,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -388,7 +393,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -397,7 +402,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -406,7 +411,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -415,7 +420,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -424,7 +429,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -433,7 +438,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -442,7 +447,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -451,7 +456,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -460,7 +465,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -469,7 +474,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -478,7 +483,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -487,7 +492,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -496,7 +501,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -505,7 +510,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -514,7 +519,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -523,7 +528,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -532,7 +537,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << endl;
 
 	cout << endl << endl;
 
@@ -541,7 +546,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -550,7 +555,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -559,7 +564,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -568,7 +573,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -577,7 +582,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -586,7 +591,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -595,7 +600,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -604,7 +609,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -613,7 +618,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -622,7 +627,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
 
 	cout << endl << endl;
 
@@ -631,7 +636,29 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
-	cout << "SMART: " << uri.print(uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::format_t::FULL) << ", REQUEST: " << uri.request() << endl;
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
+
+	cout << endl << endl;
+
+	address = "https://www.example.com/%D0%B3%D1%80%D0%B8%D0%B3%D0%BE%D1%80%D0%B8%D0%B9/%D0%BB%D0%B8%D1%87%D0%BD%D1%8B%D0%B9%20%D0%BA%D0%B0%D0%B1%D0%B8%D0%BD%D0%B5%D1%82/%D0%B1%D0%B0%D0%BB%D0%B0%D0%BD%D1%81?%D0%B7%D0%B0%D0%BF%D1%80%D0%BE%D1%81=%D0%BF%D1%8F%D1%82%D1%8C&%D0%B8%D0%B4%D0%B5%D0%BD%D1%82%D0%B8%D1%84%D0%B8%D0%BA%D0%B0%D1%82%D0%BE%D1%80=%D0%B3%D0%BE%D0%B3%D0%B0#%D0%BF%D0%B5%D1%80%D0%B5%D0%B9%D1%82%D0%B8%20%D0%B2%20%D0%BD%D0%B8%D0%B7";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
+
+	cout << " URI Scheme: " << uri.scheme() << endl;
+	cout << " URI Host: " << uri.host() << endl;
+	cout << " URI Port: " << uri.port() << endl;
+	cout << " URI Fragment: " << uri.fragment() << endl;
+
+	for(const auto & segment : uri.path())
+		cout << " URI Path Segment: " << segment << endl;
+	cout << endl;
+
+	for(const auto & [key, value] : uri.query())
+		cout << " URI Query Parameter: " << key << " = " << value << endl;
+	cout << endl;
 
 	// Выводим результат
 	return EXIT_SUCCESS;

@@ -26,6 +26,7 @@
 #include <memory>
 #include <cstdint>
 #include <iostream>
+#include <functional>
 #include <unordered_map>
 
 /**
@@ -56,6 +57,22 @@ namespace awh {
 				NONE  = 0x00, // Режим формата URI не определён
 				FULL  = 0x01, // Полный формат URI (с указанием схемы и порта)
 				SMART = 0x02  // Умный формат URI (с указанием схемы и порта только при их наличии)
+			};
+			/**
+			 * @brief Режим формата URI для печати
+			 *
+			 */
+			enum class item_t : uint8_t {
+				NONE     = 0x00, // Режим формата URI для печати не определён
+				URI      = 0x01, // Режим формата URI для печати полного URI
+				SCHEME   = 0x02, // Режим формата URI для печати схемы URI
+				USER     = 0x03, // Режим формата URI для печати параметров пользователя URI
+				HOST     = 0x04, // Режим формата URI для печати хоста URI
+				PATH     = 0x05, // Режим формата URI для печати пути URI
+				QUERY    = 0x06, // Режим формата URI для печати параметров URI
+				FRAGMENT = 0x07, // Режим формата URI для печати якоря URI
+				ORIGIN   = 0x08, // Режим формата URI для печати происхождения URI
+				REQUEST  = 0x09  // Режим формата URI для печати запроса URI
 			};
 			/**
 			 * @brief Тип URI
@@ -116,6 +133,11 @@ namespace awh {
 			vector <string> _path;
 			// Параметры URI
 			unordered_map <string, string> _query;
+		private:
+			/**
+			 * Функция обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
+			 */
+			function <string (const Uniform_Resource_Identifier *)> _callback;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -271,27 +293,20 @@ namespace awh {
 			string etag(string_view text, const uint8_t size = 16) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения относительного URI-запроса
-			 *
-			 * @return относительный URI-запрос
-			 */
-			string request() const noexcept;
-		public:
-			/**
 			 * @brief Метод генерации строки URI
 			 *
+			 * @param item   режим элемента URI для генерации
 			 * @param format режим формата URI для генерации
 			 * @return       строка URI
 			 */
-			string print(const format_t format = format_t::SMART) const noexcept;
+			string print(const item_t item = item_t::URI, const format_t format = format_t::SMART) const noexcept;
 		public:
 			/**
-			 * @brief Метод создания заголовка [origin], для HTTP запроса
+			 * @brief Метод установки функции обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
 			 *
-			 * @param format режим формата URI для генерации
-			 * @return       заголовок [origin]
+			 * @param cb функция обратного вызова для генерации параметра URI
 			 */
-			string origin(const format_t format = format_t::SMART) const noexcept;
+			void callback(function <string (const Uniform_Resource_Identifier *)> cb) noexcept;
 		public:
 			/**
 			 * @brief Оператор проверки на существование данных
