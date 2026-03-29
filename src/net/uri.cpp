@@ -2138,11 +2138,15 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
 								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
 							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Вызываем функцию обратного вызова и добавляем её результат в результат
-								result.append(this->_callback(this));
+							if(this->_callback != nullptr){
+								// Выполняем генерацию параметров URI с помощью функции обратного вызова
+								const string & item = this->_callback(this);
+								// Если параметры URI, сгенерированные удачно
+								if(!item.empty())
+									// Вызываем функцию обратного вызова и добавляем её результат в результат
+									result.append(item);
 							// Удаляем последний символ "&" из результата
-							else result.pop_back();
+							} else result.pop_back();
 						} break;
 					}
 				}
@@ -3108,11 +3112,15 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
 								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
 							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Вызываем функцию обратного вызова и добавляем её результат в результат
-								result.append(this->_callback(this));
+							if(this->_callback != nullptr){
+								// Выполняем генерацию параметров URI с помощью функции обратного вызова
+								const string & item = this->_callback(this);
+								// Если параметры URI, сгенерированные удачно
+								if(!item.empty())
+									// Вызываем функцию обратного вызова и добавляем её результат в результат
+									result.append(item);
 							// Удаляем последний символ "&" из результата
-							else result.pop_back();
+							} else result.pop_back();
 						}
 						// Если якорь URI не пустой, то добавляем его в результат
 						if(!this->_fragment.empty())
