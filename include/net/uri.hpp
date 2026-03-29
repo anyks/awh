@@ -206,6 +206,19 @@ namespace awh {
 			void host(string_view host) noexcept;
 		public:
 			/**
+			 * @brief Метод получения порта URI
+			 *
+			 * @return порт URI
+			 */
+			uint16_t port() const noexcept;
+			/**
+			 * @brief Метод установки порта URI
+			 *
+			 * @param port порт URI для установки
+			 */
+			void port(const uint16_t port) noexcept;
+		public:
+			/**
 			 * @brief Метод получения пути URI
 			 *
 			 * @return путь URI

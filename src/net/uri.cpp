@@ -734,7 +734,22 @@ namespace uri {
  *
  */
 void awh::Uniform_Resource_Identifier::clear() noexcept {
-
+	// Очищаем путь URI
+	this->_path.clear();
+	// Очищаем параметры URI
+	this->_query.clear();
+	// Очищаем схему URI
+	this->_scheme.clear();
+	// Очищаем якорь URI
+	this->_fragment.clear();
+	// Очищаем логин пользователя URI
+	this->_user.login.clear();
+	// Очищаем пароль пользователя URI
+	this->_user.pass.clear();
+	// Сбрасываем тип URI
+	this->_type = type_t::NONE;
+	// Сбрасываем атрибуты URI
+	this->_attr.reset(nullptr);
 }
 /**
  * @brief Метод проверки на существование данных
@@ -742,7 +757,16 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
  * @return результат проверки
  */
 bool awh::Uniform_Resource_Identifier::empty() const noexcept {
-
+	// Проверяем, что все компоненты URI пустые
+	return (
+		this->_path.empty() &&
+		this->_query.empty() &&
+		this->_scheme.empty() &&
+		this->_fragment.empty() &&
+		this->_user.pass.empty() &&
+		this->_user.login.empty() &&
+		(this->_attr == nullptr)
+	);
 }
 /**
  * @brief Метод получения типа URI
@@ -750,7 +774,8 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
  * @return тип URI
  */
 awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type() const noexcept {
-
+	// Выводим тип URI
+	return this->_type;
 }
 /**
  * @brief Метод получения схемы URI
@@ -758,7 +783,8 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type(
  * @return схема URI
  */
 const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
-
+	// Выводим схему URI
+	return this->_scheme;
 }
 /**
  * @brief Метод установки схемы URI
@@ -766,7 +792,8 @@ const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
  * @param scheme схема URI для установки
  */
 void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
-
+	// Устанавливаем схему URI
+	this->_scheme = scheme;
 }
 /**
  * @brief Метод получения параметров пользователя URI
@@ -774,7 +801,8 @@ void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
  * @return параметры пользователя URI
  */
 const awh::Uniform_Resource_Identifier::user_t & awh::Uniform_Resource_Identifier::user() const noexcept {
-
+	// Выводим параметры пользователя URI
+	return this->_user;
 }
 /**
  * @brief Метод установки параметров пользователя URI
@@ -782,7 +810,8 @@ const awh::Uniform_Resource_Identifier::user_t & awh::Uniform_Resource_Identifie
  * @param user параметры пользователя URI для установки
  */
 void awh::Uniform_Resource_Identifier::user(const user_t & user) noexcept {
-
+	// Устанавливаем параметры пользователя URI
+	this->_user = user;
 }
 /**
  * @brief Метод установки логина и пароля пользователя URI
@@ -791,7 +820,10 @@ void awh::Uniform_Resource_Identifier::user(const user_t & user) noexcept {
  * @param pass  пароль пользователя URI для установки
  */
 void awh::Uniform_Resource_Identifier::user(string_view login, string_view pass) noexcept {
-
+	// Устанавливаем пароль пользователя URI
+	this->_user.pass = pass;
+	// Устанавливаем логин пользователя URI
+	this->_user.login = login;
 }
 /**
  * @brief Метод получения якоря URI
@@ -799,7 +831,8 @@ void awh::Uniform_Resource_Identifier::user(string_view login, string_view pass)
  * @return якорь URI
  */
 const string & awh::Uniform_Resource_Identifier::fragment() const noexcept {
-
+	// Выводим якорь URI
+	return this->_fragment;
 }
 /**
  * @brief Метод установки якоря URI
@@ -807,7 +840,8 @@ const string & awh::Uniform_Resource_Identifier::fragment() const noexcept {
  * @param fragment якорь URI для установки
  */
 void awh::Uniform_Resource_Identifier::fragment(string_view fragment) noexcept {
-
+	// Устанавливаем якорь URI
+	this->_fragment = fragment;
 }
 /**
  * @brief Метод получения атрибутов URI
@@ -815,7 +849,8 @@ void awh::Uniform_Resource_Identifier::fragment(string_view fragment) noexcept {
  * @return атрибуты URI
  */
 const awh::net::attr_t * awh::Uniform_Resource_Identifier::attr() const noexcept {
-
+	// Выводим атрибуты URI
+	return this->_attr.get();
 }
 /**
  * @brief Метод установки атрибутов URI
@@ -823,7 +858,92 @@ const awh::net::attr_t * awh::Uniform_Resource_Identifier::attr() const noexcept
  * @param attr атрибуты URI для установки
  */
 void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
-
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если атрибуты URI не пустые
+		if(attr != nullptr){
+			/**
+			 * Определяем тип атрибутов URI адреса
+			 */
+			switch(static_cast <uint8_t> (attr->type)){
+				// Если атрибуты URI адреса являются адресом файловой системы
+				case static_cast <uint8_t> (net::type_t::FS): {
+					// Если атрибуты URI не инициализированы
+					if(this->_attr == nullptr)
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_uds_t> ();
+					// Если путь к сокету в атрибутах URI адреса не инициализирован
+					if(awh_cast <net::attr_uds_t *> (this->_attr.get())->path == nullptr)
+						// Инициализируем путь к сокету в атрибутах URI адреса
+						awh_cast <net::attr_uds_t *> (this->_attr.get())->path = make_unique <net::addr_fs_t> ();
+					// Копируем путь к сокету из атрибутов URI адреса
+					awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (attr)->path.get())->address;
+				} break;
+				// Если атрибуты URI адреса являются FQDN-адресом
+				case static_cast <uint8_t> (net::type_t::FQDN): {
+					// Если атрибуты URI не инициализированы
+					if(this->_attr == nullptr)
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_fqdn_t> ();
+					// Копируем порт хоста из атрибутов URI адреса
+					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port = awh_cast <const net::attr_fqdn_t *> (attr)->port;
+					// Копируем доменное имя хоста из атрибутов URI адреса
+					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain = awh_cast <const net::attr_fqdn_t *> (attr)->domain;
+				} break;
+				// Если атрибуты URI адреса являются IPv4-адресом
+				case static_cast <uint8_t> (net::type_t::IPV4): {
+					// Если атрибуты URI не инициализированы
+					if(this->_attr == nullptr)
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_net_t> ();
+					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
+					if(awh_cast <net::attr_net_t *> (this->_attr.get())->ip == nullptr)
+						// Инициализируем IP-адрес хоста в атрибутах URI адреса
+						awh_cast <net::attr_net_t *> (this->_attr.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+					// Копируем порт хоста из атрибутов URI адреса
+					awh_cast <net::attr_net_t *> (this->_attr.get())->port = awh_cast <const net::attr_net_t *> (attr)->port;
+					// Копируем IP-адрес хоста из атрибутов URI адреса
+					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (attr)->ip.get())->address;
+				} break;
+				// Если атрибуты URI адреса являются IPv6-адресом
+				case static_cast <uint8_t> (net::type_t::IPV6): {
+					// Если атрибуты URI не инициализированы
+					if(this->_attr == nullptr)
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_net_t> ();
+					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
+					if(awh_cast <net::attr_net_t *> (this->_attr.get())->ip == nullptr)
+						// Инициализируем IP-адрес хоста в атрибутах URI адреса
+						awh_cast <net::attr_net_t *> (this->_attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+					// Копируем порт хоста из атрибутов URI адреса
+					awh_cast <net::attr_net_t *> (this->_attr.get())->port = awh_cast <const net::attr_net_t *> (attr)->port;
+					// Копируем IP-адрес хоста из атрибутов URI адреса
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (attr)->ip.get())->address[0], 16);
+				} break;
+			}
+			// Устанавливаем тип атрибутов URI адреса
+			this->_attr->type = attr->type;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод получения хоста URI
@@ -831,7 +951,55 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
  * @return хост URI
  */
 string awh::Uniform_Resource_Identifier::host() const noexcept {
-
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если атрибуты URI не пустые
+		if(this->_attr != nullptr){
+			/**
+			 * Определяем тип атрибутов URI адреса
+			 */
+			switch(static_cast <uint8_t> (this->_attr->type)){
+				// Если атрибуты URI адреса являются адресом файловой системы
+				case static_cast <uint8_t> (net::type_t::FS):
+					// Выводим путь к сокету из атрибутов URI адреса
+					return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address;
+				// Если атрибуты URI адреса являются FQDN-адресом
+				case static_cast <uint8_t> (net::type_t::FQDN):
+					// Выводим доменное имя хоста из атрибутов URI адреса
+					return awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain;
+				// Если атрибуты URI адреса являются IPv4-адресом
+				case static_cast <uint8_t> (net::type_t::IPV4):
+				// Если атрибуты URI адреса являются IPv6-адресом
+				case static_cast <uint8_t> (net::type_t::IPV6): {
+					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+					this->_addr->source(awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get(), net_addr_t::endian_t::LITTLE);
+					// Выводим IP-адрес хоста в виде строки
+					return static_cast <string> (* this->_addr.get());
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return "";
 }
 /**
  * @brief Метод установки хоста URI
@@ -839,7 +1007,209 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
  * @param host хост URI для установки
  */
 void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
-
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем парсинг переданного адреса
+		if(this->_addr->parse(host)){
+			// Порт хоста в атрибутах URI адреса
+			uint16_t port = 0;
+			// Если атрибуты URI не инициализированы
+			if(this->_attr != nullptr)
+				// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
+				port = awh_cast <net::attr_net_t *> (this->_attr.get())->port;
+			/**
+			 * Определяем тип полученного IP-адреса
+			 */
+			switch(static_cast <uint8_t> (this->_addr->type())){
+				// Если хост URI является IPv4-адресом
+				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются IPv4-адресом
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV4))
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип атрибутов URI адреса
+					this->_attr->type = net::type_t::IPV4;
+				} break;
+				// Если хост URI является IPv6-адресом
+				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются IPv6-адресом
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV6))
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип атрибутов URI адреса
+					this->_attr->type = net::type_t::IPV6;
+				} break;
+			}
+			// Устанавливаем порт хоста в атрибутах URI адреса
+			awh_cast <net::attr_net_t *> (this->_attr.get())->port = port;
+			// Инициализируем IP-адрес хоста в атрибутах URI адреса
+			awh_cast <net::attr_net_t *> (this->_attr.get())->ip = ::move(this->_addr->source(net_addr_t::endian_t::LITTLE));
+		// Если парсинг не выполнен
+		} else {
+			/**
+			 * Определяем тип полученного хоста URI адреса
+			 */
+			switch(static_cast <uint8_t> (this->_addr->host(host))){
+				// Если хост URI является файловой системой
+				case static_cast <uint8_t> (net_addr_t::type_t::FS): {
+					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются FS-адресом
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS)){
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_uds_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::FS;
+					}
+					// Если путь к сокету в атрибутах URI адреса не инициализирован
+					if(awh_cast <net::attr_uds_t *> (this->_attr.get())->path == nullptr)
+						// Инициализируем путь к сокету в атрибутах URI адреса
+						awh_cast <net::attr_uds_t *> (this->_attr.get())->path = make_unique <net::addr_fs_t> ();
+					// Копируем путь к сокету из атрибутов URI адреса
+					awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address = host;
+				} break;
+				// Если хости URI является доменным именем
+				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+					// Порт хоста в атрибутах URI адреса
+					uint16_t port = 0;
+					// Если атрибуты URI не инициализированы
+					if(this->_attr != nullptr)
+						// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
+						port = awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port;
+					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются FQDN-адресом
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FQDN)){
+						// Инициализируем атрибуты URI
+						this->_attr = make_unique <net::attr_fqdn_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::FQDN;
+					}
+					// Устанавливаем порт хоста в атрибутах URI адреса
+					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port = port;
+					// Копируем доменное имя хоста из атрибутов URI адреса
+					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain = host;
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод получения порта URI
+ *
+ * @return порт URI
+ */
+uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если атрибуты URI не пустые
+		if(this->_attr != nullptr){
+			/**
+			 * Определяем тип атрибутов URI адреса
+			 */
+			switch(static_cast <uint8_t> (this->_attr->type)){
+				// Если атрибуты URI адреса являются адресом файловой системы
+				case static_cast <uint8_t> (net::type_t::FS):
+					// Выводим порт хоста из атрибутов URI адреса (для файловой системы порт не используется, поэтому возвращаем 0)
+					return 0;
+				// Если атрибуты URI адреса являются FQDN-адресом
+				case static_cast <uint8_t> (net::type_t::FQDN):
+					// Выводим порт хоста из атрибутов URI адреса
+					return awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port;
+				// Если атрибуты URI адреса являются IPv4-адресом
+				case static_cast <uint8_t> (net::type_t::IPV4):
+				// Если атрибуты URI адреса являются IPv6-адресом
+				case static_cast <uint8_t> (net::type_t::IPV6):
+					// Выводим порт хоста из атрибутов URI адреса
+					return awh_cast <net::attr_net_t *> (this->_attr.get())->port;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки порта URI
+ *
+ * @param port порт URI для установки
+ */
+void awh::Uniform_Resource_Identifier::port(const uint16_t port) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если атрибуты URI не пустые
+		if(this->_attr != nullptr){
+			/**
+			 * Определяем тип атрибутов URI адреса
+			 */
+			switch(static_cast <uint8_t> (this->_attr->type)){
+				// Если атрибуты URI адреса являются FQDN-адресом
+				case static_cast <uint8_t> (net::type_t::FQDN):
+					// Устанавливаем порт хоста в атрибутах URI адреса
+					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port = port;
+				break;
+				// Если атрибуты URI адреса являются IPv4-адресом
+				case static_cast <uint8_t> (net::type_t::IPV4):
+				// Если атрибуты URI адреса являются IPv6-адресом
+				case static_cast <uint8_t> (net::type_t::IPV6):
+					// Устанавливаем порт хоста в атрибутах URI адреса
+					awh_cast <net::attr_net_t *> (this->_attr.get())->port = port;
+				break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод получения пути URI
@@ -847,7 +1217,8 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
  * @return путь URI
  */
 const vector <string> & awh::Uniform_Resource_Identifier::path() const noexcept {
-
+	// Выводим путь URI
+	return this->_path;
 }
 /**
  * @brief Метод установки пути URI
@@ -855,7 +1226,8 @@ const vector <string> & awh::Uniform_Resource_Identifier::path() const noexcept 
  * @param path путь URI для установки
  */
 void awh::Uniform_Resource_Identifier::path(const vector <string> & path) noexcept {
-
+	// Устанавливаем путь URI
+	this->_path = path;
 }
 /**
  * @brief Метод получения параметров URI
@@ -863,7 +1235,8 @@ void awh::Uniform_Resource_Identifier::path(const vector <string> & path) noexce
  * @return параметры URI
  */
 const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query() const noexcept {
-
+	// Выводим параметры URI
+	return this->_query;
 }
 /**
  * @brief Метод установки параметров URI
@@ -871,7 +1244,8 @@ const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query()
  * @param query параметры URI для установки
  */
 void awh::Uniform_Resource_Identifier::query(const unordered_map <string, string> & query) noexcept {
-
+	// Устанавливаем параметры URI
+	this->_query = query;
 }
 /**
  * @brief Метод парсинга URI-запроса

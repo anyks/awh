@@ -354,6 +354,13 @@ int32_t main(int32_t argc, char * argv[]){
 
 	uri.parse(address);
 
+	cout << endl << endl;
+
+	address = "unix:/var/run/socket.sock";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
 	// Выводим результат
 	return EXIT_SUCCESS;
 }
