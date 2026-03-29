@@ -20,13 +20,12 @@
 #include <sstream>
 #include <iomanip>
 #include <string_view>
+#include <sys/types.h>
 
 /**
  * Подключаем заголовочный файл
  */
-#include <cstdint>
 #include <net/uri.hpp>
-#include <sys/types.h>
 
 /**
  * Подписываемся на стандартное пространство имён
