@@ -5590,6 +5590,10 @@ namespace io {
 									info.target = make_unique <net::attr_net_t> ();
 									// Создаём объект для хранения информации о сетевом адресе источника
 									info.source = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип IP-пакета как IPv4
+									info.target->type = net::type_t::IPV4;
+									// Устанавливаем тип IP-пакета как IPv4
+									info.source->type = net::type_t::IPV4;
 									/**
 									 * Определяем протокол по 10-му байту заголовка IPv4-пакета
 									 */
@@ -5771,6 +5775,10 @@ namespace io {
 									info.target = make_unique <net::attr_net_t> ();
 									// Создаём объект для хранения информации о сетевом адресе источника
 									info.source = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип IP-пакета как IPv6
+									info.target->type = net::type_t::IPV6;
+									// Устанавливаем тип IP-пакета как IPv6
+									info.source->type = net::type_t::IPV6;
 									/**
 									 * Определяем протокол по 10-му байту заголовка IPv6-пакета
 									 */
@@ -6110,6 +6118,10 @@ namespace io {
 								info.target = make_unique <net::attr_net_t> ();
 								// Создаём объект для хранения информации о сетевом адресе источника
 								info.source = make_unique <net::attr_net_t> ();
+								// Устанавливаем тип IP-пакета как IPv4
+								info.target->type = net::type_t::IPV4;
+								// Устанавливаем тип IP-пакета как IPv4
+								info.source->type = net::type_t::IPV4;
 								/**
 								 * Определяем протокол по 10-му байту заголовка IPv4-пакета
 								 */
@@ -6291,6 +6303,10 @@ namespace io {
 								info.target = make_unique <net::attr_net_t> ();
 								// Создаём объект для хранения информации о сетевом адресе источника
 								info.source = make_unique <net::attr_net_t> ();
+								// Устанавливаем тип IP-пакета как IPv6
+								info.target->type = net::type_t::IPV6;
+								// Устанавливаем тип IP-пакета как IPv6
+								info.source->type = net::type_t::IPV6;
 								/**
 								 * Определяем протокол по 10-му байту заголовка IPv6-пакета
 								 */
@@ -14086,6 +14102,10 @@ namespace io {
 							switch(static_cast <uint8_t> (info.family)){
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Устанавливаем тип IP-пакета как IPv4
+									info.target->type = net::type_t::IPV4;
+									// Устанавливаем тип IP-пакета как IPv4
+									info.source->type = net::type_t::IPV4;
 									/**
 									 * Определяем протокол по 10-му байту заголовка IPv4-пакета
 									 */
@@ -14182,6 +14202,10 @@ namespace io {
 								} break;
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Устанавливаем тип IP-пакета как IPv6
+									info.target->type = net::type_t::IPV6;
+									// Устанавливаем тип IP-пакета как IPv6
+									info.source->type = net::type_t::IPV6;
 									/**
 									 * Определяем протокол по 10-му байту заголовка IPv6-пакета
 									 */
@@ -14410,6 +14434,10 @@ namespace io {
 							switch(static_cast <uint8_t> (info.family)){
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Устанавливаем тип IP-пакета как IPv4
+									info.target->type = net::type_t::IPV4;
+									// Устанавливаем тип IP-пакета как IPv4
+									info.source->type = net::type_t::IPV4;
 									/**
 									 * Определяем протокол по 10-му байту заголовка IPv4-пакета
 									 */
@@ -14506,6 +14534,10 @@ namespace io {
 								} break;
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Устанавливаем тип IP-пакета как IPv6
+									info.target->type = net::type_t::IPV6;
+									// Устанавливаем тип IP-пакета как IPv6
+									info.source->type = net::type_t::IPV6;
 									/**
 									 * Определяем протокол по 10-му байту заголовка IPv6-пакета
 									 */
@@ -14718,6 +14750,10 @@ namespace io {
 						switch(static_cast <uint8_t> (info.family)){
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
+								// Устанавливаем тип IP-пакета как IPv4
+								info.target->type = net::type_t::IPV4;
+								// Устанавливаем тип IP-пакета как IPv4
+								info.source->type = net::type_t::IPV4;
 								/**
 								 * Определяем протокол по 10-му байту заголовка IPv4-пакета
 								 */
@@ -14814,6 +14850,10 @@ namespace io {
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
+								// Устанавливаем тип IP-пакета как IPv6
+								info.target->type = net::type_t::IPV6;
+								// Устанавливаем тип IP-пакета как IPv6
+								info.source->type = net::type_t::IPV6;
 								/**
 								 * Определяем протокол по 10-му байту заголовка IPv6-пакета
 								 */
@@ -20886,6 +20926,8 @@ namespace io {
 								if(!address.empty()){
 									// Выполняем инициализацию объекта хоста UDS-сокета
 									peer->remote = make_unique <net::attr_uds_t> ();
+									// Устанавливаем тип адреса события как файловая система
+									peer->remote->type = net::type_t::FS;
 									// Получаем объект хоста UDS-сокета
 									net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (peer->remote.get());
 									// Выполняем инициализацию объекта адреса файловой системы
@@ -20930,6 +20972,8 @@ namespace io {
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Выполняем инициализацию объекта хоста IPv4-адреса
 								peer->remote = make_unique <net::attr_net_t> ();
+								// Устанавливаем тип адреса события как IPv4
+								peer->remote->type = net::type_t::IPV4;
 								// Получаем объект хоста IPv4-адреса
 								net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 								// Выполняем инициализацию объекта IP-адреса
@@ -21106,6 +21150,8 @@ namespace io {
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Выполняем инициализацию объекта хоста IPv6-адреса
 								peer->remote = make_unique <net::attr_net_t> ();
+								// Устанавливаем тип адреса события как IPv6
+								peer->remote->type = net::type_t::IPV6;
 								// Получаем объект хоста IPv6-адреса
 								net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 								// Выполняем инициализацию объекта IP-адреса
@@ -22516,6 +22562,8 @@ namespace io {
 						if(!address.empty()){
 							// Выполняем инициализацию объекта хоста UDS-сокета
 							origin->remote = make_unique <net::attr_uds_t> ();
+							// Устанавливаем тип адреса события как файловая система
+							origin->remote->type = net::type_t::FS;
 							// Получаем объект хоста UDS-сокета
 							net::attr_uds_t * remote = awh_cast <net::attr_uds_t *> (origin->remote.get());
 							// Выполняем инициализацию объекта адреса файловой системы
@@ -22558,6 +22606,8 @@ namespace io {
 					case static_cast <uint8_t> (event::family_t::IPV4): {
 						// Выполняем инициализацию объекта хоста IPv4-адреса
 						origin->remote = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип адреса события как IPv4
+						origin->remote->type = net::type_t::IPV4;
 						// Получаем объект хоста IPv4-адреса
 						net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 						// Выполняем инициализацию объекта IP-адреса
@@ -22723,6 +22773,8 @@ namespace io {
 					case static_cast <uint8_t> (event::family_t::IPV6): {
 						// Выполняем инициализацию объекта хоста IPv6-адреса
 						origin->remote = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип адреса события как IPv6
+						origin->remote->type = net::type_t::IPV6;
 						// Получаем объект хоста IPv6-адреса
 						net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 						// Выполняем инициализацию объекта IP-адреса
@@ -31246,15 +31298,19 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 								 */
 								switch(static_cast <uint8_t> (client->state.family)){
 									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Устанавливаем тип IP-пакета как IPv4
+										client->target->type = net::type_t::IPV4;
 										// Создаём новый объект адреса клиента IPv4
 										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
+									} break;
 									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Устанавливаем тип IP-пакета как IPv6
+										client->target->type = net::type_t::IPV6;
 										// Создаём новый объект адреса клиента IPv6
 										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
+									} break;
 								}
 							}
 							// Получаем объект хоста клиента
@@ -31275,15 +31331,19 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 								 */
 								switch(static_cast <uint8_t> (server->state.family)){
 									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4):
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Устанавливаем тип IP-пакета как IPv4
+										server->host->type = net::type_t::IPV4;
 										// Создаём новый объект адреса сервера IPv4
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									break;
+									} break;
 									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6):
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Устанавливаем тип IP-пакета как IPv6
+										server->host->type = net::type_t::IPV6;
 										// Создаём новый объект адреса сервера IPv6
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									break;
+									} break;
 								}
 							}
 							// Устанавливаем порт события
@@ -32377,9 +32437,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								// Если адрес соответствует адресу файловой системы
 								if(this->_addr.check(target, net_addr_t::type_t::FS)){
 									// Если объект адреса клиента не инициализирован
-									if(client->target == nullptr)
+									if(client->target == nullptr){
 										// Создаём новый объект адреса удалённого узла
 										client->target = make_unique <net::attr_uds_t> ();
+										// Устанавливаем тип пакета как файловая система
+										client->target->type = net::type_t::FS;
+									}
 									// Если тип адреса не установлен
 									if(client->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как файловая система
@@ -32423,9 +32486,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								// Выполняем парсинг IPv4-адреса
 								if(this->_addr.parse(target, net_addr_t::type_t::IPV4)){
 									// Если объект адреса клиента не инициализирован
-									if(client->target == nullptr)
+									if(client->target == nullptr){
 										// Создаём новый объект адреса удалённого узла
 										client->target = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv4
+										client->target->type = net::type_t::IPV4;
+									}
 									// Если тип адреса не установлен
 									if(client->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как IPv4
@@ -32469,9 +32535,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								// Выполняем парсинг IPv6-адреса
 								if(this->_addr.parse(target, net_addr_t::type_t::IPV6)){
 									// Если объект адреса клиента не инициализирован
-									if(client->target == nullptr)
+									if(client->target == nullptr){
 										// Создаём новый объект адреса удалённого узла
 										client->target = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv6
+										client->target->type = net::type_t::IPV6;
+									}
 									// Если тип адреса не установлен
 									if(client->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как IPv6
@@ -32525,9 +32594,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								// Если адрес соответствует адресу файловой системы
 								if(this->_addr.check(target, net_addr_t::type_t::FS)){
 									// Если объект адреса сервера не инициализирован
-									if(server->host == nullptr)
+									if(server->host == nullptr){
 										// Создаём новый объект адреса сервера
 										server->host = make_unique <net::attr_uds_t> ();
+										// Устанавливаем тип пакета как файловая система
+										server->host->type = net::type_t::FS;
+									}
 									// Если тип адреса не установлен
 									if(server->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как файловая система
@@ -32571,9 +32643,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								// Выполняем парсинг IPv4-адреса
 								if(this->_addr.parse(target, net_addr_t::type_t::IPV4)){
 									// Если объект адреса сервера не инициализирован
-									if(server->host == nullptr)
+									if(server->host == nullptr){
 										// Создаём новый объект адреса сервера
 										server->host = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv4
+										server->host->type = net::type_t::IPV4;
+									}
 									// Если тип адреса не установлен
 									if(server->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как IPv4
@@ -32617,9 +32692,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								// Выполняем парсинг IPv6-адреса
 								if(this->_addr.parse(target, net_addr_t::type_t::IPV6)){
 									// Если объект адреса сервера не инициализирован
-									if(server->host == nullptr)
+									if(server->host == nullptr){
 										// Создаём новый объект адреса сервера
 										server->host = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv6
+										server->host->type = net::type_t::IPV6;
+									}
 									// Если тип адреса не установлен
 									if(server->state.address == event::address_t::NONE)
 										// Устанавливаем тип адреса как IPv6
@@ -33610,9 +33688,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
 								// Если объект адреса клиента не инициализирован
-								if(client->target == nullptr)
+								if(client->target == nullptr){
 									// Создаём новый объект адреса удалённого узла
 									client->target = make_unique <net::attr_uds_t> ();
+									// Устанавливаем тип пакета как файловая система
+									client->target->type = net::type_t::FS;
+								}
 								// Если тип адреса не установлен
 								if(client->state.address == event::address_t::NONE)
 									// Устанавливаем тип адреса как файловая система
@@ -33628,6 +33709,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								if(client->target == nullptr){
 									// Создаём новый объект адреса удалённого узла
 									client->target = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип IP-пакета как IPv4
+									client->target->type = net::type_t::IPV4;
 									// Создаём новый объект адреса клиента IPv4
 									awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 								}
@@ -33646,6 +33729,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								if(client->target == nullptr){
 									// Создаём новый объект адреса удалённого узла
 									client->target = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип IP-пакета как IPv6
+									client->target->type = net::type_t::IPV6;
 									// Создаём новый объект адреса клиента IPv6
 									awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 								}
@@ -33671,9 +33756,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
 								// Если объект адреса сервера не инициализирован
-								if(server->host == nullptr)
+								if(server->host == nullptr){
 									// Создаём новый объект адреса сервера
 									server->host = make_unique <net::attr_uds_t> ();
+									// Устанавливаем тип пакета как файловая система
+									server->host->type = net::type_t::FS;
+								}
 								// Если тип адреса не установлен
 								if(server->state.address == event::address_t::NONE)
 									// Устанавливаем тип адреса как файловая система
@@ -33689,6 +33777,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								if(server->host == nullptr){
 									// Создаём новый объект адреса сервера
 									server->host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип IP-пакета как IPv4
+									server->host->type = net::type_t::IPV4;
 									// Создаём новый объект адреса сервера IPv4
 									awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 								}
@@ -33707,6 +33797,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								if(server->host == nullptr){
 									// Создаём новый объект адреса сервера
 									server->host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип IP-пакета как IPv6
+									server->host->type = net::type_t::IPV6;
 									// Создаём новый объект адреса сервера IPv6
 									awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 								}
@@ -35568,6 +35660,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														if(client->target == nullptr){
 															// Создаём новый объект адреса удалённого узла
 															client->target = make_unique <net::attr_net_t> ();
+															// Устанавливаем тип IP-пакета как IPv4
+															client->target->type = net::type_t::IPV4;
 															// Создаём новый объект адреса клиента IPv4
 															awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 														}
@@ -35619,6 +35713,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														if(client->target == nullptr){
 															// Создаём новый объект адреса удалённого узла
 															client->target = make_unique <net::attr_net_t> ();
+															// Устанавливаем тип IP-пакета как IPv6
+															client->target->type = net::type_t::IPV6;
 															// Создаём новый объект адреса клиента IPv6
 															awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 														}
@@ -35708,9 +35804,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Устанавливаем тип адреса
 														server->state.address = event::address_t::IPV4;
 														// Если объект адреса сервера не инициализирован
-														if(server->host == nullptr)
+														if(server->host == nullptr){
 															// Создаём новый объект адреса сервера
 															server->host = make_unique <net::attr_net_t> ();
+															// Устанавливаем тип IP-пакета как IPv4
+															server->host->type = net::type_t::IPV4;
+														}
 														// Устанавливаем IP-адрес в источник сетевого адреса сервера
 														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 														// Если событие является мультикастовым
@@ -35760,9 +35859,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Устанавливаем тип адреса
 														server->state.address = event::address_t::IPV6;
 														// Если объект адреса сервера не инициализирован
-														if(server->host == nullptr)
+														if(server->host == nullptr){
 															// Создаём новый объект адреса сервера
 															server->host = make_unique <net::attr_net_t> ();
+															// Устанавливаем тип IP-пакета как IPv6
+															server->host->type = net::type_t::IPV6;
+														}
 														// Устанавливаем IP-адрес в источник сетевого адреса сервера
 														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 														// Если событие является мультикастовым
@@ -35878,6 +35980,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
 													client->target = make_unique <net::attr_uds_t> ();
+													// Устанавливаем тип пакета как файловая система
+													client->target->type = net::type_t::FS;
 													// Выполняем инициализацию объекта адреса файловой системы
 													awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
 												}
@@ -35927,6 +36031,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												if(server->host == nullptr){
 													// Создаём новый объект адреса сервера
 													server->host = make_unique <net::attr_uds_t> ();
+													// Устанавливаем тип пакета как файловая система
+													server->host->type = net::type_t::FS;
 													// Выполняем инициализацию объекта адреса файловой системы
 													awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
 												}
@@ -36166,6 +36272,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(client->target == nullptr){
 												// Создаём новый объект адреса удалённого узла
 												client->target = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv4
+												client->target->type = net::type_t::IPV4;
 												// Создаём новый объект адреса клиента IPv4
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											}
@@ -36191,6 +36299,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(client->target == nullptr){
 												// Создаём новый объект адреса удалённого узла
 												client->target = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv4
+												client->target->type = net::type_t::IPV4;
 												// Создаём новый объект адреса клиента IPv4
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											}
@@ -36302,6 +36412,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(server->host == nullptr){
 												// Создаём новый объект адреса сервера
 												server->host = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv4
+												server->host->type = net::type_t::IPV4;
 												// Создаём новый объект адреса сервера IPv4
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											}
@@ -36321,9 +36433,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
-												if(server->host == nullptr)
+												if(server->host == nullptr){
 													// Создаём новый объект адреса сервера
 													server->host = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип IP-пакета как IPv4
+													server->host->type = net::type_t::IPV4;
+												}
 												// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 												// Если событие является мультикастовым
@@ -36603,6 +36718,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(client->target == nullptr){
 												// Создаём новый объект адреса удалённого узла
 												client->target = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv6
+												client->target->type = net::type_t::IPV6;
 												// Создаём новый объект адреса клиента IPv6
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 											}
@@ -36628,6 +36745,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(client->target == nullptr){
 												// Создаём новый объект адреса удалённого узла
 												client->target = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv6
+												client->target->type = net::type_t::IPV6;
 												// Создаём новый объект адреса клиента IPv6
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 											}
@@ -36739,6 +36858,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(server->host == nullptr){
 												// Создаём новый объект адреса сервера
 												server->host = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv6
+												server->host->type = net::type_t::IPV6;
 												// Создаём новый объект адреса сервера IPv6
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 											}
@@ -36758,9 +36879,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
-												if(server->host == nullptr)
+												if(server->host == nullptr){
 													// Создаём новый объект адреса сервера
 													server->host = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип IP-пакета как IPv6
+													server->host->type = net::type_t::IPV6;
+												}
 												// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 												// Если событие является мультикастовым
@@ -36970,6 +37094,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
 													client->target = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип IP-пакета как IPv4
+													client->target->type = net::type_t::IPV4;
 													// Создаём новый объект адреса клиента IPv4
 													awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 												}
@@ -37068,6 +37194,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												if(client->target == nullptr){
 													// Создаём новый объект адреса удалённого узла
 													client->target = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип IP-пакета как IPv6
+													client->target->type = net::type_t::IPV6;
 													// Создаём новый объект адреса клиента IPv6
 													awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 												}
@@ -37196,9 +37324,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем тип адреса
 												server->state.address = event::address_t::IPV4;
 												// Если объект адреса сервера не инициализирован
-												if(server->host == nullptr)
+												if(server->host == nullptr){
 													// Создаём новый объект адреса сервера
 													server->host = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип IP-пакета как IPv4
+													server->host->type = net::type_t::IPV4;
+												}
 												// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 												// Если событие является мультикастовым
@@ -37295,9 +37426,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем тип адреса
 												server->state.address = event::address_t::IPV6;
 												// Если объект адреса сервера не инициализирован
-												if(server->host == nullptr)
+												if(server->host == nullptr){
 													// Создаём новый объект адреса сервера
 													server->host = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип IP-пакета как IPv6
+													server->host->type = net::type_t::IPV6;
+												}
 												// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 												// Если событие является мультикастовым
@@ -39229,6 +39363,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													if(client->target == nullptr){
 														// Создаём новый объект адреса удалённого узла
 														client->target = make_unique <net::attr_net_t> ();
+														// Устанавливаем тип IP-пакета как IPv4
+														client->target->type = net::type_t::IPV4;
 														// Создаём новый объект адреса клиента IPv4
 														awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 													}
@@ -39280,6 +39416,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													if(client->target == nullptr){
 														// Создаём новый объект адреса удалённого узла
 														client->target = make_unique <net::attr_net_t> ();
+														// Устанавливаем тип IP-пакета как IPv6
+														client->target->type = net::type_t::IPV6;
 														// Создаём новый объект адреса клиента IPv6
 														awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 													}
@@ -39338,9 +39476,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Устанавливаем тип адреса
 													server->state.address = event::address_t::IPV4;
 													// Если объект адреса сервера не инициализирован
-													if(server->host == nullptr)
+													if(server->host == nullptr){
 														// Создаём новый объект адреса сервера
 														server->host = make_unique <net::attr_net_t> ();
+														// Устанавливаем тип IP-пакета как IPv4
+														server->host->type = net::type_t::IPV4;
+													}
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 													// Если событие является мультикастовым
@@ -39390,9 +39531,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Устанавливаем тип адреса
 													server->state.address = event::address_t::IPV6;
 													// Если объект адреса сервера не инициализирован
-													if(server->host == nullptr)
+													if(server->host == nullptr){
 														// Создаём новый объект адреса сервера
 														server->host = make_unique <net::attr_net_t> ();
+														// Устанавливаем тип IP-пакета как IPv6
+														server->host->type = net::type_t::IPV6;
+													}
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 													// Если событие является мультикастовым
@@ -39477,6 +39621,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(client->target == nullptr){
 												// Создаём новый объект адреса удалённого узла
 												client->target = make_unique <net::attr_uds_t> ();
+												// Устанавливаем тип пакета как файловая система
+												client->target->type = net::type_t::FS;
 												// Выполняем инициализацию объекта адреса файловой системы
 												awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
 											}
@@ -39495,6 +39641,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											if(server->host == nullptr){
 												// Создаём новый объект адреса сервера
 												server->host = make_unique <net::attr_uds_t> ();
+												// Устанавливаем тип пакета как файловая система
+												server->host->type = net::type_t::FS;
 												// Выполняем инициализацию объекта адреса файловой системы
 												awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
 											}
@@ -39649,6 +39797,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										if(client->target == nullptr){
 											// Создаём новый объект адреса удалённого узла
 											client->target = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип IP-пакета как IPv4
+											client->target->type = net::type_t::IPV4;
 											// Создаём новый объект адреса клиента IPv4
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										}
@@ -39674,6 +39824,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										if(client->target == nullptr){
 											// Создаём новый объект адреса удалённого узла
 											client->target = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип IP-пакета как IPv4
+											client->target->type = net::type_t::IPV4;
 											// Создаём новый объект адреса клиента IPv4
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										}
@@ -39754,6 +39906,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										if(server->host == nullptr){
 											// Создаём новый объект адреса сервера
 											server->host = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип IP-пакета как IPv4
+											server->host->type = net::type_t::IPV4;
 											// Создаём новый объект адреса сервера IPv4
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										}
@@ -39773,9 +39927,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
-											if(server->host == nullptr)
+											if(server->host == nullptr){
 												// Создаём новый объект адреса сервера
 												server->host = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv4
+												server->host->type = net::type_t::IPV4;
+											}
 											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 											// Если событие является мультикастовым
@@ -39970,6 +40127,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										if(client->target == nullptr){
 											// Создаём новый объект адреса удалённого узла
 											client->target = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип IP-пакета как IPv6
+											client->target->type = net::type_t::IPV6;
 											// Создаём новый объект адреса клиента IPv6
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										}
@@ -39995,6 +40154,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										if(client->target == nullptr){
 											// Создаём новый объект адреса удалённого узла
 											client->target = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип IP-пакета как IPv6
+											client->target->type = net::type_t::IPV6;
 											// Создаём новый объект адреса клиента IPv6
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										}
@@ -40075,6 +40236,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										if(server->host == nullptr){
 											// Создаём новый объект адреса сервера
 											server->host = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип IP-пакета как IPv6
+											server->host->type = net::type_t::IPV6;
 											// Создаём новый объект адреса сервера IPv6
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										}
@@ -40094,9 +40257,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
-											if(server->host == nullptr)
+											if(server->host == nullptr){
 												// Создаём новый объект адреса сервера
 												server->host = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип IP-пакета как IPv6
+												server->host->type = net::type_t::IPV6;
+											}
 											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
 											// Если событие является мультикастовым
@@ -42172,6 +42338,8 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 										client->transfer.fd = fds[i];
 										// Выполняем инициализацию объекта хоста клиента
 										client->target = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv4
+										client->target->type = net::type_t::IPV4;
 										// Выполняем инициализацию объекта IP-адреса клиента
 										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 									} break;
@@ -42181,6 +42349,8 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 										client->transfer.fd = fds[i];
 										// Выполняем инициализацию объекта хоста клиента
 										client->target = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv6
+										client->target->type = net::type_t::IPV6;
 										// Выполняем инициализацию объекта IP-адреса клиента
 										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 									} break;
@@ -42214,6 +42384,8 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 										server->fd = fds[i];
 										// Выполняем инициализацию объекта хоста сервера
 										server->host = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv4
+										server->host->type = net::type_t::IPV4;
 										// Выполняем инициализацию объекта IP-адреса сервера
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 									} break;
@@ -42223,6 +42395,8 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 										server->fd = fds[i];
 										// Выполняем инициализацию объекта хоста сервера
 										server->host = make_unique <net::attr_net_t> ();
+										// Устанавливаем тип IP-пакета как IPv6
+										server->host->type = net::type_t::IPV6;
 										// Выполняем инициализацию объекта IP-адреса сервера
 										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 									} break;
@@ -42670,6 +42844,8 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								else {
 									// Выполняем инициализацию объекта хоста клиента
 									client->target = make_unique <net::attr_uds_t> ();
+									// Устанавливаем тип пакета как файловая система
+									client->target->type = net::type_t::FS;
 									// Получаем объект хоста UDS-сокета
 									net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (client->target.get());
 									// Выполняем инициализацию объекта адреса файловой системы
@@ -42759,15 +42935,19 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									 */
 									switch(static_cast <uint8_t> (family)){
 										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
+										case static_cast <uint8_t> (event::family_t::IPV4): {
+											 // Устанавливаем тип IP-пакета как IPv4
+											client->target->type = net::type_t::IPV4;
 											// Выполняем инициализацию объекта IP-адреса клиента
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-										break;
+										} break;
 										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
+										case static_cast <uint8_t> (event::family_t::IPV6): {
+											// Устанавливаем тип IP-пакета как IPv6
+											client->target->type = net::type_t::IPV6;
 											// Выполняем инициализацию объекта IP-адреса клиента
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-										break;
+										} break;
 									}
 									/**
 									 * Определяем семейство адресов
@@ -42888,6 +43068,8 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								else {
 									// Выполняем инициализацию объекта хоста сервера
 									server->host = make_unique <net::attr_uds_t> ();
+									// Устанавливаем тип пакета как файловая система
+									server->host->type = net::type_t::FS;
 									// Получаем объект хоста UDS-сокета
 									net::attr_uds_t * host = awh_cast <net::attr_uds_t *> (server->host.get());
 									// Выполняем инициализацию объекта адреса файловой системы
@@ -42965,15 +43147,19 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									 */
 									switch(static_cast <uint8_t> (family)){
 										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
+										case static_cast <uint8_t> (event::family_t::IPV4): {
+											// Устанавливаем тип IP-пакета как IPv4
+											server->host->type = net::type_t::IPV4;
 											// Выполняем инициализацию объекта IP-адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-										break;
+										} break;
 										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
+										case static_cast <uint8_t> (event::family_t::IPV6): {
+											// Устанавливаем тип IP-пакета как IPv6
+											server->host->type = net::type_t::IPV6;
 											// Выполняем инициализацию объекта IP-адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-										break;
+										} break;
 									}
 									// Возвращаем идентификатор созданного события
 									return ret.first->first;

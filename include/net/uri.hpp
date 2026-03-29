@@ -1,0 +1,425 @@
+/**
+ * @file: uri.hpp
+ * @date: 2026-03-28
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_NET_URI__
+#define __AWH_NET_URI__
+
+/**
+ * Стандартные модули
+ */
+#include <string>
+#include <vector>
+#include <memory>
+#include <cstdint>
+#include <iostream>
+#include <unordered_map>
+
+/**
+ * Наши модуля
+ */
+#include "addr.hpp"
+
+/**
+ * @brief Основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	/**
+	 * @brief Класс для работы с универсальными идентификаторами ресурсов
+	 *
+	 */
+	typedef class __AWH_SHARED_EXPORT__ Uniform_Resource_Identifier {
+		public:
+			/**
+			 * @brief Режим формата URI
+			 *
+			 */
+			enum class format_t : uint8_t {
+				NONE  = 0x00, // Режим формата URI не определён
+				BRIEF = 0x01, // Краткий формат URI (без указания схемы и порта)
+				FULL  = 0x02  // Полный формат URI (с указанием схемы и порта)
+			};
+			/**
+			 * @brief Тип URI
+			 *
+			 */
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Тип URI не определён
+				FTP    = 0x01, // URI для протокола FTP
+				SSH    = 0x02, // URI для протокола SSH
+				HTTP   = 0x03, // URI для протокола HTTP
+				HTTPS  = 0x04, // URI для протокола HTTPS
+				EMAIL  = 0x05, // URI для электронной почты
+				SCHEME = 0x06  // URI для схемы
+			};
+		private:
+			/**
+			 * @brief Структура пользователя URI
+			 *
+			 */
+			typedef struct User {
+				// Пароль пользователя
+				string pass;
+				// Логин пользователя
+				string login;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit User() noexcept : pass{""}, login{""} {}
+			} user_t;
+		private:
+			// Тип URI
+			type_t _type;
+		private:
+			// Параметры пользователя URI
+			user_t _user;
+		private:
+			// Схема URI
+			string _scheme;
+			// Якорь URI
+			string _fragment;
+		private:
+			// Объект работы с сетевыми адресами
+			unique_ptr <net_addr_t> _addr;
+			// Хост URI
+			unique_ptr <net::attr_t> _attr;
+		private:
+			// Путь URI
+			vector <string> _path;
+			// Параметры URI
+			unordered_map <string, string> _query;
+		private:
+			// Объект фреймворка
+			const fmk_t * _fmk;
+			// Объект для работы с логами
+			const log_t * _log;
+		public:
+			/**
+			 * @brief Метод очистки URI
+			 *
+			 */
+			void clear() noexcept;
+		public:
+			/**
+			 * @brief Метод проверки на существование данных
+			 *
+			 * @return результат проверки
+			 */
+			bool empty() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения типа URI
+			 *
+			 * @return тип URI
+			 */
+			type_t type() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения схемы URI
+			 *
+			 * @return схема URI
+			 */
+			const string & scheme() const noexcept;
+			/**
+			 * @brief Метод установки схемы URI
+			 *
+			 * @param scheme схема URI для установки
+			 */
+			void scheme(string_view scheme) noexcept;
+		public:
+			/**
+			 * @brief Метод получения параметров пользователя URI
+			 *
+			 * @return параметры пользователя URI
+			 */
+			const user_t & user() const noexcept;
+			/**
+			 * @brief Метод установки параметров пользователя URI
+			 *
+			 * @param user параметры пользователя URI для установки
+			 */
+			void user(const user_t & user) noexcept;
+			/**
+			 * @brief Метод установки логина и пароля пользователя URI
+			 *
+			 * @param login логин пользователя URI для установки
+			 * @param pass  пароль пользователя URI для установки
+			 */
+			void user(string_view login, string_view pass) noexcept;
+		public:
+			/**
+			 * @brief Метод получения якоря URI
+			 *
+			 * @return якорь URI
+			 */
+			const string & fragment() const noexcept;
+			/**
+			 * @brief Метод установки якоря URI
+			 *
+			 * @param fragment якорь URI для установки
+			 */
+			void fragment(string_view fragment) noexcept;
+		public:
+			/**
+			 * @brief Метод получения атрибутов URI
+			 *
+			 * @return атрибуты URI
+			 */
+			const net::attr_t * attr() const noexcept;
+			/**
+			 * @brief Метод установки атрибутов URI
+			 *
+			 * @param attr атрибуты URI для установки
+			 */
+			void attr(const net::attr_t * attr) noexcept;
+		public:
+			/**
+			 * @brief Метод получения хоста URI
+			 *
+			 * @return хост URI
+			 */
+			string host() const noexcept;
+			/**
+			 * @brief Метод установки хоста URI
+			 *
+			 * @param host хост URI для установки
+			 */
+			void host(string_view host) noexcept;
+		public:
+			/**
+			 * @brief Метод получения пути URI
+			 *
+			 * @return путь URI
+			 */
+			const vector <string> & path() const noexcept;
+			/**
+			 * @brief Метод установки пути URI
+			 *
+			 * @param path путь URI для установки
+			 */
+			void path(const vector <string> & path) noexcept;
+		public:
+			/**
+			 * @brief Метод получения параметров URI
+			 *
+			 * @return параметры URI
+			 */
+			const unordered_map <string, string> & query() const noexcept;
+			/**
+			 * @brief Метод установки параметров URI
+			 *
+			 * @param query параметры URI для установки
+			 */
+			void query(const unordered_map <string, string> & query) noexcept;
+		public:
+			/**
+			 * @brief Метод парсинга URI-запроса
+			 *
+			 * @param uri строка URI-запроса для получения параметров
+			 * @return    тип URI
+			 */
+			type_t parse(string_view uri) const noexcept;
+		public:
+			/**
+			 * @brief Метод генерации ETag хэша текста
+			 *
+			 * @param text текст для перевода в строку
+			 * @param size размер хэша ETag для генерации (по умолчанию 16 байт)
+			 * @return     хэш etag
+			 */
+			string etag(string_view text, const uint8_t size = 16) const noexcept;
+		public:
+			/**
+			 * @brief Метод создания заголовка [origin], для HTTP запроса
+			 *
+			 * @return заголовок [origin]
+			 */
+			string origin() const noexcept;
+			/**
+			 * @brief Метод получения относительного URI-запроса
+			 *
+			 * @return относительный URI-запрос
+			 */
+			string request() const noexcept;
+		public:
+			/**
+			 * @brief Метод генерации строки URI
+			 *
+			 * @param format режим формата URI для генерации
+			 * @return       строка URI
+			 */
+			string print(const format_t format = format_t::BRIEF) const noexcept;
+		public:
+			/**
+			 * @brief Оператор проверки на существование данных
+			 *
+			 * @return результат проверки
+			 */
+			operator bool() const noexcept;
+			/**
+			 * @brief Оператор получения типа URI
+			 *
+			 * @return тип URI
+			 */
+			operator type_t() const noexcept;
+			/**
+			 * @brief Оператор генерации строки URI
+			 *
+			 * @return строка URI
+			 */
+			operator string() const noexcept;
+			/**
+			 * @brief Оператор получения параметров пользователя URI
+			 *
+			 * @return параметры пользователя URI
+			 */
+			operator user_t() const noexcept;
+		public:
+			/**
+			 * @brief Оператор получения атрибутов URI
+			 *
+			 * @return атрибуты URI
+			 */
+			operator const net::attr_t * () const noexcept;
+			/**
+			 * @brief Оператор получения пути URI
+			 *
+			 * @return путь URI
+			 */
+			operator const vector <string> & () const noexcept;
+			/**
+			 * @brief Оператор получения параметров URI
+			 *
+			 * @return параметры URI
+			 */
+			operator const unordered_map <string, string> & () const noexcept;
+		public:
+			/**
+			 * @brief Оператор сравнения
+			 *
+			 * @param uri параметры URI для сравнения
+			 * @return    результат сравнения
+			 */
+			bool operator == (const Uniform_Resource_Identifier & uri) noexcept;
+			/**
+			 * @brief Оператор неравенства
+			 *
+			 * @param uri параметры URI для сравнения
+			 * @return    результат сравнения
+			 */
+			bool operator != (const Uniform_Resource_Identifier & uri) noexcept;
+		public:
+			/**
+			 * @brief Оператор парсинга URI-запроса
+			 *
+			 * @param uri строка URI-запроса для получения параметров
+			 * @return    текущий объект
+			 */
+			Uniform_Resource_Identifier & operator = (string_view uri) noexcept;
+			/**
+			 * @brief Оператор  установки параметров пользователя URI
+			 *
+			 * @param user параметры пользователя URI для установки
+			 * @return     текущий объект
+			 */
+			Uniform_Resource_Identifier & operator = (const user_t & user) noexcept;
+			/**
+			 * @brief Оператор установки атрибутов URI
+			 *
+			 * @param attr атрибуты URI для установки
+			 * @return     текущий объект
+			 */
+			Uniform_Resource_Identifier & operator = (const net::attr_t * attr) noexcept;
+			/**
+			 * @brief Оператор установки пути URI
+			 *
+			 * @param path путь URI для установки
+			 * @return     текущий объект
+			 */
+			Uniform_Resource_Identifier & operator = (const vector <string> & path) noexcept;
+			/**
+			 * @brief Оператор установки параметров URI
+			 *
+			 * @param query параметры URI для установки
+			 * @return      текущий объект
+			 */
+			Uniform_Resource_Identifier & operator = (const unordered_map <string, string> & query) noexcept;
+		public:
+			/**
+			 * @brief Оператор [=] перемещения параметров URI
+			 *
+			 * @param uri объект URI для получения параметров
+			 * @return    параметры URI
+			 */
+			Uniform_Resource_Identifier & operator = (Uniform_Resource_Identifier && uri) noexcept;
+			/**
+			 * @brief Оператор [=] присванивания параметров URI
+			 *
+			 * @param uri объект URI для получения параметров
+			 * @return    параметры URI
+			 */
+			Uniform_Resource_Identifier & operator = (const Uniform_Resource_Identifier & uri) noexcept;
+		public:
+			/**
+			 * @brief Конструктор перемещения
+			 *
+			 * @param uri параметры URI для перемещения
+			 */
+			explicit Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept;
+			/**
+			 * @brief Конструктор копирования
+			 *
+			 * @param uri параметры URI для копирования
+			 */
+			explicit Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept;
+		public:
+			/**
+			 * @brief конструктор
+			 *
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 */
+			explicit Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept;
+		public:
+			/**
+			 * @brief деструктор
+			 *
+			 */
+			~Uniform_Resource_Identifier() noexcept;
+	} uri_t;
+	/**
+	 * @brief Оператор [>>] чтения из потока URI
+	 *
+	 * @param is  поток для чтения
+	 * @param uri URI для присвоения
+	 */
+	__AWH_SHARED_EXPORT__ istream & operator >> (istream & is, uri_t & uri) noexcept;
+	/**
+	 * @brief Оператор [<<] вывода в поток URI
+	 *
+	 * @param os  поток куда нужно вывести данные
+	 * @param uri URI для присвоения
+	 */
+	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const uri_t & uri) noexcept;
+};
+
+#endif // __AWH_NET_URI__

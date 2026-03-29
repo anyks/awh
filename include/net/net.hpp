@@ -120,6 +120,18 @@ namespace awh {
 			MASK   = 0x03  // Маска подсети
 		};
 		/**
+		 * @brief Идентификаторы разновидностей адресов
+		 *
+		 */
+		enum class type_t : uint8_t {
+			NONE  = 0x00, // Не определено
+			FS    = 0x01, // Адрес в файловой системе
+			MAC   = 0x02, // Аппаратный адрес сетевого интерфейса
+			IPV4  = 0x04, // Адрес подключения IPv4
+			IPV6  = 0x05, // Адрес подключения IPv6
+			FQDN  = 0x06, // Доменная зона
+		};
+		/**
 		 * @brief Структура адреса
 		 *
 		 */
@@ -239,17 +251,35 @@ namespace awh {
 		 *
 		 */
 		typedef struct Attributes {
+			// Тип адреса подключения
+			type_t type;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Attributes() noexcept = default;
+			explicit Attributes() noexcept : type(type_t::NONE) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
 			virtual ~Attributes() noexcept = default;
 		} attr_t;
+		/**
+		 * @brief Структура FQDN-адреса подключения
+		 *
+		 */
+		typedef struct Attributes_FQDN : public attr_t {
+			// Порт хоста
+			uint16_t port;
+			// Доменное имя хоста
+			string domain;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Attributes_FQDN() noexcept :
+			 port(0), domain{""} {}
+		} attr_fqdn_t;
 		/**
 		 * @brief Структура IP-адреса подключения
 		 *
