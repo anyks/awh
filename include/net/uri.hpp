@@ -54,21 +54,30 @@ namespace awh {
 			 */
 			enum class format_t : uint8_t {
 				NONE  = 0x00, // Режим формата URI не определён
-				BRIEF = 0x01, // Краткий формат URI (без указания схемы и порта)
-				FULL  = 0x02  // Полный формат URI (с указанием схемы и порта)
+				FULL  = 0x01, // Полный формат URI (с указанием схемы и порта)
+				SMART = 0x02  // Умный формат URI (с указанием схемы и порта только при их наличии)
 			};
 			/**
 			 * @brief Тип URI
 			 *
 			 */
 			enum class type_t : uint8_t {
-				NONE   = 0x00, // Тип URI не определён
-				FTP    = 0x01, // URI для протокола FTP
-				SSH    = 0x02, // URI для протокола SSH
-				HTTP   = 0x03, // URI для протокола HTTP
-				HTTPS  = 0x04, // URI для протокола HTTPS
-				EMAIL  = 0x05, // URI для электронной почты
-				SCHEME = 0x06  // URI для схемы
+				NONE       = 0x00, // Тип URI не определён
+				WS         = 0x01, // URI для протокола WebSocket
+				WSS        = 0x02, // URI для протокола WebSocket Secure
+				FTP        = 0x03, // URI для протокола FTP
+				SSH        = 0x04, // URI для протокола SSH
+				UDS 	   = 0x05, // URI для Unix Domain Socket
+				FILE 	   = 0x06, // URI для файловой системы
+				MQTT       = 0x07, // URI для протокола MQTT
+				HTTP       = 0x08, // URI для протокола HTTP
+				HTTPS      = 0x09, // URI для протокола HTTPS
+				REDIS      = 0x0A, // URI для протокола Redis
+				MYSQL 	   = 0x0B, // URI для протокола MySQL
+				EMAIL      = 0x0C, // URI для электронной почты
+				SOCKS5     = 0x0D, // URI для протокола Socks5
+				SCHEME     = 0x0E, // URI для схемы
+				POSTGRESQL = 0x0F  // URI для протокола PostgreSQL
 			};
 		private:
 			/**
@@ -250,7 +259,7 @@ namespace awh {
 			 * @param uri строка URI-запроса для получения параметров
 			 * @return    тип URI
 			 */
-			type_t parse(string_view uri) const noexcept;
+			type_t parse(string_view uri) noexcept;
 		public:
 			/**
 			 * @brief Метод генерации ETag хэша текста
@@ -261,12 +270,6 @@ namespace awh {
 			 */
 			string etag(string_view text, const uint8_t size = 16) const noexcept;
 		public:
-			/**
-			 * @brief Метод создания заголовка [origin], для HTTP запроса
-			 *
-			 * @return заголовок [origin]
-			 */
-			string origin() const noexcept;
 			/**
 			 * @brief Метод получения относительного URI-запроса
 			 *
@@ -280,7 +283,15 @@ namespace awh {
 			 * @param format режим формата URI для генерации
 			 * @return       строка URI
 			 */
-			string print(const format_t format = format_t::BRIEF) const noexcept;
+			string print(const format_t format = format_t::SMART) const noexcept;
+		public:
+			/**
+			 * @brief Метод создания заголовка [origin], для HTTP запроса
+			 *
+			 * @param format режим формата URI для генерации
+			 * @return       заголовок [origin]
+			 */
+			string origin(const format_t format = format_t::SMART) const noexcept;
 		public:
 			/**
 			 * @brief Оператор проверки на существование данных
