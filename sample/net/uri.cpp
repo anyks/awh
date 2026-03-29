@@ -48,6 +48,13 @@ int32_t main(int32_t argc, char * argv[]){
 
 	cout << endl << endl;
 
+	address = "http://www.example.com?query=1&id=123#frag";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
 	address = "http://localhost/path/to/resource?query=1&id=123#frag";
 	cout << "Parsing URI: " << address << endl;
 
@@ -62,14 +69,28 @@ int32_t main(int32_t argc, char * argv[]){
 
 	cout << endl << endl;
 
-	address = "http://127.0.0.1/path/to/resource?query=1&id=123#frag";
+	address = "http://192.168.0.1/path/to/resource?query=1&id=123#frag";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
 
 	cout << endl << endl;
 
-	address = "http://127.0.0.1:80/path/to/resource?query=1&id=123#frag";
+	address = "http://192.168.0.1:80/path/to/resource?query=1&id=123#frag";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "http://[2001:db8::1]/path/to/resource?query=1&id=123#frag";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "http://[2001:db8::1]:80/path/to/resource?query=1&id=123#frag";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
@@ -160,42 +181,84 @@ int32_t main(int32_t argc, char * argv[]){
 
 	cout << endl << endl;
 
-	address = "https://user:pass@127.0.0.1:8080/api/v1";
+	address = "https://user:pass@192.168.0.1:8080/api/v1";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
 
 	cout << endl << endl;
 
-	address = "https://user:pass@127.0.0.1/api/v1";
+	address = "https://user:pass@192.168.0.1/api/v1";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
 
 	cout << endl << endl;
 
-	address = "https://user@127.0.0.1:8080/api/v1";
+	address = "https://user@192.168.0.1:8080/api/v1";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
 
 	cout << endl << endl;
 
-	address = "https://user@127.0.0.1/api/v1/?query=1&id=123#frag";
+	address = "https://user@192.168.0.1/api/v1/?query=1&id=123#frag";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
 
 	cout << endl << endl;
 
-	address = "127.0.0.1/api/v1/?query=1&id=123#frag";
+	address = "192.168.0.1/api/v1/?query=1&id=123#frag";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
 
 	cout << endl << endl;
 
-	address = "127.0.0.1:443/api/v1/?query=1&id=123#frag";
+	address = "192.168.0.1:443/api/v1/?query=1&id=123#frag";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "https://user:pass@[2001:db8::1]:8080/api/v1";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "https://user:pass@[2001:db8::1]/api/v1";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "https://user@[2001:db8::1]:8080/api/v1";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "https://user@[2001:db8::1]/api/v1/?query=1&id=123#frag";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "[2001:db8::1]/api/v1/?query=1&id=123#frag";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "[2001:db8::1]:443/api/v1/?query=1&id=123#frag";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
@@ -217,6 +280,20 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << endl << endl;
 
 	address = "user@example.com";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "user:password@example.com";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.parse(address);
+
+	cout << endl << endl;
+
+	address = "mailto:user:password@example.com";
 	cout << "Parsing URI: " << address << endl;
 
 	uri.parse(address);
