@@ -68,6 +68,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_ADDR_TEST "Build unit ADDR test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для парсинга сетевых протоколов
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_NWT_TEST "Build unit NWT test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с URI
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_URI_TEST "Build unit URI test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с файловыми дескрипторами
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FDS_TEST "Build unit FDS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с Ethernet
@@ -108,6 +110,22 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля парсинга сетевых протоколов
             message(STATUS "Build tests NWT module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_NWT_TEST})
+
+        # Если нужно собрать тесты для работы с URI
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_URI_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с URI
+            message(STATUS "Build tests URI module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с URI
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                uri/uri.cpp
+                uri/static.cpp
+                uri/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с URI
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с URI
+            message(STATUS "Build tests URI module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_URI_TEST})
 
         # Если нужно собрать тесты для работы с файловыми дескрипторами
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FDS_TEST})
