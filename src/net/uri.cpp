@@ -751,9 +751,9 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
 	// Очищаем якорь URI
 	this->_fragment.clear();
 	// Очищаем логин пользователя URI
-	this->_user.login.clear();
+	this->_user.username.clear();
 	// Очищаем пароль пользователя URI
-	this->_user.pass.clear();
+	this->_user.password.clear();
 	// Сбрасываем тип URI
 	this->_type = type_t::NONE;
 	// Сбрасываем атрибуты URI
@@ -771,8 +771,8 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
 		this->_query.empty() &&
 		this->_scheme.empty() &&
 		this->_fragment.empty() &&
-		this->_user.pass.empty() &&
-		this->_user.login.empty() &&
+		this->_user.password.empty() &&
+		this->_user.username.empty() &&
 		(this->_attr == nullptr)
 	);
 }
@@ -882,14 +882,14 @@ void awh::Uniform_Resource_Identifier::user(const user_t & user) noexcept {
 /**
  * @brief Метод установки логина и пароля пользователя URI
  *
- * @param login логин пользователя URI для установки
- * @param pass  пароль пользователя URI для установки
+ * @param username логин пользователя URI для установки
+ * @param password пароль пользователя URI для установки
  */
-void awh::Uniform_Resource_Identifier::user(string_view login, string_view pass) noexcept {
+void awh::Uniform_Resource_Identifier::user(string_view username, string_view password) noexcept {
 	// Устанавливаем пароль пользователя URI
-	this->_user.pass = pass;
+	this->_user.password = password;
 	// Устанавливаем логин пользователя URI
-	this->_user.login = login;
+	this->_user.username = username;
 }
 /**
  * @brief Метод получения якоря URI
@@ -1525,11 +1525,11 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				// Если в параметрах пользователя URI есть символ ":", то разделяем логин и пароль
 				if(pos != string_view::npos){
 					// Устанавливаем логин пользователя URI
-					this->_user.login = userinfo.substr(0, pos);
+					this->_user.username = userinfo.substr(0, pos);
 					// Устанавливаем пароль пользователя URI
-					this->_user.pass = userinfo.substr(pos + 1);
+					this->_user.password = userinfo.substr(pos + 1);
 				// Если в параметрах пользователя URI нет символа ":", то устанавливаем только логин, а пароль оставляем пустым
-				} else this->_user.login = userinfo;
+				} else this->_user.username = userinfo;
 			}
 			// Если хост URI не пустой
 			if(!host.empty())
@@ -1901,13 +1901,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					}
 				}
 				// Если пользователь URI не пустой, то добавляем его в результат
-				if(!this->_user.login.empty()){
+				if(!this->_user.username.empty()){
 					// Добавляем логин пользователя URI в результат
-					result.append(this->_user.login);
+					result.append(this->_user.username);
 					// Если пароль пользователя URI не пустой, то добавляем его в результат
-					if(!this->_user.pass.empty())
+					if(!this->_user.password.empty())
 						// Добавляем пароль пользователя URI в результат
-						result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+						result.append(this->_fmk->format(":%s", this->_user.password.c_str()));
 					// Добавляем символ "@" после параметров пользователя URI
 					result.append("@");
 				}
@@ -2836,13 +2836,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 			// Если режим элемента URI для генерации является пользователем, то генерируем параметры пользователя URI
 			case static_cast <uint8_t> (item_t::USER): {
 				// Если пользователь URI не пустой, то добавляем его в результат
-				if(!this->_user.login.empty()){
+				if(!this->_user.username.empty()){
 					// Добавляем логин пользователя URI в результат
-					result.append(this->_user.login);
+					result.append(this->_user.username);
 					// Если пароль пользователя URI не пустой, то добавляем его в результат
-					if(!this->_user.pass.empty())
+					if(!this->_user.password.empty())
 						// Добавляем пароль пользователя URI в результат
-						result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+						result.append(this->_fmk->format(":%s", this->_user.password.c_str()));
 				}
 			} break;
 			// Если режим элемента URI для генерации является хостом, то генерируем хост URI
@@ -3768,13 +3768,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					}
 				}
 				// Если пользователь URI не пустой, то добавляем его в результат
-				if(!this->_user.login.empty()){
+				if(!this->_user.username.empty()){
 					// Добавляем логин пользователя URI в результат
-					result.append(this->_user.login);
+					result.append(this->_user.username);
 					// Если пароль пользователя URI не пустой, то добавляем его в результат
-					if(!this->_user.pass.empty())
+					if(!this->_user.password.empty())
 						// Добавляем пароль пользователя URI в результат
-						result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+						result.append(this->_fmk->format(":%s", this->_user.password.c_str()));
 					// Добавляем символ "@" после параметров пользователя URI
 					result.append("@");
 				}
@@ -4590,13 +4590,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					// Если тип URI является E-mail или Scheme, то добавляем схему URI в результат без "://"
 					case static_cast <uint8_t> (type_t::EMAIL): {
 						// Если пользователь URI не пустой, то добавляем его в результат
-						if(!this->_user.login.empty()){
+						if(!this->_user.username.empty()){
 							// Добавляем логин пользователя URI в результат
-							result.append(this->_user.login);
+							result.append(this->_user.username);
 							// Если пароль пользователя URI не пустой, то добавляем его в результат
-							if(!this->_user.pass.empty())
+							if(!this->_user.password.empty())
 								// Добавляем пароль пользователя URI в результат
-								result.append(this->_fmk->format(":%s", this->_user.pass.c_str()));
+								result.append(this->_fmk->format(":%s", this->_user.password.c_str()));
 							// Добавляем символ "@" после параметров пользователя URI
 							result.append("@");
 						}
@@ -4803,20 +4803,20 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 		// Если типы URI равны
 		if(result){
 			// Выполняем сравнение размеров логинов пользователя URI
-			result = (this->_user.login.size() == uri._user.login.size());
+			result = (this->_user.username.size() == uri._user.username.size());
 			// Если параметры пользователя URI равны
 			if(result)
 				// Выполняем сравнение параметров пользователя URI
-				result = this->_fmk->compare(this->_user.login, uri._user.login);
+				result = this->_fmk->compare(this->_user.username, uri._user.username);
 		}
 		// Если типы URI равны
 		if(result){
 			// Выполняем сравнение размеров параметров пользователя URI
-			result = (this->_user.pass.size() == uri._user.pass.size());
+			result = (this->_user.password.size() == uri._user.password.size());
 			// Если параметры пользователя URI равны
 			if(result)
 				// Выполняем сравнение параметров пользователя URI
-				result = this->_fmk->compare(this->_user.pass, uri._user.pass);
+				result = this->_fmk->compare(this->_user.password, uri._user.password);
 		}
 		// Если типы URI равны
 		if(result){
@@ -4958,20 +4958,20 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 		// Если типы URI равны
 		if(!result){
 			// Выполняем сравнение размеров логинов пользователя URI
-			result = (this->_user.login.size() != uri._user.login.size());
+			result = (this->_user.username.size() != uri._user.username.size());
 			// Если параметры пользователя URI равны
 			if(!result)
 				// Выполняем сравнение параметров пользователя URI
-				result = !this->_fmk->compare(this->_user.login, uri._user.login);
+				result = !this->_fmk->compare(this->_user.username, uri._user.username);
 		}
 		// Если типы URI равны
 		if(!result){
 			// Выполняем сравнение размеров параметров пользователя URI
-			result = (this->_user.pass.size() != uri._user.pass.size());
+			result = (this->_user.password.size() != uri._user.password.size());
 			// Если параметры пользователя URI равны
 			if(!result)
 				// Выполняем сравнение параметров пользователя URI
-				result = !this->_fmk->compare(this->_user.pass, uri._user.pass);
+				result = !this->_fmk->compare(this->_user.password, uri._user.password);
 		}
 		// Если типы URI равны
 		if(!result){
@@ -5161,9 +5161,9 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		// Перемещаем якорь URI
 		this->_fragment = ::move(uri._fragment);
 		// Перемещаем параметры пользователя URI
-		this->_user.pass = ::move(uri._user.pass);
+		this->_user.password = ::move(uri._user.password);
 		// Перемещаем логин пользователя URI
-		this->_user.login = ::move(uri._user.login);
+		this->_user.username = ::move(uri._user.username);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -5207,9 +5207,9 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		// Копируем якорь URI
 		this->_fragment = uri._fragment;
 		// Копируем параметры пользователя URI
-		this->_user.pass = uri._user.pass;
+		this->_user.password = uri._user.password;
 		// Копируем логин пользователя URI
-		this->_user.login = uri._user.login;
+		this->_user.username = uri._user.username;
 		// Если атрибуты URI не пустые
 		if(uri._attr != nullptr){
 			/**
@@ -5332,9 +5332,9 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		// Перемещаем якорь URI
 		this->_fragment = ::move(uri._fragment);
 		// Перемещаем параметры пользователя URI
-		this->_user.pass = ::move(uri._user.pass);
+		this->_user.password = ::move(uri._user.password);
 		// Перемещаем логин пользователя URI
-		this->_user.login = ::move(uri._user.login);
+		this->_user.username = ::move(uri._user.username);
 		// Инициализируем объект работы с сетевыми адресами
 		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
 	/**
@@ -5383,9 +5383,9 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		// Копируем якорь URI
 		this->_fragment = uri._fragment;
 		// Копируем параметры пользователя URI
-		this->_user.pass = uri._user.pass;
+		this->_user.password = uri._user.password;
 		// Копируем логин пользователя URI
-		this->_user.login = uri._user.login;
+		this->_user.username = uri._user.username;
 		// Инициализируем объект работы с сетевыми адресами
 		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
 		// Если атрибуты URI не пустые

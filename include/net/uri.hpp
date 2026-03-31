@@ -102,15 +102,16 @@ namespace awh {
 			 *
 			 */
 			typedef struct User {
-				// Пароль пользователя
-				string pass;
 				// Логин пользователя
-				string login;
+				string username;
+				// Пароль пользователя
+				string password;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit User() noexcept : pass{""}, login{""} {}
+				explicit User() noexcept :
+				 username{""}, password{""} {}
 			} user_t;
 		private:
 			// Тип URI
@@ -192,10 +193,10 @@ namespace awh {
 			/**
 			 * @brief Метод установки логина и пароля пользователя URI
 			 *
-			 * @param login логин пользователя URI для установки
-			 * @param pass  пароль пользователя URI для установки
+			 * @param username логин пользователя URI для установки
+			 * @param password пароль пользователя URI для установки
 			 */
-			void user(string_view login, string_view pass) noexcept;
+			void user(string_view username, string_view password) noexcept;
 		public:
 			/**
 			 * @brief Метод получения якоря URI

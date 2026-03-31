@@ -154,9 +154,9 @@ TEST_P(UriTestParsingParameterizedFixture, UriParsingTest){
 	// Извлекаем параметры пользователя URI
 	const auto & user = this->_uri->user();
 	// Проверяем имя пользователя URI
-	ASSERT_EQ(this->_parameter.user, user.login);
+	ASSERT_EQ(this->_parameter.user, user.username);
 	// Проверяем пароль пользователя URI
-	ASSERT_EQ(this->_parameter.password, user.pass);
+	ASSERT_EQ(this->_parameter.password, user.password);
 	// Проверяем якорь URI
 	ASSERT_EQ(this->_parameter.fragment, this->_uri->fragment());
 	// Проверяем путь URI
