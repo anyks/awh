@@ -102,7 +102,7 @@ namespace awh {
 			 *
 			 */
 			typedef struct User {
-				// Логин пользователя
+				// Имя пользователя
 				string username;
 				// Пароль пользователя
 				string password;
