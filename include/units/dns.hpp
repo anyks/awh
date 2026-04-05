@@ -582,6 +582,31 @@ namespace awh {
 				id_t issue() const noexcept;
 			public:
 				/**
+				 * @brief Метод получения типа события
+				 *
+				 * @return тип события
+				 */
+				event::type_t type() const noexcept;
+				/**
+				 * @brief Метод получения типа узла события
+				 *
+				 * @return тип узла события
+				 */
+				event::node_t node() const noexcept;
+				/**
+				 * @brief Метод получения семейства события
+				 *
+				 * @return семейство адресов
+				 */
+				event::family_t family() const noexcept;
+				/**
+				 * @brief Метод получения статуса события
+				 *
+				 * @return статус события
+				 */
+				event::status_t status() const noexcept;
+			public:
+				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
 				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени

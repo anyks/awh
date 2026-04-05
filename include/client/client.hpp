@@ -40,13 +40,22 @@ namespace awh {
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Client {
 		protected:
+			// Адрес хоста целевой машины
+			string _host;
+		protected:
 			// Идентификатор TLS для выполнения запросов к серверу
 			tls_t::id_t _tid;
 			// Идентификатор клиента для выполнения запросов к серверу
 			event::id_t _eid;
 		protected:
+			// Объект работы с сетевыми адресами
+			net_addr_t _addr;
+		protected:
 			// Функция обратного вызова для обработки клиента
 			callback_t _callback;
+		protected:
+			// Таймаут резолвинга доменного имени в миллисекундах
+			atomic_uint32_t _timeoutDNS;
 		protected:
 			// Объект транспортного уровня безопасности
 			tls_t * _tls;
@@ -59,6 +68,117 @@ namespace awh {
 			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
+		private:
+			/**
+			 * @brief Метод обработки событий подключения клиента к удалённому серверу
+			 *
+			 * @param eid идентификатор клиента
+			 * @param ok  результат подключения
+			 */
+			void connect(const event::id_t eid, const bool ok) noexcept;
+			/**
+			 * @brief Метод обработки событий записи данных клиентом
+			 *
+			 * @param eid  идентификатор клиента
+			 * @param size размер данных для записи
+			 */
+			void write(const event::id_t eid, const size_t size) noexcept;
+			/**
+			 * @brief Метод обработки событий изменения состояния клиента
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param status новый статус клиента
+			 */
+			void state(const event::id_t eid, const event::status_t status) noexcept;
+			/**
+			 * @brief Метод обработки действий клиента
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param action действие клиента
+			 */
+			void action(const event::id_t eid, const event::action_t action) noexcept;
+			/**
+			 * @brief Метод обработки событий получения данных клиентом
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param buffer буфер данных клиента
+			 * @param size   размер данных клиента
+			 */
+			void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод получения события ошибок
+			 *
+			 * @param eid     идентификатор события
+			 * @param error   код ошибки
+			 * @param message сообщение об ошибке
+			 */
+			void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
+			/**
+			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param status статус доступности очереди
+			 * @param size   размер доступных данных очереди
+			 */
+			void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+			/**
+			 * @brief Метод обработки события неотправленных данных клиента
+			 *
+			 * @param eid   идентификатор клиента
+			 * @param error тип ошибки отправки данных
+			 * @param data  данные, которые не получилось отправить
+			 * @param size  размер данных, которые не получилось отправить
+			 */
+			void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
+		private:
+			/**
+			 * @brief Метод получения состояния TLS
+			 *
+			 * @param id    идентификатор TLS
+			 * @param state состояние TLS
+			 */
+			void stateTLS(const tls_t::id_t id, const tls_t::state_t state) noexcept;
+			/**
+			 * @brief Метод получения ошибок TLS
+			 *
+			 * @param id      идентификатор TLS
+			 * @param error   код ошибки TLS
+			 * @param message сообщение об ошибке TLS
+			 */
+			void errorTLS(const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept;
+			/**
+			 * @brief Метод получения событий шифрования/дешифрования данных TLS
+			 *
+			 * @param id     идентификатор TLS
+			 * @param event  тип события TLS
+			 * @param size   размер данных для события шифрования/дешифрования TLS
+			 * @param buffer буфер данных для события шифрования/дешифрования TLS
+			 */
+			void processTLS(const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+		private:
+			/**
+			 * @brief Метод получения события DNS-резолвера
+			 *
+			 * @param status статус события DNS-резолвера
+			 */
+			void statusDNS(const event::status_t status) noexcept;
+			/**
+			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
+			 *
+			 * @param id       идентификатор DNS-запроса
+			 * @param domain   доменное имя для резолвинга
+			 * @param attempts количество попыток подключения
+			 */
+			void attemptsDNS(const unit::dns_t::id_t id, const string & domain, const uint8_t attempts) noexcept;
+			/**
+			 * @brief Метод резолвинга доменного имени в сетевой адрес
+			 *
+			 * @param id     идентификатор DNS-запроса
+			 * @param family семейство адресов (IPv4/IPv6)
+			 * @param domain доменное имя для резолвинга
+			 * @param addr   указатель на структуру для хранения результата резолвинга
+			 */
+			void resolveDNS(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 		public:
 			/**
 			 * @brief Метод остановки клиента
@@ -119,6 +239,62 @@ namespace awh {
 			 * @return       количество байт данных, отправленных серверу
 			 */
 			virtual size_t send(const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод получения порта удаленного сервера
+			 *
+			 * @return порт удаленного сервера
+			 */
+			virtual uint16_t getPort() const noexcept;
+			/**
+			 * @brief Метод установки порта удаленного сервера
+			 *
+			 * @param port порт удаленного сервера для установки
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setPort(const uint16_t port) noexcept;
+		public:
+			/**
+			 * @brief Метод получения адреса хоста целевой машины
+			 *
+			 * @return адрес хоста целевой машины
+			 */
+			virtual string getTarget() const noexcept;
+			/**
+			 * @brief Метод установки адреса хоста целевой машины
+			 *
+			 * @param target адрес хоста целевой машины
+			 * @return       результат выполнения установки
+			 */
+			virtual bool setTarget(string_view target) noexcept;
+		public:
+			/**
+			 * @brief Метод установки адреса хоста целевой машины
+			 *
+			 * @param target адрес хоста целевой машины
+			 * @return       результат выполнения установки
+			 */
+			virtual bool setTarget(const net::addr_t * target) noexcept;
+			/**
+			 * @brief Метод получения адреса хоста целевой машины
+			 *
+			 * @param target объект для извлечения адреса хоста целевой машины
+			 * @return       результат выполнения извлечения адреса хоста целевой машины
+			 */
+			virtual bool getTarget(unique_ptr <net::addr_t> & target) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения таймаута резолвинга доменного имени
+			 *
+			 * @return таймаут резолвинга доменного имени в миллисекундах
+			 */
+			virtual uint32_t getTimeoutDNS() const noexcept;
+			/**
+			 * @brief Метод установки таймаута резолвинга доменного имени
+			 *
+			 * @param timeout таймаут резолвинга доменного имени в миллисекундах
+			 */
+			virtual void setTimeoutDNS(const uint32_t timeout) noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова

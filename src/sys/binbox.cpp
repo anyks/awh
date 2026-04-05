@@ -20,7 +20,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <cstdint>
 #include <sys/binbox.hpp>
 #include <sys/version.hpp>
 

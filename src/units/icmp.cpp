@@ -791,6 +791,42 @@ bool awh::unit::ICMP::commit() noexcept {
 	return result;
 }
 /**
+ * @brief Метод получения типа события
+ *
+ * @return тип события
+ */
+awh::event::type_t awh::unit::ICMP::type() const noexcept {
+	// Получаем тип события ICMP-клиента
+	return this->_io->type(this->_client.eid);
+}
+/**
+ * @brief Метод получения типа узла события
+ *
+ * @return тип узла события
+ */
+awh::event::node_t awh::unit::ICMP::node() const noexcept {
+	// Получаем тип узла события ICMP-клиента
+	return this->_io->node(this->_client.eid);
+}
+/**
+ * @brief Метод получения семейства события
+ *
+ * @return семейство адресов
+ */
+awh::event::family_t awh::unit::ICMP::family() const noexcept {
+	// Получаем семейство события ICMP-клиента
+	return this->_io->family(this->_client.eid);
+}
+/**
+ * @brief Метод получения статуса события
+ *
+ * @return статус события
+ */
+awh::event::status_t awh::unit::ICMP::status() const noexcept {
+	// Получаем статус события ICMP-клиента
+	return this->_io->status(this->_client.eid);
+}
+/**
  * @brief Метод установки адреса хоста целевой машины
  *
  * @param target адрес хоста целевой машины

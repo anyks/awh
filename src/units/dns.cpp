@@ -5819,6 +5819,42 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 	return ::dns::identifier();
 }
 /**
+ * @brief Метод получения типа события
+ *
+ * @return тип события
+ */
+awh::event::type_t awh::unit::DNS::type() const noexcept {
+	// Получаем тип события DNS-резолвера
+	return this->_io->type(this->_resolver.eid);
+}
+/**
+ * @brief Метод получения типа узла события
+ *
+ * @return тип узла события
+ */
+awh::event::node_t awh::unit::DNS::node() const noexcept {
+	// Получаем тип узла события DNS-резолвера
+	return this->_io->node(this->_resolver.eid);
+}
+/**
+ * @brief Метод получения семейства события
+ *
+ * @return семейство адресов
+ */
+awh::event::family_t awh::unit::DNS::family() const noexcept {
+	// Получаем семейство адресов события DNS-резолвера
+	return this->_io->family(this->_resolver.eid);
+}
+/**
+ * @brief Метод получения статуса события
+ *
+ * @return статус события
+ */
+awh::event::status_t awh::unit::DNS::status() const noexcept {
+	// Получаем статус события DNS-резолвера
+	return this->_io->status(this->_resolver.eid);
+}
+/**
  * @brief Метод поиска доменного имени соответствующего IP-адресу
  *
  * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени

@@ -971,6 +971,42 @@ bool awh::unit::NTP::commit() noexcept {
 	return result;
 }
 /**
+ * @brief Метод получения типа события
+ *
+ * @return тип события
+ */
+awh::event::type_t awh::unit::NTP::type() const noexcept {
+	// Получаем тип события
+	return this->_io->type(this->_client.eid);
+}
+/**
+ * @brief Метод получения типа узла события
+ *
+ * @return тип узла события
+ */
+awh::event::node_t awh::unit::NTP::node() const noexcept {
+	// Получаем тип узла события
+	return this->_io->node(this->_client.eid);
+}
+/**
+ * @brief Метод получения семейства события
+ *
+ * @return семейство адресов
+ */
+awh::event::family_t awh::unit::NTP::family() const noexcept {
+	// Получаем семейство события
+	return this->_io->family(this->_client.eid);
+}
+/**
+ * @brief Метод получения статуса события
+ *
+ * @return статус события
+ */
+awh::event::status_t awh::unit::NTP::status() const noexcept {
+	// Получаем статус события
+	return this->_io->status(this->_client.eid);
+}
+/**
  * @brief Метод получения порта NTP-сервера
  *
  * @return порт NTP-сервера
