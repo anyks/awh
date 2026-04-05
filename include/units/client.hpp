@@ -383,6 +383,21 @@ namespace awh {
 				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
 			public:
 				/**
+				 * @brief Метод получения режима использования таймаута на чтение события
+				 *
+				 * @param eid идентификатор события
+				 * @return    режим использования таймаута на чтение события
+				 */
+				event::usage_t getUsageReadTimeout(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки режима использования таймаута на чтение события
+				 *
+				 * @param eid   идентификатор события
+				 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+				 */
+				void setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept;
+			public:
+				/**
 				 * @brief Метод получения таймаута клиента
 				 *
 				 * @param eid    идентификатор события клиента
@@ -493,8 +508,8 @@ namespace awh {
 				 * @brief Метод получения идентификатора клиента для выполнения запросов к серверу
 				 *
 				 * @param family   семейство адресов
-				 * @param type     тип сокета
-				 * @param protocol протокол сокета
+				 * @param type     тип события
+				 * @param protocol протокол события
 				 * @return         идентификатор созданного клиента
 				 */
 				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;

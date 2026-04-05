@@ -577,6 +577,30 @@ bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action
 	return this->_io->setBufferSize(eid, action, size);
 }
 /**
+ * @brief Метод получения режима использования таймаута на чтение события
+ *
+ * @param eid идентификатор события
+ * @return    режим использования таймаута на чтение события
+ */
+awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid) const noexcept {
+	// Выполняем блокировку потока для работы с событием клиента
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выполняем получение режима использования таймаута на чтение события для события клиента
+	return this->_io->getUsageReadTimeout(eid);
+}
+/**
+ * @brief Метод установки режима использования таймаута на чтение события
+ *
+ * @param eid   идентификатор события
+ * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ */
+void awh::unit::Client::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
+	// Выполняем блокировку потока для работы с событием клиента
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем установку режима использования таймаута на чтение события для события клиента
+	this->_io->setUsageReadTimeout(eid, usage);
+}
+/**
  * @brief Метод получения таймаута клиента
  *
  * @param eid    идентификатор события клиента
@@ -761,8 +785,8 @@ void awh::unit::Client::destroy(const event::id_t eid) noexcept {
  * @brief Метод получения идентификатора клиента для выполнения запросов к серверу
  *
  * @param family   семейство адресов
- * @param type     тип сокета
- * @param protocol протокол сокета
+ * @param type     тип события
+ * @param protocol протокол события
  * @return         идентификатор созданного клиента
  */
 awh::event::id_t awh::unit::Client::issue(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {

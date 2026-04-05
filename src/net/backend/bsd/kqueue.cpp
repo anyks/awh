@@ -684,13 +684,16 @@ namespace io {
 	typedef struct Timeout {
 		event::id_t id;	        // Идентификатор таймаута
 		uint32_t delay;         // Задержка таймаута в миллисекундах
+		event::usage_t usage;   // Режим использования таймаута
 		event::status_t status; // Статус таймаута
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Timeout() noexcept :
-		 id(0), status(event::status_t::NONE), delay(0) {}
+		 id(0), delay(0),
+		 usage(event::usage_t::DISPOSABLE),
+		 status(event::status_t::NONE) {}
 	} __attribute__((packed)) timeout_t;
 
 	/**
@@ -5456,9 +5459,26 @@ namespace io {
 			// Если установлен таймаут на получение данных
 			if(peer->timeouts.read.delay > 0){
 				// Если событие является неблокирующим
-				if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
-					// Обновляем таймаут на получение данных
-					::timeout::update(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
+				if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+					/**
+					 * Определяем использование таймаута на получение данных после его срабатывания
+					 *  - Если таймаут используется повторно после срабатывания, он будет активирован снова после каждого срабатывания
+					 *  - Если таймаут используется только один раз и должен быть удалён после срабатывания, он будет деактивирован после первого срабатывания и не будет активирован снова
+					 *  - Если таймаут не используется, он не будет активирован вообще
+					 */
+					switch(static_cast <uint8_t> (peer->timeouts.read.usage)){
+						// Если таймаут используется повторно после срабатывания
+						case static_cast <uint8_t> (event::usage_t::REUSABLE):
+							// Обновляем таймаут на получение данных
+							::timeout::update(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
+						break;
+						// Если таймаут используется только один раз и должен быть удалён после срабатывания
+						case static_cast <uint8_t> (event::usage_t::DISPOSABLE):
+							// Удаляем таймаут ожидания на получение данных
+							::timeout::clear(peer->timeouts.read, event::rate_t::INSTANT, log);
+						break;
+					}
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -7907,9 +7927,26 @@ namespace io {
 			// Если установлен таймаут на получение данных
 			if(client->timeouts.read.delay > 0){
 				// Если событие является неблокирующим
-				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-					// Обновляем таймаут на получение данных
-					::timeout::update(client->timeouts.read, client, event::rate_t::DEFERRED, log);
+				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+					/**
+					 * Определяем использование таймаута на получение данных после его срабатывания
+					 *  - Если таймаут используется повторно после срабатывания, он будет активирован снова после каждого срабатывания
+					 *  - Если таймаут используется только один раз и должен быть удалён после срабатывания, он будет деактивирован после первого срабатывания и не будет активирован снова
+					 *  - Если таймаут не используется, он не будет активирован вообще
+					 */
+					switch(static_cast <uint8_t> (client->timeouts.read.usage)){
+						// Если таймаут используется повторно после срабатывания
+						case static_cast <uint8_t> (event::usage_t::REUSABLE):
+							// Обновляем таймаут на получение данных
+							::timeout::update(client->timeouts.read, client, event::rate_t::DEFERRED, log);
+						break;
+						// Если таймаут используется только один раз и должен быть удалён после срабатывания
+						case static_cast <uint8_t> (event::usage_t::DISPOSABLE):
+							// Удаляем таймаут ожидания на получение данных
+							::timeout::clear(client->timeouts.read, event::rate_t::INSTANT, log);
+						break;
+					}
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -8818,11 +8855,15 @@ namespace io {
 										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									#endif
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										// Если сокет давно закрыт
@@ -9112,11 +9153,15 @@ namespace io {
 										// Выполняем отправку данных в UDP-сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -9426,11 +9471,15 @@ namespace io {
 										origin->endpoint.size
 									);
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										/**
@@ -9922,11 +9971,15 @@ namespace io {
 										const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									#endif
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										// Если сокет давно закрыт
@@ -10213,11 +10266,15 @@ namespace io {
 											client->endpoint.size
 										);
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										/**
@@ -10536,11 +10593,15 @@ namespace io {
 										#endif
 									}
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										/**
@@ -10919,6 +10980,10 @@ namespace io {
 											// Пропускаем итерацию цикла
 											continue;
 									}
+									// Если таймаут используется как одноразовый
+									if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE)
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
 									// Если есть данные для отправки в сокет
 									if(!origin->transfer.queue.empty()){
 										// Устанавливаем флаг наличия данных для отправки
@@ -11967,11 +12032,15 @@ namespace io {
 										const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									#endif
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										// Если сокет давно закрыт
@@ -12288,11 +12357,15 @@ namespace io {
 										const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									#endif
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -12656,11 +12729,15 @@ namespace io {
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -12927,11 +13004,15 @@ namespace io {
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if(bytes > 0)
+											if(bytes > 0){
 												// Выводим количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
+												// Если таймаут используется как одноразовый
+												if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE)
+													// Создаём таймаут на ожидание получения данных
+													::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 											// Если данные не отправлены
-											else {
+											} else {
 												// Идентификатор полученной ошибки
 												event::error_t error = event::error_t::NONE;
 												/**
@@ -13345,11 +13426,15 @@ namespace io {
 									// Выполняем отправку данных в UDP-сокет
 									const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										/**
@@ -13586,11 +13671,15 @@ namespace io {
 										// Выполняем отправку данных в UDP-сокет
 										const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -15074,11 +15163,15 @@ namespace io {
 										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									#endif
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Идентификатор полученной ошибки
 										event::error_t error = event::error_t::NONE;
 										// Если сокет давно закрыт
@@ -15395,11 +15488,15 @@ namespace io {
 										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									#endif
 									// Если данные отправлены успешно
-									if(bytes > 0)
+									if(bytes > 0){
 										// Выводим количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
+										// Если таймаут используется как одноразовый
+										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 									// Если данные не отправлены
-									else {
+									} else {
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -15749,11 +15846,15 @@ namespace io {
 										// Отправляем данные в UDP сокет
 										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -16006,11 +16107,15 @@ namespace io {
 											// Отправляем данные в UDP сокет
 											const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
-											if(bytes > 0)
+											if(bytes > 0){
 												// Выводим количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
+												// Если таймаут используется как одноразовый
+												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+													// Создаём таймаут на ожидание получения данных
+													::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 											// Если данные не отправлены
-											else {
+											} else {
 												// Идентификатор полученной ошибки
 												event::error_t error = event::error_t::NONE;
 												/**
@@ -16356,11 +16461,15 @@ namespace io {
 										// Выполняем отправку данных в UDP-сокет
 										const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -16613,11 +16722,15 @@ namespace io {
 											// Выполняем отправку данных в UDP-сокет
 											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
-											if(bytes > 0)
+											if(bytes > 0){
 												// Выводим количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
+												// Если таймаут используется как одноразовый
+												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+													// Создаём таймаут на ожидание получения данных
+													::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 											// Если данные не отправлены
-											else {
+											} else {
 												// Идентификатор полученной ошибки
 												event::error_t error = event::error_t::NONE;
 												/**
@@ -17022,11 +17135,15 @@ namespace io {
 											const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										#endif
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -17306,11 +17423,15 @@ namespace io {
 												const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											#endif
 											// Если данные отправлены успешно
-											if(bytes > 0)
+											if(bytes > 0){
 												// Выводим количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
+												// Если таймаут используется как одноразовый
+												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+													// Создаём таймаут на ожидание получения данных
+													::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 											// Если данные не отправлены
-											else {
+											} else {
 												// Идентификатор полученной ошибки
 												event::error_t error = event::error_t::NONE;
 												/**
@@ -17710,11 +17831,15 @@ namespace io {
 											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 										#endif
 										// Если данные отправлены успешно
-										if(bytes > 0)
+										if(bytes > 0){
 											// Выводим количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
+											// Если таймаут используется как одноразовый
+											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 										// Если данные не отправлены
-										else {
+										} else {
 											// Идентификатор полученной ошибки
 											event::error_t error = event::error_t::NONE;
 											/**
@@ -17994,11 +18119,15 @@ namespace io {
 												const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											#endif
 											// Если данные отправлены успешно
-											if(bytes > 0)
+											if(bytes > 0){
 												// Выводим количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
+												// Если таймаут используется как одноразовый
+												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE)
+													// Создаём таймаут на ожидание получения данных
+													::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 											// Если данные не отправлены
-											else {
+											} else {
 												// Идентификатор полученной ошибки
 												event::error_t error = event::error_t::NONE;
 												/**
@@ -20677,11 +20806,13 @@ namespace io {
 				// Если установлен таймаут на чтение данных
 				if(client->timeouts.read.delay > 0){
 					// Если событие является неблокирующим
-					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-						// Создаём таймаут на ожидание получения данных
-						::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
+					if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+						// Если таймаут используется повторно после срабатывания
+						if(client->timeouts.read.usage == event::usage_t::REUSABLE)
+							// Создаём таймаут на ожидание получения данных
+							::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, log);
 					// Если событие является блокирующим
-					else eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+					} else eth->socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 				}
 				// Выполняем "пинок" для применения изменений
 				result = const_cast <engine::io_t *> (io)->kick();
@@ -21380,6 +21511,8 @@ namespace io {
 							if(!guard.garbage()){
 								// Устанавливаем статус события в состояние успешного подключения
 								peer->state.status = event::status_t::SUCCESS;
+								// Устанавливаем использование таймаута на чтение данных для нового подключения
+								peer->timeouts.read.usage = server->timeouts.read.usage;
 								// Устанавливаем таймаут на чтение данных для нового подключения
 								peer->timeouts.read.delay = server->timeouts.read.delay;
 								// Устанавливаем таймаут на запись данных для нового подключения
@@ -21393,11 +21526,13 @@ namespace io {
 								// Если установлен таймаут на чтение данных
 								if(peer->timeouts.read.delay > 0){
 									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
-										// Создаём таймаут на ожидание получения данных
-										::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+										// Если таймаут используется повторно после срабатывания
+										if(peer->timeouts.read.usage == event::usage_t::REUSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, log);
 									// Если событие является блокирующим
-									else eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
+									} else eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								}
 								// Выводим положительный результат
 								return !guard.garbage();
@@ -22980,6 +23115,8 @@ namespace io {
 					if(!guard.garbage()){
 						// Устанавливаем статус события в состояние успешного подключения
 						origin->state.status = event::status_t::SUCCESS;
+						// Устанавливаем использование таймаута на чтение данных для нового подключения
+						origin->timeouts.read.usage = server->timeouts.read.usage;
 						// Устанавливаем таймаут на чтение данных для нового подключения
 						origin->timeouts.read.delay = server->timeouts.read.delay;
 						// Устанавливаем таймаут на запись данных для нового подключения
@@ -22987,11 +23124,13 @@ namespace io {
 						// Если установлен таймаут на чтение данных
 						if(origin->timeouts.read.delay > 0){
 							// Если событие является неблокирующим
-							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
-								// Создаём таймаут на ожидание получения данных
-								::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
+							if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
+								// Если таймаут используется повторно после срабатывания
+								if(origin->timeouts.read.usage == event::usage_t::REUSABLE)
+									// Создаём таймаут на ожидание получения данных
+									::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, log);
 							// Если событие является блокирующим установки таймаута на чтение данных
-							else eth->socket.setTimeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
+							} else eth->socket.setTimeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
 						}
 						// Выводим положительный результат
 						return !guard.garbage();
@@ -43660,8 +43799,10 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											if(peer->timeouts.write.delay > 0)
 												// Удаляем таймаут на запись данных
 												this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
-											// Создаём таймаут на ожидание получения данных
-											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
+											// Если таймаут используется повторно после срабатывания
+											if(peer->timeouts.read.usage == event::usage_t::REUSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
 										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
@@ -43687,9 +43828,12 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Создаём таймаут на ожидание переподключения к серверу
 											::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, this->_log);
 										// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-										else if(client->state.status == event::status_t::CONNECTED)
-											// Создаём таймаут на ожидание получения данных
-											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+										else if(client->state.status == event::status_t::CONNECTED) {
+											// Если таймаут используется повторно после срабатывания
+											if(client->timeouts.read.usage == event::usage_t::REUSABLE)
+												// Создаём таймаут на ожидание получения данных
+												::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+										}
 										// Выполняем "пинок" для применения изменений
 										isSetup = this->kick();
 									} break;
@@ -44294,8 +44438,10 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													if(peer->timeouts.write.delay > 0)
 														// Удаляем таймаут на запись данных
 														this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
-													// Создаём таймаут на ожидание получения данных
-													::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
+													// Если таймаут используется повторно после срабатывания
+													if(peer->timeouts.read.usage == event::usage_t::REUSABLE)
+														// Создаём таймаут на ожидание получения данных
+														::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
 												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
@@ -44321,9 +44467,12 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Создаём таймаут на ожидание переподключения к серверу
 													::timeout::create(client->timeouts.reconnect, client, event::rate_t::DEFERRED, this->_log);
 												// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
-												else if(client->state.status == event::status_t::CONNECTED)
-													// Создаём таймаут на ожидание получения данных
-													::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+												else if(client->state.status == event::status_t::CONNECTED) {
+													// Если таймаут используется повторно после срабатывания
+													if(client->timeouts.read.usage == event::usage_t::REUSABLE)
+														// Создаём таймаут на ожидание получения данных
+														::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+												}
 												// Выполняем "пинок" для применения изменений
 												return this->kick();
 											}
@@ -45974,11 +46123,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								// Если необходимо активировать таймаут на чтение для клиента
 								if(client->timeouts.read.delay > 0){
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-										// Создаём таймаут на ожидание получения данных
-										::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+										// Если таймаут используется повторно после срабатывания
+										if(client->timeouts.read.usage == event::usage_t::REUSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
 									// Если событие является блокирующим
-									else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+									} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								}
 								// Выводим положительный результат
 								return true;
@@ -49839,6 +49990,126 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 	return result;
 }
 /**
+ * @brief Метод получения режима использования таймаута на чтение события
+ *
+ * @param id идентификатор события
+ * @return   режим использования таймаута на чтение события
+ */
+awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Выводим значение режима использования таймаута на чтение события
+					return awh_cast <::io::peer_t *> (i->second.get())->timeouts.read.usage;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Выводим значение режима использования таймаута на чтение события
+					return awh_cast <::io::origin_t *> (i->second.get())->timeouts.read.usage;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выводим значение режима использования таймаута на чтение события
+					return awh_cast <::io::client_t *> (i->second.get())->timeouts.read.usage;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выводим значение режима использования таймаута на чтение события
+					return awh_cast <::io::server_t *> (i->second.get())->timeouts.read.usage;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::usage_t::NONE;
+}
+/**
+ * @brief Метод установки режима использования таймаута на чтение события
+ *
+ * @param id    идентификатор события
+ * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ */
+void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем значение режима использования таймаута на чтение события
+					awh_cast <::io::peer_t *> (i->second.get())->timeouts.read.usage = usage;
+				break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Устанавливаем значение режима использования таймаута на чтение события
+					awh_cast <::io::origin_t *> (i->second.get())->timeouts.read.usage = usage;
+				break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем значение режима использования таймаута на чтение события
+					awh_cast <::io::client_t *> (i->second.get())->timeouts.read.usage = usage;
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем значение режима использования таймаута на чтение события
+					awh_cast <::io::server_t *> (i->second.get())->timeouts.read.usage = usage;
+				break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (usage)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод получения таймаута события
  *
  * @param id     идентификатор события
@@ -51376,11 +51647,13 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Активируем событие на чтение данных из сокета
 									::events::read(peer->transfer.fd, peer, mode, event::rate_t::DEFERRED, this->_log);
 									// Если событие является неблокирующим
-									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
-										// Создаём таймаут на ожидание получения данных
-										::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
+									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+										// Если таймаут используется повторно после срабатывания
+										if(peer->timeouts.read.usage == event::usage_t::REUSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
 									// Если необходимо активировать таймаут на чтение для однорангового узла
-									else if(peer->timeouts.read.delay > 0)
+									} else if(peer->timeouts.read.delay > 0)
 										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 										this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								} break;
@@ -51503,9 +51776,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Добавляем действие события в список разрешённых действий
 									origin->transfer.actions |= ::action::READ;
 									// Если событие является неблокирующим
-									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
-										// Создаём таймаут на ожидание получения данных
-										::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, this->_log);
+									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
+										// Если таймаут используется повторно после срабатывания
+										if(origin->timeouts.read.usage == event::usage_t::REUSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, this->_log);
+									}
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -51694,11 +51970,13 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Активируем событие на чтение данных из сокета
 									::events::read(client->transfer.fd, client, mode, event::rate_t::DEFERRED, this->_log);
 									// Если событие является неблокирующим
-									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-										// Создаём таймаут на ожидание получения данных
-										::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+										// Если таймаут используется повторно после срабатывания
+										if(client->timeouts.read.usage == event::usage_t::REUSABLE)
+											// Создаём таймаут на ожидание получения данных
+											::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
 									// Если необходимо активировать таймаут на чтение для клиента
-									else if(client->timeouts.read.delay > 0)
+									} else if(client->timeouts.read.delay > 0)
 										// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								} break;
@@ -52502,11 +52780,13 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Активируем событие на чтение данных из сокета
 								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является неблокирующим
-								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK))
-									// Создаём таймаут на ожидание получения данных
-									::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
+								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
+									// Если таймаут используется повторно после срабатывания
+									if(peer->timeouts.read.usage == event::usage_t::REUSABLE)
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(peer->timeouts.read, peer, event::rate_t::DEFERRED, this->_log);
 								// Если необходимо активировать таймаут на чтение для однорангового узла
-								else if(peer->timeouts.read.delay > 0)
+								} else if(peer->timeouts.read.delay > 0)
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 									this->_eth.socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 							}
@@ -52541,9 +52821,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							// Если событие чтения из сокета разрешено
 							if(origin->transfer.actions & ::action::READ){
 								// Если событие является неблокирующим
-								if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK))
-									// Создаём таймаут на ожидание получения данных
-									::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, this->_log);
+								if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
+									// Если таймаут используется повторно после срабатывания
+									if(origin->timeouts.read.usage == event::usage_t::REUSABLE)
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(origin->timeouts.read, origin, event::rate_t::DEFERRED, this->_log);
+								}
 							}
 							// Если событие записи в сокет разрешено
 							if(origin->transfer.actions & ::action::WRITE){
@@ -52584,11 +52867,13 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Активируем событие на чтение данных из сокета
 								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является неблокирующим
-								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))
-									// Создаём таймаут на ожидание получения данных
-									::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
+								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+									// Если таймаут используется повторно после срабатывания
+									if(client->timeouts.read.usage == event::usage_t::REUSABLE)
+										// Создаём таймаут на ожидание получения данных
+										::timeout::create(client->timeouts.read, client, event::rate_t::DEFERRED, this->_log);
 								// Если необходимо активировать таймаут на чтение для клиента
-								else if(client->timeouts.read.delay > 0)
+								} else if(client->timeouts.read.delay > 0)
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 							}

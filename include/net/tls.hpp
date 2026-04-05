@@ -371,7 +371,7 @@ namespace awh {
 			 * @param dir  адрес директории с сертификатами доверенных центров сертификации
 			 * @param file адрес файла сертификата доверенного центра сертификации
 			 */
-			void ca(const id_t id, string_view dir, string_view file = "") noexcept;
+			void ca(const id_t id, string_view dir, string_view file) noexcept;
 		public:
 			/**
 			 * @brief Метод установки списка отзыва сертификатов

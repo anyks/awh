@@ -674,6 +674,21 @@ namespace awh {
 				bool setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
 			public:
 				/**
+				 * @brief Метод получения режима использования таймаута на чтение события
+				 *
+				 * @param id идентификатор события
+				 * @return   режим использования таймаута на чтение события
+				 */
+				event::usage_t getUsageReadTimeout(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки режима использования таймаута на чтение события
+				 *
+				 * @param id    идентификатор события
+				 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+				 */
+				void setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept;
+			public:
+				/**
 				 * @brief Метод получения таймаута события
 				 *
 				 * @param id     идентификатор события

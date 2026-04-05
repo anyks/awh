@@ -450,6 +450,21 @@ namespace awh {
 			virtual bool setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения режима использования таймаута на чтение события
+			 *
+			 * @param id идентификатор события
+			 * @return   режим использования таймаута на чтение события
+			 */
+			virtual event::usage_t getUsageReadTimeout(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки режима использования таймаута на чтение события
+			 *
+			 * @param id    идентификатор события
+			 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+			 */
+			virtual void setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод получения таймаута события
 			 *
 			 * @param id     идентификатор события

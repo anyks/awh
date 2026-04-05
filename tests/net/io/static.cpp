@@ -845,8 +845,16 @@ TEST_F(IoFixture, IoTCPTest){
 		});
 		// Устанавливаем таймаут события на чтение
 		this->_io->setTimeout(events[1], awh::event::action_t::READ, 3000);
+		// Проверяем, что таймаут события на чтение установлен правильно
+		ASSERT_EQ(3000, this->_io->getTimeout(events[1], awh::event::action_t::READ));
 		// Устанавливаем таймаут события на запись
 		this->_io->setTimeout(events[1], awh::event::action_t::WRITE, 3000);
+		// Проверяем, что таймаут события на запись установлен правильно
+		ASSERT_EQ(3000, this->_io->getTimeout(events[1], awh::event::action_t::WRITE));
+		// Устанавливаем режим многократного использования таймаута события на чтение
+		this->_io->setUsageReadTimeout(events[1], awh::event::usage_t::REUSABLE);
+		// Проверяем, что режим многократного использования таймаута события на чтение установлен правильно
+		ASSERT_EQ(awh::event::usage_t::REUSABLE, this->_io->getUsageReadTimeout(events[1]));
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(events[1]));
 		// Выполняем прослушивание сервера
