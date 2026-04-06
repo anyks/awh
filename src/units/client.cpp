@@ -143,8 +143,72 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 	try {
 		// Выполняем блокировку потока для работы с событием клиента
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем фиксацию параметров события и его запуск
-		if(!(result = this->_io->commit(eid) && this->_io->launch(eid))){
+		// Выполняем фиксацию параметров события
+		if(!(result = this->_io->commit(eid))){
+			// Выполняем поиск идентификатора события клиента в списке событий клиента
+			auto i = this->_events.find(eid);
+			// Если идентификатор события клиента найден в списке событий клиента
+			if(i != this->_events.end()){
+				// Удаляем событие клиента
+				this->_io->destroy(* i);
+				// Удаляем идентификатор события клиента из списка событий клиента
+				this->_events.erase(i);
+			}
+			// Если функция обратного вызова не установлена
+			if(!this->_callback.is("error")){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Failed to commit client", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Failed to commit client", log_t::flag_t::CRITICAL);
+				#endif
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод запуска работы клиента
+ *
+ * @param eid идентификатор события клиента
+ * @return    результат выполнения запуска
+ */
+bool awh::unit::Client::launch(const event::id_t eid) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с событием клиента
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем запуск работы клиента
+		if(!(result = this->_io->launch(eid))){
 			// Выполняем поиск идентификатора события клиента в списке событий клиента
 			auto i = this->_events.find(eid);
 			// Если идентификатор события клиента найден в списке событий клиента

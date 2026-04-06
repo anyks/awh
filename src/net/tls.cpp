@@ -4643,7 +4643,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 							// Получаем код ошибки
 							const int32_t error = ::SSL_get_error(member->ssl, handshake);
 							// Если ошибка связана с необходимостью повторного чтения или записи
-							if((result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+							if((result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE) || (error == SSL_ERROR_ZERO_RETURN)))){
 								// Количество прочитанных данных
 								int32_t bytes = 0;
 								// Количество ожидающих данных для чтения
@@ -4659,7 +4659,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 										// Получаем код ошибки
 										const int32_t error = ::SSL_get_error(member->ssl, bytes);
 										// Если ошибка не связана с необходимостью повторного чтения или записи
-										if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+										if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE) || (error == SSL_ERROR_ZERO_RETURN)))){
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
@@ -6223,7 +6223,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 									// Получаем код ошибки
 									const int32_t error = ::SSL_get_error(member->ssl, bytes);
 									// Если ошибка не связана с необходимостью повторного чтения или записи
-									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE) || (error == SSL_ERROR_ZERO_RETURN)))){
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
@@ -6412,7 +6412,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 									// Получаем код ошибки
 									const int32_t error = ::SSL_get_error(member->ssl, bytes);
 									// Если ошибка не связана с необходимостью повторного чтения или записи
-									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE)))){
+									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE) || (error == SSL_ERROR_ZERO_RETURN)))){
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния

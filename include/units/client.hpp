@@ -117,6 +117,14 @@ namespace awh {
 				bool commit(const event::id_t eid) noexcept;
 			public:
 				/**
+				 * @brief Метод запуска работы клиента
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    результат выполнения запуска
+				 */
+				bool launch(const event::id_t eid) noexcept;
+			public:
+				/**
 				 * @brief Метод приостановки работы клиента
 				 *
 				 * @param eid идентификатор события клиента

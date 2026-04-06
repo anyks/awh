@@ -564,6 +564,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/samples)
 
+    # Устанавливаем имя приложения работы с клиентом TLS-Web
+    SET(CLIENT_APP_TLS-WEB_NAME client-tls-web)
+    # Указываем что нужно собрать приложение работы с клиентом
+    option(CMAKE_BUILD_CLIENT_APP_SAMPLE "Build client app sample" ON)
+
     # Устанавливаем имя приложения работы с юнитом файловой системы
     SET(UNIT_APP_FS_NAME unit-fs)
     # Указываем что нужно собрать приложение работы с юнитом файловой системы
@@ -856,6 +861,18 @@ endif()
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
+    # Если нужно собрать семплы для работы с клиентом
+    if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CLIENT: Yes\n")
+        # Выполняем создание приложения работы с клиентом TLS-Web
+        add_sample(${CLIENT_APP_TLS-WEB_NAME} sample/client/tls-web.cpp client)
+    # Если не нужно собирать семплы для работы с клиентом
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CLIENT: No\n")
+    endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
     # Если нужно собрать семплы для работы с юнитом файловой системы
     if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
@@ -1333,6 +1350,17 @@ if (CMAKE_SHARED_BUILD_LIB)
 
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
+        # Если нужно собрать семплы для работы с клиентом
+        if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+            # Выполняем сборку приложения работы с клиентом TLS-Web
+            target_link_libraries(
+                ${CLIENT_APP_TLS-WEB_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+    
         # Если нужно собрать семплы для работы с юнитом файловой системы
         if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
             # Выполняем сборку приложения работы с юнитом файловой системы
@@ -1925,6 +1953,18 @@ if (CMAKE_SHARED_BUILD_LIB)
 else (CMAKE_SHARED_BUILD_LIB)
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
+        # Если нужно собрать семплы для работы с клиентом
+        if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+            # Выполняем сборку приложения работы с клиентом TLS-Web
+            target_link_libraries(
+                ${CLIENT_APP_TLS-WEB_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с юнитом файловой системы
         if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
             # Выполняем сборку приложения работы с юнитом файловой системы
@@ -2586,6 +2626,16 @@ if (${CMAKE_BUILD_SAMPLES})
             # Указываем путь к файлу с правами для разрешения формирования дампа ядра на MacOS X
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
 
+            # Если нужно собрать семплы для работы с клиентом
+            if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+                # Выполняем сборку приложения работы с клиентом TLS-Web
+                add_custom_command(TARGET "${CLIENT_APP_TLS-WEB_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS-WEB_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_TLS-WEB_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом файловой системы
             if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
                 # Выполняем сборку приложения работы с юнитом файловой системы
@@ -3040,6 +3090,12 @@ if (${CMAKE_BUILD_SAMPLES})
             FetchContent_MakeAvailable(PVS_CMakeModule)
             include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
 
+            # Если нужно собрать семплы для работы с клиентом
+            if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+                # Выполняем анализ приложения работы с клиентом TLS-Web
+                pvs_studio_add_target(TARGET ${CLIENT_APP_TLS-WEB_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS-WEB_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом файловой системы
             if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом файловой системы
@@ -3379,6 +3435,12 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
+    # Если нужно собрать семплы для работы с клиентом
+    if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+        # Устанавливаем приложение работы с клиентом TLS-Web
+        install(TARGETS ${CLIENT_APP_TLS-WEB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
     # Если нужно собрать семплы для работы с юнитом файловой системы
     if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
         # Устанавливаем приложение работы с юнитом файловой системы
