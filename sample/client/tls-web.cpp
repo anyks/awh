@@ -39,29 +39,6 @@ class Executor {
 		const log_t * _log;
 	public:
 		/**
-		 * @brief Метод обработки событий изменения состояния клиента
-		 *
-		 * @param eid    идентификатор клиента
-		 * @param status новый статус клиента
-		 */
-		void state([[maybe_unused]] const event::id_t eid, const event::status_t status) noexcept {
-			/**
-			 * Определяем состояние клиента
-			 */
-			switch(static_cast <uint8_t> (status)){
-				// Если событие клиента запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED):
-					// Выводим сообщение о запуске события клиента
-					this->_log->print("Client event is launched", log_t::flag_t::INFO);
-				break;
-				// Если событие клиента остановлено
-				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события клиента
-					this->_log->print("Событие клинта было остановлено", log_t::flag_t::INFO);
-				break;
-			}
-		}
-		/**
 		 * @brief Метод обработки событий записи данных клиентом
 		 *
 		 * @param eid  идентификатор клиента
@@ -88,6 +65,33 @@ class Executor {
 			else this->_log->print("No data received", log_t::flag_t::WARNING);
 			// Останавливаем событие клиента
 			client->stop();
+		}
+		/**
+		 * @brief Метод обработки событий изменения статуса клиента
+		 *
+		 * @param status новый статус клиента
+		 * @param client объект клиента
+		 */
+		void status(const event::status_t status, client_t * client) noexcept {
+			/**
+			 * Определяем состояние клиента
+			 */
+			switch(static_cast <uint8_t> (status)){
+				// Если событие клиента запущено
+				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					// Выполняем подключение клиента к удалённому серверу
+					if(!client->connect())
+						// Выводим сообщение об ошибке
+						this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
+					// Если подключение выполнено, то выводим сообщение об успешном подключении клиента к удалённому серверу
+					else this->_log->print("Successfully connected to remote server", log_t::flag_t::INFO);
+				} break;
+				// Если событие клиента остановлено
+				case static_cast <uint8_t> (event::status_t::DESTROYED):
+					// Выводим сообщение об остановке события клиента
+					this->_log->print("Событие клинта было остановлено", log_t::flag_t::INFO);
+				break;
+			}
 		}
 		/**
 		 * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -120,15 +124,10 @@ class Executor {
 		 * @param family семейство адресов клиента
 		 * @param domain доменное имя клиента
 		 * @param ip     IP-адрес клиента
-		 * @param client объект клиента
 		 */
-		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip, client_t * client) noexcept {
-			// Выполняем подключение клиента к удалённому серверу
-			if(!client->connect())
-				// Выводим сообщение об ошибке
-				this->_log->print("Failed to connect to remote server: %s (%s)", log_t::flag_t::WARNING, domain.c_str(), ip.c_str());
-			// Если подключение выполнено, то выводим сообщение об успешном подключении клиента к удалённому серверу
-			else this->_log->print("Successfully connected to remote server: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
+		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
+			// Выводим сообщение о готовности клиента к работе
+			this->_log->print("Client is ready to connect to remote server: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок клиента
@@ -214,10 +213,10 @@ int32_t main(int32_t argc, char * argv[]){
 	client.setPort(443);
 	// Устанавливаем целевой хост для клиента
 	client.setTarget(host);
+	// Регистрируем функцию обратного вызова на событие изменения статуса клиента
+	client.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &client);
 	// Регистрируем функцию обратного вызова на событие записи данных клиентом
 	client.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
-	// Регистрируем функцию обратного вызова на событие изменения состояния клиента
-	client.on <void (const event::id_t, const event::status_t)> ("state", &Executor::state, &executor, _1, _2);
 	// Регистрируем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	client.on <void (const event::id_t, const bool)> ("connect", &Executor::connect, &executor, _1, _2, &client);
 	// Регистрируем функцию обратного вызова на событие чтения данных клиентом
@@ -227,7 +226,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
 	client.on <void (const tls_t::id_t, const tls_t::error_t, const string &)> ("errorTLS", &Executor::errorTLS, &executor, _1, _2, _3);
 	// Регистрируем функцию обратного вызова на событие готовности клиента к работе
-	client.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4, &client);
+	client.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 	// Запускаем событие клиента
 	client.start();
 	// Выводим результат

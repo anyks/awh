@@ -54,9 +54,9 @@ namespace awh {
 				unordered_set <event::id_t> _events;
 			private:
 				/**
-				 * @brief Метод запуска/остановки работы кластера
+				 * @brief Метод запуска/остановки работы сервера
 				 *
-				 * @param status статус запуска/остановки кластера
+				 * @param status статус запуска/остановки сервера
 				 */
 				void launch(const event::status_t status) noexcept;
 			private:
@@ -262,6 +262,14 @@ namespace awh {
 				 * @return    результат выполнения фиксации
 				 */
 				bool commit(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод запуска работы сервера
+				 *
+				 * @param eid идентификатор события сервера
+				 * @return    результат выполнения запуска
+				 */
+				bool launch(const event::id_t eid) noexcept;
 			public:
 				/**
 				 * @brief Метод приостановки работы сервера

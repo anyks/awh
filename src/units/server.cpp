@@ -28,9 +28,9 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * @brief Метод запуска/остановки работы кластера
+ * @brief Метод запуска/остановки работы сервера
  *
- * @param status статус запуска/остановки кластера
+ * @param status статус запуска/остановки сервера
  */
 void awh::unit::Server::launch(const event::status_t status) noexcept {
 	/**
@@ -332,7 +332,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 						// Выполняем получение функции обратного вызова
 						this->_callback.set("status", "serverStatus", this->_callback);
 					// Устанавливаем функцию обратного вызова на запуск системы
-					this->_callback.on <void (const event::status_t)> ("status", &server_t::launch, this, _1);
+					this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 					// Выполняем запуск работы основного юнита
 					unit_t::start();
 				}
@@ -622,6 +622,61 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 				// Удаляем идентификатор события сервера из списка событий сервера
 				this->_events.erase(i);
 			}
+			// Если функция обратного вызова не установлена
+			if(!this->_callback.is("error")){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Failed to commit server", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Failed to commit server", log_t::flag_t::CRITICAL);
+				#endif
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод запуска работы сервера
+ *
+ * @param eid идентификатор события сервера
+ * @return    результат выполнения запуска
+ */
+bool awh::unit::Server::launch(const event::id_t eid) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с событием сервера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем запуск работы сервера
+		if(!(result = this->_io->launch(eid))){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -1271,7 +1326,7 @@ void awh::unit::Server::start() noexcept {
 				// Выполняем получение функции обратного вызова
 				this->_callback.set("status", "serverStatus", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
-			this->_callback.on <void (const event::status_t)> ("status", &server_t::launch, this, _1);
+			this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 			// Выполняем запуск работы основного юнита
 			unit_t::start();
 		/**
@@ -1310,7 +1365,7 @@ void awh::unit::Server::start() noexcept {
 						// Выполняем получение функции обратного вызова
 						this->_callback.set("status", "serverStatus", this->_callback);
 					// Устанавливаем функцию обратного вызова на запуск системы
-					this->_callback.on <void (const event::status_t)> ("status", &server_t::launch, this, _1);
+					this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 					// Выполняем запуск работы основного юнита
 					unit_t::start();
 				} break;
@@ -1324,7 +1379,7 @@ void awh::unit::Server::start() noexcept {
 				// Выполняем получение функции обратного вызова
 				this->_callback.set("status", "serverStatus", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
-			this->_callback.on <void (const event::status_t)> ("status", &server_t::launch, this, _1);
+			this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 			// Выполняем запуск работы основного юнита
 			unit_t::start();
 		/**

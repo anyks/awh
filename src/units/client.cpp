@@ -28,6 +28,73 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Метод запуска/остановки работы клиента
+ *
+ * @param status статус запуска/остановки клиента
+ */
+void awh::unit::Client::launch(const event::status_t status) noexcept {
+	/**
+	 * Определяем статус работы клиента
+	 */
+	switch(static_cast <uint8_t> (status)){
+		// Если работа клиента запущена
+		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("clientStatus"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::status_t)> ("clientStatus", status);
+			// Выполняем блокировку потока для работы с событием клиента
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Переходим по всем активных клиентам
+			for(auto i = this->_events.begin(); i != this->_events.end();){
+				// Выполняем запуск работы клиента
+				if(!this->_io->launch(* i)){
+					// Удаляем событие клиента
+					this->_io->destroy(* i);
+					// Удаляем идентификатор события клиента из списка событий клиента
+					i = this->_events.erase(i);
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Failed to launch client", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Failed to launch client", log_t::flag_t::CRITICAL);
+						#endif
+					}
+				// Продолжаем перебор клиентов
+				} else ++i;
+			}
+		} break;
+		// Если работа клиента подлежит уничтожению
+		case static_cast <uint8_t> (event::status_t::DESTROYED): {
+			// Если в списке событий клиента есть события
+			if(!this->_events.empty()){
+				// Выполняем блокировку потока для уничтожения событий
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем удаление всех событий клиента
+				for(const auto & eid : this->_events)
+					// Удаляем событие клиента
+					this->_io->destroy(eid);
+			}
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("clientStatus")){
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::status_t)> ("clientStatus", status);
+				// Выполняем получение функции обратного вызова
+				this->_callback.set("clientStatus", "status", this->_callback);
+			}
+		} break;
+	}
+}
+/**
  * @brief Метод обработки событий подключения клиента к удалённому серверу
  *
  * @param eid идентификатор события
@@ -209,15 +276,6 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем запуск работы клиента
 		if(!(result = this->_io->launch(eid))){
-			// Выполняем поиск идентификатора события клиента в списке событий клиента
-			auto i = this->_events.find(eid);
-			// Если идентификатор события клиента найден в списке событий клиента
-			if(i != this->_events.end()){
-				// Удаляем событие клиента
-				this->_io->destroy(* i);
-				// Удаляем идентификатор события клиента из списка событий клиента
-				this->_events.erase(i);
-			}
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -802,6 +860,33 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
 	return this->_io->membership(eid, mode, group, source, port);
 }
 /**
+ * @brief Метод остановки сервера
+ *
+ */
+void awh::unit::Client::stop() noexcept {
+	// Если работа юнита запущена
+	if(this->working())
+		// Выполняем остановку работы основного юнита
+		unit_t::stop();
+}
+/**
+ * @brief Метод запуска сервера
+ *
+ */
+void awh::unit::Client::start() noexcept {
+	// Если работа юнита ещё не запущена
+	if(!this->working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("status"))
+			// Выполняем получение функции обратного вызова
+			this->_callback.set("status", "clientStatus", this->_callback);
+		// Устанавливаем функцию обратного вызова на запуск системы
+		this->_callback.on <void (const event::status_t)> ("status", static_cast <void (client_t::*)(const event::status_t)> (&client_t::launch), this, _1);
+		// Выполняем запуск работы основного юнита
+		unit_t::start();
+	}
+}
+/**
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
@@ -817,6 +902,8 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("state", callback);
 	// Выполняем установку функции обратного вызова при получении события неотправленных данных
 	this->_callback.set("spool", callback);
+	// Выполняем установку функции обратного вызова на событие изменения статуса клиента
+	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова при обработке действий клиента
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к серверу
@@ -864,12 +951,12 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Добавляем новое событие клиента
 		result = this->_io->event(event::node_t::CLIENT, family, type, protocol);
-		// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие записи данных
 		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
 		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие изменения действий клиента
+		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
 		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок

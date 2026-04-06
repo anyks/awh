@@ -47,6 +47,12 @@ namespace awh {
 				unordered_set <event::id_t> _events;
 			private:
 				/**
+				 * @brief Метод запуска/остановки работы клиента
+				 *
+				 * @param status статус запуска/остановки клиента
+				 */
+				void launch(const event::status_t status) noexcept;
+				/**
 				 * @brief Метод обработки событий подключения клиента к удалённому серверу
 				 *
 				 * @param eid идентификатор события
@@ -497,6 +503,17 @@ namespace awh {
 				 * @return       результат выполнения установки
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
+			public:
+				/**
+				 * @brief Метод остановки сервера
+				 *
+				 */
+				void stop() noexcept;
+				/**
+				 * @brief Метод запуска сервера
+				 *
+				 */
+				void start() noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

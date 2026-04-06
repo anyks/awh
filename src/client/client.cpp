@@ -28,6 +28,17 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Метод изменения статуса клиента
+ *
+ * @param status новый статус клиента
+ */
+void awh::Client::status(const event::status_t status) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("status"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::status_t)> ("status", status);
+}
+/**
  * @brief Метод обработки событий подключения клиента к удалённому серверу
  *
  * @param eid идентификатор клиента
@@ -307,43 +318,40 @@ void awh::Client::processTLS([[maybe_unused]] const tls_t::id_t id, const tls_t:
  * @param status статус события DNS-резолвера
  */
 void awh::Client::statusDNS(const event::status_t status) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии
-	if(this->_dns->working()){
-		/**
-		 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
-		 */
-		switch(static_cast <uint8_t> (status)){
-			// Если событие DNS-резолвера запущено
-			case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-				// Выполняем резолвинг доменного имени
-				if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_client)->family(this->_eid), this->_host, this->_timeoutDNS.load(std::memory_order_acquire))){
-					// Создаём текст ошибки резолвинга доменного имени
-					const string error = this->_fmk->format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-						#endif
-					// Выполняем функцию обратного вызова
-					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_eid, event::error_t::NOT_FOUND, error);
-				}
-			} break;
-			// Если событие DNS-резолвера остановлено
-			case static_cast <uint8_t> (event::status_t::DESTROYED):
-				// Останавливаем клиента
-				this->_client->stop();
-			break;
-		}
+	/**
+	 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
+	 */
+	switch(static_cast <uint8_t> (status)){
+		// Если событие DNS-резолвера запущено
+		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+			// Выполняем резолвинг доменного имени
+			if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_client)->family(this->_eid), this->_host, this->_timeoutDNS.load(std::memory_order_acquire))){
+				// Создаём текст ошибки резолвинга доменного имени
+				const string error = this->_fmk->format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
+				// Если функция обратного вызова не установлена
+				if(!this->_callback.is("error")){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+					#endif
+				// Выполняем функцию обратного вызова
+				} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_eid, event::error_t::NOT_FOUND, error);
+			}
+		} break;
+		// Если событие DNS-резолвера остановлено
+		case static_cast <uint8_t> (event::status_t::DESTROYED):
+			// Останавливаем клиента
+			this->_client->stop();
+		break;
 	}
 }
 /**
@@ -387,35 +395,14 @@ void awh::Client::resolveDNS([[maybe_unused]] const unit::dns_t::id_t id, const 
 						if(this->_callback.is("ready"))
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_client->getTarget(this->_eid));
-						/**
-						 * В зависимости от статуса события клиента выполняем запуск
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
-							// Если событие клиента инициализировано, запускаем его
-							case static_cast <uint8_t> (event::status_t::INITIAL):
-							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS): {
-								// Если событие клиента не запущено, запускаем процесс клиента
-								if(this->_client->launch(this->_eid))
-									// Запускаем клиента
-									this->_client->start();
-							} break;
-						}
+						// Запускаем клиента
+						this->_client->start();
 					}
 				} break;
 				// Если событие клиента инициализировано, запускаем его
 				case static_cast <uint8_t> (event::status_t::INITIAL):
 				// Если событие находится в состоянии успешного подключения
-				case static_cast <uint8_t> (event::status_t::SUCCESS): {
-					// Если событие клиента не запущено, запускаем процесс клиента
-					if(this->_client->launch(this->_eid))
-						// Запускаем клиента
-						this->_client->start();
-				} break;
-				// Если событие находится в состоянии в ожидании подключения
-				case static_cast <uint8_t> (event::status_t::PENDING):
-				// Если событие находится в состояние запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED):
+				case static_cast <uint8_t> (event::status_t::SUCCESS):
 					// Запускаем клиента
 					this->_client->start();
 				break;
@@ -496,35 +483,14 @@ void awh::Client::start() noexcept {
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_client->family(this->_eid), host, host);
 						}
-						/**
-						 * В зависимости от статуса события клиента выполняем запуск
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
-							// Если событие клиента инициализировано, запускаем его
-							case static_cast <uint8_t> (event::status_t::INITIAL):
-							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS): {
-								// Если событие клиента не запущено, запускаем процесс клиента
-								if(this->_client->launch(this->_eid))
-									// Запускаем клиента
-									this->_client->start();
-							} break;
-						}
+						// Запускаем клиента
+						this->_client->start();
 					}
 				} break;
 				// Если событие клиента инициализировано, запускаем его
 				case static_cast <uint8_t> (event::status_t::INITIAL):
 				// Если событие находится в состоянии успешного подключения
-				case static_cast <uint8_t> (event::status_t::SUCCESS): {
-					// Если событие клиента не запущено, запускаем процесс клиента
-					if(this->_client->launch(this->_eid))
-						// Запускаем клиента
-						this->_client->start();
-				} break;
-				// Если событие находится в состоянии в ожидании подключения
-				case static_cast <uint8_t> (event::status_t::PENDING):
-				// Если событие находится в состояние запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED):
+				case static_cast <uint8_t> (event::status_t::SUCCESS):
 					// Запускаем клиента
 					this->_client->start();
 				break;
@@ -716,6 +682,8 @@ void awh::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("spool", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибок
 	this->_callback.set("error", callback);
+	// Выполняем установку функции обратного вызова на событие изменения статуса клиента
+	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова на событие изменения состояния клиента
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к удалённому серверу
@@ -1037,6 +1005,8 @@ awh::Client::Client(unit::client_t * client, const fmk_t * fmk, const log_t * lo
  _timeoutDNS(3000), _tls(nullptr), _dns(nullptr), _client(client), _fmk(fmk), _log(log) {
 	// Если объект клиента установлен
 	if(this->_client != nullptr){
+		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
 		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
@@ -1103,6 +1073,8 @@ awh::Client::Client(unit::client_t * client, tls_t * tls, const fmk_t * fmk, con
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
+		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
 		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
@@ -1151,6 +1123,8 @@ awh::Client::Client(unit::client_t * client, unit::dns_t * dns, const fmk_t * fm
  _timeoutDNS(3000), _tls(nullptr), _dns(dns), _client(client), _fmk(fmk), _log(log) {
 	// Если объект клиента установлен
 	if(this->_client != nullptr){
+		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
 		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
@@ -1246,6 +1220,8 @@ awh::Client::Client(unit::client_t * client, unit::dns_t * dns, tls_t * tls, con
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
+		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
 		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента

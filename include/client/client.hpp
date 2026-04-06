@@ -70,6 +70,12 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
+			 * @brief Метод изменения статуса клиента
+			 *
+			 * @param status новый статус клиента
+			 */
+			void status(const event::status_t status) noexcept;
+			/**
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
 			 *
 			 * @param eid идентификатор клиента
