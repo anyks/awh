@@ -622,7 +622,14 @@ namespace uri {
 					if(((letter >= 'a') && (letter <= 'z')) ||
 					   ((letter >= 'A') && (letter <= 'Z')) ||
 					   ((letter >= '0') && (letter <= '9')) ||
-					   (letter == '-') || (letter == '_') || (letter == '.') || (letter == '~')){
+					   (letter == '-') || (letter == '_') ||
+					   (letter == '.') || (letter == '~') ||
+					   (letter == '@') || (letter == ':') ||
+					   (letter == '!') || (letter == '$') ||
+					   (letter == '&') || (letter == '\'') ||
+					   (letter == '(') || (letter == ')') ||
+					   (letter == '*') || (letter == '+') ||
+					   (letter == ',') || (letter == ';') || (letter == '=')){
 						// Записываем в поток символ, как он есть
 						ss << letter;
 						// Пропускаем итерацию

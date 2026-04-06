@@ -660,6 +660,18 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " URI Query Parameter: " << key << " = " << value << endl;
 	cout << endl;
 
+	cout << endl << endl;
+
+	address = "//cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js";
+	cout << "Parsing URI: " << address << endl;
+
+	uri.clear();
+	uri.parse(address);
+
+	cout << "SMART: " << uri.print(uri_t::item_t::URI, uri_t::format_t::SMART) << ", FULL: " << uri.print(uri_t::item_t::URI, uri_t::format_t::FULL) << ", REQUEST: " << uri.print(uri_t::item_t::REQUEST) << endl;
+
+	cout << endl << endl;
+
 	// Выводим результат
 	return EXIT_SUCCESS;
 }
