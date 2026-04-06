@@ -589,13 +589,106 @@ namespace uri {
 	}
 
 	/**
+	 * @brief Функция проверки допустимых символов для различных элементов URI
+	 *
+	 * @param letter символ для проверки
+	 * @param item   тип элемента URI, для которого выполняется проверка
+	 * @return       результат проверки
+	 */
+	[[nodiscard]] static bool isalnum(const char letter, const uri_t::item_t item) noexcept {
+		/**
+		 * Проверяем, является ли символ допустимым для данного элемента URI в соответствии с RFC 3986 и общими рекомендациями по кодированию URI.
+		 */
+		switch(static_cast <uint8_t> (item)){
+			// Для схемы URI разрешены буквенно-цифровые ASCII и + - .
+			case static_cast <uint8_t> (uri_t::item_t::SCHEME):
+				/**
+				 * Разрешённые символы для схемы URI: буквенно-цифровые ASCII и + - .
+				 */
+				return (
+					((letter >= 'a') && (letter <= 'z')) ||
+					((letter >= 'A') && (letter <= 'Z')) ||
+					((letter >= '0') && (letter <= '9')) ||
+					(letter == '+') || (letter == '-') || (letter == '.')
+				);
+			// Для пути URI разрешены буквенно-цифровые ASCII и - _ . ~ и некоторые спецсимволы, которые не рекомендуется кодировать в пути, но можно кодировать в других частях URI
+			case static_cast <uint8_t> (uri_t::item_t::PATH):
+				/**
+				 * Не трогаем символы, разрешённые по RFC 3986 без кодирования:
+				 * незарезервированные символы: буквенно-цифровые ASCII и - _ . ~
+				 * Используем явные диапазонные проверки (locale-независимые),
+				 * а не isalnum(), которая на UTF-8 локали трактует байты >127 как буквы.
+				 */
+				return (
+					((letter >= 'a') && (letter <= 'z')) ||
+					((letter >= 'A') && (letter <= 'Z')) ||
+					((letter >= '0') && (letter <= '9')) ||
+					(letter == '-') || (letter == '_') ||
+					(letter == '.') || (letter == '~') ||
+					(letter == '@') || (letter == ':') ||
+					(letter == '!') || (letter == '$') ||
+					(letter == '&') || (letter == '\'') ||
+					(letter == '(') || (letter == ')') ||
+					(letter == '*') || (letter == '+') ||
+					(letter == ',') || (letter == ';') || (letter == '=')
+				);
+			// Для запроса URI разрешены буквенно-цифровые ASCII и - _ . ~ и более широкий набор спецсимволов, которые не рекомендуется кодировать в пути, но можно кодировать в других частях URI
+			case static_cast <uint8_t> (uri_t::item_t::QUERY):
+				/**
+				 * В query разрешено больше, но & = ? # лучше закодировать, если они часть данных
+				 */
+				return (
+					((letter >= 'a') && (letter <= 'z')) ||
+					((letter >= 'A') && (letter <= 'Z')) ||
+					((letter >= '0') && (letter <= '9')) ||
+					(letter == '-') || (letter == '_') ||
+					(letter == '.') || (letter == '~') ||
+					(letter == '@') || (letter == ':') ||
+					(letter == '!') || (letter == '$') ||
+					(letter == '\'') || (letter == '(') ||
+					(letter == ')') || (letter == '*') ||
+					(letter == '+') || (letter == ',') ||
+					(letter == ';') || (letter == '/') ||
+					(letter == '[') || (letter == ']')
+				);
+			// Для userinfo, host и fragment URI разрешены буквенно-цифровые ASCII и - _ . ~
+			case static_cast <uint8_t> (uri_t::item_t::USER):
+			case static_cast <uint8_t> (uri_t::item_t::HOST):
+			case static_cast <uint8_t> (uri_t::item_t::FRAGMENT):
+				/**
+				 * Разрешённые символы для остальных частей URI: буквенно-цифровые ASCII и - _ . ~
+				 */
+				return (
+					((letter >= 'a') && (letter <= 'z')) ||
+					((letter >= 'A') && (letter <= 'Z')) ||
+					((letter >= '0') && (letter <= '9')) ||
+					(letter == '-') || (letter == '_') ||
+					(letter == '.') || (letter == '~')
+				);
+			// Для всех остальных элементов URI разрешаем только буквенно-цифровые ASCII
+			default:
+				/**
+				 * Для неизвестного элемента URI разрешаем только буквенно-цифровые ASCII
+				 */
+				return (
+					((letter >= 'a') && (letter <= 'z')) ||
+					((letter >= 'A') && (letter <= 'Z')) ||
+					((letter >= '0') && (letter <= '9'))
+				);
+		}
+		// Выводим результат по умолчанию
+		return false;
+	}
+
+	/**
 	 * @brief Функция кодирования строки в URL-адресе
 	 *
 	 * @param text строка текста для кодирования
+	 * @param item тип элемента URI, для которого выполняется кодирование (например, путь, запрос, фрагмент)
 	 * @param log  объект работы с логами
 	 * @return     результат кодирования
 	 */
-	static string encode(string_view text, const log_t * log) noexcept {
+	[[nodiscard]] static string encode(string_view text, const uri_t::item_t item, const log_t * log) noexcept {
 		// Результат работы функции
 		string result = "";
 		// Если строка передана
@@ -612,32 +705,13 @@ namespace uri {
 				ss << std::hex;
 				// Перебираем все символы
 				for(char letter : text){
-					/**
-					 * Не трогаем символы, разрешённые по RFC 3986 без кодирования:
-					 * незарезервированные символы: буквенно-цифровые ASCII и - _ . ~
-					 * Используем явные диапазонные проверки (locale-независимые),
-					 * а не isalnum(), которая на UTF-8 локали трактует байты >127 как буквы.
-					 * Символ @ является «gen-delim» и должен быть закодирован.
-					 */
-					if(((letter >= 'a') && (letter <= 'z')) ||
-					   ((letter >= 'A') && (letter <= 'Z')) ||
-					   ((letter >= '0') && (letter <= '9')) ||
-					   (letter == '-') || (letter == '_') ||
-					   (letter == '.') || (letter == '~') ||
-					   (letter == '@') || (letter == ':') ||
-					   (letter == '!') || (letter == '$') ||
-					   (letter == '&') || (letter == '\'') ||
-					   (letter == '(') || (letter == ')') ||
-					   (letter == '*') || (letter == '+') ||
-					   (letter == ',') || (letter == ';') || (letter == '=')){
+					// Если символ разрешён для данного элемента URI, записываем его как есть
+					if(isalnum(letter, item)){
 						// Записываем в поток символ, как он есть
 						ss << letter;
 						// Пропускаем итерацию
 						continue;
 					}
-					/**
-					 * Любые другие символы закодированы в процентах
-					 */
 					// Переводим символы в верхний регистр
 					ss << std::uppercase;
 					// Записываем в поток, код символа
@@ -677,7 +751,7 @@ namespace uri {
 	 * @param log  объект работы с логами
 	 * @return     результат декодирования
 	 */
-	static string decode(string_view text, const log_t * log) noexcept {
+	[[nodiscard]] static string decode(string_view text, const log_t * log) noexcept {
 		// Результат работы функции
 		string result = "";
 		// Если строка передана
@@ -2695,7 +2769,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(segment, this->_log));
+								result.append(uri::encode(segment, item_t::PATH, this->_log));
 							}
 						} break;
 						// Если тип URI является SSH
@@ -2709,7 +2783,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, this->_log));
+								result.append(uri::encode(* i, item_t::PATH, this->_log));
 							}
 						} break;
 						// Если тип URI является Scheme
@@ -2721,7 +2795,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, this->_log));
+								result.append(uri::encode(* i, item_t::PATH, this->_log));
 							}
 						} break;
 					}
@@ -2773,7 +2847,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
 							for(const auto & [key, value] : this->_query)
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
+								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Выполняем генерацию параметров URI с помощью функции обратного вызова
@@ -2801,7 +2875,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::HTTPS):
 						case static_cast <uint8_t> (type_t::SCHEME):
 							// Добавляем якорь URI в результат, предваряя его символом "#"
-							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, this->_log).c_str()));
+							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, item_t::FRAGMENT, this->_log).c_str()));
 						break;
 					}
 				}
@@ -3634,7 +3708,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(segment, this->_log));
+								result.append(uri::encode(segment, item_t::PATH, this->_log));
 							}
 						} break;
 						// Если тип URI является SSH
@@ -3648,7 +3722,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, this->_log));
+								result.append(uri::encode(* i, item_t::PATH, this->_log));
 							}
 						} break;
 						// Если тип URI является Scheme
@@ -3660,7 +3734,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, this->_log));
+								result.append(uri::encode(* i, item_t::PATH, this->_log));
 							}
 						} break;
 					}
@@ -3713,7 +3787,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
 							for(const auto & [key, value] : this->_query)
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
+								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
 							// Удаляем последний символ "&" из результата
 							result.pop_back();
 						} break;
@@ -3736,7 +3810,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::HTTPS):
 						case static_cast <uint8_t> (type_t::SCHEME):
 							// Добавляем якорь URI в результат
-							result.append(uri::encode(this->_fragment, this->_log));
+							result.append(uri::encode(this->_fragment, item_t::FRAGMENT, this->_log));
 						break;
 					}
 				}
@@ -4566,7 +4640,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(segment, this->_log));
+								result.append(uri::encode(segment, item_t::PATH, this->_log));
 							}
 						// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
 						} else result.append(1, '/');
@@ -4577,7 +4651,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
 							for(const auto & [key, value] : this->_query)
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-								result.append(this->_fmk->format("%s=%s&", uri::encode(key, this->_log).c_str(), uri::encode(value, this->_log).c_str()));
+								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Выполняем генерацию параметров URI с помощью функции обратного вызова
@@ -4592,7 +4666,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						// Если якорь URI не пустой, то добавляем его в результат
 						if(!this->_fragment.empty())
 							// Добавляем якорь URI в результат, предваряя его символом "#"
-							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, this->_log).c_str()));
+							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, item_t::FRAGMENT, this->_log).c_str()));
 					} break;
 					// Если тип URI является E-mail или Scheme, то добавляем схему URI в результат без "://"
 					case static_cast <uint8_t> (type_t::EMAIL): {
@@ -4674,7 +4748,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, this->_log));
+								result.append(uri::encode(* i, item_t::PATH, this->_log));
 							}
 						}
 					} break;
