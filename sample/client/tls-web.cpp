@@ -201,7 +201,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем файл центра сертификации TLS
 	tls.ca(cts, "../sh/certificates", "ca.pem");
 	// Включаем проверку имени хоста TLS
-	tls.validateServerNameIndication(cts, false);
+	tls.validateServerNameIndication(cts, true);
 	// Устанавливаем имя хоста TLS
 	tls.serverNameIndication(cts, host);
 	// Создаём идентификатор транспортного уровня TLS
