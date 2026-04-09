@@ -37,6 +37,28 @@ void awh::Client::status(const event::status_t status) noexcept {
 	if(this->_callback.is("status"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const event::status_t)> ("status", status);
+	// Если работа клиента запущена
+	if(status == event::status_t::LAUNCHED){
+		// Выполняем запуск работы клиента, если клиент не запущен
+		if(!this->_client->launch(this->_eid)){
+			// Если функция обратного вызова не установлена
+			if(!this->_callback.is("error")){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
+				#endif
+			}
+		}
+	}
 }
 /**
  * @brief Метод обработки событий подключения клиента к удалённому серверу

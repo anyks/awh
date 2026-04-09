@@ -43,35 +43,6 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 			if(this->_callback.is("clientStatus"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const event::status_t)> ("clientStatus", status);
-			// Выполняем блокировку потока для работы с событием клиента
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Переходим по всем активных клиентам
-			for(auto i = this->_events.begin(); i != this->_events.end();){
-				// Выполняем запуск работы клиента
-				if(!this->_io->launch(* i)){
-					// Удаляем событие клиента
-					this->_io->destroy(* i);
-					// Удаляем идентификатор события клиента из списка событий клиента
-					i = this->_events.erase(i);
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to launch client", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Failed to launch client", log_t::flag_t::CRITICAL);
-						#endif
-					}
-				// Продолжаем перебор клиентов
-				} else ++i;
-			}
 		} break;
 		// Если работа клиента подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {

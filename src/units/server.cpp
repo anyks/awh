@@ -39,78 +39,24 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 	switch(static_cast <uint8_t> (status)){
 		// Если работа кластера запущена
 		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("serverStatus"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("serverStatus", status);
 			/**
 			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
-				// Выполняем блокировку потока для работы с событием сервера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Переходим по всем активных серверам
-				for(auto i = this->_events.begin(); i != this->_events.end();){
-					// Выполняем запуск работы сервера
-					if(!this->_io->launch(* i)){
-						// Удаляем событие сервера
-						this->_io->destroy(* i);
-						// Удаляем идентификатор события сервера из списка событий сервера
-						i = this->_events.erase(i);
-						// Если функция обратного вызова не установлена
-						if(!this->_callback.is("error")){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
-							#endif
-						}
-					// Продолжаем перебор серверов
-					} else ++i;
-				}
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("serverStatus"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::status_t)> ("serverStatus", status);
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
 			#elif __linux__ || __FreeBSD__
 				// Если кластер в работе не используется или если процесс является дочерним
 				if((this->_clusterMode == event::mode_t::DISABLED) || !this->_cluster.master()){
-					// Выполняем блокировку потока для работы с событием сервера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Переходим по всем активных серверам
-					for(auto i = this->_events.begin(); i != this->_events.end();){
-						// Выполняем запуск работы сервера
-						if(!this->_io->launch(* i)){
-							// Удаляем событие сервера
-							this->_io->destroy(* i);
-							// Удаляем идентификатор события сервера из списка событий сервера
-							i = this->_events.erase(i);
-							// Если функция обратного вызова не установлена
-							if(!this->_callback.is("error")){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
-								#endif
-							}
-						// Продолжаем перебор серверов
-						} else ++i;
-					}
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("serverStatus"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::status_t)> ("serverStatus", status);
 				}
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
@@ -143,35 +89,10 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 					} break;
 					// Если активировать кластер не требуется
 					case static_cast <uint8_t> (event::mode_t::DISABLED): {
-						// Выполняем блокировку потока для работы с событием сервера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Переходим по всем активных серверам
-						for(auto i = this->_events.begin(); i != this->_events.end();){
-							// Выполняем запуск работы сервера
-							if(!this->_io->launch(* i)){
-								// Удаляем событие сервера
-								this->_io->destroy(* i);
-								// Удаляем идентификатор события сервера из списка событий сервера
-								i = this->_events.erase(i);
-								// Если функция обратного вызова не установлена
-								if(!this->_callback.is("error")){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
-									#endif
-								}
-							// Продолжаем перебор серверов
-							} else ++i;
-						}
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("serverStatus"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::status_t)> ("serverStatus", status);
 					} break;
 				}
 			#endif
@@ -342,35 +263,10 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			#elif __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если процесс является дочерним
 				if(!this->_cluster.master()){
-					// Выполняем блокировку потока для работы с событием сервера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Переходим по всем активных серверам
-					for(auto i = this->_events.begin(); i != this->_events.end();){
-						// Выполняем запуск работы сервера
-						if(!this->_io->launch(* i)){
-							// Удаляем событие сервера
-							this->_io->destroy(* i);
-							// Удаляем идентификатор события сервера из списка событий сервера
-							i = this->_events.erase(i);
-							// Если функция обратного вызова не установлена
-							if(!this->_callback.is("error")){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, std::make_tuple(pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
-								#endif
-							}
-						// Продолжаем перебор серверов
-						} else ++i;
-					}
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("serverStatus"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::status_t)> ("serverStatus", event::status_t::LAUNCHED);
 				}
 			#endif
 		} break;
