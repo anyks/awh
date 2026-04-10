@@ -247,6 +247,20 @@ namespace awh {
 			virtual size_t send(const void * buffer, const size_t size) noexcept;
 		public:
 			/**
+			 * @brief Метод получения сетевого интерфейса клиента
+			 *
+			 * @return сетевой интерфейс клиента
+			 */
+			virtual string getIface() const noexcept;
+			/**
+			 * @brief Метод установки сетевого интерфейса клиента
+			 *
+			 * @param name имя сетевого интерфейса для установки
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setIface(string_view name) noexcept;
+		public:
+			/**
 			 * @brief Метод получения порта удаленного сервера
 			 *
 			 * @return порт удаленного сервера
@@ -290,6 +304,55 @@ namespace awh {
 			virtual bool getTarget(unique_ptr <net::addr_t> & target) const noexcept;
 		public:
 			/**
+			 * @brief Метод получения адреса клиента
+			 *
+			 * @param address тип адреса клиента
+			 * @return        значение адреса клиента
+			 */
+			virtual string getAddress(const event::address_t address) const noexcept;
+			/**
+			 * @brief Метод установки адреса клиента
+			 *
+			 * @param address тип адреса клиента
+			 * @param value   значение адреса клиента
+			 * @return        результат выполнения установки
+			 */
+			virtual bool setAddress(const event::address_t address, string_view value) noexcept;
+		public:
+			/**
+			 * @brief Метод установки адреса клиента
+			 *
+			 * @param address тип адреса клиента
+			 * @param value   значение адреса клиента
+			 * @return        результат выполнения установки
+			 */
+			virtual bool setAddress(const event::address_t address, const net::addr_t * value) noexcept;
+			/**
+			 * @brief Метод получения адреса клиента
+			 *
+			 * @param address тип адреса клиента
+			 * @param value   объект для извлечения адреса клиента
+			 * @return        результат выполнения извлечения адреса клиента
+			 */
+			virtual bool getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения размера буфера клиента
+			 *
+			 * @param action тип действия клиента
+			 * @return       размер буфера клиента
+			 */
+			virtual size_t getBufferSize(const event::action_t action) const noexcept;
+			/**
+			 * @brief Метод установки размера буфера клиента
+			 *
+			 * @param action тип действия клиента
+			 * @param size   размер буфера клиента
+			 * @return       результат выполнения установки
+			 */
+			virtual bool setBufferSize(const event::action_t action, const size_t size) noexcept;
+		public:
+			/**
 			 * @brief Метод получения таймаута резолвинга доменного имени
 			 *
 			 * @return таймаут резолвинга доменного имени в миллисекундах
@@ -301,6 +364,53 @@ namespace awh {
 			 * @param timeout таймаут резолвинга доменного имени в миллисекундах
 			 */
 			virtual void setTimeoutDNS(const uint32_t timeout) noexcept;
+		public:
+			/**
+			 * @brief Метод получения режима использования таймаута на чтение события
+			 *
+			 * @return режим использования таймаута на чтение события
+			 */
+			virtual event::usage_t getUsageReadTimeout() const noexcept;
+			/**
+			 * @brief Метод установки режима использования таймаута на чтение события
+			 *
+			 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+			 */
+			virtual void setUsageReadTimeout(const event::usage_t usage) noexcept;
+		public:
+			/**
+			 * @brief Метод получения таймаута клиента
+			 *
+			 * @param action тип действия клиента
+			 * @return       значение таймаута в миллисекундах
+			 */
+			virtual uint32_t getTimeout(const event::action_t action) const noexcept;
+			/**
+			 * @brief Метод установки таймаута клиента
+			 *
+			 * @param action  тип действия клиента
+			 * @param timeout значение таймаута в миллисекундах
+			 */
+			virtual void setTimeout(const event::action_t action, const uint32_t timeout) noexcept;
+		public:
+			/**
+			 * @brief Метод установки пропускной способности клиента
+			 *
+			 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
+			 * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+			 * @return          результат выполнения установки
+			 */
+			virtual bool bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
+		public:
+			/**
+			 * @brief Метод установки параметров keep-alive для клиента
+			 *
+			 * @param cnt   количество пакетов keep-alive
+			 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
+			 * @param intvl интервал между пакетами keep-alive в секундах
+			 * @return      результат выполнения установки
+			 */
+			virtual bool keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова

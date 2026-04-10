@@ -213,6 +213,8 @@ int32_t main(int32_t argc, char * argv[]){
 	client.setPort(443);
 	// Устанавливаем целевой хост для клиента
 	client.setTarget(host);
+	// Устанавливаем таймаут клиента на чтение данных 5 секунд
+	client.setTimeout(event::action_t::READ, 5000);
 	// Регистрируем функцию обратного вызова на событие изменения статуса клиента
 	client.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &client);
 	// Регистрируем функцию обратного вызова на событие записи данных клиентом

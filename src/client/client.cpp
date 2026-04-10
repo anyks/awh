@@ -130,6 +130,15 @@ void awh::Client::state(const event::id_t eid, const event::status_t status) noe
 		if(this->_callback.is("state"))
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+		// Если статус клиента изменился на "уничтожен"
+		if(status == event::status_t::DESTROYED){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr)
+				// Останавливаем событие DNS-резолвера
+				this->_dns->stop();
+			// Останавливаем событие клиента
+			else this->_client->stop();
+		}
 	}
 }
 /**
@@ -740,6 +749,65 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 	return this->_client->send(this->_eid, buffer, size);
 }
 /**
+ * @brief Метод получения сетевого интерфейса клиента
+ *
+ * @return сетевой интерфейс клиента
+ */
+string awh::Client::getIface() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем сетевой интерфейс клиента
+		return this->_client->getIface(this->_eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return "";
+}
+/**
+ * @brief Метод установки сетевого интерфейса клиента
+ *
+ * @param name имя сетевого интерфейса для установки
+ * @return     результат выполнения установки
+ */
+bool awh::Client::setIface(string_view name) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем сетевой интерфейс клиента
+		return this->_client->setIface(this->_eid, name);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения порта удаленного сервера
  *
  * @return порт удаленного сервера
@@ -786,7 +854,7 @@ bool awh::Client::setPort(const uint16_t port) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -951,6 +1019,190 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 	return false;
 }
 /**
+ * @brief Метод получения адреса клиента
+ *
+ * @param address тип адреса клиента
+ * @return        значение адреса клиента
+ */
+string awh::Client::getAddress(const event::address_t address) const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем адрес клиента
+		return this->_client->getAddress(this->_eid, address);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return "";
+}
+/**
+ * @brief Метод установки адреса клиента
+ *
+ * @param address тип адреса клиента
+ * @param value   значение адреса клиента
+ * @return        результат выполнения установки
+ */
+bool awh::Client::setAddress(const event::address_t address, string_view value) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем адрес клиента
+		return this->_client->setAddress(this->_eid, address, value);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод установки адреса клиента
+ *
+ * @param address тип адреса клиента
+ * @param value   значение адреса клиента
+ * @return        результат выполнения установки
+ */
+bool awh::Client::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем адрес клиента
+		return this->_client->setAddress(this->_eid, address, value);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения адреса клиента
+ *
+ * @param address тип адреса клиента
+ * @param value   объект для извлечения адреса клиента
+ * @return        результат выполнения извлечения адреса клиента
+ */
+bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем адрес клиента
+		return this->_client->getAddress(this->_eid, address, value);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения размера буфера клиента
+ *
+ * @param action тип действия клиента
+ * @return       размер буфера клиента
+ */
+size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем размер буфера клиента
+		return this->_client->getBufferSize(this->_eid, action);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки размера буфера клиента
+ *
+ * @param action тип действия клиента
+ * @param size   размер буфера клиента
+ * @return       результат выполнения установки
+ */
+bool awh::Client::setBufferSize(const event::action_t action, const size_t size) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем размер буфера клиента
+		return this->_client->setBufferSize(this->_eid, action, size);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения таймаута резолвинга доменного имени
  *
  * @return таймаут резолвинга доменного имени в миллисекундах
@@ -987,6 +1239,183 @@ uint32_t awh::Client::getTimeoutDNS() const noexcept {
 void awh::Client::setTimeoutDNS(const uint32_t timeout) noexcept {
 	// Устанавливаем таймаут резолвинга доменного имени для клиента
 	this->_timeoutDNS.store(timeout, std::memory_order_release);
+}
+/**
+ * @brief Метод получения режима использования таймаута на чтение события
+ *
+ * @return режим использования таймаута на чтение события
+ */
+awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем режим использования таймаута на чтение события
+		return this->_client->getUsageReadTimeout(this->_eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::usage_t::NONE;
+}
+/**
+ * @brief Метод установки режима использования таймаута на чтение события
+ *
+ * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ */
+void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем режим использования таймаута на чтение события
+		this->_client->setUsageReadTimeout(this->_eid, usage);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+}
+/**
+ * @brief Метод получения таймаута клиента
+ *
+ * @param action тип действия клиента
+ * @return       значение таймаута в миллисекундах
+ */
+uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем таймаут клиента
+		return this->_client->getTimeout(this->_eid, action);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки таймаута клиента
+ *
+ * @param action  тип действия клиента
+ * @param timeout значение таймаута в миллисекундах
+ */
+void awh::Client::setTimeout(const event::action_t action, const uint32_t timeout) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем таймаут клиента
+		this->_client->setTimeout(this->_eid, action, timeout);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+}
+/**
+ * @brief Метод установки пропускной способности клиента
+ *
+ * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
+ * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ * @return          результат выполнения установки
+ */
+bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем пропускную способность клиента
+		return this->_client->bandwidth(this->_eid, limiting, bandwidth);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод установки параметров keep-alive для клиента
+ *
+ * @param cnt   количество пакетов keep-alive
+ * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
+ * @param intvl интервал между пакетами keep-alive в секундах
+ * @return      результат выполнения установки
+ */
+bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем параметры keep-alive для клиента
+		return this->_client->keepAlive(this->_eid, cnt, idle, intvl);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(cnt, idle, intvl), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод установки идентификатора события клиента
