@@ -3113,23 +3113,55 @@ namespace timer {
 	 * @brief Структура для хранения уникального ключа таймера
 	 *
 	 */
-	struct TimerKey {
-		// Идентификатор таймера (для внутреннего использования)
-		uint8_t id;
-		// Идентификатор события для которого установлен таймер
-		event::id_t eid;
+	struct Key {
+		// Упакованный 64-битный ключ, содержащий идентификатор таймера и идентификатор события
+		uint64_t packed = 0;
 		/**
-		 * @brief Оператор сравнения для проверки равенства двух ключей таймера
+		 * @brief Оператор сравнения для использования в unordered_map при поиске таймера по ключу
 		 *
-		 * @param o другой ключ таймера для сравнения
-		 * @return  результат сравнения (true, если ключи равны, false в противном случае)
+		 * @param key ключ таймера для сравнения
+		 * @return    результат сравнения
 		 */
-		bool operator == (const TimerKey & o) const noexcept {
-			// Выполняем сравнение идентификаторов таймера и идентификаторов событий для проверки соответствия двух ключей таймера
-			return (
-				(this->id == o.id) &&
-				(this->eid == o.eid)
-			);
+		bool operator == (const Key & key) const noexcept {
+			// Сравниваем упакованные ключи таймеров для определения их равенства
+			return (this->packed == key.packed);
+		}
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param id  идентификатор таймера (для внутреннего использования)
+		 * @param eid идентификатор события для которого устанавливается таймер
+		 */
+		Key(const uint8_t id, const event::id_t eid) noexcept :
+		 packed((static_cast <uint64_t> (eid) << 8) | id) {}
+	};
+
+	/**
+	 * @brief Структура для хеширования ключа таймера в unordered_map
+	 *
+	 */
+	struct Hash {
+		/**
+		 * @brief Оператор хеширования для использования в unordered_map при поиске таймера по ключу
+		 *
+		 * @param key ключ таймера для хеширования
+		 * @return    хешированное значение ключа таймера
+		 */
+		size_t operator()(const Key & key) const noexcept {
+			// Для 64-битного ключа: быстрое перемешивание (FNV-1a или splitmix64)
+			uint64_t result = key.packed;
+			// Выполняем начальное перемешивание
+			result ^= result >> 33;
+			// Выполняем умножение на константу для перемешивания
+			result *= 0xFF51AFD7ED558CCDULL;
+			// Выполняем дополнительное перемешивание
+			result ^= result >> 33;
+			// Выполняем умножение на константу для дополнительного перемешивания
+			result *= 0xC4CEB9FE1A85EC53ULL;
+			// Выполняем финальное перемешивание
+			result ^= result >> 33;
+			// Возвращаем хешированное значение ключа таймера
+			return static_cast <size_t> (result);
 		}
 	};
 
@@ -3139,50 +3171,28 @@ namespace timer {
 	 */
 	struct Timer {
 		// Идентификатор таймера (для внутреннего использования)
-		uint8_t id;
+		uint8_t id = 0;
 		// Идентификатор события для которого установлен таймер
-		event::id_t eid;
+		event::id_t eid = 0;
 		// Срок истечения таймера в миллисекундах
-		uint64_t deadline;
+		uint64_t deadline = 0;
 		/**
 		 * @brief Оператор сравнения для приоритетной очереди таймеров
 		 *
-		 * @param o другой таймер для сравнения
-		 * @return  результат сравнения (true, если текущий таймер имеет более поздний срок истечения, чем другой таймер)
+		 * @param timer другой таймер для сравнения
+		 * @return      результат сравнения
 		 */
-		bool operator < (const Timer & o) const noexcept {
+		bool operator < (const Timer & timer) const noexcept {
 			// Если сроки истечения таймеров не равны, выполняем первичную сортировку по сроку истечения
-			if(this->deadline != o.deadline)
+			if(this->deadline != timer.deadline)
 				// Проверяем, имеет ли текущий таймер более поздний срок истечения, чем другой таймер
-				return (this->deadline < o.deadline);
+				return (this->deadline < timer.deadline);
 			// Если идентификаторы событий таймеров не равны, выполняем вторичную сортировку по идентификатору события
-			if(this->eid != o.eid)
+			if(this->eid != timer.eid)
 				// Проверяем вторую уникальность
-				return (this->eid < o.eid);
+				return (this->eid < timer.eid);
 			// Проверяем третью уникальность по идентификатору таймера
-			return (this->id < o.id);
-		}
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Timer() noexcept : id(0), eid(0), deadline(0) {}
-	};
-
-	/**
-	 * @brief Структура для хеширования ключа таймера в unordered_map
-	 *
-	 */
-	struct TimerKeyHash {
-		/**
-		 * @brief Оператор хеширования для генерации хеша на основе ключа таймера
-		 *
-		 * @param k ключ таймера для которого нужно сгенерировать хеш
-		 * @return  хеш-значение, сгенерированное на основе идентификатора события и идентификатора таймера
-		 */
-		size_t operator()(const TimerKey & k) const noexcept {
-			// Комбинируем хеши eid и id. Подойдёт простая смесь.
-			return (std::hash <event::id_t> ()(k.eid) ^ (std::hash <uint8_t> ()(k.id) << 1));
+			return (this->id < timer.id);
 		}
 	};
 
@@ -3196,7 +3206,7 @@ namespace timer {
 	 * @brief Список активных таймеров, ожидающих истечения
 	 *
 	 */
-	static unordered_map <TimerKey, std::set <Timer>::iterator, TimerKeyHash> __awh_lookup__;
+	static unordered_map <Key, std::set <Timer>::iterator, Hash> __awh_lookup__;
 
 	/**
 	 * @brief Функция получения текущего штампа времени в миллисекундах
@@ -3308,10 +3318,8 @@ namespace timer {
 		if(tm.status == event::status_t::PENDING){
 			// Снимаем статус таймаута (отключаем таймер)
 			tm.status = event::status_t::NONE;
-			// Формируем ключ таймера для поиска в списке активных таймеров
-			TimerKey key{tm.id, eid};
 			// Ищем таймер в списке активных таймеров по ключу таймера
-			if(auto i = __awh_lookup__.find(key); i != __awh_lookup__.end()){
+			if(auto i = __awh_lookup__.find({tm.id, eid}); i != __awh_lookup__.end()){
 				// Удаляем таймер из приоритетной очереди таймеров
 				__awh_heap__.erase(i->second);
 				// Удаляем таймер из списка активных таймеров
@@ -3350,14 +3358,6 @@ namespace timer {
 				case static_cast <uint8_t> (flag_t::SIMPLE): {
 					// Если время задержки таймаута установлено
 					if(tm.delay > 0){
-						// Создаём объект таймера
-						Timer timer;
-						// Устанавливаем идентификатор события для которого устанавливается таймер
-						timer.eid = eid;
-						// Устанавливаем идентификатор таймера (для внутреннего использования)
-						timer.id = tm.id;
-						// Формируем срок истечения таймера
-						timer.deadline = (now + static_cast <uint64_t> (tm.delay));
 						/**
 						 * В зависимости от текущего статуса события создаём новый или обновляем таймер
 						 */
@@ -3367,19 +3367,16 @@ namespace timer {
 								// Устанавливаем статус таймаута в ожидание
 								tm.status = event::status_t::PENDING;
 								// Вставляем новую версию и сохраняем итератор
-								auto [iter, inserted] = __awh_heap__.insert(std::move(timer));
+								auto [iter, inserted] = __awh_heap__.insert({tm.id, eid, (now + static_cast <uint64_t> (tm.delay))});
 								// Если таймер был успешно вставлен
-								if(inserted){
-									// Формируем ключ таймера для поиска в списке активных таймеров
-									TimerKey key{tm.id, eid};
+								if(inserted)
 									// Обновляем список активных таймеров
-									__awh_lookup__[key] = iter;
-								}
+									__awh_lookup__[{tm.id, eid}] = iter;
 							} break;
 							// Если таймаут ожидания уже активирован для данного события
 							case static_cast <uint8_t> (event::status_t::PENDING): {
 								// Формируем ключ таймера для поиска в списке активных таймеров
-								TimerKey key{tm.id, eid};
+								Key key{tm.id, eid};
 								// Ищем таймер в списке активных таймеров по ключу таймера
 								if(auto i = __awh_lookup__.find(key); i != __awh_lookup__.end()){
 									// Удаляем таймер из приоритетной очереди таймеров
@@ -3388,7 +3385,7 @@ namespace timer {
 									__awh_lookup__.erase(i);
 								}
 								// Вставляем новую версию и сохраняем итератор
-								auto [iter, inserted] = __awh_heap__.insert(::move(timer));
+								auto [iter, inserted] = __awh_heap__.insert({tm.id, eid, (now + static_cast <uint64_t> (tm.delay))});
 								// Если таймер был успешно вставлен
 								if(inserted)
 									// Обновляем список активных таймеров
@@ -3409,16 +3406,8 @@ namespace timer {
 						tm.delay = 1;
 					// Устанавливаем статус таймаута в ожидание
 					tm.status = event::status_t::PENDING;
-					// Создаём объект таймера
-					Timer timer;
-					// Устанавливаем идентификатор события для которого устанавливается таймер
-					timer.eid = eid;
-					// Устанавливаем идентификатор таймера (для внутреннего использования)
-					timer.id = tm.id;
-					// Формируем срок истечения таймера
-					timer.deadline = (now + static_cast <uint64_t> (tm.delay));
 					// Формируем ключ таймера для поиска в списке активных таймеров
-					TimerKey key{tm.id, eid};
+					Key key{tm.id, eid};
 					// Ищем таймер в списке активных таймеров по ключу таймера
 					if(auto i = __awh_lookup__.find(key); i != __awh_lookup__.end()){
 						// Удаляем таймер из приоритетной очереди таймеров
@@ -3427,7 +3416,7 @@ namespace timer {
 						__awh_lookup__.erase(i);
 					}
 					// Вставляем новую версию и сохраняем итератор
-					auto [iter, inserted] = __awh_heap__.insert(::move(timer));
+					auto [iter, inserted] = __awh_heap__.insert({tm.id, eid, (now + static_cast <uint64_t> (tm.delay))});
 					// Если таймер был успешно вставлен
 					if(inserted)
 						// Обновляем список активных таймеров
@@ -3486,12 +3475,10 @@ namespace timer {
 				auto i = __awh_heap__.begin();
 				// Извлекаем таймер из приоритетной очереди таймеров
 				Timer timer = ::move(* i);
-				// Удаляем из структур ПЕРЕД вызовом (чтобы колбэк мог безопасно создать новый)
-				TimerKey key{timer.id, timer.eid};
 				// Удаляем таймер из приоритетной очереди таймеров
 				__awh_heap__.erase(i);
 				// Удаляем таймер из списка активных таймеров
-				__awh_lookup__.erase(key);
+				__awh_lookup__.erase({timer.id, timer.eid});
 				// Выполняем поиск узла в глобальном списке узлов событий
 				auto j = ::__awh_nodes__.find(timer.eid);
 				// Если узел найден в куче
