@@ -38,7 +38,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 	 * Временное состояние клиента
 	 */
 	switch(static_cast <uint8_t> (state)){
-		// Если временное состояние клиента установлено на "запуск клиента"
+		// Если мы получили статус события клиента
 		case static_cast <uint8_t> (state_t::CLIENT): {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("status"))
@@ -67,7 +67,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 				}
 			}
 		} break;
-		// Если временное состояние клиента установлено на "запуск DNS-резолвера"
+		// Если мы получили статус события DNS-резолвера
 		case static_cast <uint8_t> (state_t::RESOLVER): {
 			/**
 			 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
