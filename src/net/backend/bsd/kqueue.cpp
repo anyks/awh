@@ -1946,7 +1946,7 @@ namespace local {
 	 *
 	 * @return текущее время в наносекундах
 	 */
-	static uint64_t timestamp() noexcept {
+	static uint64_t nanostamp() noexcept {
 		// Объект структуры для хранения времени
 		struct timespec ts{0};
 		// Получаем текущее время в формате CLOCK_MONOTONIC
@@ -3199,6 +3199,99 @@ namespace timer {
 	static unordered_map <TimerKey, std::set <Timer>::iterator, TimerKeyHash> __awh_lookup__;
 
 	/**
+	 * @brief Функция получения текущего штампа времени в миллисекундах
+	 *
+	 * @return текущее время в миллисекундах
+	 */
+	static uint64_t timestamp() noexcept {
+		// Объект структуры для хранения времени
+		struct timespec ts{0};
+		// Получаем текущее время в формате CLOCK_MONOTONIC
+		::clock_gettime(CLOCK_MONOTONIC, &ts);
+		// Возвращаем текущее время в миллисекундах
+		return ((static_cast <uint64_t> (ts.tv_sec) * 1000ULL) + (static_cast <uint64_t> (ts.tv_nsec) / 1000000ULL));
+	}
+
+	/**
+	 * @brief Функция для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
+	 *
+	 * @param rate режим ограничения скорости события для которого устанавливается таймер
+	 * @param log  объект работы с логами
+	 */
+	static void __reschedule_kernel_timer__(const event::rate_t rate, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем текущее значение времени
+			const uint64_t now = timestamp();
+			// Получаем срок истечения ближайшего таймера
+			const uint64_t deadline = __awh_heap__.begin()->deadline;
+			// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
+			const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
+			/**
+			 * Определяем как быстро нужно выполнить событие
+			 */
+			switch(static_cast <uint8_t> (rate)){
+				// Если нужно выполнить событие мгновенно
+				case static_cast <uint8_t> (event::rate_t::INSTANT): {
+					// Создаём объект события для Kqueue
+					struct kevent event{};
+					// Устанавливаем событие таймера для Kqueue
+					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
+					// Активируем событие в ядре операционной системы через Kqueue
+					if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				} break;
+				// Если нужно выполнить отложенное событие
+				case static_cast <uint8_t> (event::rate_t::DEFERRED): {
+					// Выполняем поиск узла в глобальном списке узлов событий
+					auto i = ::__awh_nodes__.find(__awh_heap__.begin()->eid);
+					// Если узел найден
+					if(i != ::__awh_nodes__.end()){
+						// Создаём объект события для Kqueue
+						struct kevent event{};
+						// Устанавливаем событие таймера для Kqueue
+						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), i->second.get());
+						// Добавляем новое событие в список изменений
+						::events::add(std::move(event));
+					}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+
+	/**
 	 * @brief Шаблон функции для отмены таймера
 	 *
 	 * @tparam T тип объекта таймера
@@ -3248,7 +3341,7 @@ namespace timer {
 		 */
 		try {
 			// Получаем текущее значение времени
-			const uint64_t now = ::local::timestamp();
+			const uint64_t now = timestamp();
 			/**
 			 * Определяем как нужно работать с таймером в зависимости от переданных флагов
 			 */
@@ -3303,54 +3396,9 @@ namespace timer {
 							} break;
 						}
 						// Если этот таймер стал ближайшим — немедленно обновляем kqueue
-						if(!__awh_heap__.empty() && (__awh_heap__.begin()->eid == eid) && (__awh_heap__.begin()->id == tm.id)){
-							// Получаем срок истечения ближайшего таймера
-							const uint64_t deadline = __awh_heap__.begin()->deadline;
-							// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
-							const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
-							/**
-							 * Определяем как быстро нужно выполнить событие
-							 */
-							switch(static_cast <uint8_t> (rate)){
-								// Если нужно выполнить событие мгновенно
-								case static_cast <uint8_t> (event::rate_t::INSTANT): {
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Устанавливаем событие таймера для Kqueue
-									EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
-									// Активируем событие в ядре операционной системы через Kqueue
-									if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-										#endif
-									}
-								} break;
-								// Если нужно выполнить отложенное событие
-								case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-									// Выполняем поиск узла в глобальном списке узлов событий
-									auto i = ::__awh_nodes__.find(eid);
-									// Если узел найден
-									if(i != ::__awh_nodes__.end()){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Устанавливаем событие таймера для Kqueue
-										EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), i->second.get());
-										// Добавляем новое событие в список изменений
-										::events::add(std::move(event));
-									}
-								} break;
-							}
-						}
+						if(!__awh_heap__.empty() && (__awh_heap__.begin()->eid == eid) && (__awh_heap__.begin()->id == tm.id))
+							// Активируем функцию для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
+							__reschedule_kernel_timer__(rate, log);
 					}
 				} break;
 				// Если установлен флаг FORCED, таймер устанавливается принудительно, даже если ранее был установлен для данного события
@@ -3385,54 +3433,9 @@ namespace timer {
 						// Обновляем список активных таймеров
 						__awh_lookup__[key] = iter;
 					// Если этот таймер стал ближайшим — немедленно обновляем kqueue
-					if(!__awh_heap__.empty() && (__awh_heap__.begin()->eid == eid) && (__awh_heap__.begin()->id == tm.id)){
-						// Получаем срок истечения ближайшего таймера
-						const uint64_t deadline = __awh_heap__.begin()->deadline;
-						// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
-						const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
-						/**
-						 * Определяем как быстро нужно выполнить событие
-						 */
-						switch(static_cast <uint8_t> (rate)){
-							// Если нужно выполнить событие мгновенно
-							case static_cast <uint8_t> (event::rate_t::INSTANT): {
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Устанавливаем событие таймера для Kqueue
-								EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
-								// Активируем событие в ядре операционной системы через Kqueue
-								if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
-								}
-							} break;
-							// Если нужно выполнить отложенное событие
-							case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-								// Выполняем поиск узла в глобальном списке узлов событий
-								auto i = ::__awh_nodes__.find(eid);
-								// Если узел найден
-								if(i != ::__awh_nodes__.end()){
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Устанавливаем событие таймера для Kqueue
-									EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), i->second.get());
-									// Добавляем новое событие в список изменений
-									::events::add(std::move(event));
-								}
-							} break;
-						}
-					}
+					if(!__awh_heap__.empty() && (__awh_heap__.begin()->eid == eid) && (__awh_heap__.begin()->id == tm.id))
+						// Активируем функцию для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
+						__reschedule_kernel_timer__(rate, log);
 				} break;
 			}
 		/**
@@ -3474,11 +3477,11 @@ namespace timer {
 		 */
 		try {
 			// Получаем текущее значение времени
-			const uint64_t now = ::local::timestamp();
+			const uint64_t now = timestamp();
 			/**
 			 * Выгребаем ВСЕ истёкшие таймеры
 			 */
-			while(!__awh_heap__.empty() && __awh_heap__.begin()->deadline <= now){
+			while(!__awh_heap__.empty() && (__awh_heap__.begin()->deadline <= now)){
 				// Получаем таймер с наивысшим приоритетом (наименьшим сроком истечения)
 				auto i = __awh_heap__.begin();
 				// Извлекаем таймер из приоритетной очереди таймеров
@@ -3491,7 +3494,7 @@ namespace timer {
 				__awh_lookup__.erase(key);
 				// Выполняем поиск узла в глобальном списке узлов событий
 				auto j = ::__awh_nodes__.find(timer.eid);
-				// Если узел найден
+				// Если узел найден в куче
 				if(j != ::__awh_nodes__.end()){
 					/**
 					 * Определяем чем является текущий узел
@@ -3718,6 +3721,12 @@ namespace timer {
 					}
 				}
 			}
+			/**
+			 * Если в куче что-то осталось — планируем следующий тик
+			 */
+			if(!__awh_heap__.empty())
+				// Активируем функцию для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
+				__reschedule_kernel_timer__(rate, log);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3813,11 +3822,11 @@ namespace io {
 				// Смещение в файле
 				off_t offset = 0;
 				// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-				const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+				const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 				/**
 				 * Считываем все данные из файла пока не прочитаем всё
 				 */
-				while(::local::timestamp() < deadline){
+				while(::local::nanostamp() < deadline){
 					// Если файл открыт удачно
 					if(::fstat(fs->fd, &fs->info) == 0){
 						// Если размер файла изменился
@@ -3974,11 +3983,11 @@ namespace io {
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-								const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+								const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 								/**
 								 * Считываем все данные из файла пока не прочитаем всё
 								 */
-								while(::local::timestamp() < deadline){
+								while(::local::nanostamp() < deadline){
 									/**
 									 * Сбрасываем значение errno перед чтением
 									 */
@@ -4137,11 +4146,11 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-						const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+						const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 						/**
 						 * Считываем все данные из файла пока не прочитаем всё
 						 */
-						while(::local::timestamp() < deadline){
+						while(::local::nanostamp() < deadline){
 							/**
 							 * Сбрасываем значение errno перед чтением
 							 */
@@ -4271,11 +4280,11 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-						const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+						const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 						/**
 						 * Считываем все данные из файла пока не прочитаем всё
 						 */
-						while(::local::timestamp() < deadline){
+						while(::local::nanostamp() < deadline){
 							/**
 							 * Сбрасываем значение errno перед чтением
 							 */
@@ -4473,11 +4482,11 @@ namespace io {
 						// Если есть лимит для чтения данных из сокета
 						if(size > 0){
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -4790,11 +4799,11 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -5101,11 +5110,11 @@ namespace io {
 				// Количество прочитанных байт
 				ssize_t bytes = 0;
 				// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-				const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+				const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 				/**
 				 * Считываем все данные из файла пока не прочитаем всё
 				 */
-				while(::local::timestamp() < deadline){
+				while(::local::nanostamp() < deadline){
 					/**
 					 * Сбрасываем значение errno перед чтением
 					 */
@@ -6246,11 +6255,11 @@ namespace io {
 						// Если есть лимит для чтения данных из сокета
 						if(size > 0){
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -6563,11 +6572,11 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -6736,11 +6745,11 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -6925,11 +6934,11 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -7196,11 +7205,11 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -7574,11 +7583,11 @@ namespace io {
 						// Если событие является неблокирующим
 						if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 							// Получаем время окончания цикла обработки событий для предотвращения бесконечного цикла при постоянных изменениях в файле
-							const uint64_t deadline = (::local::timestamp() + AWH_EVENT_MAX_LOOP_WAIT);
+							const uint64_t deadline = (::local::nanostamp() + AWH_EVENT_MAX_LOOP_WAIT);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
-							while(::local::timestamp() < deadline){
+							while(::local::nanostamp() < deadline){
 								/**
 								 * Сбрасываем значение errno перед чтением
 								 */
@@ -18781,6 +18790,8 @@ namespace io {
 											}
 											// Закрываем дескриптор сокета
 											::close(client->transfer.fd);
+											// Сбрасываем значение дескриптора сокета
+											client->transfer.fd = net::invalid_socket_t;
 										}
 										// Устанавливаем статус события в состояние переподключения
 										client->state.status = event::status_t::RECONNECTED;
@@ -19488,8 +19499,8 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Получаем текущее значение объекта даты
-			const uint64_t date = ::local::timestamp();
+			// Получаем текущее значение даты в наносекундах
+			const uint64_t date = ::local::nanostamp();
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -20662,6 +20673,8 @@ namespace io {
 									}
 									// Закрываем сокет подключения
 									::close(peer->transfer.fd);
+									// Сбрасываем значение дескриптора сокета
+									peer->transfer.fd = net::invalid_socket_t;
 									// Выходим из функции
 									return false;
 								}
@@ -20724,6 +20737,8 @@ namespace io {
 											}
 											// Закрываем сокет подключения
 											::close(peer->transfer.fd);
+											// Сбрасываем значение дескриптора сокета
+											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
 											return false;
 										}
@@ -20757,6 +20772,8 @@ namespace io {
 											}
 											// Закрываем сокет подключения
 											::close(peer->transfer.fd);
+											// Сбрасываем значение дескриптора сокета
+											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
 											return false;
 										}
@@ -20795,6 +20812,8 @@ namespace io {
 										}
 										// Закрываем сокет подключения
 										::close(peer->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
 										return false;
 									}
@@ -20828,6 +20847,8 @@ namespace io {
 										}
 										// Закрываем сокет подключения
 										::close(peer->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
 										return false;
 									}
@@ -20902,6 +20923,8 @@ namespace io {
 											}
 											// Закрываем сокет подключения
 											::close(peer->transfer.fd);
+											// Сбрасываем значение дескриптора сокета
+											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
 											return false;
 										}
@@ -20935,6 +20958,8 @@ namespace io {
 											}
 											// Закрываем сокет подключения
 											::close(peer->transfer.fd);
+											// Сбрасываем значение дескриптора сокета
+											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
 											return false;
 										}
@@ -20973,6 +20998,8 @@ namespace io {
 										}
 										// Закрываем сокет подключения
 										::close(peer->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
 										return false;
 									}
@@ -21006,6 +21033,8 @@ namespace io {
 										}
 										// Закрываем сокет подключения
 										::close(peer->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
 										return false;
 									}
@@ -52509,6 +52538,8 @@ void awh::engine::IO::clear() noexcept {
 								::closedir(dir->handle);
 							// Закрываем дескриптор сокета
 							::close(dir->fd);
+							// Сбрасываем значение дескриптора сокета
+							dir->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
 							if(dir->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
@@ -52531,6 +52562,8 @@ void awh::engine::IO::clear() noexcept {
 							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(fs->fd);
+							// Сбрасываем значение дескриптора сокета
+							fs->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
@@ -52553,6 +52586,8 @@ void awh::engine::IO::clear() noexcept {
 							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(ipc->transfer.fd);
+							// Сбрасываем значение дескриптора сокета
+							ipc->transfer.fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
@@ -52605,6 +52640,8 @@ void awh::engine::IO::clear() noexcept {
 							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(peer->transfer.fd);
+							// Сбрасываем значение дескриптора сокета
+							peer->transfer.fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
@@ -52681,6 +52718,8 @@ void awh::engine::IO::clear() noexcept {
 							#endif
 							// Закрываем дескриптор сокета
 							::close(tunnel->fd);
+							// Сбрасываем значение дескриптора сокета
+							tunnel->fd = net::invalid_socket_t;
 						}
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
@@ -52754,6 +52793,8 @@ void awh::engine::IO::clear() noexcept {
 							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(client->transfer.fd);
+							// Сбрасываем значение дескриптора сокета
+							client->transfer.fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
 							if(client->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
@@ -52812,6 +52853,8 @@ void awh::engine::IO::clear() noexcept {
 							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(server->fd);
+							// Сбрасываем значение дескриптора сокета
+							server->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
@@ -52954,6 +52997,8 @@ bool awh::engine::IO::reinitialize() noexcept {
 			::local::change.clear();
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
+		// Сбрасываем значение дескриптора сокета
+		::__awh_kq__ = net::invalid_socket_t;
 		// Выполняем инициализацию Kqueue
 		if(!(result = ((::__awh_kq__ = ::kqueue()) != net::invalid_socket_t))){
 			/**
@@ -53043,9 +53088,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 						// Закрываем каталог
 						::closedir(dir->handle);
 					// Если дескриптор сокета инициализирован
-					if(dir->fd != net::invalid_socket_t)
+					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(dir->fd);
+						// Сбрасываем значение дескриптора сокета
+						dir->fd = net::invalid_socket_t;
+					}
 					// Если событие ожидает результата обработки события
 					if((dir->state.status == event::status_t::PENDING) ||
 					   (dir->state.status == event::status_t::RESUMED)){
@@ -53073,9 +53121,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(fs->fd != net::invalid_socket_t)
+					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(fs->fd);
+						// Сбрасываем значение дескриптора сокета
+						fs->fd = net::invalid_socket_t;
+					}
 					// Если событие ожидает результата обработки события
 					if((fs->state.status == event::status_t::PENDING) ||
 					   (fs->state.status == event::status_t::RESUMED)){
@@ -53497,9 +53548,12 @@ bool awh::engine::IO::deinitialize() noexcept {
 						// Закрываем каталог
 						::closedir(dir->handle);
 					// Если дескриптор сокета инициализирован
-					if(dir->fd != net::invalid_socket_t)
+					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(dir->fd);
+						// Сбрасываем значение дескриптора сокета
+						dir->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(dir->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -53512,9 +53566,12 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(fs->fd != net::invalid_socket_t)
+					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(fs->fd);
+						// Сбрасываем значение дескриптора сокета
+						fs->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(fs->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -53527,9 +53584,12 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(ipc->transfer.fd != net::invalid_socket_t)
+					if(ipc->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(ipc->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						ipc->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -53542,9 +53602,12 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(peer->transfer.fd != net::invalid_socket_t)
+					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(peer->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						peer->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(peer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -53599,9 +53662,12 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(client->transfer.fd != net::invalid_socket_t)
+					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(client->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						client->transfer.fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(client->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -53641,9 +53707,12 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(server->fd != net::invalid_socket_t)
+					if(server->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(server->fd);
+						// Сбрасываем значение дескриптора сокета
+						server->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
@@ -55124,6 +55193,8 @@ awh::engine::IO::~IO() noexcept {
 	if(::__awh_kq__ != net::invalid_socket_t){
 		// Выполняем закрытие Kqueue
 		::close(::__awh_kq__);
+		// Сбрасываем значение дескриптора сокета
+		::__awh_kq__ = net::invalid_socket_t;
 		// Очищаем временный список подготовленных событий
 		::local::change.clear();
 	}
@@ -55161,9 +55232,12 @@ awh::engine::IO::~IO() noexcept {
 						// Закрываем каталог
 						::closedir(dir->handle);
 					// Если дескриптор сокета инициализирован
-					if(dir->fd != net::invalid_socket_t)
+					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(dir->fd);
+						// Сбрасываем значение дескриптора сокета
+						dir->fd = net::invalid_socket_t;
+					}
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
@@ -55172,9 +55246,12 @@ awh::engine::IO::~IO() noexcept {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(fs->fd != net::invalid_socket_t)
+					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(fs->fd);
+						// Сбрасываем значение дескриптора сокета
+						fs->fd = net::invalid_socket_t;
+					}
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
@@ -55183,9 +55260,12 @@ awh::engine::IO::~IO() noexcept {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(ipc->transfer.fd != net::invalid_socket_t)
+					if(ipc->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(ipc->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						ipc->transfer.fd = net::invalid_socket_t;
+					}
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
@@ -55194,9 +55274,12 @@ awh::engine::IO::~IO() noexcept {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(peer->transfer.fd != net::invalid_socket_t)
+					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(peer->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						peer->transfer.fd = net::invalid_socket_t;
+					}
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
@@ -55221,9 +55304,12 @@ awh::engine::IO::~IO() noexcept {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(client->transfer.fd != net::invalid_socket_t)
+					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(client->transfer.fd);
+						// Сбрасываем значение дескриптора сокета
+						client->transfer.fd = net::invalid_socket_t;
+					}
 					// Если событие является UNIX-доменным
 					if(client->state.family == event::family_t::UDS){
 						/**
@@ -55259,9 +55345,12 @@ awh::engine::IO::~IO() noexcept {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
-					if(server->fd != net::invalid_socket_t)
+					if(server->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
 						::close(server->fd);
+						// Сбрасываем значение дескриптора сокета
+						server->fd = net::invalid_socket_t;
+					}
 					// Если событие является UNIX-доменным датаграммным сокетом
 					if(server->state.family == event::family_t::UDS){
 						// Извлекаем файл сокета клиента
