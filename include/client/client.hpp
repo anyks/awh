@@ -40,6 +40,16 @@ namespace awh {
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Client {
 		protected:
+			/**
+			 * @brief Временное состояние клиента
+			 *
+			 */
+			enum class state_t : uint8_t {
+				NONE     = 0x00, // Нет состояния
+				CLIENT   = 0x01, // Состояние запуска клиента
+				RESOLVER = 0x02  // Состояние запуска DNS-резолвера
+			};
+		protected:
 			// Адрес хоста целевой машины
 			string _host;
 		protected:
@@ -73,8 +83,10 @@ namespace awh {
 			 * @brief Метод изменения статуса клиента
 			 *
 			 * @param status новый статус клиента
+			 * @param state  новое временное состояние клиента
 			 */
-			void status(const event::status_t status) noexcept;
+			void status(const event::status_t status, const state_t state) noexcept;
+		private:
 			/**
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
 			 *
@@ -162,12 +174,6 @@ namespace awh {
 			 */
 			void processTLS(const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		private:
-			/**
-			 * @brief Метод получения события DNS-резолвера
-			 *
-			 * @param status статус события DNS-резолвера
-			 */
-			void statusDNS(const event::status_t status) noexcept;
 			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
 			 *
