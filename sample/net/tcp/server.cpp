@@ -60,7 +60,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Выводим сообщение об ошибке установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем переиспользуемый таймаут на чтение события
-		// io.setUsageReadTimeout(eid, event::usage_t::REUSABLE);
+		io.setUsageReadTimeout(eid, event::usage_t::REUSABLE);
 		// Устанавливаем IP-адрес события
 		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на изменение статуса события
