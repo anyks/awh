@@ -68,89 +68,119 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif (CMAKE_USING_SOLARIS_PORTS)
 endif()
 
-# Если активирован флаг установки максимального размера HTTP-тела запроса/ответа
+# Если активирован флаг установки максимального размера HTTP-тела запроса/ответа (по умолчанию: 10485760 = 10Mb)
 if (CMAKE_MAX_HTTP_BODY_SIZE)
     add_compile_definitions(AWH_MAX_BODY_SIZE=${CMAKE_MAX_HTTP_BODY_SIZE})
     message(STATUS "Build with max body size: ${CMAKE_MAX_HTTP_BODY_SIZE}\n")
 endif (CMAKE_MAX_HTTP_BODY_SIZE)
 
-# Если активирован флаг установки максимального размера SSL буфера
+# Если активирован флаг установки максимального размера SSL буфера (по умолчанию: 16384)
 if (CMAKE_MAX_SSL_BUFFER_SIZE)
     add_compile_definitions(AWH_MAX_SSL_BUFFER_SIZE=${CMAKE_MAX_SSL_BUFFER_SIZE})
     message(STATUS "Build with max SSL buffer size: ${CMAKE_MAX_SSL_BUFFER_SIZE}\n")
 endif (CMAKE_MAX_SSL_BUFFER_SIZE)
 
-# Если активирован флаг установки максимального размера буфера на чтение данных событий
+# Если активирован флаг установки максимального размера буфера на чтение данных событий (по умолчанию: 65536)
 if (CMAKE_EVENT_MAX_BUFFER_SIZE)
     add_compile_definitions(AWH_EVENT_MAX_BUFFER_SIZE=${CMAKE_EVENT_MAX_BUFFER_SIZE})
     message(STATUS "Build with max event buffer size: ${CMAKE_EVENT_MAX_BUFFER_SIZE}\n")
 endif (CMAKE_EVENT_MAX_BUFFER_SIZE)
 
-# Если активирован флаг установки максимального количества опрашиваемых событий за одну итерацию
+# Если активирован флаг установки максимального количества опрашиваемых событий за одну итерацию (по умолчанию: 64)
 if (CMAKE_MAX_POLL_EVENTS_COUNT)
     add_compile_definitions(AWH_MAX_POLL_EVENTS_COUNT=${CMAKE_MAX_POLL_EVENTS_COUNT})
     message(STATUS "Build with max poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
 endif (CMAKE_MAX_POLL_EVENTS_COUNT)
 
-# Если активирован флаг установки максимального времени ожидания получения данных в наносекундхах
+# Если активирован флаг установки максимального времени ожидания получения данных в наносекундхах (по умолчанию: 500000 наносекунд = 0.5 мс)
 if (CMAKE_EVENT_MAX_LOOP_WAIT)
     add_compile_definitions(AWH_EVENT_MAX_LOOP_WAIT=${CMAKE_EVENT_MAX_LOOP_WAIT})
     message(STATUS "Build with max event loop wait: ${CMAKE_EVENT_MAX_LOOP_WAIT}\n")
 endif (CMAKE_EVENT_MAX_LOOP_WAIT)
 
-# Если активирован флаг установки максимального размера очереди
+# Если активирован флаг установки максимального размера очереди (по умолчанию: 1000)
 if (CMAKE_MAX_RECORDS_QUEUE)
     add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})
     message(STATUS "Build with max count records queue: ${CMAKE_MAX_RECORDS_QUEUE}\n")
 endif (CMAKE_MAX_RECORDS_QUEUE)
 
-# Если активирован флаг установки максимального размера потребления памяти очередью
+# Если активирован флаг установки максимального размера потребления памяти очередью (по умолчанию: 10485760 = 10Mb)
 if (CMAKE_MAX_MEMORY_QUEUE)
     add_compile_definitions(AWH_MAX_MEMORY_QUEUE=${CMAKE_MAX_MEMORY_QUEUE})
     message(STATUS "Build with max memory queue usage size: ${CMAKE_MAX_MEMORY_QUEUE}\n")
 endif (CMAKE_MAX_MEMORY_QUEUE)
 
-# Если активирован флаг установки максимального размера потребления памяти буфера
+# Если активирован флаг установки максимального размера потребления памяти буфера (по умолчанию: 10485760 = 10Mb)
 if (CMAKE_MAX_MEMORY_BUFFER)
     add_compile_definitions(AWH_MAX_MEMORY_BUFFER=${CMAKE_MAX_MEMORY_BUFFER})
     message(STATUS "Build with max memory buffer usage size: ${CMAKE_MAX_MEMORY_BUFFER}\n")
 endif (CMAKE_MAX_MEMORY_BUFFER)
 
-# Если активирован флаг установки максимального размера буфера для очереди сетевых событий
+# Если активирован флаг установки максимального размера буфера для очереди сетевых событий (по умолчанию: 65536)
 if (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
     add_compile_definitions(AWH_NETWORK_QUEUE_BUFFER_SIZE=${CMAKE_NETWORK_QUEUE_BUFFER_SIZE})
     message(STATUS "Build with max network queue buffer size: ${CMAKE_NETWORK_QUEUE_BUFFER_SIZE}\n")
 endif (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
 
-# Если активирован флаг установки размера MTU для UDP сообщений в IPv4
+# Если активирован флаг установки размера MTU для UDP сообщений в IPv4 (по умолчанию: 1400)
 if (CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE)
     add_compile_definitions(AWH_MTU_UDP_IPV4_PAYLOAD_SIZE=${CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE})
     message(STATUS "Build with MTU UDP IPv4 payload size: ${CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE}\n")
 endif (CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE)
 
-# Если активирован флаг установки размера MTU для UDP сообщений в IPv6
+# Если активирован флаг установки размера MTU для UDP сообщений в IPv6 (по умолчанию: 1380)
 if (CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE)
     add_compile_definitions(AWH_MTU_UDP_IPV6_PAYLOAD_SIZE=${CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE})
     message(STATUS "Build with MTU UDP IPv6 payload size: ${CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE}\n")
 endif (CMAKE_MTU_UDP_IPV6_PAYLOAD_SIZE)
 
-# Если активирован флаг установки размера MTU для TCP сообщений в IPv4
+# Если активирован флаг установки размера MTU для TCP сообщений в IPv4 (по умолчанию: 1440)
 if (CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE)
     add_compile_definitions(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE=${CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE})
     message(STATUS "Build with MTU TCP IPv4 payload size: ${CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE}\n")
 endif (CMAKE_MTU_TCP_IPV4_PAYLOAD_SIZE)
 
-# Если активирован флаг установки размера MTU для TCP сообщений в IPv6
+# Если активирован флаг установки размера MTU для TCP сообщений в IPv6 (по умолчанию: 1420)
 if (CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE)
     add_compile_definitions(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE=${CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE})
     message(STATUS "Build with MTU TCP IPv6 payload size: ${CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE}\n")
 endif (CMAKE_MTU_TCP_IPV6_PAYLOAD_SIZE)
 
-# Если активирован флаг установки размера буфера чанка модуля компрессии/декомпрессии
+# Если активирован флаг установки размера буфера чанка модуля компрессии/декомпрессии (по умолчанию: 16384)
 if (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
     add_compile_definitions(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE=${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE})
     message(STATUS "Build with compressor module chunk buffer size: ${CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE}\n")
 endif (CMAKE_COMPRESSOR_CHUNK_BUFFER_SIZE)
+
+# Если активирован флаг установки размера пакета для внутренних таймеров (по умолчанию: 256)
+if (CMAKE_BATCH_SIZE_TIMER_INTERNAL)
+    add_compile_definitions(AWH_BATCH_SIZE_TIMER_INTERNAL=${CMAKE_BATCH_SIZE_TIMER_INTERNAL})
+    message(STATUS "Build with batch size for internal timers: ${CMAKE_BATCH_SIZE_TIMER_INTERNAL}\n")
+endif (CMAKE_BATCH_SIZE_TIMER_INTERNAL)
+
+# Если активирован флаг установки количества обрабатываемых таймеров за одну итерацию для внутренних таймеров (по умолчанию: 256)
+if (CMAKE_COUNT_PROCESSED_TIMER_INTERNAL)
+    add_compile_definitions(AWH_COUNT_PROCESSED_TIMER_INTERNAL=${CMAKE_COUNT_PROCESSED_TIMER_INTERNAL})
+    message(STATUS "Build with count processed timers for internal timers: ${CMAKE_COUNT_PROCESSED_TIMER_INTERNAL}\n")
+endif (CMAKE_COUNT_PROCESSED_TIMER_INTERNAL)
+
+# Если активирован флаг установки максимального размера кучи для внутренних таймеров (по умолчанию: 50 000)
+if (CMAKE_HEAP_SIZE_TIMER_INTERNAL)
+    add_compile_definitions(AWH_HEAP_SIZE_TIMER_INTERNAL=${CMAKE_HEAP_SIZE_TIMER_INTERNAL})
+    message(STATUS "Build with heap size for internal timers: ${CMAKE_HEAP_SIZE_TIMER_INTERNAL}\n")
+endif (CMAKE_HEAP_SIZE_TIMER_INTERNAL)
+
+# Если активирован флаг установки размера чанка для внутренних таймеров (по умолчанию: 1024, рекомендуется 4096 для высоконагруженных систем)
+if (CMAKE_CHUNK_EIDS_TIMER_INTERNAL)
+    add_compile_definitions(AWH_CHUNK_EIDS_TIMER_INTERNAL=${CMAKE_CHUNK_EIDS_TIMER_INTERNAL})
+    message(STATUS "Build with chunk size for internal timers: ${CMAKE_CHUNK_EIDS_TIMER_INTERNAL}\n")
+endif (CMAKE_CHUNK_EIDS_TIMER_INTERNAL)
+
+# Если активирован флаг установки порога "незначительного" сдвига дедлайна для внутренних таймеров (по умолчанию: 2 мс)
+if (CMAKE_SIFT_THRESHOLD_MS_TIMER_INTERNAL)
+    add_compile_definitions(AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL=${CMAKE_SIFT_THRESHOLD_MS_TIMER_INTERNAL})
+    message(STATUS "Build with sift threshold ms for internal timers: ${CMAKE_SIFT_THRESHOLD_MS_TIMER_INTERNAL}\n")
+endif (CMAKE_SIFT_THRESHOLD_MS_TIMER_INTERNAL)
 
 # Выводим информацию каталога где выполняется сборка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")

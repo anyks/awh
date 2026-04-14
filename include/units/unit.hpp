@@ -178,6 +178,19 @@ namespace awh {
 				event::status_t status(const event::id_t eid) const noexcept;
 			public:
 				/**
+				 * @brief Метод получения типа внутренних таймеров
+				 *
+				 * @return тип таймера для событий сетевого движка
+				 */
+				event::timer_t getInternalTimer() const noexcept;
+				/**
+				 * @brief Метод установки типа внутренних таймеров
+				 *
+				 * @param timer тип таймера для событий сетевого движка
+				 */
+				void setInternalTimer(const event::timer_t timer) noexcept;
+			public:
+				/**
 				 * @brief Метод установки пропускной способности события
 				 *
 				 * @param limiting  режим ограничения пропускной способности события (egress или ingress)

@@ -546,6 +546,28 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
 	return ::__awh_event_base__->status(eid);
 }
 /**
+ * @brief Метод получения типа внутренних таймеров
+ *
+ * @return тип таймера для событий сетевого движка
+ */
+awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим тип таймера для событий сетевого движка
+	return ::__awh_event_base__->getInternalTimer();
+}
+/**
+ * @brief Метод установки типа внутренних таймеров
+ *
+ * @param timer тип таймера для событий сетевого движка
+ */
+void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Устанавливаем тип таймера для событий сетевого движка
+	::__awh_event_base__->setInternalTimer(timer);
+}
+/**
  * @brief Метод установки пропускной способности события
  *
  * @param limiting  режим ограничения пропускной способности события (egress или ingress)

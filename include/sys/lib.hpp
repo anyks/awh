@@ -108,9 +108,9 @@
  */
 #ifndef AWH_MAX_BODY_SIZE
 	/**
-	 * Устанавливаем максимальный размер HTTP-тела 100Mb
+	 * Устанавливаем максимальный размер HTTP-тела 10Mb
 	 */
-	#define AWH_MAX_BODY_SIZE 0x6400000
+	#define AWH_MAX_BODY_SIZE 0xA00000
 #endif
 
 /**

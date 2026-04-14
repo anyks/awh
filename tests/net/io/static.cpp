@@ -96,6 +96,10 @@ TEST_F(IoFixture, IoSuiteTest){
 	eth.addr.fillSource(source);
 	// Проверяем, что название сетевого интерфейса получено
 	ASSERT_FALSE(source.iface.empty());
+	// Устанавливаем тип таймера для событий сетевого движка
+	this->_io->setInternalTimer(awh::event::timer_t::DIFFICULT);
+	// Проверяем, что тип таймера для событий сетевого движка установлен
+	ASSERT_EQ(awh::event::timer_t::DIFFICULT, this->_io->getInternalTimer());
 	// Если сетевой интерфейс не принадлежит к VPN
 	if(::memcmp("ut", source.iface.c_str(), 2) != 0){
 		// MAC-адрес и IP-адрес сетевого интерфейса

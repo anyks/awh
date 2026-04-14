@@ -13,6 +13,60 @@
  */
 
 /**
+ * Если размер пакета для таймеров не определён
+ */
+#ifndef AWH_BATCH_SIZE_TIMER_INTERNAL
+	/**
+	 * Устанавливаем размер пакета для таймеров в 256
+	 */
+	#define AWH_BATCH_SIZE_TIMER_INTERNAL 0x100
+#endif
+
+/**
+ * Если количество обработанных таймеров не определён
+ */
+#ifndef AWH_COUNT_PROCESSED_TIMER_INTERNAL
+	/**
+	 * Устанавливаем количество обработанных таймеров в 256, для предотвращения бесконечного цикла
+	 */
+	#define AWH_COUNT_PROCESSED_TIMER_INTERNAL 0x100
+#endif
+
+/**
+ * Если размер кучи для таймеров не определён
+ */
+#ifndef AWH_HEAP_SIZE_TIMER_INTERNAL
+	/**
+	 * Устанавливаем размер кучи для таймеров в 50 000 элементов
+	 * Достаточно для 12.5 млн таймеров при 256 таймерах на eid
+	 */
+	#define AWH_HEAP_SIZE_TIMER_INTERNAL 0xC350
+#endif
+
+/**
+ * Если размер чанка для таймеров не определён
+ */
+#ifndef AWH_CHUNK_EIDS_TIMER_INTERNAL
+	/**
+	 * Устанавливаем размер чанка в 1024 eid × 256 таймеров/ид = 1 МБ на чанк
+	 * Увеличь до 4096 для лучшей кэш-локальности при >500k таймеров
+	 */
+	#define AWH_CHUNK_EIDS_TIMER_INTERNAL 0x400
+#endif
+
+/**
+ * Если порог "незначительного" сдвига дедлайна не определён
+ */
+#ifndef AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL
+	/**
+	 * Порог "незначительного" сдвига дедлайна (в мс)
+	 * Если обновление таймера сдвинуло дедлайн меньше чем на это значение —
+	 * перестройка кучи пропускается (погрешность планировщика всё равно съест)
+	 */
+	#define AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL 0x02
+#endif
+
+/**
  * Если максимальное количество опрашиваемых событий за одну итерацию (64, 128, 256, 512, 1024) не установлено
  */
 #ifndef AWH_MAX_POLL_EVENTS_COUNT
@@ -1304,11 +1358,6 @@ namespace {
 	 */
 	net::socket_t __awh_kq__ = net::invalid_socket_t;
 	/**
-	 * @brief Тип таймера для управления таймаутами событий
-	 *
-	 */
-	event::timer_t __awh_timer__ = event::timer_t::SIMPLE;
-	/**
 	 * @brief Глобальный буфер временного хранения данных
 	 *
 	 */
@@ -1318,6 +1367,11 @@ namespace {
 	 *
 	 */
 	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
+	/**
+	 * @brief Тип внутреннего таймера для управления таймаутами событий
+	 *
+	 */
+	event::timer_t __awh_internal_timer__ = event::timer_t::SIMPLE;
 	/**
 	 * @brief Глобальная переменная списка узлов событий
 	 *
@@ -3153,16 +3207,6 @@ namespace timer1 {
 	using namespace awh;
 
 	// ─────────────────────────────────────────────────────────────
-	// Конфигурация
-	// ─────────────────────────────────────────────────────────────
-
-	/**
-	 * @brief Максимальное количество обрабатываемых таймеров
-	 *
-	 */
-	static constexpr size_t MAX_EXPIRED = 256;
-
-	// ─────────────────────────────────────────────────────────────
 	// Структуры данных
 	// ─────────────────────────────────────────────────────────────
 
@@ -4077,7 +4121,7 @@ namespace timer1 {
 					}
 				}
 				// Если мы перебрали указанное количество таймеров, чтобы не блокировать поток, завершаем работу
-				if((MAX_EXPIRED > 0) && (++processed >= MAX_EXPIRED)){
+				if((AWH_COUNT_PROCESSED_TIMER_INTERNAL > 0) && (++processed >= AWH_COUNT_PROCESSED_TIMER_INTERNAL)){
 					/**
 					 * Перезапускаем таймер ядра операционной системы
 					 * на основе ближайшего срока истечения таймера в приоритетной очереди,
@@ -4127,29 +4171,6 @@ namespace timer2 {
 	using namespace awh;
 
 	// ─────────────────────────────────────────────────────────────
-	// Конфигурация
-	// ─────────────────────────────────────────────────────────────
-
-	/**
-	 * @brief Максимальное количество обрабатываемых таймеров
-	 *
-	 */
-	static constexpr size_t MAX_EXPIRED = 256;
-
-	/**
-	 * Размер чанка: 1024 eid × 256 таймеров/ид = 1 МБ на чанк
-	 * Увеличь до 4096 для лучшей кэш-локальности при >500k таймеров
-	 */
-	static constexpr size_t CHUNK_EIDS = 1024;
-
-	/**
-	 * Порог "незначительного" сдвига дедлайна (в мс)
-	 * Если обновление таймера сдвинуло дедлайн меньше чем на это значение —
-	 * перестройка кучи пропускается (погрешность планировщика всё равно съест)
-	 */
-	static constexpr uint64_t SIFT_THRESHOLD_MS = 2;
-
-	// ─────────────────────────────────────────────────────────────
 	// Структуры данных
 	// ─────────────────────────────────────────────────────────────
 
@@ -4161,7 +4182,7 @@ namespace timer2 {
 		// Сколько активных таймеров в чанке
 		uint32_t count = 0;
 		// Слоты, значение -1 = нет таймера
-		int32_t slots[CHUNK_EIDS][256];
+		int32_t slots[AWH_CHUNK_EIDS_TIMER_INTERNAL][AWH_BATCH_SIZE_TIMER_INTERNAL];
 	};
 
 	/**
@@ -4187,7 +4208,7 @@ namespace timer2 {
 	 */
 	static vector <Timer> __awh_heap__;
 	/**
-	 * @brief Карта чанков: индекс = eid / CHUNK_EIDS
+	 * @brief Карта чанков: индекс = (eid / AWH_CHUNK_EIDS_TIMER_INTERNAL)
 	 *
 	 */
 	static vector <unique_ptr <Chunk>> __awh_chunks__;
@@ -4450,9 +4471,9 @@ namespace timer2 {
 	 */
 	static void init() noexcept {
 		// Выделяем память под пиковую нагрузку
-		__awh_heap__.reserve(50000);
+		__awh_heap__.reserve(AWH_HEAP_SIZE_TIMER_INTERNAL);
 		// Выделяем память под ~256k уникальных идентификаторов событий
-		__awh_chunks__.reserve(256);
+		__awh_chunks__.reserve(AWH_BATCH_SIZE_TIMER_INTERNAL);
 	}
 
 	/**
@@ -4509,7 +4530,7 @@ namespace timer2 {
 				// Выходим из функции, так-как таймер для данного события не существует и отменять нечего
 				return;
 			// Вычисляем смещение внутри чанка для данного идентификатора события
-			const size_t offset = (eid & (CHUNK_EIDS - 1));
+			const size_t offset = (eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1));
 			// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 			const int32_t idx = ptr->slots[offset][tm.id];
 			// Если индекс таймера в куче равен -1, таймер не существует, и функция может завершиться
@@ -4669,7 +4690,7 @@ namespace timer2 {
 						// Получаем объект чанка для данного идентификатора события
 						Chunk * chunk = __get_chunk__(eid);
 						// Вычисляем смещение внутри чанка для данного идентификатора события
-						const size_t offset = (eid & (CHUNK_EIDS - 1)); // eid % 1024
+						const size_t offset = (eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1)); // eid % 1024
 						// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 						int32_t & index = chunk->slots[offset][tm.id];
 						// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
@@ -4686,11 +4707,11 @@ namespace timer2 {
 							 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
 							 */
 							// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
-							if(deadline < (old - SIFT_THRESHOLD_MS))
+							if(deadline < (old - AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
 								// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 								__sift_up__(index);
 							// Если дедлайн сдвинут значительно в сторону более позднего времени → опускаем элемент вниз по куче
-							else if(deadline > (old + SIFT_THRESHOLD_MS))
+							else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
 								// Выполняем опускание элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера
 								__sift_down__(index);
 							// else: дедлайн сдвинут незначительно → оставляем как есть
@@ -4720,7 +4741,7 @@ namespace timer2 {
 					// Получаем объект чанка для данного идентификатора события
 					Chunk * chunk = __get_chunk__(eid);
 					// Вычисляем смещение внутри чанка для данного идентификатора события
-					const size_t offset = (eid & (CHUNK_EIDS - 1)); // eid % 1024
+					const size_t offset = (eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1)); // eid % 1024
 					// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 					int32_t & index = chunk->slots[offset][tm.id];
 					// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
@@ -4737,11 +4758,11 @@ namespace timer2 {
 						 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
 						 */
 						// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
-						if(deadline < (old - SIFT_THRESHOLD_MS))
+						if(deadline < (old - AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
 							// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 							__sift_up__(index);
 						// Если дедлайн сдвинут значительно в сторону более позднего времени → опускаем элемент вниз по куче
-						else if(deadline > (old + SIFT_THRESHOLD_MS))
+						else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
 							// Выполняем опускание элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера
 							__sift_down__(index);
 						// else: дедлайн сдвинут незначительно → оставляем как есть
@@ -5009,7 +5030,7 @@ namespace timer2 {
 				// Вычисляем индекс чанка для данного идентификатора события
 				index = (timer.eid >> 10);
 				// Вычисляем смещение внутри чанка для данного идентификатора события
-				offset = (timer.eid & (CHUNK_EIDS - 1));
+				offset = (timer.eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1));
 				/**
 				 * Если индекс чанка меньше размера вектора чанков и чанк для данного индекса существует,
 				 * удаляем таймер из слота в чанке и уменьшаем счётчик активных таймеров в чанке
@@ -5259,7 +5280,7 @@ namespace timer2 {
 					}
 				}
 				// Если мы перебрали указанное количество таймеров, чтобы не блокировать поток, завершаем работу
-				if((MAX_EXPIRED > 0) && (++processed >= MAX_EXPIRED)){
+				if((AWH_COUNT_PROCESSED_TIMER_INTERNAL > 0) && (++processed >= AWH_COUNT_PROCESSED_TIMER_INTERNAL)){
 					/**
 					 * Перезапускаем таймер ядра операционной системы
 					 * на основе ближайшего срока истечения таймера в приоритетной очереди,
@@ -6195,7 +6216,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на получение данных
@@ -6232,7 +6253,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
@@ -6489,7 +6510,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
@@ -6639,7 +6660,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
@@ -6657,7 +6678,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Отменяем таймаут на получение данных
@@ -8033,7 +8054,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на получение данных
@@ -8070,7 +8091,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
@@ -8297,7 +8318,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
@@ -8489,7 +8510,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
@@ -8733,7 +8754,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
@@ -9030,7 +9051,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
@@ -9211,7 +9232,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
@@ -9229,7 +9250,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Отменяем таймаут на получение данных
@@ -9374,7 +9395,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
@@ -10173,7 +10194,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -10367,7 +10388,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -10389,7 +10410,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -10410,7 +10431,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
@@ -10466,7 +10487,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -10543,7 +10564,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -10714,7 +10735,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
@@ -10736,7 +10757,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -10757,7 +10778,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем и обновляем таймаут на ожидание записи данных
@@ -10813,7 +10834,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -10933,7 +10954,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -11110,7 +11131,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -11127,7 +11148,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -11148,7 +11169,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
@@ -11202,7 +11223,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -11505,7 +11526,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -11699,7 +11720,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -11721,7 +11742,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -11742,7 +11763,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
@@ -11798,7 +11819,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -11872,7 +11893,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -12043,7 +12064,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -12065,7 +12086,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -12086,7 +12107,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
@@ -12142,7 +12163,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -12271,7 +12292,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -12442,7 +12463,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -12464,7 +12485,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -12485,7 +12506,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
@@ -12541,7 +12562,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -12727,7 +12748,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
@@ -12747,7 +12768,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -13809,7 +13830,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -13961,7 +13982,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -13977,7 +13998,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -14039,7 +14060,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -14068,7 +14089,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
@@ -14110,7 +14131,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
@@ -14213,7 +14234,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -14356,7 +14377,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -14378,7 +14399,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -14413,7 +14434,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -14453,7 +14474,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -14469,7 +14490,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -14521,7 +14542,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -14677,7 +14698,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -14821,7 +14842,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -14861,7 +14882,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -14877,7 +14898,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -14927,7 +14948,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -15018,7 +15039,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
@@ -15169,7 +15190,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
@@ -15209,7 +15230,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
@@ -15225,7 +15246,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -15277,7 +15298,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -15506,7 +15527,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -15554,7 +15575,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
@@ -15696,7 +15717,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -15712,7 +15733,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -15804,7 +15825,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -15852,7 +15873,7 @@ namespace io {
 														/**
 														 * Определяем тип таймера для событий сетевого движка
 														 */
-														switch(static_cast <uint8_t> (::__awh_timer__)){
+														switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 															// Если тип таймера для событий сетевого движка является простым
 															case static_cast <uint8_t> (event::timer_t::SIMPLE):
 																// Добавляем таймаут на ожидание записи данных
@@ -15998,7 +16019,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -16014,7 +16035,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -17349,7 +17370,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -17501,7 +17522,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -17517,7 +17538,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -17579,7 +17600,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -17608,7 +17629,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
@@ -17650,7 +17671,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
@@ -17753,7 +17774,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -17896,7 +17917,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -17918,7 +17939,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -17953,7 +17974,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -17993,7 +18014,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
@@ -18009,7 +18030,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -18061,7 +18082,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -18203,7 +18224,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -18347,7 +18368,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -18387,7 +18408,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -18403,7 +18424,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -18453,7 +18474,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -18530,7 +18551,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
@@ -18681,7 +18702,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
@@ -18721,7 +18742,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
@@ -18737,7 +18758,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -18789,7 +18810,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -18950,7 +18971,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -19094,7 +19115,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -19134,7 +19155,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -19150,7 +19171,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -19200,7 +19221,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -19277,7 +19298,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
@@ -19428,7 +19449,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
@@ -19468,7 +19489,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
@@ -19484,7 +19505,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -19536,7 +19557,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -19756,7 +19777,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -19900,7 +19921,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -19940,7 +19961,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -19956,7 +19977,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -20006,7 +20027,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -20110,7 +20131,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
@@ -20261,7 +20282,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
@@ -20301,7 +20322,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
@@ -20317,7 +20338,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -20369,7 +20390,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -20584,7 +20605,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -20728,7 +20749,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -20768,7 +20789,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
@@ -20784,7 +20805,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -20834,7 +20855,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -20938,7 +20959,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
@@ -21089,7 +21110,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
@@ -21129,7 +21150,7 @@ namespace io {
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
@@ -21145,7 +21166,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -21197,7 +21218,7 @@ namespace io {
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
@@ -21907,7 +21928,7 @@ namespace io {
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
-						switch(static_cast <uint8_t> (::__awh_timer__)){
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 								// Отменяем все установленные таймауты для данного однорангового узла
@@ -21976,7 +21997,7 @@ namespace io {
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
-						switch(static_cast <uint8_t> (::__awh_timer__)){
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 								// Отменяем все установленные таймауты для данного однорангового узла-источника
@@ -22101,7 +22122,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 												// Отменяем все установленные таймауты для данного клиента
@@ -22162,7 +22183,7 @@ namespace io {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на переподключение
@@ -22181,7 +22202,7 @@ namespace io {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного клиента
@@ -22250,7 +22271,7 @@ namespace io {
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
-						switch(static_cast <uint8_t> (::__awh_timer__)){
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 								// Отменяем все установленные таймауты для данного сервера
@@ -23787,7 +23808,7 @@ namespace io {
 					/**
 					 * Определяем тип таймера для событий сетевого движка
 					 */
-					switch(static_cast <uint8_t> (::__awh_timer__)){
+					switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 						// Если тип таймера для событий сетевого движка является простым
 						case static_cast <uint8_t> (event::timer_t::SIMPLE):
 							// Деактивируем таймаут подключения к серверу
@@ -23814,7 +23835,7 @@ namespace io {
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
-							switch(static_cast <uint8_t> (::__awh_timer__)){
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Добавляем таймаут на ожидание получения данных
@@ -24566,7 +24587,7 @@ namespace io {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -25318,7 +25339,7 @@ namespace io {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE):
 										// Сбрасываем таймаут ожидания чтения данных, так как сокет готов к чтению
@@ -25347,7 +25368,7 @@ namespace io {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE):
 										// Сбрасываем таймаут ожидания чтения данных, так как сокет готов к чтению
@@ -25404,7 +25425,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
@@ -25429,7 +25450,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
@@ -25536,7 +25557,7 @@ namespace io {
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
-						switch(static_cast <uint8_t> (::__awh_timer__)){
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE):
 								// Обновляем таймаут на ожидание получения данных
@@ -26035,7 +26056,7 @@ namespace io {
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
-									switch(static_cast <uint8_t> (::__awh_timer__)){
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание получения данных
@@ -46723,7 +46744,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -46757,7 +46778,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание подключения к серверу
@@ -46774,7 +46795,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание переподключения к серверу
@@ -46793,7 +46814,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
-												switch(static_cast <uint8_t> (::__awh_timer__)){
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
@@ -46866,7 +46887,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 													// Отменяем все установленные таймауты для данного однорангового узла
@@ -46911,7 +46932,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 													// Отменяем все установленные таймауты для данного клиента
@@ -46960,7 +46981,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
@@ -47469,7 +47490,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														/**
 														 * Определяем тип таймера для событий сетевого движка
 														 */
-														switch(static_cast <uint8_t> (::__awh_timer__)){
+														switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 															// Если тип таймера для событий сетевого движка является простым
 															case static_cast <uint8_t> (event::timer_t::SIMPLE):
 																// Добавляем таймаут на ожидание получения данных
@@ -47503,7 +47524,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание подключения к серверу
@@ -47520,7 +47541,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание переподключения к серверу
@@ -47539,7 +47560,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														/**
 														 * Определяем тип таймера для событий сетевого движка
 														 */
-														switch(static_cast <uint8_t> (::__awh_timer__)){
+														switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 															// Если тип таймера для событий сетевого движка является простым
 															case static_cast <uint8_t> (event::timer_t::SIMPLE):
 																// Добавляем таймаут на ожидание получения данных
@@ -47611,7 +47632,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 															// Отменяем все установленные таймауты для данного однорангового узла
@@ -47656,7 +47677,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 															// Отменяем все установленные таймауты для данного клиента
@@ -47705,7 +47726,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
-													switch(static_cast <uint8_t> (::__awh_timer__)){
+													switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Деактивируем таймаут ограничения пропускной способности на чтение данных
@@ -49262,7 +49283,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -49338,7 +49359,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание подключения к серверу
@@ -52514,7 +52535,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
@@ -52541,7 +52562,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
@@ -52624,7 +52645,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
@@ -52727,7 +52748,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
@@ -52754,7 +52775,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
@@ -52853,7 +52874,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
@@ -53604,7 +53625,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
@@ -53636,7 +53657,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
@@ -53767,7 +53788,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
@@ -53799,7 +53820,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
@@ -54953,7 +54974,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -54982,7 +55003,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
@@ -55018,7 +55039,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -55045,7 +55066,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
@@ -55127,7 +55148,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -55151,7 +55172,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
@@ -55186,7 +55207,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -55210,7 +55231,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
@@ -55372,7 +55393,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
@@ -55401,7 +55422,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
@@ -55437,7 +55458,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
@@ -55464,7 +55485,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
@@ -55516,7 +55537,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание подключения к серверу
@@ -55540,7 +55561,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут подключения к серверу
@@ -55573,7 +55594,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
-											switch(static_cast <uint8_t> (::__awh_timer__)){
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание переподключения к серверу
@@ -55597,7 +55618,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут переподключения к серверу
@@ -55677,7 +55698,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут ограничения пропускной способности на чтение данных
@@ -55984,7 +56005,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного однорангового узла
@@ -56037,7 +56058,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного однорангового узла-источника
@@ -56094,7 +56115,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного клиента
@@ -56154,7 +56175,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 								/**
 								 * Определяем тип таймера для событий сетевого движка
 								 */
-								switch(static_cast <uint8_t> (::__awh_timer__)){
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного сервера
@@ -56375,7 +56396,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
@@ -56404,7 +56425,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -56443,7 +56464,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
@@ -56469,7 +56490,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -56516,7 +56537,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
@@ -56545,7 +56566,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
-										switch(static_cast <uint8_t> (::__awh_timer__)){
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
@@ -57179,6 +57200,64 @@ bool awh::engine::IO::kick() noexcept {
 		EV_SET(&trigger, 0, EVFILT_USER, 0, NOTE_TRIGGER, 0, nullptr);
 		// Триггерим событие Kqueue
 		if(!(result = (::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			#endif
+		}
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Метод инициализации сетевого движка
+ *
+ * @return результат выполнения инициализации
+ */
+bool awh::engine::IO::initialize() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если Kqueue ещё не инициализирован
+	if(::__awh_kq__ == net::invalid_socket_t){
+		// Если тип таймера для событий сетевого движка является сложным
+		if(::__awh_internal_timer__ == event::timer_t::DIFFICULT)
+			// Выполняем инициализацию таймера
+			::timer2::init();
+		// Выполняем инициализацию Kqueue
+		if((::__awh_kq__ = ::kqueue()) == net::invalid_socket_t){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+		// Устанавливаем флаг автозакрытия файлового дескриптора
+		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
+		// Создаём пользовательское событие
+		struct kevent event{};
+		// Устанавливаем пользовательское событие
+		EV_SET(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
+		// Активируем пользовательское событие Kqueue
+		if(!(result = (::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -57975,7 +58054,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 	/**
 	 * Определяем тип таймера для событий сетевого движка
 	 */
-	switch(static_cast <uint8_t> (::__awh_timer__)){
+	switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 		// Если тип таймера для событий сетевого движка является простым
 		case static_cast <uint8_t> (event::timer_t::SIMPLE):
 			// Выполняем очистку таймеров
@@ -57986,67 +58065,6 @@ bool awh::engine::IO::deinitialize() noexcept {
 			// Выполняем очистку таймеров
 			::timer2::clear();
 		break;
-	}
-	// Возвращаем результат работы функции
-	return result;
-}
-/**
- * @brief Метод инициализации сетевого движка
- *
- * @param timer тип таймера для событий сетевого движка
- * @return      результат выполнения инициализации
- */
-bool awh::engine::IO::initialize(const event::timer_t timer) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если Kqueue ещё не инициализирован
-	if(::__awh_kq__ == net::invalid_socket_t){
-		// Устанавливаем тип таймера для событий сетевого движка
-		::__awh_timer__ = timer;
-		// Если тип таймера для событий сетевого движка является сложным
-		if(::__awh_timer__ == event::timer_t::DIFFICULT)
-			// Выполняем инициализацию таймера
-			::timer2::init();
-		// Выполняем инициализацию Kqueue
-		if((::__awh_kq__ = ::kqueue()) == net::invalid_socket_t){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (timer)), log_t::flag_t::CRITICAL, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-		// Устанавливаем флаг автозакрытия файлового дескриптора
-		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
-		// Создаём пользовательское событие
-		struct kevent event{};
-		// Устанавливаем пользовательское событие
-		EV_SET(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
-		// Активируем пользовательское событие Kqueue
-		if(!(result = (::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (timer)), log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
 	}
 	// Возвращаем результат работы функции
 	return result;
@@ -58068,6 +58086,42 @@ bool awh::engine::IO::isInitialized() const noexcept {
 size_t awh::engine::IO::eventsCount() const noexcept {
 	// Выводим количество событий в сетевом движке
 	return ::__awh_nodes__.size();
+}
+/**
+ * @brief Метод получения типа внутренних таймеров
+ *
+ * @return тип таймера для событий сетевого движка
+ */
+awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
+	// Выводим тип таймера для событий сетевого движка
+	return ::__awh_internal_timer__;
+}
+/**
+ * @brief Метод установки типа внутренних таймеров
+ *
+ * @param timer тип таймера для событий сетевого движка
+ */
+void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
+	// Если тип таймера для событий сетевого движка не совпадает с новым типом таймера
+	if(::__awh_internal_timer__ != timer){
+		/**
+		 * Определяем тип таймера для событий сетевого движка
+		 */
+		switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+			// Если тип таймера для событий сетевого движка является простым
+			case static_cast <uint8_t> (event::timer_t::SIMPLE):
+				// Выполняем очистку таймеров
+				::timer1::clear();
+			break;
+			// Если тип таймера для событий сетевого движка является сложным
+			case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+				// Выполняем очистку таймеров
+				::timer2::clear();
+			break;
+		}
+		// Устанавливаем тип таймера для событий сетевого движка
+		::__awh_internal_timer__ = timer;
+	}
 }
 /**
  * @brief Метод получения размера отслеживаемого файла
@@ -58482,7 +58536,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
-						switch(static_cast <uint8_t> (::__awh_timer__)){
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE):
 								// Выполняем обработку отложенных таймеров
@@ -58504,7 +58558,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				}
 			}
 			// Если тип таймера для событий сетевого движка является сложным
-			if(::__awh_timer__ == event::timer_t::DIFFICULT){
+			if(::__awh_internal_timer__ == event::timer_t::DIFFICULT){
 				// Получаем текущее значение временной метки
 				const uint64_t now = ::timer::timestamp();
 				// Периодическая очистка пула (раз в 5 минут)

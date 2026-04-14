@@ -770,6 +770,12 @@ namespace awh {
 				 */
 				bool kick() noexcept;
 				/**
+				 * @brief Метод инициализации сетевого движка
+				 *
+				 * @return результат выполнения инициализации
+				 */
+				bool initialize() noexcept;
+				/**
 				 * @brief Метод реинициализации сетевого движка
 				 *
 				 * @return результат выполнения реинициализации
@@ -781,13 +787,6 @@ namespace awh {
 				 * @return результат выполнения деинициализации
 				 */
 				bool deinitialize() noexcept;
-				/**
-				 * @brief Метод инициализации сетевого движка
-				 *
-				 * @param timer тип таймера для событий сетевого движка
-				 * @return      результат выполнения инициализации
-				 */
-				bool initialize(const event::timer_t timer = event::timer_t::SIMPLE) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки состояния инициализации сетевого движка
@@ -802,6 +801,19 @@ namespace awh {
 				 * @return количество событий
 				 */
 				size_t eventsCount() const noexcept;
+			public:
+				/**
+				 * @brief Метод получения типа внутренних таймеров
+				 *
+				 * @return тип таймера для событий сетевого движка
+				 */
+				event::timer_t getInternalTimer() const noexcept;
+				/**
+				 * @brief Метод установки типа внутренних таймеров
+				 *
+				 * @param timer тип таймера для событий сетевого движка
+				 */
+				void setInternalTimer(const event::timer_t timer) noexcept;
 			public:
 				/**
 				 * @brief Метод получения размера отслеживаемого файла
