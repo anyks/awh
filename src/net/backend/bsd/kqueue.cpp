@@ -15,55 +15,55 @@
 /**
  * Если размер пакета для таймеров не определён
  */
-#ifndef AWH_BATCH_SIZE_TIMER_INTERNAL
+#ifndef AWH_BATCH_SIZE_INTERNAL_TIMER
 	/**
 	 * Устанавливаем размер пакета для таймеров в 256
 	 */
-	#define AWH_BATCH_SIZE_TIMER_INTERNAL 0x100
+	#define AWH_BATCH_SIZE_INTERNAL_TIMER 0x100
 #endif
 
 /**
  * Если количество обработанных таймеров не определён
  */
-#ifndef AWH_COUNT_PROCESSED_TIMER_INTERNAL
+#ifndef AWH_COUNT_PROCESSED_INTERNAL_TIMER
 	/**
 	 * Устанавливаем количество обработанных таймеров в 256, для предотвращения бесконечного цикла
 	 */
-	#define AWH_COUNT_PROCESSED_TIMER_INTERNAL 0x100
+	#define AWH_COUNT_PROCESSED_INTERNAL_TIMER 0x100
 #endif
 
 /**
  * Если размер кучи для таймеров не определён
  */
-#ifndef AWH_HEAP_SIZE_TIMER_INTERNAL
+#ifndef AWH_HEAP_SIZE_INTERNAL_TIMER
 	/**
 	 * Устанавливаем размер кучи для таймеров в 50 000 элементов
 	 * Достаточно для 12.5 млн таймеров при 256 таймерах на eid
 	 */
-	#define AWH_HEAP_SIZE_TIMER_INTERNAL 0xC350
+	#define AWH_HEAP_SIZE_INTERNAL_TIMER 0xC350
 #endif
 
 /**
  * Если размер чанка для таймеров не определён
  */
-#ifndef AWH_CHUNK_EIDS_TIMER_INTERNAL
+#ifndef AWH_CHUNK_EIDS_INTERNAL_TIMER
 	/**
 	 * Устанавливаем размер чанка в 1024 eid × 256 таймеров/ид = 1 МБ на чанк
 	 * Увеличь до 4096 для лучшей кэш-локальности при >500k таймеров
 	 */
-	#define AWH_CHUNK_EIDS_TIMER_INTERNAL 0x400
+	#define AWH_CHUNK_EIDS_INTERNAL_TIMER 0x400
 #endif
 
 /**
  * Если порог "незначительного" сдвига дедлайна не определён
  */
-#ifndef AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL
+#ifndef AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER
 	/**
 	 * Порог "незначительного" сдвига дедлайна (в мс)
 	 * Если обновление таймера сдвинуло дедлайн меньше чем на это значение —
 	 * перестройка кучи пропускается (погрешность планировщика всё равно съест)
 	 */
-	#define AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL 0x02
+	#define AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER 0x02
 #endif
 
 /**
@@ -4121,7 +4121,7 @@ namespace timer1 {
 					}
 				}
 				// Если мы перебрали указанное количество таймеров, чтобы не блокировать поток, завершаем работу
-				if((AWH_COUNT_PROCESSED_TIMER_INTERNAL > 0) && (++processed >= AWH_COUNT_PROCESSED_TIMER_INTERNAL)){
+				if((AWH_COUNT_PROCESSED_INTERNAL_TIMER > 0) && (++processed >= AWH_COUNT_PROCESSED_INTERNAL_TIMER)){
 					/**
 					 * Перезапускаем таймер ядра операционной системы
 					 * на основе ближайшего срока истечения таймера в приоритетной очереди,
@@ -4182,7 +4182,7 @@ namespace timer2 {
 		// Сколько активных таймеров в чанке
 		uint32_t count = 0;
 		// Слоты, значение -1 = нет таймера
-		int32_t slots[AWH_CHUNK_EIDS_TIMER_INTERNAL][AWH_BATCH_SIZE_TIMER_INTERNAL];
+		int32_t slots[AWH_CHUNK_EIDS_INTERNAL_TIMER][AWH_BATCH_SIZE_INTERNAL_TIMER];
 	};
 
 	/**
@@ -4208,7 +4208,7 @@ namespace timer2 {
 	 */
 	static vector <Timer> __awh_heap__;
 	/**
-	 * @brief Карта чанков: индекс = (eid / AWH_CHUNK_EIDS_TIMER_INTERNAL)
+	 * @brief Карта чанков: индекс = (eid / AWH_CHUNK_EIDS_INTERNAL_TIMER)
 	 *
 	 */
 	static vector <unique_ptr <Chunk>> __awh_chunks__;
@@ -4471,9 +4471,9 @@ namespace timer2 {
 	 */
 	static void init() noexcept {
 		// Выделяем память под пиковую нагрузку
-		__awh_heap__.reserve(AWH_HEAP_SIZE_TIMER_INTERNAL);
+		__awh_heap__.reserve(AWH_HEAP_SIZE_INTERNAL_TIMER);
 		// Выделяем память под ~256k уникальных идентификаторов событий
-		__awh_chunks__.reserve(AWH_BATCH_SIZE_TIMER_INTERNAL);
+		__awh_chunks__.reserve(AWH_BATCH_SIZE_INTERNAL_TIMER);
 	}
 
 	/**
@@ -4530,7 +4530,7 @@ namespace timer2 {
 				// Выходим из функции, так-как таймер для данного события не существует и отменять нечего
 				return;
 			// Вычисляем смещение внутри чанка для данного идентификатора события
-			const size_t offset = (eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1));
+			const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1));
 			// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 			const int32_t idx = ptr->slots[offset][tm.id];
 			// Если индекс таймера в куче равен -1, таймер не существует, и функция может завершиться
@@ -4690,7 +4690,7 @@ namespace timer2 {
 						// Получаем объект чанка для данного идентификатора события
 						Chunk * chunk = __get_chunk__(eid);
 						// Вычисляем смещение внутри чанка для данного идентификатора события
-						const size_t offset = (eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1)); // eid % 1024
+						const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
 						// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 						int32_t & index = chunk->slots[offset][tm.id];
 						// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
@@ -4707,11 +4707,11 @@ namespace timer2 {
 							 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
 							 */
 							// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
-							if(deadline < (old - AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
+							if(deadline < (old - AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
 								// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 								__sift_up__(index);
 							// Если дедлайн сдвинут значительно в сторону более позднего времени → опускаем элемент вниз по куче
-							else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
+							else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
 								// Выполняем опускание элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера
 								__sift_down__(index);
 							// else: дедлайн сдвинут незначительно → оставляем как есть
@@ -4741,7 +4741,7 @@ namespace timer2 {
 					// Получаем объект чанка для данного идентификатора события
 					Chunk * chunk = __get_chunk__(eid);
 					// Вычисляем смещение внутри чанка для данного идентификатора события
-					const size_t offset = (eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1)); // eid % 1024
+					const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
 					// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 					int32_t & index = chunk->slots[offset][tm.id];
 					// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
@@ -4758,11 +4758,11 @@ namespace timer2 {
 						 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
 						 */
 						// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
-						if(deadline < (old - AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
+						if(deadline < (old - AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
 							// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 							__sift_up__(index);
 						// Если дедлайн сдвинут значительно в сторону более позднего времени → опускаем элемент вниз по куче
-						else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_TIMER_INTERNAL))
+						else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
 							// Выполняем опускание элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера
 							__sift_down__(index);
 						// else: дедлайн сдвинут незначительно → оставляем как есть
@@ -5030,7 +5030,7 @@ namespace timer2 {
 				// Вычисляем индекс чанка для данного идентификатора события
 				index = (timer.eid >> 10);
 				// Вычисляем смещение внутри чанка для данного идентификатора события
-				offset = (timer.eid & (AWH_CHUNK_EIDS_TIMER_INTERNAL - 1));
+				offset = (timer.eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1));
 				/**
 				 * Если индекс чанка меньше размера вектора чанков и чанк для данного индекса существует,
 				 * удаляем таймер из слота в чанке и уменьшаем счётчик активных таймеров в чанке
@@ -5280,7 +5280,7 @@ namespace timer2 {
 					}
 				}
 				// Если мы перебрали указанное количество таймеров, чтобы не блокировать поток, завершаем работу
-				if((AWH_COUNT_PROCESSED_TIMER_INTERNAL > 0) && (++processed >= AWH_COUNT_PROCESSED_TIMER_INTERNAL)){
+				if((AWH_COUNT_PROCESSED_INTERNAL_TIMER > 0) && (++processed >= AWH_COUNT_PROCESSED_INTERNAL_TIMER)){
 					/**
 					 * Перезапускаем таймер ядра операционной системы
 					 * на основе ближайшего срока истечения таймера в приоритетной очереди,
