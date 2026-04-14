@@ -73,6 +73,7 @@ namespace awh {
 			 *
 			 */
 			using socket_t = SOCKET;
+
 			/**
 			 * @brief Некорректный сокет
 			 *
@@ -87,12 +88,14 @@ namespace awh {
 			 *
 			 */
 			using socket_t = int32_t;
+
 			/**
 			 * @brief Некорректный сокет
 			 *
 			 */
 			static constexpr socket_t invalid_socket_t = -1;
 		#endif
+
 		/**
 		 * @brief Режимы установки типа сокета
 		 *
@@ -101,6 +104,7 @@ namespace awh {
 			ENABLED  = 0x01, // Включено
 			DISABLED = 0x02  // Выключено
 		};
+
 		/**
 		 * @brief События сокета
 		 *
@@ -109,6 +113,7 @@ namespace awh {
 			READ  = 0x01, // Чтение
 			WRITE = 0x02  // Запись
 		};
+
 		/**
 		 * @brief Типы IP-адресов
 		 *
@@ -119,6 +124,7 @@ namespace awh {
 			GLOBAL = 0x02, // Глобальный адрес
 			MASK   = 0x03  // Маска подсети
 		};
+
 		/**
 		 * @brief Идентификаторы разновидностей адресов
 		 *
@@ -131,6 +137,7 @@ namespace awh {
 			IPV6  = 0x05, // Адрес подключения IPv6
 			FQDN  = 0x06, // Доменная зона
 		};
+
 		/**
 		 * @brief Структура адреса
 		 *
@@ -150,6 +157,7 @@ namespace awh {
 			 */
 			virtual ~Address() noexcept = default;
 		} addr_t;
+
 		/**
 		 * @brief Структура MAC-адреса
 		 *
@@ -164,6 +172,7 @@ namespace awh {
 			explicit Address_MAC() noexcept :
 			 addr_t(6), address{0} {}
 		} addr_mac_t;
+
 		/**
 		 * @brief Структура сетевого адреса
 		 *
@@ -180,6 +189,7 @@ namespace awh {
 			explicit Address_Network(const uint8_t prefix, const uint16_t size) noexcept :
 			 addr_t(size), prefix(prefix) {}
 		} addr_net_t;
+
 		/**
 		 * @brief Структура IPv4 сетевого адреса
 		 *
@@ -199,6 +209,7 @@ namespace awh {
 			 */
 			virtual ~Address_Network_IPv4() noexcept = default;
 		} addr_net_ipv4_t;
+
 		/**
 		 * @brief Структура IPv6 сетевого адреса
 		 *
@@ -213,6 +224,7 @@ namespace awh {
 			explicit Address_Network_IPv6() noexcept :
 			 addr_net_t(128, 16), address{0} {}
 		} addr_net_ipv6_t;
+
 		/**
 		 * @brief Структура адреса файловой системы
 		 *
@@ -226,6 +238,7 @@ namespace awh {
 			 */
 			explicit Address_Filesystem() noexcept : address{""} {}
 		} addr_fs_t;
+
 		/**
 		 * @brief Структура сетевых адресов текущей машины
 		 *
@@ -246,6 +259,7 @@ namespace awh {
 			 iface{""}, ip(std::move(ip)),
 			 mac(make_unique <addr_mac_t> ()) {}
 		} src_t;
+
 		/**
 		 * @brief Структура атрибутов подключения
 		 *
@@ -264,6 +278,7 @@ namespace awh {
 			 */
 			virtual ~Attributes() noexcept = default;
 		} attr_t;
+
 		/**
 		 * @brief Структура FQDN-адреса подключения
 		 *
@@ -280,6 +295,7 @@ namespace awh {
 			explicit Attributes_FQDN() noexcept :
 			 port(0), domain{""} {}
 		} attr_fqdn_t;
+
 		/**
 		 * @brief Структура IP-адреса подключения
 		 *
@@ -296,6 +312,7 @@ namespace awh {
 			explicit Attributes_Network() noexcept :
 			 port(0), ip(make_unique <addr_net_ipv4_t> ()) {}
 		} attr_net_t;
+
 		/**
 		 * @brief Структура UDS-адреса подключения
 		 *
@@ -310,6 +327,7 @@ namespace awh {
 			explicit Attributes_Unix_Domain_Socket() noexcept :
 			 path(make_unique <addr_fs_t> ()) {}
 		} attr_uds_t;
+
 		/**
 		 * @brief Структура информации о пакетах в тоннеле
 		 *
@@ -335,6 +353,7 @@ namespace awh {
 			 protocol(event::protocol_t::NONE),
 			 target(nullptr), source(nullptr) {}
 		} tun_info_t;
+
 		/**
 		 * @brief Структура сетевого интерфейса
 		 *
@@ -349,6 +368,7 @@ namespace awh {
 			 */
 			explicit Interface() noexcept : name{""}, mtu(0), flags{} {}
 		} iface_t;
+
 		/**
 		 * Для операционной системы Linux или FreeBSD
 		 */
@@ -367,6 +387,7 @@ namespace awh {
 					WEBRTC_STR = 0x33, // Строковые данные канала WebRTC
 					WEBRTC_BIN = 0x35  // Бинарные данные канала WebRTC
 				};
+
 				/**
 				 * @brief Статусы таймаутов SCTP
 				 *
@@ -381,6 +402,7 @@ namespace awh {
 					COOKIE      = 0x06, // Таймаут COOKIE-ECHO
 					SHUTDOWNACK = 0x07  // Таймаут SHUTDOWN-ACK
 				};
+
 				/**
 				 * @brief Типы аутентификации события SCTP
 				 *
@@ -390,6 +412,7 @@ namespace awh {
 					HMAC_SHA1    = 0x01, // HMAC-SHA1 аутентификация
 					HMAC_SHA256  = 0x02  // HMAC-SHA256 аутентификация
 				};
+
 				/**
 				 * @brief Типы чанков попадающие под аутентификацию SCTP
 				 *
@@ -414,6 +437,7 @@ namespace awh {
 					FORWARD_TSN       = 0x10, // Чанк FORWARD-TSN подлежит аутентификации
 					RE_CONFIG         = 0x11  // Чанк RE-CONFIG подлежит аутентификации
 				};
+
 				/**
 				 * @brief Типы индикаторов события аутентификации
 				 *
@@ -424,6 +448,7 @@ namespace awh {
 					NO_AUTH  = 0x02, // Событие отсутствия аутентификации
 					FREE_KEY = 0x03  // Событие освобождения ключа
 				};
+
 				/**
 				 * @brief Флаги отправки сообщения SCTP
 				 *
@@ -433,6 +458,7 @@ namespace awh {
 					SENT   = 0x01, // Сообщение отправлено
 					UNSENT = 0x02  // Сообщение не отправлено
 				};
+
 				/**
 				 * @brief Индикаторы доставки SCTP
 				 *
@@ -441,6 +467,7 @@ namespace awh {
 					NONE                     = 0x00, // Индикатор отсутствует
 					PARTIAL_DELIVERY_ABORTED = 0x01  // Частичная доставка прервана
 				};
+
 				/**
 				 * @brief Типы сброса потоков SCTP
 				 *
@@ -452,6 +479,7 @@ namespace awh {
 					OUTGOING_SSN = 0x03, // Сброс исходящих потоков
 					INCOMING_SSN = 0x04  // Сброс входящих потоков
 				};
+
 				/**
 				 * @brief Типы изменения потоков SCTP
 				 *
@@ -461,6 +489,7 @@ namespace awh {
 					FAILED = 0x01, // Изменение не выполнено
 					DENIED = 0x02  // Изменение отклонено
 				};
+
 				/**
 				 * @brief Статусы состояния сокета SCTP
 				 *
@@ -478,6 +507,7 @@ namespace awh {
 					SHUTDOWN_RECEIVED = 0x09, // Получен SHUTDOWN от пираа, ждём
 					SHUTDOWN_ACK_SENT = 0x0A  // Отправлен SHUTDOWN-ACK, ждём SHUTDOWN-COMPLETE
 				};
+
 				/**
 				 * @brief Типы событий SCTP
 				 *
@@ -499,6 +529,7 @@ namespace awh {
 					ADAPTATION_INDICATION  = 0x0D, // Адаптационное указание
 					PARTIAL_DELIVERY_EVENT = 0x0E  // Частичная доставка
 				};
+
 				/**
 				 * @brief Типы сброса ассоциации SCTP
 				 *
@@ -508,6 +539,7 @@ namespace awh {
 					FAILED = 0x01, // Сброс не выполнен
 					DENIED = 0x02  // Сброс отклонён
 				};
+
 				/**
 				 * @brief Информация об ассоциации SCTP
 				 *
@@ -522,6 +554,7 @@ namespace awh {
 					SUPPORTS_RE_CONFIG  = 0x06, // Поддерживается повторная конфигурация ассоциации
 					SUPPORTS_INTERLEAVE = 0x07  // Поддерживается перемежение сообщений
 				};
+
 				/**
 				 * @brief Состояния ассоциации SCTP
 				 *
@@ -534,6 +567,7 @@ namespace awh {
 					SHUTDOWN_COMP = 0x04, // Завершение работы выполнено
 					CANT_START    = 0x05  // Не удалось запустить связь
 				};
+
 				/**
 				 * @brief Состояния адреса однорангового узла SCTP
 				 *
@@ -547,6 +581,7 @@ namespace awh {
 					AVAILABLE   = 0x05, // Адрес стал доступен
 					UNREACHABLE = 0x06  // Адрес стал недоступен
 				};
+
 				/**
 				 * @brief Флаги информации о сообщении SCTP
 				 *
@@ -563,11 +598,13 @@ namespace awh {
 					SACK_IMMEDIATELY   = 0x08, // Установка бита последнего фрагмента DATA, для мгновенной отправки
 					DELIVERY_UNORDERED = 0x09  // Сообщение доставляется без учёта порядка в потоке
 				};
+
 				/**
 				 * @brief Множество типов событий SCTP
 				 *
 				 */
 				using event_types_t = unordered_set <event_type_t>;
+
 				/**
 				 * @brief Структура метаданных сообщения SCTP
 				 *
@@ -586,6 +623,7 @@ namespace awh {
 					 ppid(ppid_t::DTLS),
 					 num(0), ttl(0), ctx(0) {}
 				} __attribute__((packed)) minfo_t;
+
 				/**
 				 * @brief Структура инициализации рукопожатия SCTP
 				 *
@@ -607,6 +645,7 @@ namespace awh {
 					 timeout(0), attempts(4),
 					 ostreams(5), istreams(5) {}
 				} __attribute__((packed)) initmsg_t;
+
 				/**
 				 * @brief Структура статуса SCTP подключения
 				 *
@@ -631,6 +670,7 @@ namespace awh {
 					 unackdata(0), fragpoint(0),
 					 state(state_status_t::NONE) {}
 				} __attribute__((packed)) status_t;
+
 				/**
 				 * @brief Структура ошибки события SCTP
 				 *
@@ -645,6 +685,7 @@ namespace awh {
 					explicit Error() noexcept :
 					 code(0), message{""} {}
 				} error_t;
+
 				/**
 				 * @brief Структура события SCTP
 				 *
@@ -666,6 +707,7 @@ namespace awh {
 					 */
 					virtual ~Event() = default;
 				} event_t;
+
 				/**
 				 * @brief Структура адаптационного указания SCTP
 				 *
@@ -684,6 +726,7 @@ namespace awh {
 					 */
 					virtual ~Event_Adaptation() = default;
 				} event_adaptation_t;
+
 				/**
 				 * @brief Структура изменения ассоциации события SCTP
 				 *
@@ -707,6 +750,7 @@ namespace awh {
 					 */
 					virtual ~Event_Association_Change() = default;
 				} event_assoc_change_t;
+
 				/**
 				 * @brief Структура сброса ассоциации SCTP
 				 *
@@ -730,6 +774,7 @@ namespace awh {
 					 */
 					virtual ~Event_Association_Reset() = default;
 				} event_assoc_reset_t;
+
 				/**
 				 * @brief Структура ошибки удалённого узла SCTP
 				 *
@@ -748,6 +793,7 @@ namespace awh {
 					 */
 					virtual ~Event_Remote_Error() = default;
 				} event_remote_error_t;
+
 				/**
 				 * @brief Структура изменения адреса однорангового узла SCTP
 				 *
@@ -768,6 +814,7 @@ namespace awh {
 					 */
 					virtual ~Event_Address_Change() = default;
 				} event_addr_change_t;
+
 				/**
 				 * @brief Структура частичной доставки SCTP
 				 *
@@ -789,6 +836,7 @@ namespace awh {
 					 */
 					virtual ~Partial_Delivery_Event() = default;
 				} event_pdapi_t;
+
 				/**
 				 * @brief Структура аутентификации SCTP
 				 *
@@ -808,6 +856,7 @@ namespace awh {
 					 */
 					virtual ~Event_Authentication() = default;
 				} event_auth_t;
+
 				/**
 				 * @brief Структура ошибки отправки SCTP
 				 *
@@ -827,6 +876,7 @@ namespace awh {
 					 */
 					virtual ~Event_Send_Failed() = default;
 				} event_send_failed_t;
+
 				/**
 				 * @brief Структура сброса потоков SCTP
 				 *
@@ -845,6 +895,7 @@ namespace awh {
 					 */
 					virtual ~Event_Stream_Reset() = default;
 				} event_stream_reset_t;
+
 				/**
 				 * @brief Структура изменения потоков SCTP
 				 *
@@ -869,6 +920,7 @@ namespace awh {
 					virtual ~Event_Stream_Change() = default;
 				} event_stream_change_t;
 			};
+
 			/**
 			 * @brief Создаём тип данных SCTP события
 			 *

@@ -770,12 +770,6 @@ namespace awh {
 				 */
 				bool kick() noexcept;
 				/**
-				 * @brief Метод инициализации сетевого движка
-				 *
-				 * @return результат выполнения инициализации
-				 */
-				bool initialize() noexcept;
-				/**
 				 * @brief Метод реинициализации сетевого движка
 				 *
 				 * @return результат выполнения реинициализации
@@ -787,6 +781,13 @@ namespace awh {
 				 * @return результат выполнения деинициализации
 				 */
 				bool deinitialize() noexcept;
+				/**
+				 * @brief Метод инициализации сетевого движка
+				 *
+				 * @param timer тип таймера для событий сетевого движка
+				 * @return      результат выполнения инициализации
+				 */
+				bool initialize(const event::timer_t timer = event::timer_t::SIMPLE) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки состояния инициализации сетевого движка
