@@ -556,46 +556,42 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
  * @param eid    идентификатор события ICMP-клиента
  * @param action действие события таймера ICMP-клиента
  * @param delay  задержка таймера ICMP-клиента
+ * @return       нужно ли завершить клиента после истечения таймаута
  */
-void awh::unit::ICMP::timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
-	// Выполняем создание события ICMP-клиента для указанного семейства IP-адресов
-	this->create(this->_io->family(eid));
-	// Выполняем фиксацию параметров ICMP-клиента
-	if(this->commit()){
-		// Выполняем поиск пакета в контейнере активных пакетов
-		auto i = this->_transfer.waiting.find(id);
-		// Если пакет найден в контейнере активных пакетов
-		if(i != this->_transfer.waiting.end()){
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("timeout"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const uint16_t, const uint32_t)> ("timeout", id, i->second.count, i->second.delay);
-			// Если функция обратного вызова не установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug(
-						"ICMP-client timeout (delay: %u)",
-						__PRETTY_FUNCTION__,
-						std::make_tuple(i->second.delay),
-						log_t::flag_t::WARNING
-					);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("ICMP-client timeout (delay: %u)", log_t::flag_t::WARNING, i->second.delay);
-				#endif
-			}
-			// Выполняем блокировку потока для работы с контейнером активных пакетов
-			const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Удаляем пакет из контейнера активных пакетов
-			this->_transfer.waiting.erase(i);
+bool awh::unit::ICMP::timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+	// Выполняем поиск пакета в контейнере активных пакетов
+	auto i = this->_transfer.waiting.find(id);
+	// Если пакет найден в контейнере активных пакетов
+	if(i != this->_transfer.waiting.end()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("timeout"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const id_t, const uint16_t, const uint32_t)> ("timeout", id, i->second.count, i->second.delay);
+		// Если функция обратного вызова не установлена
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug(
+					"ICMP-client timeout (delay: %u)",
+					__PRETTY_FUNCTION__,
+					std::make_tuple(i->second.delay),
+					log_t::flag_t::WARNING
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("ICMP-client timeout (delay: %u)", log_t::flag_t::WARNING, i->second.delay);
+			#endif
 		}
+		// Выполняем блокировку потока для работы с контейнером активных пакетов
+		const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем пакет из контейнера активных пакетов
+		this->_transfer.waiting.erase(i);
 	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("error"))
@@ -617,6 +613,8 @@ void awh::unit::ICMP::timeout(const id_t id, const event::id_t eid, const event:
 			this->_log->print("ICMP-client waiting time expired", log_t::flag_t::CRITICAL);
 		#endif
 	}
+	// Запрещаем завершать клиента после истечения таймаута, так как он может продолжать работать и обрабатывать другие запросы
+	return false;
 }
 /**
  * @brief Метод установки безопасности работы потоков

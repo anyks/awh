@@ -3917,11 +3917,13 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									peer->timeouts.write.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(peer->callbacks.timeout != nullptr)
+									if(peer->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay);
+										if(peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(peer, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(timer.id == peer->timeouts.read.id) {
@@ -3930,11 +3932,13 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									peer->timeouts.read.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(peer->callbacks.timeout != nullptr)
+									if(peer->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay);
+										if(peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(peer, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на чтение данных
 							} else if(timer.id == peer->bandwidth.read.timeout.id) {
@@ -3950,7 +3954,7 @@ namespace timer1 {
 										::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(j->second.get(), io, eth, addr, fmk, log);
+									::io::read(peer, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == peer->bandwidth.write.timeout.id) {
@@ -3966,7 +3970,7 @@ namespace timer1 {
 										::events::write(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие доступности сокета на запись
-									::io::write(j->second.get(), io, eth, fmk, log);
+									::io::write(peer, io, eth, fmk, log);
 								}
 							}
 						} break;
@@ -3981,11 +3985,13 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									origin->timeouts.write.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(origin->callbacks.timeout != nullptr)
+									if(origin->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay);
+										if(origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay))
+											// Выполняем удаление узла
+											::io::destroy(origin, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(origin, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(timer.id == origin->timeouts.read.id) {
@@ -3994,11 +4000,13 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									origin->timeouts.read.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(origin->callbacks.timeout != nullptr)
+									if(origin->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay);
+										if(origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay))
+											// Выполняем удаление узла
+											::io::destroy(origin, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(origin, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == origin->wrate.timeout.id) {
@@ -4007,7 +4015,7 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ограничения пропускной способности на запись данных
 									origin->wrate.timeout.status = event::status_t::NONE;
 									// Обрабатываем событие доступности сокета на запись
-									::io::write(j->second.get(), io, eth, fmk, log);
+									::io::write(origin, io, eth, fmk, log);
 								}
 							}
 						} break;
@@ -4029,7 +4037,7 @@ namespace timer1 {
 										::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(j->second.get(), io, eth, addr, fmk, log);
+									::io::read(client, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == client->bandwidth.write.timeout.id) {
@@ -4045,7 +4053,7 @@ namespace timer1 {
 										::events::write(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие доступности сокета на запись
-									::io::write(j->second.get(), io, eth, fmk, log);
+									::io::write(client, io, eth, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на запись данных
 							} else if(timer.id == client->timeouts.write.id) {
@@ -4054,11 +4062,13 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									client->timeouts.write.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(client->callbacks.timeout != nullptr)
+									if(client->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay);
+										if(client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay))
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(client, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(timer.id == client->timeouts.read.id) {
@@ -4067,11 +4077,13 @@ namespace timer1 {
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									client->timeouts.read.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(client->callbacks.timeout != nullptr)
+									if(client->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay);
+										if(client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay))
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(client, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на подключение к серверу
 							} else if(timer.id == client->timeouts.connect.id) {
@@ -4087,11 +4099,13 @@ namespace timer1 {
 											client->callbacks.connect(client->id, false);
 									}
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(client->callbacks.timeout != nullptr)
+									if(client->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay);
+										if(client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay))
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(j->second.get(), eth, log);
+									} else ::io::destroy(client, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на переподключение к серверу
 							} else if(timer.id == client->timeouts.reconnect.id) {
@@ -4104,9 +4118,12 @@ namespace timer1 {
 										// Устанавливаем статус события в состояние не инициализировано
 										client->state.status = event::status_t::NONE;
 										// Если функция обратного вызова на получение события таймаута установлена
-										if(client->callbacks.timeout != nullptr)
+										if(client->callbacks.timeout != nullptr){
 											// Вызываем функцию обратного вызова на получение события таймаута
-											client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay);
+											if(!client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay))
+												// Выходим из условия, так-как не нужно выполнять переподключение
+												break;
+										}
 										// Обрабатываем событие сокета
 										if(::io::socket(client, eth, log)){
 											// Запоминаем текущие опции события
@@ -4152,7 +4169,7 @@ namespace timer1 {
 										::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(j->second.get(), io, eth, addr, fmk, log);
+									::io::read(server, io, eth, addr, fmk, log);
 								}
 							}
 						} break;
@@ -5108,11 +5125,13 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									peer->timeouts.write.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(peer->callbacks.timeout != nullptr)
+									if(peer->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay);
+										if(peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(peer, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(timer.id == peer->timeouts.read.id) {
@@ -5121,11 +5140,13 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									peer->timeouts.read.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(peer->callbacks.timeout != nullptr)
+									if(peer->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay);
+										if(peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay))
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(peer, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на чтение данных
 							} else if(timer.id == peer->bandwidth.read.timeout.id) {
@@ -5141,7 +5162,7 @@ namespace timer2 {
 										::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(i->second.get(), io, eth, addr, fmk, log);
+									::io::read(peer, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == peer->bandwidth.write.timeout.id) {
@@ -5157,7 +5178,7 @@ namespace timer2 {
 										::events::write(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие доступности сокета на запись
-									::io::write(i->second.get(), io, eth, fmk, log);
+									::io::write(peer, io, eth, fmk, log);
 								}
 							}
 						} break;
@@ -5172,11 +5193,13 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									origin->timeouts.write.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(origin->callbacks.timeout != nullptr)
+									if(origin->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay);
+										if(origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay))
+											// Выполняем удаление узла
+											::io::destroy(origin, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(origin, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(timer.id == origin->timeouts.read.id) {
@@ -5185,11 +5208,13 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									origin->timeouts.read.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(origin->callbacks.timeout != nullptr)
+									if(origin->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay);
+										if(origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay))
+											// Выполняем удаление узла
+											::io::destroy(origin, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(origin, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == origin->wrate.timeout.id) {
@@ -5198,7 +5223,7 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ограничения пропускной способности на запись данных
 									origin->wrate.timeout.status = event::status_t::NONE;
 									// Обрабатываем событие доступности сокета на запись
-									::io::write(i->second.get(), io, eth, fmk, log);
+									::io::write(origin, io, eth, fmk, log);
 								}
 							}
 						} break;
@@ -5220,7 +5245,7 @@ namespace timer2 {
 										::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(i->second.get(), io, eth, addr, fmk, log);
+									::io::read(client, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == client->bandwidth.write.timeout.id) {
@@ -5236,7 +5261,7 @@ namespace timer2 {
 										::events::write(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие доступности сокета на запись
-									::io::write(i->second.get(), io, eth, fmk, log);
+									::io::write(client, io, eth, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на запись данных
 							} else if(timer.id == client->timeouts.write.id) {
@@ -5245,11 +5270,13 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									client->timeouts.write.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(client->callbacks.timeout != nullptr)
+									if(client->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay);
+										if(client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay))
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(client, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на чтение данных
 							} else if(timer.id == client->timeouts.read.id) {
@@ -5258,11 +5285,13 @@ namespace timer2 {
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									client->timeouts.read.status = event::status_t::NONE;
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(client->callbacks.timeout != nullptr)
+									if(client->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay);
+										if(client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay))
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(client, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на подключение к серверу
 							} else if(timer.id == client->timeouts.connect.id) {
@@ -5278,11 +5307,13 @@ namespace timer2 {
 											client->callbacks.connect(client->id, false);
 									}
 									// Если функция обратного вызова на получение события таймаута установлена
-									if(client->callbacks.timeout != nullptr)
+									if(client->callbacks.timeout != nullptr){
 										// Вызываем функцию обратного вызова на получение события таймаута
-										client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay);
+										if(client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay))
+											// Выполняем удаление узла
+											::io::destroy(client, eth, log);
 									// Выполняем удаление узла
-									::io::destroy(i->second.get(), eth, log);
+									} else ::io::destroy(client, eth, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на переподключение к серверу
 							} else if(timer.id == client->timeouts.reconnect.id) {
@@ -5295,9 +5326,12 @@ namespace timer2 {
 										// Устанавливаем статус события в состояние не инициализировано
 										client->state.status = event::status_t::NONE;
 										// Если функция обратного вызова на получение события таймаута установлена
-										if(client->callbacks.timeout != nullptr)
+										if(client->callbacks.timeout != nullptr){
 											// Вызываем функцию обратного вызова на получение события таймаута
-											client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay);
+											if(!client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay))
+												// Выходим из условия, так-как не нужно выполнять переподключение
+												break;
+										}
 										// Обрабатываем событие сокета
 										if(::io::socket(client, eth, log)){
 											// Запоминаем текущие опции события
@@ -5343,7 +5377,7 @@ namespace timer2 {
 										::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(i->second.get(), io, eth, addr, fmk, log);
+									::io::read(server, io, eth, addr, fmk, log);
 								}
 							}
 						} break;

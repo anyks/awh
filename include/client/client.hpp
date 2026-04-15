@@ -145,8 +145,9 @@ namespace awh {
 			 * @param eid    идентификатор клиента
 			 * @param action тип действия для истекшего таймаута
 			 * @param delay  задержка таймаута в миллисекундах
+			 * @return       нужно ли завершить клиента после истечения таймаута
 			 */
-			void timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+			bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			/**
 			 * @brief Метод обработки события неотправленных данных клиента
 			 *

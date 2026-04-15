@@ -206,8 +206,9 @@ namespace awh {
 				 * @param action действие события таймера NTP-клиента
 				 * @param delay  задержка таймера NTP-клиента
 				 * @param packet объект активного пакета при выполнении запроса NTP-клиента
+				 * @return       нужно ли завершить клиента после истечения таймаута
 				 */
-				void timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept;
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

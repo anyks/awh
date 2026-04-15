@@ -175,8 +175,9 @@ namespace awh {
 				 * @param eid    идентификатор события ICMP-клиента
 				 * @param action действие события таймера ICMP-клиента
 				 * @param delay  задержка таймера ICMP-клиента
+				 * @return       нужно ли завершить клиента после истечения таймаута
 				 */
-				void timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				bool timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

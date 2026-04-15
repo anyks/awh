@@ -281,15 +281,18 @@ void awh::Client::available(const event::id_t eid, const event::status_t status,
  * @param eid    идентификатор клиента
  * @param action тип действия для истекшего таймаута
  * @param delay  задержка таймаута в миллисекундах
+ * @return       нужно ли завершить клиента после истечения таймаута
  */
-void awh::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+bool awh::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("timeout"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", eid, action, delay);
+			return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", eid, action, delay);
 	}
+	// Возвращаем значение, указывающее на то, что клиента нужно завершить после истечения таймаута
+	return true;
 }
 /**
  * @brief Метод обработки события неотправленных данных клиента

@@ -113,7 +113,7 @@ namespace awh {
 			 * @brief Функция обратного вызова срабатывающая при истечении таймера события
 			 *
 			 */
-			using timeout_t = function <void (const event::id_t, const event::action_t, const uint32_t)>;
+			using timeout_t = function <bool (const event::id_t, const event::action_t, const uint32_t)>;
 			/**
 			 * @brief Функция обратного вызова возвращающая неотправленные данные события
 			 *

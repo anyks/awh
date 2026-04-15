@@ -600,14 +600,15 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
  * @param action действие события таймера NTP-клиента
  * @param delay  задержка таймера NTP-клиента
  * @param packet объект активного пакета при выполнении запроса NTP-клиента
+ * @return       нужно ли завершить клиента после истечения таймаута
  */
-void awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept {
+bool awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept {
 	// Выполняем создание события NTP-клиента для указанного семейства IP-адресов
 	this->create(this->_io->family(eid));
-	// Если попытки резолвинга не превышают максимально допустимое количество
-	if(packet->attempt < this->_transfer.attempts){
-		// Выполняем фиксацию параметров NTP-клиента
-		if(this->commit()){
+	// Выполняем фиксацию параметров NTP-клиента
+	if(this->commit()){
+		// Если попытки резолвинга не превышают максимально допустимое количество
+		if(packet->attempt < this->_transfer.attempts){
 			// Сохраняем количество попыток получения ответа от NTP-сервера
 			const uint8_t attempt = packet->attempt;
 			// Сохраняем версию протокола NTP для текущего запроса
@@ -647,8 +648,8 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
-					// Выходим из функции
-					return;
+					// Завершаем работу клиента после истечения таймаута, так-как мы создали нового
+					return true;
 				// Если пакет успешно добавлен для данного идентификатора NTP-клиента
 				} else {
 					// Выполняем блокировку потока для выполнения запроса NTP-клиента
@@ -684,10 +685,8 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 			this->_io->setTimeout(this->_client.eid, event::action_t::READ, delay);
 			// Отправляем запрос на NTP-сервер для синхронизации времени
 			this->_io->send(this->_client.eid, &packet, sizeof(packet));
-		}
-	// Если попытки резолвинга превышают максимально допустимое количество
-	} else {
-		{
+		// Если попытки резолвинга превышают максимально допустимое количество
+		} else {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("attempts"))
 				// Выполняем функцию обратного вызова
@@ -722,9 +721,9 @@ void awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 				// Удаляем активный пакет из контейнера активных пакетов
 				this->_transfer.waiting.erase(i);
 		}
-		// Выполняем фиксацию параметров NTP-клиента
-		this->commit();
 	}
+	// Завершаем работу клиента после истечения таймаута, так-как мы создали нового
+	return true;
 }
 /**
  * @brief Метод установки безопасности работы потоков
