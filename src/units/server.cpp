@@ -187,6 +187,8 @@ void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noe
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Добавляем идентификатор события однорангового узла в список событий сервера
 		this->_events.emplace(cid);
+		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+		this->_io->on(cid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3)));
 	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("accept"))
@@ -339,6 +341,19 @@ void awh::unit::Server::available(const event::id_t eid, const event::status_t s
 	if(this->_callback.is("available"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+}
+/**
+ * @brief Метод обработки событий истечения таймаута подключённого клиента
+ *
+ * @param eid    идентификатор подключённого клиента
+ * @param action тип действия для истекшего таймаута
+ * @param delay  задержка таймаута в миллисекундах
+ */
+void awh::unit::Server::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("timeout"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", eid, action, delay);
 }
 /**
  * @brief Метод обработки событий ошибок кластера
@@ -1320,6 +1335,8 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при принятии нового подключения
 	this->_callback.set("accept", callback);
+	// Выполняем установку функции обратного вызова на событие истечения таймаута подключённого клиента
+	this->_callback.set("timeout", callback);
 	// Выполняем установку функции обратного вызова при получении событий доступности/недоступности очереди исходящих данных сервера
 	this->_callback.set("available", callback);
 	// Выполняем установку функции обратного вызова при получении ошибок кластера

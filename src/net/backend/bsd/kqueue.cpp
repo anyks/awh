@@ -942,6 +942,8 @@ namespace io {
 		engine::callback::event_t event;
 		// Функция обратного вызова при подключении события
 		engine::callback::connect_t connect;
+		// Функция обратного вызова при истечении таймаута события
+		engine::callback::timeout_t timeout;
 		// Функция обратного вызова при доступности очереди события
 		engine::callback::available_t available;
 		/**
@@ -950,7 +952,8 @@ namespace io {
 		 */
 		explicit Client_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
-		 event(nullptr), connect(nullptr), available(nullptr) {}
+		 event(nullptr), connect(nullptr),
+		 timeout(nullptr), available(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -964,6 +967,8 @@ namespace io {
 		engine::callback::write_t write;
 		// Функция обратного вызова при получении общего события
 		engine::callback::event_t event;
+		// Функция обратного вызова при истечении таймаута события
+		engine::callback::timeout_t timeout;
 		// Функция обратного вызова при доступности очереди события
 		engine::callback::available_t available;
 		/**
@@ -972,7 +977,8 @@ namespace io {
 		 */
 		explicit Peer_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
-		 event(nullptr), available(nullptr) {}
+		 event(nullptr), timeout(nullptr),
+		 available(nullptr) {}
 	} peer_callbacks_t;
 
 	/**
@@ -3910,6 +3916,10 @@ namespace timer1 {
 								if(peer->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									peer->timeouts.write.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(peer->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -3919,6 +3929,10 @@ namespace timer1 {
 								if(peer->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									peer->timeouts.read.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(peer->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -3966,6 +3980,10 @@ namespace timer1 {
 								if(origin->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									origin->timeouts.write.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(origin->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -3975,6 +3993,10 @@ namespace timer1 {
 								if(origin->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									origin->timeouts.read.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(origin->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -4031,6 +4053,10 @@ namespace timer1 {
 								if(client->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									client->timeouts.write.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(client->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -4040,6 +4066,10 @@ namespace timer1 {
 								if(client->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									client->timeouts.read.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(client->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -4056,6 +4086,10 @@ namespace timer1 {
 											// Вызываем функцию обратного вызова для подключения
 											client->callbacks.connect(client->id, false);
 									}
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(client->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay);
 									// Выполняем удаление узла
 									::io::destroy(j->second.get(), eth, log);
 								}
@@ -4069,6 +4103,10 @@ namespace timer1 {
 									if(client->transfer.actions & ::action::RECONNECT){
 										// Устанавливаем статус события в состояние не инициализировано
 										client->state.status = event::status_t::NONE;
+										// Если функция обратного вызова на получение события таймаута установлена
+										if(client->callbacks.timeout != nullptr)
+											// Вызываем функцию обратного вызова на получение события таймаута
+											client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay);
 										// Обрабатываем событие сокета
 										if(::io::socket(client, eth, log)){
 											// Запоминаем текущие опции события
@@ -5069,6 +5107,10 @@ namespace timer2 {
 								if(peer->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									peer->timeouts.write.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(peer->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5078,6 +5120,10 @@ namespace timer2 {
 								if(peer->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									peer->timeouts.read.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(peer->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5125,6 +5171,10 @@ namespace timer2 {
 								if(origin->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									origin->timeouts.write.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(origin->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5134,6 +5184,10 @@ namespace timer2 {
 								if(origin->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									origin->timeouts.read.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(origin->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5190,6 +5244,10 @@ namespace timer2 {
 								if(client->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									client->timeouts.write.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(client->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5199,6 +5257,10 @@ namespace timer2 {
 								if(client->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									client->timeouts.read.status = event::status_t::NONE;
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(client->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5215,6 +5277,10 @@ namespace timer2 {
 											// Вызываем функцию обратного вызова для подключения
 											client->callbacks.connect(client->id, false);
 									}
+									// Если функция обратного вызова на получение события таймаута установлена
+									if(client->callbacks.timeout != nullptr)
+										// Вызываем функцию обратного вызова на получение события таймаута
+										client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay);
 									// Выполняем удаление узла
 									::io::destroy(i->second.get(), eth, log);
 								}
@@ -5228,6 +5294,10 @@ namespace timer2 {
 									if(client->transfer.actions & ::action::RECONNECT){
 										// Устанавливаем статус события в состояние не инициализировано
 										client->state.status = event::status_t::NONE;
+										// Если функция обратного вызова на получение события таймаута установлена
+										if(client->callbacks.timeout != nullptr)
+											// Вызываем функцию обратного вызова на получение события таймаута
+											client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay);
 										// Обрабатываем событие сокета
 										if(::io::socket(client, eth, log)){
 											// Запоминаем текущие опции события
@@ -58109,10 +58179,12 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
 		 */
 		switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 			// Если тип таймера для событий сетевого движка является простым
-			case static_cast <uint8_t> (event::timer_t::SIMPLE):
+			case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 				// Выполняем очистку таймеров
 				::timer1::clear();
-			break;
+				// Выполняем инициализацию таймера
+				::timer2::init();
+			} break;
 			// Если тип таймера для событий сетевого движка является сложным
 			case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 				// Выполняем очистку таймеров
@@ -59447,6 +59519,79 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("A tuninfo callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Методы установки функции обратного вызова на таймаут события
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова на получение события таймаута
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.timeout = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Устанавливаем функцию обратного вызова на получение события таймаута
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.timeout = ::move(cb);
+				break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова на получение события таймаута
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.timeout = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A timeout callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A timeout callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

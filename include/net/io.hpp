@@ -939,6 +939,13 @@ namespace awh {
 				 */
 				void on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept;
 				/**
+				 * @brief Методы установки функции обратного вызова на таймаут события
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, engine::callback::timeout_t cb) noexcept;
+				/**
 				 * @brief Методы установки функции обратного вызова на доступность очереди события
 				 *
 				 * @param id идентификатор события

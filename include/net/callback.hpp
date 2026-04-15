@@ -100,15 +100,20 @@ namespace awh {
 			 */
 			using read_t = function <void (const event::id_t, const uint8_t *, const size_t)>;
 			/**
+			 * @brief Функция обратного вызова срабатывающая при ошибке события
+			 *
+			 */
+			using error_t = function <void (const event::id_t, const event::error_t, const string &)>;
+			/**
 			 * @brief Функция обратного вызова срабатывающая при доступности очереди на отправку данных
 			 *
 			 */
 			using available_t = function <void (const event::id_t, const event::status_t, const size_t)>;
 			/**
-			 * @brief Функция обратного вызова срабатывающая при ошибке события
+			 * @brief Функция обратного вызова срабатывающая при истечении таймера события
 			 *
 			 */
-			using error_t = function <void (const event::id_t, const event::error_t, const string &)>;
+			using timeout_t = function <void (const event::id_t, const event::action_t, const uint32_t)>;
 			/**
 			 * @brief Функция обратного вызова возвращающая неотправленные данные события
 			 *

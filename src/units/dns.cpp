@@ -2078,11 +2078,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 				// Если пакет найден в контейнере активных пакетов
 				if(i != this->_transfer.waiting.end()){
 					// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
-					domain = i->second.domain;
+					domain = ::move(i->second.domain);
 					// Выполняем блокировку потока для работы с событием DNS-резолвера
 					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Удаляем событие таймера для ожидания ответа от DNS-сервера
-					this->_io->destroy(i->second.eid);
+					this->_io->destroy(i->second.tid);
 					// Удаляем пакет из контейнера активных пакетов
 					this->_transfer.waiting.erase(i);
 				}
@@ -2602,11 +2602,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
  * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
  *
  * @param id     идентификатор DNS-резолвера
- * @param        идентификатор таймера DNS-резолвера
+ * @param eid    идентификатор таймера DNS-резолвера
  * @param status статус события таймера DNS-резолвера
  * @param packet объект активного пакета DNS-запроса
  */
-void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, const event::status_t status, packet_t * packet) noexcept {
+void awh::unit::DNS::timeout(const id_t id, const event::id_t eid, const event::status_t status, packet_t * packet) noexcept {
 	// Если статус события успешен
 	if(status == event::status_t::SUCCESS){
 		// Если попытки резолвинга не превышают максимально допустимое количество
@@ -2616,15 +2616,15 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 			// Увеличиваем количество попыток резолвинга
 			packet->attempt++;
 			// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-			packet->eid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+			packet->tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 			// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-			this->_io->setTimeout(packet->eid, event::action_t::NONE, (packet->delay > 0 ? packet->delay : 5000));
+			this->_io->setTimeout(packet->tid, event::action_t::NONE, (packet->delay > 0 ? packet->delay : 5000));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(packet->eid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+			this->_io->on(packet->tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 			// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-			if(!this->_io->commit(packet->eid)){
+			if(!this->_io->commit(packet->tid)){
 				// Удаляем событие таймера
-				this->_io->destroy(packet->eid);
+				this->_io->destroy(packet->tid);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -2646,14 +2646,14 @@ void awh::unit::DNS::timeout(const id_t id, [[maybe_unused]] const event::id_t, 
 			// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 			} else {
 				// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-				this->_io->on(packet->eid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, packet)));
+				this->_io->on(packet->tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, packet)));
 				// Запускаем таймер для ожидания ответа от DNS-сервера
-				this->_io->launch(packet->eid);
+				this->_io->launch(packet->tid);
 			}
 			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
 			const size_t size = ::dns::request(id, packet->record, packet->domain, this->_log);
 			// Отправляем запрос на резолвинг доменного имени
-			this->_io->send(this->_resolver.eid, ::dns::buffer, size);
+			this->_io->send(eid, ::dns::buffer, size);
 		// Если попытки резолвинга превышают максимально допустимое количество
 		} else {
 			// Если функция обратного вызова установлена
@@ -6013,7 +6013,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-						ret.first->second.eid = tid;
+						ret.first->second.tid = tid;
 						// Устанавливаем доменное имя для отслеживания его выполнения
 						ret.first->second.domain = domain;
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
@@ -6232,7 +6232,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-						ret.first->second.eid = tid;
+						ret.first->second.tid = tid;
 						// Устанавливаем доменное имя для отслеживания его выполнения
 						ret.first->second.domain = domain;
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
@@ -6360,7 +6360,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 				} else {
 					// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-					ret.first->second.eid = tid;
+					ret.first->second.tid = tid;
 					// Устанавливаем доменное имя для отслеживания его выполнения
 					ret.first->second.domain = domain;
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
@@ -6539,7 +6539,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
 					} else {
 						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-						ret.first->second.eid = tid;
+						ret.first->second.tid = tid;
 						// Устанавливаем доменное имя для отслеживания его выполнения
 						ret.first->second.domain = domain;
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
@@ -6719,9 +6719,9 @@ awh::unit::DNS::~DNS() noexcept {
 		// Выполняем перебор всех пакетов в контейнере пакетов
 		for(auto i = this->_transfer.waiting.begin(); i != this->_transfer.waiting.end(); ++i){
 			// Если событие таймаута для ожидания ответа от DNS-сервера активно
-			if(i->second.eid > 0)
+			if(i->second.tid > 0)
 				// Удаляем событие таймаута для ожидания ответа от DNS-сервера
-				this->_io->destroy(i->second.eid);
+				this->_io->destroy(i->second.tid);
 		}
 	}
 }

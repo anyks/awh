@@ -97,6 +97,14 @@ namespace awh {
 				 */
 				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 				/**
+				 * @brief Метод обработки событий истечения таймаута клиента
+				 *
+				 * @param eid    идентификатор клиента
+				 * @param action тип действия для истекшего таймаута
+				 * @param delay  задержка таймаута в миллисекундах
+				 */
+				void timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				/**
 				 * @brief Метод обработки событий ошибок клиента
 				 *
 				 * @param eid         идентификатор события

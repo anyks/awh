@@ -138,12 +138,8 @@ namespace awh {
 				 *
 				 */
 				typedef struct Packet {
-					// Время ожидания ответа от NTP-сервера (в миллисекундах)
-					uint32_t delay;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempt;
-					// Идентификатор события для таймера NTP-клиента
-					event::id_t eid;
 					// Версия протокола NTP для выполнения запроса
 					version_t version;
 					/**
@@ -151,9 +147,8 @@ namespace awh {
 					 *
 					 */
 					explicit Packet() noexcept :
-					 delay(5000), attempt(0), eid(0),
-					 version(version_t::V4) {}
-				} packet_t;
+					 attempt(0), version(version_t::V4) {}
+				} __attribute__((packed)) packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
@@ -205,13 +200,14 @@ namespace awh {
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от NTP-сервера
+				 * @brief Метод обработки событий таймаута при ожидании ответа от NTP-клиента
 				 *
-				 * @param eid    идентификатор таймера NTP-клиента
-				 * @param status статус события таймера NTP-клиента
+				 * @param eid    идентификатор события NTP-клиента
+				 * @param action действие события таймера NTP-клиента
+				 * @param delay  задержка таймера NTP-клиента
 				 * @param packet объект активного пакета при выполнении запроса NTP-клиента
 				 */
-				void timeout(const event::id_t eid, const event::status_t status, packet_t * packet) noexcept;
+				void timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

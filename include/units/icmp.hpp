@@ -98,7 +98,7 @@ namespace awh {
 					 *
 					 */
 					explicit Client() noexcept :
-                     eid(0), source(nullptr) {}
+                     eid(0), target(nullptr), source(nullptr) {}
 				} client_t;
 				/**
 				 * @brief Структура активного пакета при выполнении запросов ICMP-клиента
@@ -109,8 +109,6 @@ namespace awh {
 					uint16_t count;
 					// Время ожидания ответа от удалённого сервера (в миллисекундах)
 					uint32_t delay;
-					// Идентификатор события для таймера ICMP-клиента
-					event::id_t eid;
 					// Штамп времени начала запроса
 					uint64_t timestamp;
 					/**
@@ -118,9 +116,8 @@ namespace awh {
 					 *
 					 */
 					explicit Packet() noexcept :
-					 count(0), delay(5000),
-					 eid(0), timestamp(0) {}
-				} packet_t;
+					 count(0), delay(0), timestamp(0) {}
+				} __attribute__((packed)) packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов ICMP-клиента
 				 *
@@ -163,14 +160,6 @@ namespace awh {
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			private:
 				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
-				 *
-				 * @param id     идентификатор ICMP-клиента
-				 * @param        идентификатор таймера ICMP-клиента
-				 * @param status статус события таймера ICMP-клиента
-				 */
-				void timeout(const id_t id, const event::id_t, const event::status_t status) noexcept;
-				/**
 				 * @brief Метод обработки ответов от удалённого сервера на запросы ICMP-клиента
 				 *
 				 * @param eid  идентификатор события чтения из ICMP-клиента
@@ -179,6 +168,15 @@ namespace awh {
 				 * @param size размер данных события чтения из ICMP-клиента
 				 */
 				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
+				 *
+				 * @param id     идентификатор ICMP-клиента
+				 * @param eid    идентификатор события ICMP-клиента
+				 * @param action действие события таймера ICMP-клиента
+				 * @param delay  задержка таймера ICMP-клиента
+				 */
+				void timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков

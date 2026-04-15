@@ -140,6 +140,19 @@ void awh::unit::Client::available(const event::id_t eid, const event::status_t s
 		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
 }
 /**
+ * @brief Метод обработки событий истечения таймаута клиента
+ *
+ * @param eid    идентификатор клиента
+ * @param action тип действия для истекшего таймаута
+ * @param delay  задержка таймаута в миллисекундах
+ */
+void awh::unit::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("timeout"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", eid, action, delay);
+}
+/**
  * @brief Метод обработки событий ошибок клиента
  *
  * @param eid         идентификатор события
@@ -879,6 +892,8 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к серверу
 	this->_callback.set("connect", callback);
+	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
+	this->_callback.set("timeout", callback);
 	// Выполняем установку функции обратного вызова при получении событий доступности/недоступности очереди исходящих данных клиента
 	this->_callback.set("available", callback);
 }
@@ -932,6 +947,8 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+		this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
 		this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
 		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента

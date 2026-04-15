@@ -165,6 +165,15 @@ namespace awh {
 				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 			private:
 				/**
+				 * @brief Метод обработки событий истечения таймаута подключённого клиента
+				 *
+				 * @param eid    идентификатор подключённого клиента
+				 * @param action тип действия для истекшего таймаута
+				 * @param delay  задержка таймаута в миллисекундах
+				 */
+				void timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+			private:
+				/**
 				 * @brief Метод обработки событий ошибок кластера
 				 *
 				 * @param pid         идентификатор процесса

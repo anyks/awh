@@ -158,7 +158,7 @@ namespace awh {
 					// Количество попыток резолвинга доменного имени
 					uint8_t attempt;
 					// Идентификатор события для таймера DNS-резолвера
-					event::id_t eid;
+					event::id_t tid;
 					// Тип DNS-записи, для которой произошёл таймаут
 					record_t record;
 					/**
@@ -167,7 +167,7 @@ namespace awh {
 					 */
 					explicit Packet() noexcept :
 					 domain{AWH_SHORT_NAME},
-					 delay(5000), attempt(0), eid(0),
+					 delay(5000), attempt(0), tid(0),
 					 record(record_t::NONE) {}
 				} packet_t;
 				/**
@@ -250,11 +250,11 @@ namespace awh {
 				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
 				 *
 				 * @param id     идентификатор DNS-резолвера
-				 * @param        идентификатор таймера DNS-резолвера
+				 * @param eid    идентификатор таймера DNS-резолвера
 				 * @param status статус события таймера DNS-резолвера
 				 * @param packet объект активного пакета DNS-запроса
 				 */
-				void timeout(const id_t id, const event::id_t, const event::status_t status, packet_t * packet) noexcept;
+				void timeout(const id_t id, const event::id_t eid, const event::status_t status, packet_t * packet) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков
