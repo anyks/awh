@@ -29,7 +29,22 @@ else (CMAKE_BUILD_IDN)
     message(STATUS "Build with IDN: NO\n")
 endif (CMAKE_BUILD_IDN)
 
-# Сборка с установкой количества доступных файловых дескрипторов
+# Если активирован флаг оптимизации операционной системы
+if (CMAKE_BOOSTING_NET)
+    add_compile_definitions(AWH_BOOSTING_NET)
+    message(STATUS "Build with NET boosting: YES\n")
+endif (CMAKE_BOOSTING_NET)
+
+# Если операционной системой является Solaris
+if (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    # Если активирован флаг оптимизации операционной системы
+    if (CMAKE_USING_SOLARIS_PORTS)
+        add_compile_definitions(AWH_USING_EVENTS_PORTS)
+        message(STATUS "Build with using Event Ports: YES\n")
+    endif (CMAKE_USING_SOLARIS_PORTS)
+endif()
+
+# Сборка с установкой количества доступных файловых дескрипторов (по умолчанию: 131072)
 if (CMAKE_MAX_COUNT_FDS)
     add_compile_definitions(AWH_MAX_COUNT_FDS=${CMAKE_MAX_COUNT_FDS})
     message(STATUS "Build with max FDs: ${CMAKE_MAX_COUNT_FDS}\n")
@@ -52,21 +67,6 @@ if (CMAKE_DEFAULT_DNS6_SERVERS)
     add_compile_definitions(AWH_IPV6_NS=${CMAKE_DEFAULT_DNS6_SERVERS})
     message(STATUS "Build with default IPv6 DNS servers: ${CMAKE_DEFAULT_DNS6_SERVERS}\n")
 endif (CMAKE_DEFAULT_DNS6_SERVERS)
-
-# Если активирован флаг оптимизации операционной системы
-if (CMAKE_BOOSTING_NET)
-    add_compile_definitions(AWH_BOOSTING_NET)
-    message(STATUS "Build with NET boosting: YES\n")
-endif (CMAKE_BOOSTING_NET)
-
-# Если операционной системой является Solaris
-if (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    # Если активирован флаг оптимизации операционной системы
-    if (CMAKE_USING_SOLARIS_PORTS)
-        add_compile_definitions(AWH_USING_EVENTS_PORTS)
-        message(STATUS "Build with using Event Ports: YES\n")
-    endif (CMAKE_USING_SOLARIS_PORTS)
-endif()
 
 # Если активирован флаг установки максимального размера HTTP-тела запроса/ответа (по умолчанию: 10485760 = 10Mb)
 if (CMAKE_MAX_HTTP_BODY_SIZE)
