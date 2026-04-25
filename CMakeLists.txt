@@ -392,7 +392,7 @@ if (Dependence_FOUND)
     message(STATUS "Lizard include dir found: " ${LIZARD_INCLUDE_DIR})
     message(STATUS "Density include dir found: " ${DENSITY_INCLUDE_DIR})
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
-    message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
+    message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
     message(STATUS "MiniUPnPc include dir found: " ${MINIUPNPC_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 
@@ -418,19 +418,6 @@ if (TcMalloc_FOUND)
 else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
 endif (TcMalloc_FOUND)
-
-# Если необходимо собрать тесты
-if (CMAKE_BUILD_TESTS)
-    # Выполняем поиск библиотеки OpenSSL
-    find_package(OpenSSL REQUIRED)
-
-    # Провекра OpenSSL
-    if (OpenSSL_FOUND)
-        message(STATUS "OpenSSL lib found: " ${OPENSSL_LIBRARY} " " ${OPENSSL_CRYPTO_LIBRARY})
-    else (OpenSSL_FOUND)
-        message(FATAL_ERROR "OpenSSL not found")
-    endif (OpenSSL_FOUND)
-endif (CMAKE_BUILD_TESTS)
 
 # Если Doxygen найден
 if(Doxygen_FOUND)
@@ -865,7 +852,7 @@ else()
     # Если сборка производится под операционную систему MacOS X
     if (APPLE AND NOT IOS)
         # Устанавливаем необходимые зависимости для MacOS X
-        SET(AWH_FLAGS "-framework Foundation")
+        SET(AWH_FLAGS "-framework Security -framework CoreFoundation -framework Foundation")
     endif()
 
     # Если необходимо собрать семплы

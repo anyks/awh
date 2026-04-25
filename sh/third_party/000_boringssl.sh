@@ -5,7 +5,7 @@ if [ -n "$1" ]; then
 	# Если необходимо удалить или очистить модуль
 	if [ $1 = "--clean" ]; then
 		# Очищаем сабмодуль
-		clean_submodule "openssl"
+		clean_submodule "boringssl"
 		# Для операционной системы Windows
 		if [[ $OS = "Windows" ]]; then
 			# Удаляем все зависимости библиотеки
@@ -23,8 +23,8 @@ if [ -n "$1" ]; then
 	# Если необходимо выполнить переключение на указанную ветку
 	elif [ $1 = "--switch" ] && [ -n "$2" ]; then
 		# Переключение ветки
-		src="$ROOT/../submodules/openssl"
-		printf "\n****** OpenSSL ******\n"
+		src="$ROOT/../submodules/boringssl"
+		printf "\n****** BoringSSL ******\n"
 		cd "$src" || exit 1
 
 		# Выполняем получение данных с репозитория
@@ -38,19 +38,16 @@ if [ -n "$1" ]; then
 		cd "$ROOT" || exit 1
 	# Если необходимо собрать проект
 	elif [ $1 = "--build" ] || [ $1 = "--update" ]; then
-		# Сборка OpenSSL
-		src="$ROOT/../submodules/openssl"
+		# Сборка BoringSSL
+		src="$ROOT/../submodules/boringssl"
 		if [ ! -f "$src/.stamp_done" ]; then
-			printf "\n****** OpenSSL ******\n"
+			printf "\n****** BoringSSL ******\n"
 			cd "$src" || exit 1
 
 			# Устанавливаем название флага
 			FLAG="--v"
 			# Устанавливаем название ветки/тега/версии по умолчанию
-			NAME="3.6.0"
-
-			# Выполняем удаление все неподходящие зависимости
-			rm -rf "$src/fuzz/corpora"/*
+			NAME="20260413.0"
 
 			# Если ветка или тег передан
 			if [ -n "$2" ]; then
@@ -85,12 +82,12 @@ if [ -n "$1" ]; then
 				git fetch --all
 				# Закачиваем все теги
 				git fetch --all --tags
-				# Выполняем жесткое переключение на master
-				git reset --hard origin/master
-				# Переключаемся на master
-				git checkout master
+				# Выполняем жесткое переключение на main
+				git reset --hard origin/main
+				# Переключаемся на main
+				git checkout main
 				# Выполняем обновление данных
-				git pull origin master
+				git pull origin main
 				# Удаляем старую ветку
 				git branch -D $NAME-branch
 				# Выполняем переключение на указанную версию
@@ -104,26 +101,26 @@ if [ -n "$1" ]; then
 			# Если флаг передан в виде версии
 			elif [ $FLAG = "--v" ]; then
 				# Выполняем удаление предыдущей закаченной версии
-				git tag -d openssl-${NAME}
+				git tag -d "0.$NAME"
 				# Закачиваем все изменения
 				git fetch --all
 				# Закачиваем все теги
 				git fetch --all --tags
-				# Выполняем жесткое переключение на master
-				git reset --hard origin/master
-				# Переключаемся на master
-				git checkout master
+				# Выполняем жесткое переключение на main
+				git reset --hard origin/main
+				# Переключаемся на main
+				git checkout main
 				# Выполняем обновление данных
-				git pull origin master
+				git pull origin main
 				# Удаляем старую ветку
 				git branch -D v${NAME}-branch
 				# Выполняем переключение на указанную версию
-				git checkout -b v${NAME}-branch openssl-${NAME}
+				git checkout -b v${NAME}-branch "0.$NAME"
 
 				# Если установлена команда обновления сборки
 				if [[ $1 = "--update" ]]; then
 					# Выполняем обновление репозитория
-					git pull origin master
+					git pull origin main
 				fi
 			# Если передан непонятный флаг
 			else
@@ -133,57 +130,66 @@ if [ -n "$1" ]; then
 				exit 1
 			fi
 
-			# Выполняем конфигурацию проекта под Linux или FreeBSD
-			if [[ $OS = "Linux" ]] || [[ $OS = "FreeBSD" ]]; then
-				# Выполняем конфигурацию проекта
-				./Configure \
-				 sctp \
-				 no-docs \
-				 no-apps \
-				 no-tests \
-				 no-async \
-				 no-shared \
-				 enable-tfo \
-				 --release \
-				 --prefix="$PREFIX" \
-				 --openssldir="$PREFIX" \
-				 -Wl,-rpath,"$PREFIX/lib" || exit 1
+			# Создаём каталог сборки
+			mkdir -p "build" || exit 1
+			# Переходим в каталог
+			cd "build" || exit 1
+
+			# Удаляем старый файл кэша
+			rm -rf "$src/build/CMakeCache.txt"
+
 			# Выполняем конфигурацию проекта под Windows
-			elif [ $OS = "Windows" ]; then
+			if [ $OS = "Windows" ]; then
 				# Выполняем конфигурацию проекта
-				./Configure \
-				 mingw64 \
-				 no-docs \
-				 no-apps \
-				 no-tests \
-				 no-async \
-				 no-shared \
-				 --release \
-				 --prefix="$PREFIX" \
-				 --openssldir="$PREFIX" \
-				 -Wl,-rpath,"$PREFIX/lib" || exit 1
+				cmake \
+				 -DCMAKE_SYSTEM_NAME=Windows \
+				 -DCMAKE_BUILD_TYPE=Release \
+				 -DBUILD_SHARED_LIBS=OFF \
+				 -DBUILD_TESTING=OFF \
+				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 -G "MSYS Makefiles" \
+				 .. || exit 1
+			# Выполняем конфигурацию проекта под MacOS X
+			elif [ $OS = "Darwin" ]; then
+				# Если архитектура ARM
+				if [[ $ARCHITECTURE = "arm" ]]; then
+					# Устанавливаем архитектуру для сборки под ARM
+					ARCH="arm64"
+				# Если архитектура x86
+				else
+					# Устанавливаем архитектуру для сборки под x86
+					ARCH="x86_64"
+				fi
+
+				# Выполняем конфигурацию проекта
+				cmake \
+				 -DCMAKE_C_COMPILER=clang \
+				 -DCMAKE_CXX_COMPILER=clang++ \
+				 -DCMAKE_BUILD_TYPE=Release \
+				 -DBUILD_SHARED_LIBS=OFF \
+				 -DCMAKE_OSX_ARCHITECTURES="$ARCH" \
+				 -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET \
+				 -DBUILD_TESTING=OFF \
+				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 .. || exit 1
 			# Выполняем конфигурацию проекта под все остальные операционные системы
 			else
 				# Выполняем конфигурацию проекта
-				./Configure \
-				 no-docs \
-				 no-apps \
-				 no-tests \
-				 no-async \
-				 no-shared \
-				 enable-tfo \
-				 --release \
-				 --prefix="$PREFIX" \
-				 --openssldir="$PREFIX" \
-				 -Wl,-rpath,"$PREFIX/lib" || exit 1
+				cmake \
+				 -DCMAKE_BUILD_TYPE=Release \
+				 -DBUILD_SHARED_LIBS=OFF \
+				 -DBUILD_TESTING=OFF \
+				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 .. || exit 1
 			fi
 
 			# Выполняем сборку на всех логических ядрах
 			$MAKE -j"$numproc" || exit 1
+			# Выполняем установку проекта
+			$MAKE install || exit 1
 
-			# Выполняем установку проекта без документации
-			$MAKE install_sw || exit 1
-			$MAKE install_ssldirs || exit 1
+			# Копируем статическую библиотеку в каталог установки
+			cp ./libdecrepit.a "$PREFIX/lib/"
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX

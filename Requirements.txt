@@ -1,4 +1,4 @@
-openssl --version 3.6.0
+boringssl --version 20260413.0
 zlib --version 1.3.1
 snappy --version 1.2.1
 bz2 --branch master

@@ -28,6 +28,7 @@
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/x509v3.h>
 
@@ -938,31 +939,37 @@ namespace ssl {
 						}
 					#endif
 				} break;
-				// Если сообщение является CertificateURL
-				case SSL3_MT_CERTIFICATE_URL: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Получаем объект логирования
-						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				/**
+				 * Если сообщение является EncryptedClientHello или CertificateURL, то эти сообщения не поддерживаются в BoringSSL,
+				 * так как они были удалены из стандарта TLS 1.3 и не реализованы в BoringSSL
+				 */
+				#ifndef OPENSSL_IS_BORINGSSL
+					// Если сообщение является EncryptedClientHello// Если сообщение является CertificateURL
+					case SSL3_MT_CERTIFICATE_URL: {
 						/**
-						 * Определяем узел события к которому относится контекст TLS
+						 * Если включён режим отладки
 						 */
-						switch(static_cast <uint8_t> (member->node)){
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
-								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateURL", size);
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
-								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateURL", size);
-							break;
-						}
-					#endif
-				} break;
+						#if DEBUG_MODE
+							// Получаем объект логирования
+							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+							/**
+							 * Определяем узел события к которому относится контекст TLS
+							 */
+							switch(static_cast <uint8_t> (member->node)){
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Выводим сообщение об ошибке
+									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateURL", size);
+								break;
+								// Если узел является сервером
+								case static_cast <uint8_t> (event::node_t::SERVER):
+									// Выводим сообщение об ошибке
+									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateURL", size);
+								break;
+							}
+						#endif
+					} break;
+				#endif
 				// Если сообщение является CertificateStatus
 				case SSL3_MT_CERTIFICATE_STATUS: {
 					/**
@@ -1425,6 +1432,74 @@ namespace ssl {
 };
 
 /**
+ * BoringSSL не поддерживает SSL_use_certificate_chain_file(SSL*, ...).
+ * Реализуем аналог вручную: читаем leaf-сертификат и промежуточную цепочку из PEM-файла
+ * и устанавливаем их непосредственно в объект SSL*.
+ * Функция возвращает 1 при успехе, 0 при ошибке (как стандартные SSL_*-функции).
+ */
+#ifdef OPENSSL_IS_BORINGSSL
+	/**
+	 * Инкапсулируем функции BoringSSL в пространство имён
+	 */
+	namespace boringssl {
+		/**
+		 * @brief Функция установки сертификата и цепочки сертификатов из PEM-файла для BoringSSL
+		 *
+		 * @param ssl      объект SSL
+		 * @param filename путь к PEM-файлу
+		 * @return         результат выполнения функции (1 - успех, 0 - ошибка)
+		 */
+		static int32_t ssl_use_certificate_chain_file(SSL * ssl, const char * filename) noexcept {
+			// Результат работы функции
+			int32_t result = 0;
+			// Открываем PEM-файл через BIO
+			BIO * bio = ::BIO_new_file(filename, "r");
+			// Если файл открыт успешно
+			if(bio != nullptr){
+				// Читаем листовой (leaf) сертификат
+				X509 * cert = ::PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+				// Если листовой сертификат получен
+				if(cert != nullptr){
+					// Устанавливаем листовой сертификат в объект SSL*
+					result = ::SSL_use_certificate(ssl, cert);
+					// Освобождаем ресурсы листового сертификата
+					::X509_free(cert);
+					// Если листовой сертификат установлен успешно
+					if(result == 1){
+						// Статус добавления промежуточного сертификата в цепочку SSL*
+						int32_t status = 0;
+						/**
+						 * Читаем промежуточные сертификаты цепочки из PEM-файла и добавляем их в объект SSL*.
+						 * PEM-файл должен быть структурирован так, что листовой сертификат идёт первым,
+						 * а затем следуют промежуточные сертификаты в порядке их расположения в цепочке.
+						 */
+						while((cert = ::PEM_read_bio_X509(bio, nullptr, nullptr, nullptr)) != nullptr){
+							// Добавляем промежуточный сертификат в цепочку SSL*
+							status = ::SSL_add1_chain_cert(ssl, cert);
+							// Освобождаем ресурсы промежуточного сертификата
+							::X509_free(cert);
+							// Если добавление промежуточного сертификата не удалось
+							if(status != 1){
+								// Фиксируем ошибку и выходим из цикла
+								result = 0;
+								// Выходим из цикла
+								break;
+							}
+						}
+						// PEM_read_bio_X509 в конце файла ставит ошибку "нет данных" — сбрасываем её
+						::ERR_clear_error();
+					}
+				}
+				// Закрываем BIO
+				::BIO_free(bio);
+			}
+			// Выводим результат работы функции
+			return result;
+		}
+	};
+#endif // OPENSSL_IS_BORINGSSL
+
+/**
  * Инкапсулируем функции работы с cookie в пространство имён
  */
 namespace cookie {
@@ -1537,14 +1612,14 @@ namespace cookie {
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
 			break;
 			// Если производится работа с другими протоколами, выходим
-			default: OPENSSL_assert(0);
+			default: return 0;
 		}
 		// Буфер под генерацию cookie
 		uint8_t result[EVP_MAX_MD_SIZE];
 		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
 		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
 		// Очищаем ранее выделенную память
-		OPENSSL_free(buffer);
+		::OPENSSL_free(buffer);
 		// Выполняем копирование полученного результата в буфер cookie
 		::memcpy(cookie, result, length);
 		// Устанавливаем размер буфера cookie
@@ -1553,23 +1628,28 @@ namespace cookie {
 		return 1;
 	}
 	/**
-	 * @brief Функция обратного вызова для генерации куков
-	 *
-	 * @param ssl    объект SSL
-	 * @param cookie данные куков
-	 * @param size   количество символов
-	 * @return       результат проверки
+	 * Если не используется BoringSSL
 	 */
-	static int32_t generateStateless(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
-		// Размер буфера с печенками
-		uint32_t length = 0;
-		// Выполняем генерацию cookie
-		const int32_t result = ::cookie::generate(ssl, cookie, &length);
-		// Получаем размер буфера с печенками
-		(* size) = length;
-		// Выводим результат работы функции
-		return result;
-	}
+	#ifndef OPENSSL_IS_BORINGSSL
+		/**
+		 * @brief Функция обратного вызова для генерации куков TLS 1.3 (stateless)
+		 *
+		 * @param ssl    объект SSL
+		 * @param cookie данные куков
+		 * @param size   количество символов
+		 * @return       результат проверки
+		 */
+		static int32_t generateStateless(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
+			// Размер буфера с печенками
+			uint32_t length = 0;
+			// Выполняем генерацию cookie
+			const int32_t result = ::cookie::generate(ssl, cookie, &length);
+			// Получаем размер буфера с печенками
+			(* size) = length;
+			// Выводим результат работы функции
+			return result;
+		}
+	#endif // !OPENSSL_IS_BORINGSSL
 	/**
 	 * @brief Функция обратного вызова для проверки куков
 	 *
@@ -1640,12 +1720,12 @@ namespace cookie {
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv4_t *> (address->ip.get())->address, 4);
 			break;
 			// Если адрес является IPv6
-			case 16: {
+			case 16:
 				// Выполняем чтение в буфер данных данные структуры подключения
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
-			} break;
+			break;
 			// Если производится работа с другими протоколами, выходим
-			default: OPENSSL_assert(0);
+			default: return 0;
 		}
 		// Буфер под генерацию cookie
 		uint8_t result[EVP_MAX_MD_SIZE];
@@ -1661,17 +1741,22 @@ namespace cookie {
 		return 0;
 	}
 	/**
-	 * @brief Функция обратного вызова для проверки куков
-	 *
-	 * @param ssl    объект SSL
-	 * @param cookie данные куков
-	 * @param size   количество символов
-	 * @return       результат проверки
+	 * Если не используется BoringSSL
 	 */
-	static int32_t verifyStateless(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
-		// Выполняем проверку cookie
-		return ::cookie::verify(ssl, cookie, static_cast <uint32_t> (size));
-	}
+	#ifndef OPENSSL_IS_BORINGSSL
+		/**
+		 * @brief Функция обратного вызова для проверки куков TLS 1.3 (stateless)
+		 *
+		 * @param ssl    объект SSL
+		 * @param cookie данные куков
+		 * @param size   количество символов
+		 * @return       результат проверки
+		 */
+		static int32_t verifyStateless(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
+			// Выполняем проверку cookie
+			return ::cookie::verify(ssl, cookie, static_cast <uint32_t> (size));
+		}
+	#endif // !OPENSSL_IS_BORINGSSL
 };
 
 /**
@@ -4745,6 +4830,35 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 							return result;
 						}
 					}
+					/**
+					 * Дренируем bio.write ПЕРЕД тем как выставить HANDSHAKE_MODE.
+					 * Когда SSL_do_handshake() возвращает 1 (или SSL_is_init_finished уже 1),
+					 * BoringSSL/OpenSSL может разместить в bio.write финальные рукопожатные данные
+					 * (например: ServerCCS+ServerFinished для DTLS-сервера).
+					 * Если не отправить их пиру немедленно — тот никогда не завершит своё
+					 * рукопожатие (особенно критично для DTLS с memory BIO, без OS-сокетов).
+					 */
+					if(::BIO_ctrl_pending(member->bio.write) > 0){
+						// Количество прочитанных данных
+						int32_t bytes = 0;
+						// Количество ожидающих данных для чтения
+						size_t pending = 0;
+						/**
+						 * Читаем все ожидающие данные из BIO буфера записи
+						 */
+						while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
+							// Читаем данные из BIO буфера записи
+							bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+							// Если данные не прочитаны — выходим
+							if(bytes <= 0)
+								// Выходим из цикла
+								break;
+							// Если функция обратного вызова чтения данных установлена
+							else if(member->callback.read != nullptr)
+								// Вызываем функцию обратного вызова чтения данных
+								member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+						}
+					}
 					// Устанавливаем режим выполненного рукопожатия
 					member->state |= state::HANDSHAKE_MODE;
 					// Если узел является клиентом
@@ -4867,28 +4981,39 @@ bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
 					::local::guard_t guard(member);
 					// Выполняем блокировку потоков
 					const locker_t <recursive_mutex> lock(member->mtx);
-					// Выполняем повторную передачу данных для DTLS/QUIC
-					if(::SSL_handle_events(member->ssl) == 1){
-						// Количество прочитанных данных
-						int32_t bytes = 0;
-						// Количество ожидающих данных для чтения
-						size_t pending = 0;
-						/**
-						 * Читаем все ожидающие данные из BIO буфера записи
-						 */
-						while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
-							// Читаем данные из BIO буфера записи
-							bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-							// Если данные не прочитаны
-							if(bytes <= 0)
-								// Выходим из цикла
-								break;
-							// Если функция обратного вызова чтения данных установлена
-							else if((result = (member->callback.read != nullptr)))
-								// Вызываем функцию обратного вызова чтения данных
-								member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+					/**
+					 * Если используется OpenSSL (не BoringSSL)
+					 */
+					#ifndef OPENSSL_IS_BORINGSSL
+						// Выполняем повторную передачу данных для DTLS/QUIC
+						if(::SSL_handle_events(member->ssl) == 1){
+					/**
+					 * Если используется BoringSSL
+					 */
+					#else
+						// Выполняем повторную передачу данных для DTLS/QUIC
+						if(::BIO_ctrl_pending(member->bio.write) > 0){
+					#endif
+							// Количество прочитанных данных
+							int32_t bytes = 0;
+							// Количество ожидающих данных для чтения
+							size_t pending = 0;
+							/**
+							 * Читаем все ожидающие данные из BIO буфера записи
+							 */
+							while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
+								// Читаем данные из BIO буфера записи
+								bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+								// Если данные не прочитаны
+								if(bytes <= 0)
+									// Выходим из цикла
+									break;
+								// Если функция обратного вызова чтения данных установлена
+								else if((result = (member->callback.read != nullptr)))
+									// Вызываем функцию обратного вызова чтения данных
+									member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+							}
 						}
-					}
 				} break;
 			}
 		}
@@ -5083,35 +5208,44 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 								// Устанавливаем имя хоста для проверки
 								::SSL_set1_host(member->ssl, cts->host.c_str());
 							#endif
-							// Активируем верификацию доменного имени
-							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), cts->host.c_str(), 0) != 1){
-								// Если функция обратного вызова состояния установлена
-								if(cts->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
-									cts->callback.state(id, tls_t::state_t::FAILED);
-								// Получаем текст ошибки
-								const string error = ::ssl::error(id, "Host verification failed");
-								// Если функция обратного вызова ошибки установлена
-								if(cts->callback.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки
-									cts->callback.error(id, error_t::HOSTNAME_VERIFY, error);
-								// Если функция обратного вызова ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, cts->host), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
+							/**
+							 * В BoringSSL: SSL_set1_host выше уже вызвал X509_VERIFY_PARAM_set1_host
+							 * с корректным strlen(host). Повторный вызов с namelen=0 в BoringSSL
+							 * интерпретируется как пустое имя (не как strlen!) и устанавливает
+							 * param->poison=1, что приводит к X509_V_ERR_INVALID_CALL при верификации.
+							 * Для OpenSSL (не BoringSSL) вызываем явно для надёжности.
+							 */
+							#ifndef OPENSSL_IS_BORINGSSL
+								// Активируем верификацию доменного имени
+								if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), cts->host.c_str(), cts->host.size()) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(cts->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										cts->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Host verification failed");
+									// Если функция обратного вызова ошибки установлена
+									if(cts->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										cts->callback.error(id, error_t::HOSTNAME_VERIFY, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, cts->host), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+									}
 								}
-							}
+							#endif // !OPENSSL_IS_BORINGSSL
 						}
 						// Устанавливаем хост для уровня защищённых сокетов
 						member->host.name = cts->host;
@@ -5412,6 +5546,9 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 				}
 				// Устанавливаем опции запроса
 				::SSL_CTX_set_options(
+					/**
+					 * Устанавливаем объект контекста TLS для которого устанавливаем опции запроса
+					 */
 					member->ctx,
 					/**
 					 * 1. Совместимость и безопасность по умолчанию
@@ -5457,9 +5594,10 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					} break;
 				}
 				/**
-				 * Если версия OpenSSL соответствует или выше версии 3.0.0
+				 * Если версия OpenSSL соответствует или выше версии 3.0.0,
+				 * либо используется BoringSSL (SSL_CTX_set1_curves_list доступна в обоих случаях)
 				 */
-				#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30000000L
 					// Выполняем установку кривых P-256, P-384 и P-521
 					if(::SSL_CTX_set1_curves_list(member->ctx, "P-521:P-384:P-256") != 1){
 						// Получаем текст ошибки
@@ -5489,7 +5627,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 						return 0;
 					}
 				/**
-				 * Если версия OpenSSL ниже версии 3.0.0
+				 * Если версия OpenSSL ниже версии 3.0.0 (и не используется BoringSSL)
 				 */
 				#else
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
@@ -5710,6 +5848,9 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 				}
 				// Устанавливаем опции запроса
 				::SSL_CTX_set_options(
+					/**
+					 * Устанавливаем объект контекста TLS для которого устанавливаем опции запроса
+					 */
 					member->ctx,
 					/**
 					 * 1. Совместимость и безопасность по умолчанию
@@ -5729,9 +5870,14 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					SSL_OP_CIPHER_SERVER_PREFERENCE |               // Сервер выбирает шифр
 					SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | // Безопасная ренеготиация
 					/**
-					 * Защита от DoS (если используете cookie)
+					 * Если не используется BoringSSL
 					 */
-					SSL_OP_COOKIE_EXCHANGE | // Только для сервера!
+					#ifndef OPENSSL_IS_BORINGSSL
+						/**
+						 * Защита от DoS (если используете cookie)
+						 */
+						SSL_OP_COOKIE_EXCHANGE | // Только для сервера!
+					#endif // !OPENSSL_IS_BORINGSSL
 					/**
 					 * 5. Дополнительные меры (опционально, но рекомендованы)
 					 */
@@ -5793,9 +5939,10 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					return 0;
 				}
 				/**
-				 * Если версия OpenSSL соответствует или выше версии 3.0.0
+				 * Если версия OpenSSL соответствует или выше версии 3.0.0,
+				 * либо используется BoringSSL (SSL_CTX_set1_curves_list доступна в обоих случаях)
 				 */
-				#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30000000L
 					// Выполняем установку кривых P-256, P-384 и P-521
 					if(::SSL_CTX_set1_curves_list(member->ctx, "P-521:P-384:P-256") != 1){
 						// Получаем текст ошибки
@@ -5825,7 +5972,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 						return 0;
 					}
 				/**
-				 * Если версия OpenSSL ниже версии 3.0.0
+				 * Если версия OpenSSL ниже версии 3.0.0 (и не используется BoringSSL)
 				 */
 				#else
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
@@ -6013,10 +6160,60 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					case static_cast <uint8_t> (event::protocol_t::UDP):
 					// Если протокол подключения SCTP
 					case static_cast <uint8_t> (event::protocol_t::SCTP): {
-						// Выполняем проверку файлов cookie
-						::SSL_CTX_set_cookie_verify_cb(member->ctx, &::cookie::verify);
-						// Выполняем генерацию файлов cookie
-						::SSL_CTX_set_cookie_generate_cb(member->ctx, &::cookie::generate);
+						/**
+						 * BoringSSL не поддерживает DTLS HelloVerifyRequest cookie callbacks
+						 * (SSL_CTX_set_cookie_generate_cb / SSL_CTX_set_cookie_verify_cb).
+						 * Для BoringSSL используем SSL_CTX_set_dos_protection_cb — специализированный
+						 * callback для защиты от DoS, вызываемый при получении ClientHello.
+						 * Он проверяет что пир был явно зарегистрирован через tls.peer() перед
+						 * рукопожатием, и верифицирует cookie если клиент (например OpenSSL-based)
+						 * его прислал.
+						 */
+						#ifndef OPENSSL_IS_BORINGSSL
+							// Выполняем проверку файлов cookie
+							::SSL_CTX_set_cookie_verify_cb(member->ctx, &::cookie::verify);
+							// Выполняем генерацию файлов cookie
+							::SSL_CTX_set_cookie_generate_cb(member->ctx, &::cookie::generate);
+						/**
+						 * Защита от DoS в OpenSSL реализуется через HelloVerifyRequest cookie callbacks:
+						 * при получении ClientHello сервер генерирует cookie, который включает в себя IP:port клиента,
+						 * и отправляет его обратно клиенту в HelloVerifyRequest. Клиент должен вернуть этот cookie в следующем ClientHello,
+						 * и сервер проверяет его через cookie verify callback, разрешая соединение только если cookie валидный.
+						 * Это позволяет защититься от DoS-атак, так как генерация cookie требует минимальных ресурсов,
+						 * и атакующий должен иметь возможность получать ответы от сервера для успешной атаки.
+						 */
+						#else
+							/**
+							 * В BoringSSL HelloVerifyRequest на серверной стороне не поддерживается —
+							 * генерация cookie и встраивание в них IP:port клиента невозможна.
+							 * Защита от DoS реализуется на уровне приложения через SSL_CTX_set_dos_protection_cb:
+							 * соединение разрешается только если пир явно зарегистрирован через tls.peer().
+							 */
+							::SSL_CTX_set_dos_protection_cb(member->ctx, [](const SSL_CLIENT_HELLO * hello) noexcept -> int32_t {
+								// Получаем объект транспортного уровня из SSL* ex_data
+								auto ctl = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(hello->ssl, ::__awh_ssl_index__[0]));
+								// Разрешаем только явно зарегистрированные пиры (peer установлен через tls.peer())
+								if((ctl == nullptr) || (ctl->host.peer == nullptr))
+									// Выходим с ошибкой
+									return 0;
+								// Пир зарегистрирован — разрешаем соединение
+								return 1;
+							});
+						#endif // !OPENSSL_IS_BORINGSSL
+					} break;
+					// Если протокол подключения TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP): {
+						/**
+						 * Если версия OpenSSL соответствует или выше версии 1.1.1 и не используется BoringSSL.
+						 * В BoringSSL аналог SSL_CTX_set_stateless_cookie_generate_cb /
+						 * SSL_CTX_set_stateless_cookie_verify_cb отсутствует.
+						 */
+						#if !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_NUMBER >= 0x10101000L
+							// Устанавливаем функцию обратного вызова для генерации TLS 1.3 cookie
+							::SSL_CTX_set_stateless_cookie_generate_cb(member->ctx, &::cookie::generateStateless);
+							// Устанавливаем функцию обратного вызова для проверки TLS 1.3 cookie
+							::SSL_CTX_set_stateless_cookie_verify_cb(member->ctx, &::cookie::verifyStateless);
+						#endif // !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_NUMBER >= 0x10101000L
 					} break;
 				}
 				/**
@@ -8191,35 +8388,46 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 								switch(static_cast <uint8_t> (type)){
 									// PEM-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::PEM): {
-										// Если сертификат не устанавливается
-										if(::SSL_use_certificate_chain_file(member->ssl, filename.data()) != 1){
-											// Если функция обратного вызова состояния установлена
-											if(member->callback.state != nullptr)
-												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
-											// Получаем текст ошибки
-											const string error = ::ssl::error(id, "Certificate cannot be set");
-											// Если функция обратного вызова ошибки установлена
-											if(member->callback.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::CERT_FAILED, error);
-											// Если функция обратного вызова ошибки не установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-												#endif
+										/**
+										 * Если используется BoringSSL
+										 */
+										#ifdef OPENSSL_IS_BORINGSSL
+											// Если сертификат не устанавливается
+											if(::boringssl::ssl_use_certificate_chain_file(member->ssl, filename.data()) != 1){
+										/**
+										 * Если используется OpenSSL
+										 */
+										#else
+											// Если сертификат не устанавливается
+											if(::SSL_use_certificate_chain_file(member->ssl, filename.data()) != 1){
+										#endif
+												// Если функция обратного вызова состояния установлена
+												if(member->callback.state != nullptr)
+													// Вызываем функцию обратного вызова состояния
+													member->callback.state(id, tls_t::state_t::FAILED);
+												// Получаем текст ошибки
+												const string error = ::ssl::error(id, "Certificate cannot be set");
+												// Если функция обратного вызова ошибки установлена
+												if(member->callback.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки
+													member->callback.error(id, error_t::CERT_FAILED, error);
+												// Если функция обратного вызова ошибки не установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+													#endif
+												}
 											}
-										}
 									} break;
 									// ASN1-файл приватного ключа клиента
 									case static_cast <uint8_t> (type_t::ASN1): {
