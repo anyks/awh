@@ -629,22 +629,22 @@ namespace ssl {
 	 * @param ctx     передаваемый контекст
 	 */
 	static void message(int32_t write, [[maybe_unused]] int32_t version, int32_t type, const void * buffer, size_t size, SSL * ssl, [[maybe_unused]] void * ctx) noexcept {
-		// Если тип сообщения является рукопожатием SSL
-		if(type == SSL3_RT_HANDSHAKE){
-			// Получаем объект контекста модуля
-			auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-			// Создаём охранника участника обмена защищёнными данными
-			::local::guard_t guard(member);
-			/**
-			 * Обрабатываем тип сообщения рукопожатия SSL
-			 */
-			switch (reinterpret_cast <const uint8_t *> (buffer)[0]){
-				// Если сообщение является ClientHello
-				case SSL3_MT_CLIENT_HELLO: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Если тип сообщения является рукопожатием SSL
+			if(type == SSL3_RT_HANDSHAKE){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				/**
+				 * Обрабатываем тип сообщения рукопожатия SSL
+				 */
+				switch (reinterpret_cast <const uint8_t *> (buffer)[0]){
+					// Если сообщение является ClientHello
+					case SSL3_MT_CLIENT_HELLO: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -662,14 +662,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientHello", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является ServerHello
-				case SSL3_MT_SERVER_HELLO: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является ServerHello
+					case SSL3_MT_SERVER_HELLO: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -687,14 +682,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHello", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является Certificate
-				case SSL3_MT_CERTIFICATE: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является Certificate
+					case SSL3_MT_CERTIFICATE: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -712,14 +702,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Certificate", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является HelloRequest
-				case SSL3_MT_HELLO_REQUEST: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является HelloRequest
+					case SSL3_MT_HELLO_REQUEST: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -737,14 +722,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloRequest", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является NewSessionTicket
-				case SSL3_MT_NEWSESSION_TICKET: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является NewSessionTicket
+					case SSL3_MT_NEWSESSION_TICKET: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -762,14 +742,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "NewSessionTicket", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является EndOfEarlyData
-				case SSL3_MT_END_OF_EARLY_DATA: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является EndOfEarlyData
+					case SSL3_MT_END_OF_EARLY_DATA: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -787,14 +762,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "EndOfEarlyData", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является EncryptedExtensions
-				case SSL3_MT_ENCRYPTED_EXTENSIONS: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является EncryptedExtensions
+					case SSL3_MT_ENCRYPTED_EXTENSIONS: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -812,14 +782,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "EncryptedExtensions", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является ServerKeyExchange
-				case SSL3_MT_SERVER_KEY_EXCHANGE: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является ServerKeyExchange
+					case SSL3_MT_SERVER_KEY_EXCHANGE: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -837,14 +802,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerKeyExchange", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является CertificateRequest
-				case SSL3_MT_CERTIFICATE_REQUEST: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является CertificateRequest
+					case SSL3_MT_CERTIFICATE_REQUEST: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -862,14 +822,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateRequest", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является ServerHelloDone
-				case SSL3_MT_SERVER_DONE: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является ServerHelloDone
+					case SSL3_MT_SERVER_DONE: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -887,14 +842,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHelloDone", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является CertificateVerify
-				case SSL3_MT_CERTIFICATE_VERIFY: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является CertificateVerify
+					case SSL3_MT_CERTIFICATE_VERIFY: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -912,14 +862,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateVerify", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является ClientKeyExchange
-				case SSL3_MT_CLIENT_KEY_EXCHANGE: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является ClientKeyExchange
+					case SSL3_MT_CLIENT_KEY_EXCHANGE: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -937,19 +882,14 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientKeyExchange", size);
 							break;
 						}
-					#endif
-				} break;
-				/**
-				 * Если сообщение является EncryptedClientHello или CertificateURL, то эти сообщения не поддерживаются в BoringSSL,
-				 * так как они были удалены из стандарта TLS 1.3 и не реализованы в BoringSSL
-				 */
-				#ifndef OPENSSL_IS_BORINGSSL
-					// Если сообщение является EncryptedClientHello// Если сообщение является CertificateURL
-					case SSL3_MT_CERTIFICATE_URL: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
+					} break;
+					/**
+					 * Если сообщение является EncryptedClientHello или CertificateURL, то эти сообщения не поддерживаются в BoringSSL,
+					 * так как они были удалены из стандарта TLS 1.3 и не реализованы в BoringSSL
+					 */
+					#ifndef OPENSSL_IS_BORINGSSL
+						// Если сообщение является EncryptedClientHello// Если сообщение является CertificateURL
+						case SSL3_MT_CERTIFICATE_URL: {
 							// Получаем объект логирования
 							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 							/**
@@ -967,15 +907,10 @@ namespace ssl {
 									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateURL", size);
 								break;
 							}
-						#endif
-					} break;
-				#endif
-				// Если сообщение является CertificateStatus
-				case SSL3_MT_CERTIFICATE_STATUS: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+						} break;
+					#endif
+					// Если сообщение является CertificateStatus
+					case SSL3_MT_CERTIFICATE_STATUS: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -993,14 +928,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateStatus", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является SupplementalData
-				case SSL3_MT_SUPPLEMENTAL_DATA: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является SupplementalData
+					case SSL3_MT_SUPPLEMENTAL_DATA: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1018,14 +948,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "SupplementalData", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является KeyUpdate
-				case SSL3_MT_KEY_UPDATE: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является KeyUpdate
+					case SSL3_MT_KEY_UPDATE: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1043,14 +968,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "KeyUpdate", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является CompressedCertificate
-				case SSL3_MT_COMPRESSED_CERTIFICATE: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является CompressedCertificate
+					case SSL3_MT_COMPRESSED_CERTIFICATE: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1068,14 +988,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CompressedCertificate", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является HelloVerifyRequest
-				case DTLS1_MT_HELLO_VERIFY_REQUEST: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является HelloVerifyRequest
+					case DTLS1_MT_HELLO_VERIFY_REQUEST: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1093,14 +1008,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloVerifyRequest", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является MessageHash
-				case SSL3_MT_MESSAGE_HASH: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является MessageHash
+					case SSL3_MT_MESSAGE_HASH: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1118,14 +1028,9 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "MessageHash", size);
 							break;
 						}
-					#endif
-				} break;
-				// Если сообщение является Finished
-				case SSL3_MT_FINISHED: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+					} break;
+					// Если сообщение является Finished
+					case SSL3_MT_FINISHED: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1143,19 +1048,14 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Finished", size);
 							break;
 						}
-					#endif
-				} break;
-				/**
-				 * @brief собран без следующих переговорщиков по протоколам
-				 *
-				 */
-				#ifndef OPENSSL_NO_NEXTPROTONEG
-					// Если сообщение является NextProto
-					case SSL3_MT_NEXT_PROTO: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
+					} break;
+					/**
+					 * Если сообщение является NextProto, то это сообщение используется для обмена информацией о поддерживаемых протоколах между клиентом и сервером в процессе рукопожатия SSL/TLS.
+					 * Оно позволяет сторонам согласовать, какой протокол будет использоваться для дальнейшей коммуникации после завершения рукопожатия.
+					 */
+					#ifndef OPENSSL_NO_NEXTPROTONEG
+						// Если сообщение является NextProto
+						case SSL3_MT_NEXT_PROTO: {
 							// Получаем объект логирования
 							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 							/**
@@ -1173,15 +1073,10 @@ namespace ssl {
 									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "NextProto", size);
 								break;
 							}
-						#endif
-					} break;
-				#endif
-				// Если сообщение является иным типом рукопожатия SSL
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
+						} break;
+					#endif
+					// Если сообщение является иным типом рукопожатия SSL
+					default: {
 						// Получаем объект логирования
 						awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 						/**
@@ -1199,10 +1094,10 @@ namespace ssl {
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Handshake", size);
 							break;
 						}
-					#endif
+					}
 				}
 			}
-		}
+		#endif
 	}
 	/**
 	 * @brief Функция выполнения выбора протокола
@@ -5693,10 +5588,15 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					// Выходим
 					return 0;
 				}
-				// Устанавливаем функцию обратного вызова для обработки сообщений TLS
-				::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
-				// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
-				::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Устанавливаем функцию обратного вызова для обработки сообщений TLS
+					::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
+					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
+					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
+				#endif
 				// Получаем данные стора
 				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
 				// Если стор не получен
@@ -5906,10 +5806,15 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
 					} break;
 				}
-				// Устанавливаем функцию обратного вызова для обработки сообщений TLS
-				::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
-				// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
-				::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Устанавливаем функцию обратного вызова для обработки сообщений TLS
+					::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
+					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
+					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
+				#endif
 				// Устанавливаем все основные алгоритмы шифрования
 				if(::SSL_CTX_set_cipher_list(member->ctx, ::__awh_ssl_ciphers__.c_str()) != 1){
 					// Получаем текст ошибки
