@@ -745,7 +745,7 @@ void parse_extensions_chrome_style(const uint8_t* data, size_t data_len, size_t 
  * @param size   размер бинарного буфера данных цифрового отпечатка
  * @return       результат парсинга данных цифрового отпечатка
  */
-bool awh::Fingerprint::parse(const uint8_t * buffer, const size_t size) noexcept {
+bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size) noexcept {
 
 	// Данные для вычисления отпечатков (заполняются по ходу парсинга)
 	std::vector<uint16_t> fp_ciphers;
@@ -1187,9 +1187,9 @@ bool awh::Fingerprint::parse(const uint8_t * buffer, const size_t size) noexcept
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *
  */
-awh::Fingerprint::~Fingerprint() noexcept {}
+awh::tls::Fingerprint::~Fingerprint() noexcept {}
