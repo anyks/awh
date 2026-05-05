@@ -403,6 +403,14 @@ namespace awh {
 			void grease(const id_t id, const event::mode_t mode) noexcept;
 		public:
 			/**
+			 * @brief Метод перемешивания поддерживаемых расширений TLS для имитации поведения различных браузеров
+			 *
+			 * @param id   идентификатор события
+			 * @param mode режим активации/деактивации перемешивания расширений
+			 */
+			void permuteExtensions(const id_t id, const event::mode_t mode) noexcept;
+		public:
+			/**
 			 * @brief Метод извлечения активного протокола
 			 *
 			 * @param id идентификатор события

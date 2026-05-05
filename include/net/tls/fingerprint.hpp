@@ -915,6 +915,32 @@ namespace awh {
 					 */
 					virtual ~Extension_ECH_Outer_Extensions() = default;
 				} extension_ech_outer_extensions_t;
+			public:
+				/**
+				 * @brief Структура цифрового отпечатка браузера
+				 *
+				 */
+				typedef struct Browser {
+					// Идентификатор браузера (например, Chrome, Firefox, Safari)
+					uint8_t id;
+					// Флаг, указывающий на использование GREASE (Generate Random Extensions And Sustain Extensibility)
+					bool grease;
+					// Название браузера
+					string name;
+					// Список поддерживаемых шифров
+					vector <cipher_t> ciphers;
+					// Список расширений, поддерживаемых браузером
+					vector <unique_ptr <extension_t>> extensions;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Browser() noexcept :
+					 id(0), grease(false), name{""} {}
+				} browser_t;
+			private:
+				// Список поддерживаемых цифровых отпечатков браузеров
+				unordered_map <uint8_t, browser_t> _browsers;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;

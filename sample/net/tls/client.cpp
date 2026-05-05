@@ -77,7 +77,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Создаём идентификатор транспортного уровня DTLS
 		tls_t::id_t ctl = tls.transport(cts);
 		// Активируем GREASE-значения (мусорные коды) для транспортного уровня TLS
-		tls.grease(cts, event::mode_t::ENABLED);
+		tls.grease(ctl, event::mode_t::ENABLED);
+		// Выполняем перемешивание поддерживаемых расширений TLS для имитации поведения различных браузеров
+		tls.permuteExtensions(ctl, event::mode_t::ENABLED);
 		// Устанавливаем список доступных шифров TLS
 		tls.ciphers(ctl, {
 			tls::cipher_t::TLS_AES_128_GCM_SHA256,

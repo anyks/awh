@@ -7637,6 +7637,159 @@ void awh::Transport_Layer_Security::grease(const id_t id, const event::mode_t mo
 	}
 }
 /**
+ * @brief Метод перемешивания поддерживаемых расширений TLS для имитации поведения различных браузеров
+ *
+ * @param id   идентификатор события
+ * @param mode режим активации/деактивации перемешивания расширений
+ */
+void awh::Transport_Layer_Security::permuteExtensions(const id_t id, const event::mode_t mode) noexcept {
+	/**
+	 * Если BoringSSL используется в качестве криптографической библиотеки
+	 */
+	#ifdef OPENSSL_IS_BORINGSSL
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+				/**
+				 * Определяем уровень транспортной безопасности
+				 */
+				switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+					// Если уровень является шаблонным контекстом безопасности
+					case static_cast <uint8_t> (layer_t::CTS): {
+						// Выполняем извлечение объекта шаблона контекста безопасности
+						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Если узел является клиентом
+						if(member->node == event::node_t::CLIENT){
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
+							// Выполняем блокировку потоков
+							const locker_t <recursive_mutex> lock(member->mtx);
+							/**
+							 * Определяем режим активации/деактивации перемешивания поддерживаемых расширений TLS
+							 */
+							switch(static_cast <uint8_t> (mode)){
+								// Если передан режим активации
+								case static_cast <uint8_t> (event::mode_t::ENABLED):
+									// Активируем перемешивание поддерживаемых расширений TLS
+									::SSL_CTX_set_permute_extensions(member->ctx, 1);
+								break;
+								// Если передан режим деактивации
+								case static_cast <uint8_t> (event::mode_t::DISABLED):
+									// Деактивируем перемешивание поддерживаемых расширений TLS
+									::SSL_CTX_set_permute_extensions(member->ctx, 0);
+								break;
+							}
+						// Если узел является сервером
+						} else {
+							// Если функция обратного вызова состояния установлена
+							if(member->callback.state != nullptr)
+								// Вызываем функцию обратного вызова состояния
+								member->callback.state(id, tls_t::state_t::FAILED);
+							// Получаем текст ошибки
+							const string error = ::ssl::error(id, "Permuting extensions is only allowed to be added for the client");
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, error_t::CTS_FAILED, error);
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если уровень является транспортной передачей данных
+					case static_cast <uint8_t> (layer_t::CTL): {
+						// Выполняем извлечение объекта транспортного уровня передачи
+						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Если узел является клиентом
+						if(member->node == event::node_t::CLIENT){
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
+							// Выполняем блокировку потоков
+							const locker_t <recursive_mutex> lock(member->mtx);
+							/**
+							 * Определяем режим активации/деактивации перемешивания поддерживаемых расширений TLS
+							 */
+							switch(static_cast <uint8_t> (mode)){
+								// Если передан режим активации
+								case static_cast <uint8_t> (event::mode_t::ENABLED):
+									// Активируем перемешивание поддерживаемых расширений TLS
+									::SSL_set_permute_extensions(member->ssl, 1);
+								break;
+								// Если передан режим деактивации
+								case static_cast <uint8_t> (event::mode_t::DISABLED):
+									// Деактивируем перемешивание поддерживаемых расширений TLS
+									::SSL_set_permute_extensions(member->ssl, 0);
+								break;
+							}
+						// Если узел является сервером
+						} else {
+							// Если функция обратного вызова состояния установлена
+							if(member->callback.state != nullptr)
+								// Вызываем функцию обратного вызова состояния
+								member->callback.state(id, tls_t::state_t::FAILED);
+							// Получаем текст ошибки
+							const string error = ::ssl::error(id, "Permuting extensions is only allowed to be added for the client");
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, error_t::CTS_FAILED, error);
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif // OPENSSL_IS_BORINGSSL
+}
+/**
  * @brief Метод извлечения активного протокола
  *
  * @param id идентификатор события
