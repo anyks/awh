@@ -62,7 +62,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем объект транспортного уровня безопасности
 		tls_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(cts, {{0,"http/1.1"}});
+		tls.alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// tls.alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
 		tls.ca(cts, "../sh/certificates", "ca.pem");
@@ -76,6 +76,62 @@ int32_t main(int32_t argc, char * argv[]){
 		tls.privateKey(cts, "../sh/certificates/client/key.pem");
 		// Создаём идентификатор транспортного уровня DTLS
 		tls_t::id_t ctl = tls.transport(cts);
+		// Активируем GREASE-значения (мусорные коды) для транспортного уровня TLS
+		tls.grease(cts, event::mode_t::ENABLED);
+		// Устанавливаем список доступных шифров TLS
+		tls.ciphers(ctl, {
+			tls::cipher_t::TLS_AES_128_GCM_SHA256,
+			tls::cipher_t::TLS_AES_256_GCM_SHA384,
+			tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
+			tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256,
+			tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256,
+			tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384,
+			tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384,
+			tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305,
+			tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305,
+			tls::cipher_t::ECDHE_RSA_AES128_SHA,
+			tls::cipher_t::ECDHE_RSA_AES256_SHA,
+			tls::cipher_t::AES128_GCM_SHA256,
+			tls::cipher_t::AES256_GCM_SHA384,
+			tls::cipher_t::AES128_SHA,
+			tls::cipher_t::AES256_SHA
+		});
+		// Устанавливаем список поддерживаемых групп эллиптических кривых TLS
+		tls.groups(ctl, {
+			tls::group_t::X25519,
+			tls::group_t::P_256,
+			tls::group_t::P_521,
+			tls::group_t::P_384
+		});
+		// Выполняем генерациюзаранее клиентом эфемерного ключа для групп эллиптических кривых TLS
+		tls.keyShare(ctl, {
+			tls::group_t::X25519,
+			tls::group_t::P_256,
+			tls::group_t::P_521,
+			tls::group_t::P_384
+		}, event::mode_t::ENABLED);
+		// Устанавливаем список поддерживаемых ALPS-протоколов TLS
+		tls.alps(ctl, {{0,"h2"}}, tls_t::standard_t::OLD);
+		// Устанавливаем список поддерживаемых алгоритмов подписи TLS
+		tls.signature(ctl, {
+			tls::signature_t::ECDSA_SECP256R1_SHA256,
+			tls::signature_t::ECDSA_SECP384R1_SHA384,
+			tls::signature_t::ECDSA_SECP521R1_SHA512,
+			tls::signature_t::RSA_PSS_RSAE_SHA256,
+			tls::signature_t::RSA_PSS_RSAE_SHA384,
+			tls::signature_t::RSA_PSS_RSAE_SHA512,
+			tls::signature_t::RSA_PKCS1_SHA256,
+			tls::signature_t::RSA_PKCS1_SHA384,
+			tls::signature_t::RSA_PKCS1_SHA512,
+			tls::signature_t::ECDSA_SHA1,
+			tls::signature_t::RSA_PKCS1_SHA1
+		});
+		/**
+		 * Выполняем перебор всех установленных шифров TLS и выводим их информацию
+		 */
+		for(auto & info : tls.availableCiphers(ctl))
+			// Выводим информацию о шифре TLS
+			cout << "Cipher: " << info.name << ", Origin: " << info.origin << ", Code: 0x" << std::hex << (u_short) info.cipher << std::dec << ", TLS 1.3: " << (info.tls13 ? "Yes" : "No") << endl;
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
 		tls.on(ctl, [&tls, &log](const tls_t::id_t id, const tls_t::state_t state) noexcept -> void {
 			/**

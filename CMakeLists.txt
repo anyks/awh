@@ -501,6 +501,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
+    "${CMAKE_SOURCE_DIR}/src/net/tls/fingerprint.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/ntp.cpp"

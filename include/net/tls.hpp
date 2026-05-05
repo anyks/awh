@@ -23,8 +23,11 @@
  */
 #include "addr.hpp"
 #include "event.hpp"
+#include "tls/tls.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
+
+#include "tls/fingerprint.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -80,30 +83,44 @@ namespace awh {
 				ASN1 = 0x02, // Формат ASN1
 			};
 			/**
+			 * @brief Флаги поддерживаемых стандартов TLS
+			 *
+			 */
+			enum class standard_t : uint8_t {
+				NONE = 0x00, // Стандарт не поддерживается
+				OLD  = 0x01, // Поддерживается старый стандарт
+				NEW  = 0x02  // Поддерживается новый стандарт
+			};
+			/**
 			 * @brief Флаги типов ошибок TLS
 			 *
 			 */
 			enum class error_t : uint8_t {
 				NONE                = 0x00, // Ошибка не установлена
 				CA_FAILED           = 0x01, // Ошибка центра сертификации
-				SNI_FAILED          = 0x02, // Ошибка проверки SNI
-				CRL_FAILED          = 0x03, // Ошибка списка отзыва сертификатов
-				BIO_FAILED          = 0x04, // Ошибка BIO
-				CERT_FAILED         = 0x05, // Ошибка проверки сертификата
-				READ_FAILED         = 0x06, // Ошибка чтения
-				WRITE_FAILED        = 0x07, // Ошибка записи
-				COOKIE_FAILED       = 0x08, // Ошибка проверки cookie
-				CIPHER_FAILED       = 0x09, // Ошибка шифра
-				HANDSHAKE_FAILED    = 0x0A, // Ошибка рукопожатия
-				STORE_X509_FAILED   = 0x0B, // Ошибка хранилища X509
-				TLS_SESSION_FAILED  = 0x0C, // Ошибка TLS сессии
-				PRIVATE_KEY_FAILED  = 0x0D, // Ошибка приватного ключа
-				HOSTNAME_BAD        = 0x0E, // Ошибка имени хоста
-				INVALID_LAYER       = 0x0F, // Ошибка уровня TLS
-				UNSUPPORTED_IP      = 0x10, // Ошибка неподдерживаемого IP-адреса
-				HOSTNAME_VERIFY     = 0x11, // Ошибка проверки имени хоста
-				MISMATCH_VERSION    = 0x12, // Ошибка версии TLS
-				UNSUPPORTED_VERSION = 0x13, // Ошибка неподдерживаемой версии TLS
+				CTL_FAILED          = 0x02, // Ошибка использования уровня транспортной передачей данных
+				CTS_FAILED          = 0x03, // Ошибка использования уровня шаблона контекста безопасности
+				SNI_FAILED          = 0x04, // Ошибка проверки SNI
+				CRL_FAILED          = 0x05, // Ошибка списка отзыва сертификатов
+				BIO_FAILED          = 0x06, // Ошибка BIO
+				CERT_FAILED         = 0x07, // Ошибка проверки сертификата
+				ALPS_FAILED         = 0x08, // Ошибка ALPS-протокола
+				READ_FAILED         = 0x09, // Ошибка чтения
+				WRITE_FAILED        = 0x0A, // Ошибка записи
+				COOKIE_FAILED       = 0x0B, // Ошибка проверки cookie
+				CIPHER_FAILED       = 0x0C, // Ошибка шифра
+				CURVE_FAILED        = 0x0D, // Ошибка кривой
+				SIGNATURE_FAILED    = 0x0E, // Ошибка алгоритма подписи
+				HANDSHAKE_FAILED    = 0x0F, // Ошибка рукопожатия
+				STORE_X509_FAILED   = 0x10, // Ошибка хранилища X509
+				TLS_SESSION_FAILED  = 0x11, // Ошибка TLS сессии
+				PRIVATE_KEY_FAILED  = 0x12, // Ошибка приватного ключа
+				HOSTNAME_BAD        = 0x13, // Ошибка имени хоста
+				INVALID_LAYER       = 0x14, // Ошибка уровня TLS
+				UNSUPPORTED_IP      = 0x15, // Ошибка неподдерживаемого IP-адреса
+				HOSTNAME_VERIFY     = 0x16, // Ошибка проверки имени хоста
+				MISMATCH_VERSION    = 0x17, // Ошибка версии TLS
+				UNSUPPORTED_VERSION = 0x18, // Ошибка неподдерживаемой версии TLS
 			};
 		public:
 			/**
@@ -116,6 +133,25 @@ namespace awh {
 				// Название ALPN-протокола
 				string protocol = "";
 			} alpn_t;
+		public:
+			/**
+			 * @brief Структура информации о шифре
+			 *
+			 */
+			typedef struct CipherInfo {
+				bool tls13;           // Флаг, указывающий, является ли шифр TLSv1.3
+				string name;          // Название шифра, например AES_128_GCM_SHA256
+				string origin;        // Стандартное название шифра, например TLS_AES_128_GCM_SHA256
+				tls::cipher_t cipher; // Код шифра, например TLS_AES_128_GCM_SHA256
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit CipherInfo() noexcept :
+				 tls13(false),
+				 name{""}, origin{""},
+				 cipher(tls::cipher_t::UNKNOWN) {}
+			} cipher_info_t;
 		public:
 			/**
 			 * @brief Тип идентификатора события
@@ -194,6 +230,14 @@ namespace awh {
 			 * @return   информация о списке отзыва сертификатов
 			 */
 			string certificateRevocationListInfo(const id_t id) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения списка доступных шифров
+			 *
+			 * @param id идентификатор события
+			 * @return   список доступных шифров
+			 */
+			vector <cipher_info_t> availableCiphers(const id_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения сертификата TLS
@@ -335,12 +379,28 @@ namespace awh {
 			void threadSafety(const id_t id, const bool mode) noexcept;
 		public:
 			/**
+			 * @brief Метод установки поддерживаемых групп эллиптических кривых
+			 *
+			 * @param id     идентификатор события
+			 * @param groups список поддерживаемых групп эллиптических кривых
+			 */
+			void groups(const id_t id, const vector <tls::group_t> & groups) noexcept;
+		public:
+			/**
 			 * @brief Метод установки алгоритмов шифрования
 			 *
 			 * @param id      идентификатор события
 			 * @param ciphers список алгоритмов шифрования для установки
 			 */
-			void ciphers(const id_t id, const vector <string> & ciphers) noexcept;
+			void ciphers(const id_t id, const vector <tls::cipher_t> & ciphers) noexcept;
+		public:
+			/**
+			 * @brief Метод активации/деактивации GREASE-значений (мусорных кодов)
+			 *
+			 * @param id   идентификатор события
+			 * @param mode режим активации/деактивации
+			 */
+			void grease(const id_t id, const event::mode_t mode) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения активного протокола
@@ -356,6 +416,32 @@ namespace awh {
 			 * @param alpn список поддерживаемых ALPN-протоколов
 			 */
 			void alpn(const id_t id, const vector <alpn_t> & alpn) noexcept;
+		public:
+			/**
+			 * @brief Метод установки поддерживаемых ALPS-протоколов
+			 *
+			 * @param id   идентификатор события
+			 * @param alps список поддерживаемых ALPS-протоколов
+			 * @param std  флаг поддерживаемого стандарта
+			 */
+			void alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept;
+		public:
+			/**
+			 * @brief Метод установки поддерживаемых алгоритмов подписи
+			 *
+			 * @param id         идентификатор события
+			 * @param signatures список поддерживаемых алгоритмов подписи
+			 */
+			void signature(const id_t id, const vector <tls::signature_t> & signatures) noexcept;
+		public:
+			/**
+			 * @brief Метод генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых
+			 *
+			 * @param id     идентификатор события
+			 * @param groups список поддерживаемых групп эллиптических кривых для ключевого обмена
+			 * @param grease флаг активации/деактивации ложного ключа EncryptedClientHello (ECH)
+			 */
+			void keyShare(const id_t id, const vector <tls::group_t> & groups, const event::mode_t grease) noexcept;
 		public:
 			/**
 			 * @brief Метод установки сертификатов доверенных центров сертификации

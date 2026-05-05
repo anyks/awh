@@ -73,6 +73,30 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выводим сообщение о предупреждающей ошибке TLS
 			log.print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
 		});
+		// Устанавливаем список доступных шифров TLS
+		tls.ciphers(cts, {
+			tls::cipher_t::TLS_AES_128_GCM_SHA256,
+			tls::cipher_t::TLS_AES_256_GCM_SHA384,
+			tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
+			tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256,
+			tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256,
+			tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384,
+			tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384,
+			tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305,
+			tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305,
+			tls::cipher_t::ECDHE_RSA_AES128_SHA,
+			tls::cipher_t::ECDHE_RSA_AES256_SHA,
+			tls::cipher_t::AES128_GCM_SHA256,
+			tls::cipher_t::AES256_GCM_SHA384,
+			tls::cipher_t::AES128_SHA,
+			tls::cipher_t::AES256_SHA
+		});
+		/**
+		 * Выполняем перебор всех установленных шифров TLS и выводим их информацию
+		 */
+		for(auto & info : tls.availableCiphers(cts))
+			// Выводим информацию о шифре TLS
+			cout << "Cipher: " << info.name << ", Origin: " << info.origin << ", Code: 0x" << std::hex << (u_short) info.cipher << std::dec << ", TLS 1.3: " << (info.tls13 ? "Yes" : "No") << endl;
 		// Устананавливаем опции события
 		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 			// Выводим сообщение об успешной установке опций события

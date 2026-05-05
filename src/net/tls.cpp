@@ -52,16 +52,6 @@
 using namespace std;
 
 /**
- * Если разделитель алгоритмов шифрования не определён
- */
-#ifndef __AWH_TLS_CIPHER_SEPARATOR__
-	/**
-	 * Определяем разделитель алгоритмов шифрования
-	 */
-	#define __AWH_TLS_CIPHER_SEPARATOR__ ":"
-#endif
-
-/**
  * Если максимальный размер SSL буфера не определён
  */
 #ifndef AWH_MAX_SSL_BUFFER_SIZE
@@ -91,11 +81,6 @@ namespace {
 	 */
 	using members_t = unordered_set <unique_ptr <Member>>;
 
-	/**
-	 * @brief Глобальный список алгоритмов шифрования
-	 *
-	 */
-	string __awh_ssl_ciphers__;
 	/**
 	 * @brief Глобальный контейнер уровней защищённых сокетов
 	 *
@@ -158,8 +143,8 @@ namespace {
 	 */
 	enum class layer_t : uint8_t {
 		NONE = 0x00, // Уровень не инициализирован
-		CTS  = 0x01, // Уровень шаблонного контекста безопасности
-		CTL  = 0x02  // Уровень транспортной передачи данных
+		CTS  = 0x01, // Уровень шаблонного контекста безопасности (Context Template Security)
+		CTL  = 0x02  // Уровень транспортной передачи данных (Context Transfer Layer)
 	};
 
 	/**
@@ -885,7 +870,7 @@ namespace ssl {
 					} break;
 					/**
 					 * Если сообщение является EncryptedClientHello или CertificateURL, то эти сообщения не поддерживаются в BoringSSL,
-					 * так как они были удалены из стандарта TLS 1.3 и не реализованы в BoringSSL
+					 * так как они были удалены из стандарта TLSv1.3 и не реализованы в BoringSSL
 					 */
 					#ifndef OPENSSL_IS_BORINGSSL
 						// Если сообщение является EncryptedClientHello// Если сообщение является CertificateURL
@@ -1150,7 +1135,7 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Выполняем установку буфера данных
-				(* data) = member->alpn.buffer.data();
+				(* data) = &member->alpn.buffer[0];
 				// Выполняем установку размер буфера данных протокола
 				(* len) = static_cast <uint32_t> (member->alpn.buffer.size());
 				// Выводим результат
@@ -1527,7 +1512,7 @@ namespace cookie {
 	 */
 	#ifndef OPENSSL_IS_BORINGSSL
 		/**
-		 * @brief Функция обратного вызова для генерации куков TLS 1.3 (stateless)
+		 * @brief Функция обратного вызова для генерации куков TLSv1.3 (stateless)
 		 *
 		 * @param ssl    объект SSL
 		 * @param cookie данные куков
@@ -1640,7 +1625,7 @@ namespace cookie {
 	 */
 	#ifndef OPENSSL_IS_BORINGSSL
 		/**
-		 * @brief Функция обратного вызова для проверки куков TLS 1.3 (stateless)
+		 * @brief Функция обратного вызова для проверки куков TLSv1.3 (stateless)
 		 *
 		 * @param ssl    объект SSL
 		 * @param cookie данные куков
@@ -3366,6 +3351,394 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 	return result;
 }
 /**
+ * @brief Метод получения списка доступных шифров
+ *
+ * @param id идентификатор события
+ * @return   список доступных шифров
+ */
+vector <awh::Transport_Layer_Security::cipher_info_t> awh::Transport_Layer_Security::availableCiphers(const id_t id) const noexcept {
+	// Результат работы функции
+	vector <cipher_info_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Объект для хранения информации о шифре
+		cipher_info_t info;
+		/**
+		 * TLSv1.3 (фиксированы RFC 8446, всегда доступны в TLS_method())
+		 * В BoringSSL нет публичного API для итерации cipher_list_tls13.
+		 * Стандартные шифры жестко определены, их коды не меняются.
+		 */
+		static const struct { uint16_t code; const char * name; const char * origin; } ciphers[] = {
+			{ 0x1301, "AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256" },
+			{ 0x1302, "AES_256_GCM_SHA384", "TLS_AES_256_GCM_SHA384" },
+			{ 0x1303, "CHACHA20_POLY1305_SHA256", "TLS_CHACHA20_POLY1305_SHA256" }
+		};
+		/**
+		 * Выполняем перебор всех стандартных шифров TLSv1.3 и добавляем их в результат, если они поддерживаются
+		 */
+		for(const auto & cipher : ciphers){
+			// Определяем поддерживает ли шифр TLSv1.3
+			info.tls13 = true;
+			/**
+			 * Определяем код шифра
+			 */
+			switch(cipher.code){
+				// Если код шифра соответствует TLS_AES_128_GCM_SHA256
+				case 0x1301:
+					// Получаем код шифра
+					info.cipher = tls::cipher_t::TLS_AES_128_GCM_SHA256;
+				break;
+				// Если код шифра соответствует TLS_AES_256_GCM_SHA384
+				case 0x1302:
+					// Получаем код шифра
+					info.cipher = tls::cipher_t::TLS_AES_256_GCM_SHA384;
+				break;
+				// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
+				case 0x1303:
+					// Получаем код шифра
+					info.cipher = tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256;
+				break;
+			}
+			// Получаем название шифра
+			info.name = cipher.name;
+			// Получаем стандартное название шифра
+			info.origin = cipher.origin;
+			// Добавляем информацию о шифре в результат
+			result.push_back(::move(info));
+		}
+		/**
+		 * Определяем уровень транспортной безопасности
+		 */
+		switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+			// Если уровень является шаблонным контекстом безопасности
+			case static_cast <uint8_t> (layer_t::CTS): {
+				// Выполняем извлечение объекта шаблона контекста безопасности
+				auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Выполняем блокировку потоков
+				const locker_t <recursive_mutex> lock(member->mtx);
+				// Если объект контекста безопасности создан
+				if(member->ctx != nullptr){
+					// Получаем список доступных шифров
+					const STACK_OF(SSL_CIPHER) * ciphers = ::SSL_CTX_get_ciphers(member->ctx);
+					// Получаем количество шифров в списке
+					const size_t count = static_cast <size_t> (::sk_SSL_CIPHER_num(ciphers));
+					// Если в списке есть шифры
+					if(count > 0){
+						// Текущее значение кода шифра
+						uint16_t code = 0;
+						// Получаем текущий размер результата
+						const size_t size = result.size();
+						// Выделяем память для хранения информации о шифрах
+						result.resize(size + count);
+						// Проходим по каждому шифру в списке
+						for(size_t i = 0; i < count; ++i){
+							// Получаем объект шифра
+							const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
+							// Получаем код шифра
+							code = static_cast <uint16_t> (::SSL_CIPHER_get_id(c) & 0xFFFF);
+							/**
+							 * Определяем код шифра
+							 */
+							switch(code){
+								// Если код шифра соответствует AES128-SHA
+								case 0x002F:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES128_SHA;
+								break;
+								// Если код шифра соответствует AES256-SHA
+								case 0x0035:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES256_SHA;
+								break;
+								// Если код шифра соответствует AES128-GCM-SHA256
+								case 0x009C:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES128_GCM_SHA256;
+								break;
+								// Если код шифра соответствует AES256-GCM-SHA384
+								case 0x009D:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES256_GCM_SHA384;
+								break;
+								// Если код шифра соответствует PSK-AES128-CBC-SHA
+								case 0x008C:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::PSK_AES128_CBC_SHA;
+								break;
+								// Если код шифра соответствует PSK-AES256-CBC-SHA
+								case 0x008D:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::PSK_AES256_CBC_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+								case 0xC013:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+								case 0xC014:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+								case 0xC009:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+								case 0xC00A:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+								case 0xC027:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+								case 0xC035:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+								case 0xC036:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+								case 0xC023:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+								case 0xC02F:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+								case 0xC030:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+								case 0xCCA8:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+								break;
+								// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+								case 0xCCAC:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+								case 0xC02B:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+								case 0xC02C:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+								case 0xCCA9:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+								break;
+								// Если код шифра не соответствует ни одному из известных
+								default: info.cipher = tls::cipher_t::UNKNOWN;
+							}
+							// Получаем название шифра
+							info.name = ::SSL_CIPHER_get_name(c);
+							// Получаем стандартное название шифра
+							info.origin = ::SSL_CIPHER_standard_name(c);
+							// Определяем поддерживает ли шифр TLSv1.3
+							info.tls13 = ((code >= 0x1300) && (code <= 0x13FF));
+							// Добавляем информацию о шифре в результат
+							result[size + i] = ::move(info);
+						}
+					}
+				}
+			} break;
+			// Если уровень является транспортной передачей данных
+			case static_cast <uint8_t> (layer_t::CTL): {
+				// Выполняем извлечение объекта транспортного уровня передачи
+				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Выполняем блокировку потоков
+				const locker_t <recursive_mutex> lock(member->mtx);
+				// Если объект подключения создан и сертификат передан
+				if(member->ssl != nullptr){
+					// Получаем список доступных шифров
+					const STACK_OF(SSL_CIPHER) * ciphers = ::SSL_get_ciphers(member->ssl);
+					// Получаем количество шифров в списке
+					const size_t count = static_cast <size_t> (::sk_SSL_CIPHER_num(ciphers));
+					// Если в списке есть шифры
+					if(count > 0){
+						// Текущее значение кода шифра
+						uint16_t code = 0;
+						// Получаем текущий размер результата
+						const size_t size = result.size();
+						// Выделяем память для хранения информации о шифрах
+						result.resize(size + count);
+						// Проходим по каждому шифру в списке
+						for(size_t i = 0; i < count; ++i){
+							// Получаем объект шифра
+							const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
+							// Получаем код шифра
+							code = static_cast <uint16_t> (::SSL_CIPHER_get_id(c) & 0xFFFF);
+							/**
+							 * Определяем код шифра
+							 */
+							switch(code){
+								// Если код шифра соответствует AES128-SHA
+								case 0x002F:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES128_SHA;
+								break;
+								// Если код шифра соответствует AES256-SHA
+								case 0x0035:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES256_SHA;
+								break;
+								// Если код шифра соответствует AES128-GCM-SHA256
+								case 0x009C:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES128_GCM_SHA256;
+								break;
+								// Если код шифра соответствует AES256-GCM-SHA384
+								case 0x009D:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::AES256_GCM_SHA384;
+								break;
+								// Если код шифра соответствует PSK-AES128-CBC-SHA
+								case 0x008C:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::PSK_AES128_CBC_SHA;
+								break;
+								// Если код шифра соответствует PSK-AES256-CBC-SHA
+								case 0x008D:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::PSK_AES256_CBC_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+								case 0xC013:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+								case 0xC014:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+								case 0xC009:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+								case 0xC00A:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+								case 0xC027:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+								case 0xC035:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+								case 0xC036:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+								case 0xC023:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+								case 0xC02F:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+								case 0xC030:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+								break;
+								// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+								case 0xCCA8:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+								break;
+								// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+								case 0xCCAC:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+								case 0xC02B:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+								case 0xC02C:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+								break;
+								// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+								case 0xCCA9:
+									// Получаем код шифра
+									info.cipher = tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+								break;
+								// Если код шифра не соответствует ни одному из известных
+								default: info.cipher = tls::cipher_t::UNKNOWN;
+							}
+							// Получаем название шифра
+							info.name = ::SSL_CIPHER_get_name(c);
+							// Получаем стандартное название шифра
+							info.origin = ::SSL_CIPHER_standard_name(c);
+							// Определяем поддерживает ли шифр TLSv1.3
+							info.tls13 = ((code >= 0x1300) && (code <= 0x13FF));
+							// Добавляем информацию о шифре в результат
+							result[size + i] = ::move(info);
+						}
+					}
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод извлечения сертификата TLS
  *
  * @param id идентификатор события
@@ -4679,9 +5052,20 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 										// Выходим из цикла
 										break;
 									// Если функция обратного вызова чтения данных установлена
-									} else if(member->callback.read != nullptr)
+									} else if(member->callback.read != nullptr) {
+										// Если узел является клиентом
+										if(member->node == event::node_t::CLIENT){
+											// Если рукопожатие ещё не выполнено
+											if(!(member->state & state::HANDSHAKE_MODE)){
+
+												fgp_t fingerprint(this->_fmk, this->_log);
+
+												fingerprint.parse(::local::buffer, static_cast <size_t> (bytes));
+											}
+										}
 										// Вызываем функцию обратного вызова чтения данных
 										member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+									}
 								}
 							// Если ошибка не связана с необходимостью повторного чтения или записи
 							} else {
@@ -5488,82 +5872,12 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
 					} break;
 				}
-				/**
-				 * Если версия OpenSSL соответствует или выше версии 3.0.0,
-				 * либо используется BoringSSL (SSL_CTX_set1_curves_list доступна в обоих случаях)
-				 */
-				#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30000000L
-					// Выполняем установку кривых P-256, P-384 и P-521
-					if(::SSL_CTX_set1_curves_list(member->ctx, "P-521:P-384:P-256") != 1){
-						// Получаем текст ошибки
-						const string error = ::ssl::error(result, "Set CURVEs list failed");
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto)
-								), log_t::flag_t::CRITICAL, error.c_str()
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
-						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						member->erase(::__awh_ssl_members__);
-						// Выходим
-						return 0;
-					}
-				/**
-				 * Если версия OpenSSL ниже версии 3.0.0 (и не используется BoringSSL)
-				 */
-				#else
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
-					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-					// Если кривые не получилось установить
-					if(ecdh == nullptr){
-						// Получаем текст ошибки
-						const string error = ::ssl::error(result, "Set new CURVE name failed");
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto)
-								), log_t::flag_t::CRITICAL, error.c_str()
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
-						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						member->erase(::__awh_ssl_members__);
-						// Выходим
-						return 0;
-					}
-					// Выполняем установку кривых P-256
-					::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh);
-					// Выполняем очистку объекта кривой
-					::EC_KEY_free(ecdh);
-				#endif
-				// Устанавливаем все основные алгоритмы шифрования
-				if(::SSL_CTX_set_cipher_list(member->ctx, ::__awh_ssl_ciphers__.c_str()) != 1){
+				// Выполняем создание объекта кривой prime256v1, доступны также (P-384 и P-521)
+				EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+				// Если кривые не получилось установить
+				if(ecdh == nullptr){
 					// Получаем текст ошибки
-					const string error = ::ssl::error(result, "Set ciphers is failed");
+					const string error = ::ssl::error(result, "Set new CURVE name failed");
 					/**
 					 * Если включён режим отладки
 					 */
@@ -5588,6 +5902,10 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					// Выходим
 					return 0;
 				}
+				// Выполняем установку кривых P-256
+				::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh);
+				// Выполняем очистку объекта кривой
+				::EC_KEY_free(ecdh);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -5815,10 +6133,12 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
 					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
 				#endif
-				// Устанавливаем все основные алгоритмы шифрования
-				if(::SSL_CTX_set_cipher_list(member->ctx, ::__awh_ssl_ciphers__.c_str()) != 1){
+				// Выполняем создание объекта кривой prime256v1, доступны также (P-384 и P-521)
+				EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+				// Если кривые не получилось установить
+				if(ecdh == nullptr){
 					// Получаем текст ошибки
-					const string error = ::ssl::error(result, "Set ciphers is failed");
+					const string error = ::ssl::error(result, "Set new CURVE name failed");
 					/**
 					 * Если включён режим отладки
 					 */
@@ -5843,78 +6163,10 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 					// Выходим
 					return 0;
 				}
-				/**
-				 * Если версия OpenSSL соответствует или выше версии 3.0.0,
-				 * либо используется BoringSSL (SSL_CTX_set1_curves_list доступна в обоих случаях)
-				 */
-				#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30000000L
-					// Выполняем установку кривых P-256, P-384 и P-521
-					if(::SSL_CTX_set1_curves_list(member->ctx, "P-521:P-384:P-256") != 1){
-						// Получаем текст ошибки
-						const string error = ::ssl::error(result, "Set CURVEs list failed");
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto)
-								), log_t::flag_t::CRITICAL, error.c_str()
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
-						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						member->erase(::__awh_ssl_members__);
-						// Выходим
-						return 0;
-					}
-				/**
-				 * Если версия OpenSSL ниже версии 3.0.0 (и не используется BoringSSL)
-				 */
-				#else
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
-					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-					// Если кривые не получилось установить
-					if(ecdh == nullptr){
-						// Получаем текст ошибки
-						const string error = ::ssl::error(result, "Set new CURVE name failed");
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
-									static_cast <uint16_t> (node),
-									static_cast <uint16_t> (proto)
-								), log_t::flag_t::CRITICAL, error.c_str()
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-						#endif
-						// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-						member->erase(::__awh_ssl_members__);
-						// Выходим
-						return 0;
-					}
-					// Выполняем установку кривых P-256
-					::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh);
-					// Выполняем очистку объекта кривой
-					::EC_KEY_free(ecdh);
-				#endif
+				// Выполняем установку кривых P-256
+				::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh);
+				// Выполняем очистку объекта кривой
+				::EC_KEY_free(ecdh);
 				// Выполняем установку идентификатора сессии
 				if(::SSL_CTX_set_session_id_context(member->ctx, reinterpret_cast <const uint8_t *> (&result), sizeof(result)) != 1){
 					// Получаем текст ошибки
@@ -6114,9 +6366,9 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 						 * SSL_CTX_set_stateless_cookie_verify_cb отсутствует.
 						 */
 						#if !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_NUMBER >= 0x10101000L
-							// Устанавливаем функцию обратного вызова для генерации TLS 1.3 cookie
+							// Устанавливаем функцию обратного вызова для генерации TLSv1.3 cookie
 							::SSL_CTX_set_stateless_cookie_generate_cb(member->ctx, &::cookie::generateStateless);
-							// Устанавливаем функцию обратного вызова для проверки TLS 1.3 cookie
+							// Устанавливаем функцию обратного вызова для проверки TLSv1.3 cookie
 							::SSL_CTX_set_stateless_cookie_verify_cb(member->ctx, &::cookie::verifyStateless);
 						#endif // !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_NUMBER >= 0x10101000L
 					} break;
@@ -6676,12 +6928,343 @@ void awh::Transport_Layer_Security::threadSafety(const id_t id, const bool mode)
 	}
 }
 /**
+ * @brief Метод установки поддерживаемых групп эллиптических кривых
+ *
+ * @param id     идентификатор события
+ * @param groups список поддерживаемых групп эллиптических кривых
+ */
+void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::group_t> & groups) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если список групп эллиптических кривых не пустой
+		if(!groups.empty()){
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+				/**
+				 * Если версия OpenSSL ниже версии 3.0.0 и не используется BoringSSL.
+				 */
+				#if !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_NUMBER < 0x30000000L
+					/**
+					 * Перебираем все группы эллиптических кривых для установки
+					 */
+					for(auto & item : groups){
+						// Объект элептической кривой для алгоритма обмена ключами
+						EC_KEY * ecdh = nullptr;
+						/**
+						 * Определяем код группы эллиптической кривой для алгоритма обмена ключами
+						 */
+						switch(static_cast <uint8_t> (item)){
+							// Если группа эллиптической кривой соответствует X25519
+							case static_cast <uint8_t> (tls::group_t::X25519):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x3B4);
+							break;
+							// Если группа эллиптической кривой соответствует X448
+							case static_cast <uint8_t> (tls::group_t::X448):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x3C1);
+							break;
+							// Если группа эллиптической кривой соответствует P-256
+							case static_cast <uint8_t> (tls::group_t::P_256):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x19F);
+							break;
+							// Если группа эллиптической кривой соответствует P-384
+							case static_cast <uint8_t> (tls::group_t::P_384):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x2CB);
+							break;
+							// Если группа эллиптической кривой соответствует P-521
+							case static_cast <uint8_t> (tls::group_t::P_521):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x2CC);
+							break;
+							// Если группа эллиптической кривой соответствует постквантовому алгоритму ML-KEM (Kyber)
+							case static_cast <uint8_t> (tls::group_t::MLKEM1024):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x3C6);
+							break;
+							// Если группа эллиптической кривой соответствует SECP256K1
+							case static_cast <uint8_t> (tls::group_t::SECP256K1):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x2CA);
+							break;
+							// Если группа эллиптической кривой соответствует X25519_MLKEM768
+							case static_cast <uint8_t> (tls::group_t::X25519_MLKEM768):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x3C5);
+							break;
+							// Если группа эллиптической кривой соответствует X25519_KYBER768_DRAFT00
+							case static_cast <uint8_t> (tls::group_t::X25519_KYBER768_DRAFT00):
+								// Создаём объект элептической кривой для алгоритма обмена ключами
+								ecdh = ::EC_KEY_new_by_curve_name(0x3C4);
+							break;
+						}
+						// Если кривые не получилось создать
+						if(ecdh == nullptr)
+							// Элептическая кривая не поддерживается, пропускаем её установку
+							continue;
+						/**
+						 * Определяем уровень транспортной безопасности
+						 */
+						switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+							// Если уровень является шаблонным контекстом безопасности
+							case static_cast <uint8_t> (layer_t::CTS): {
+								// Выполняем извлечение объекта шаблона контекста безопасности
+								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем элептическую кривую для алгоритма обмена ключами в контексте TLS
+								if(::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set temporary ECDH is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::CURVE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если уровень является транспортной передачей данных
+							case static_cast <uint8_t> (layer_t::CTL): {
+								// Выполняем извлечение объекта транспортного уровня передачи
+								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем элептическую кривую для алгоритма обмена ключами в контексте TLS
+								if(::SSL_set_tmp_ecdh(member->ssl, ecdh) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set temporary ECDH is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::CURVE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+						}
+						// Выполняем очистку объекта кривой
+						::EC_KEY_free(ecdh);
+					}
+				/**
+				 * Если версия OpenSSL соответствует или выше версии 3.0.0 или ипользуется BoringSSL,
+				 * то поддержка групп эллиптических кривых для алгоритмов обмена ключами устанавливается через список поддерживаемых групп эллиптических кривых для TLSv1.3.
+				 */
+				#else
+					// Список поддерживаемых групп эллиптических кривых для установки
+					vector <int32_t> support;
+					/**
+					 * Перебираем все группы эллиптических кривых для установки
+					 */
+					for(auto & item : groups){
+						/**
+						 * Определяем код группы эллиптической кривой для алгоритма обмена ключами
+						 */
+						switch(static_cast <uint8_t> (item)){
+							// Если группа эллиптической кривой соответствует X25519
+							case static_cast <uint8_t> (tls::group_t::X25519):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x3B4);
+							break;
+							// Если группа эллиптической кривой соответствует X448
+							case static_cast <uint8_t> (tls::group_t::X448):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x3C1);
+							break;
+							// Если группа эллиптической кривой соответствует P-256
+							case static_cast <uint8_t> (tls::group_t::P_256):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x19F);
+							break;
+							// Если группа эллиптической кривой соответствует P-384
+							case static_cast <uint8_t> (tls::group_t::P_384):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x2CB);
+							break;
+							// Если группа эллиптической кривой соответствует P-521
+							case static_cast <uint8_t> (tls::group_t::P_521):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x2CC);
+							break;
+							// Если группа эллиптической кривой соответствует постквантовому алгоритму ML-KEM (Kyber)
+							case static_cast <uint8_t> (tls::group_t::MLKEM1024):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x3C6);
+							break;
+							// Если группа эллиптической кривой соответствует SECP256K1
+							case static_cast <uint8_t> (tls::group_t::SECP256K1):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x2CA);
+							break;
+							// Если группа эллиптической кривой соответствует X25519_MLKEM768
+							case static_cast <uint8_t> (tls::group_t::X25519_MLKEM768):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x3C5);
+							break;
+							// Если группа эллиптической кривой соответствует X25519_KYBER768_DRAFT00
+							case static_cast <uint8_t> (tls::group_t::X25519_KYBER768_DRAFT00):
+								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+								support.push_back(0x3C4);
+							break;
+						}
+					}
+					// Если список поддерживаемых групп эллиптических кривых не пустой
+					if(!support.empty()){
+						/**
+						 * Определяем уровень транспортной безопасности
+						 */
+						switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+							// Если уровень является шаблонным контекстом безопасности
+							case static_cast <uint8_t> (layer_t::CTS): {
+								// Выполняем извлечение объекта шаблона контекста безопасности
+								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
+								if(::SSL_CTX_set1_groups(member->ctx, &support[0], support.size()) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set groups is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::CURVE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если уровень является транспортной передачей данных
+							case static_cast <uint8_t> (layer_t::CTL): {
+								// Выполняем извлечение объекта транспортного уровня передачи
+								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
+								if(::SSL_set1_groups(member->ssl, &support[0], support.size()) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set groups is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::CURVE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+						}
+					}
+				#endif // !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_NUMBER < 0x30000000L
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод установки алгоритмов шифрования
  *
  * @param id      идентификатор события
  * @param ciphers список алгоритмов шифрования для установки
  */
-void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <string> & ciphers) noexcept {
+void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <tls::cipher_t> & ciphers) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6692,14 +7275,132 @@ void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <string>
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
 				// Результирующая строка алгоритмов шифрования
 				string result = "";
-				// Формируем строку алгоритмов шифрования
-				for(const auto & cipher : ciphers){
+				/**
+				 * Перебираем все алгоритмы шифрования для установки
+				 */
+				for(auto & item : ciphers){
+					// Объект шифра поддерживаемого приложением
+					const SSL_CIPHER * cipher = nullptr;
+					/**
+					 * Определяем код шифра для алгоритма шифрования
+					 */
+					switch(static_cast <uint8_t> (item)){
+						// Если алгоритм шифрования соответствует AES128-SHA
+						case static_cast <uint8_t> (tls::cipher_t::AES128_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0x002F);
+						break;
+						// Если алгоритм шифрования соответствует AES256-SHA
+						case static_cast <uint8_t> (tls::cipher_t::AES256_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0x0035);
+						break;
+						// Если алгоритм шифрования соответствует AES128-GCM-SHA256
+						case static_cast <uint8_t> (tls::cipher_t::AES128_GCM_SHA256):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0x009C);
+						break;
+						// Если алгоритм шифрования соответствует AES256-GCM-SHA384
+						case static_cast <uint8_t> (tls::cipher_t::AES256_GCM_SHA384):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0x009D);
+						break;
+						// Если алгоритм шифрования соответствует PSK-AES128-CBC-SHA
+						case static_cast <uint8_t> (tls::cipher_t::PSK_AES128_CBC_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0x008C);
+						break;
+						// Если алгоритм шифрования соответствует PSK-AES256-CBC-SHA
+						case static_cast <uint8_t> (tls::cipher_t::PSK_AES256_CBC_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0x008D);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-SHA
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES128_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC013);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-RSA-AES256-SHA
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES256_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC014);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-SHA
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES128_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC009);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES256-SHA
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES256_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC00A);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-SHA256
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES128_SHA256):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC027);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-PSK-AES128-CBC-SHA
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC035);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-PSK-AES256-CBC-SHA
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC036);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-SHA256
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES128_SHA256):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC023);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-GCM-SHA256
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC02F);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-RSA-AES256-GCM-SHA384
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC030);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-RSA-CHACHA20-POLY1305
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xCCA8);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-PSK-CHACHA20-POLY1305
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xCCAC);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC02B);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xC02C);
+						break;
+						// Если алгоритм шифрования соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305):
+							// Получаем объект шифра по его коду
+							cipher = ::SSL_get_cipher_by_value(0xCCA9);
+						break;
+					}
+					// Если объект шифра не найден
+					if(cipher == nullptr)
+						// Код не поддерживается BoringSSL — пропускаем
+						continue;
 					// Если строка алгоритмов шифрования не пустая
 					if(!result.empty())
 						// Добавляем разделитель алгоритмов шифрования
-						result.append(__AWH_TLS_CIPHER_SEPARATOR__);
+						result.append(1, ':');
 					// Добавляем алгоритм шифрования в строку алгоритмов шифрования
-					result.append(cipher);
+					result.append(::SSL_CIPHER_standard_name(cipher));
 				}
 				// Если строка алгоритмов шифрования собрана
 				if(!result.empty()){
@@ -6797,6 +7498,135 @@ void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <string>
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод активации/деактивации GREASE-значений (мусорных кодов)
+ *
+ * @param id   идентификатор события
+ * @param mode режим активации/деактивации
+ */
+void awh::Transport_Layer_Security::grease(const id_t id, const event::mode_t mode) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			/**
+			 * Определяем уровень транспортной безопасности
+			 */
+			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+				// Если уровень является шаблонным контекстом безопасности
+				case static_cast <uint8_t> (layer_t::CTS): {
+					/**
+					 * Если BoringSSL используется в качестве криптографической библиотеки
+					 */
+					#ifdef OPENSSL_IS_BORINGSSL
+						// Выполняем извлечение объекта шаблона контекста безопасности
+						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Если узел является клиентом
+						if(member->node == event::node_t::CLIENT){
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
+							// Выполняем блокировку потоков
+							const locker_t <recursive_mutex> lock(member->mtx);
+							/**
+							 * Определяем режим активации/деактивации GREASE-значений (мусорных кодов)
+							 */
+							switch(static_cast <uint8_t> (mode)){
+								// Если передан режим активации
+								case static_cast <uint8_t> (event::mode_t::ENABLED):
+									// Активируем GREASE-значения (мусорные коды) в контексте TLS
+									::SSL_CTX_set_grease_enabled(member->ctx, 1);
+								break;
+								// Если передан режим деактивации
+								case static_cast <uint8_t> (event::mode_t::DISABLED):
+									// Деактивируем GREASE-значения (мусорные коды) в контексте TLS
+									::SSL_CTX_set_grease_enabled(member->ctx, 0);
+								break;
+							}
+						// Если узел является сервером
+						} else {
+							// Если функция обратного вызова состояния установлена
+							if(member->callback.state != nullptr)
+								// Вызываем функцию обратного вызова состояния
+								member->callback.state(id, tls_t::state_t::FAILED);
+							// Получаем текст ошибки
+							const string error = ::ssl::error(id, "GREASE codes are only allowed to be added for the client");
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, error_t::CTS_FAILED, error);
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					#endif // OPENSSL_IS_BORINGSSL
+				} break;
+				// Если уровень является транспортной передачей данных
+				case static_cast <uint8_t> (layer_t::CTL): {
+					// Выполняем извлечение объекта транспортного уровня передачи
+					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Если функция обратного вызова состояния установлена
+					if(member->callback.state != nullptr)
+						// Вызываем функцию обратного вызова состояния
+						member->callback.state(id, tls_t::state_t::FAILED);
+					// Получаем текст ошибки
+					const string error = ::ssl::error(id, "GREASE codes are only allowed to be added for the security context template");
+					// Если функция обратного вызова ошибки установлена
+					if(member->callback.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->callback.error(id, error_t::CTL_FAILED, error);
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6941,7 +7771,7 @@ void awh::Transport_Layer_Security::alpn(const id_t id, const vector <alpn_t> & 
 							 */
 							#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 								// Выполняем установку доступных протоколов передачи данных
-								::SSL_set_alpn_protos(member->ssl, member->alpn.buffer.data(), static_cast <uint32_t> (member->alpn.buffer.size()));
+								::SSL_set_alpn_protos(member->ssl, &member->alpn.buffer[0], static_cast <uint32_t> (member->alpn.buffer.size()));
 							#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 						}
 					} break;
@@ -6958,6 +7788,788 @@ void awh::Transport_Layer_Security::alpn(const id_t id, const vector <alpn_t> & 
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alpn.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки поддерживаемых ALPS-протоколов
+ *
+ * @param id   идентификатор события
+ * @param alps список поддерживаемых ALPS-протоколов
+ * @param std  флаг поддерживаемого стандарта
+ */
+void awh::Transport_Layer_Security::alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если список поддерживаемых ALPS-протоколов не пустой
+		if(!alps.empty()){
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+				/**
+				 * Определяем уровень транспортной безопасности
+				 */
+				switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+					// Если уровень является шаблонным контекстом безопасности
+					case static_cast <uint8_t> (layer_t::CTS): {
+						// Выполняем извлечение объекта шаблона контекста безопасности
+						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Если функция обратного вызова состояния установлена
+						if(member->callback.state != nullptr)
+							// Вызываем функцию обратного вызова состояния
+							member->callback.state(id, tls_t::state_t::FAILED);
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "ALPS protocols are only allowed to be added for the transport data layer");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::ALPS_FAILED, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если уровень является транспортной передачей данных
+					case static_cast <uint8_t> (layer_t::CTL): {
+						/**
+						 * Для BoringSSL включаем ALPS (Application Layer Protocol Settings).
+						 * SSL_add_application_settings регистрирует расширение application_settings
+						 * для каждого ALPN-протокола (пустые настройки — Chrome-стиль).
+						 * SSL_set_alps_use_new_codepoint(ssl, 0) переключает на старый codepoint
+						 * 0x4469 (application_settings_old, decimal 17513) вместо 0x44CD (17613).
+						 */
+						#ifdef OPENSSL_IS_BORINGSSL
+							// Выполняем извлечение объекта транспортного уровня передачи
+							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+							// Если узел является клиентом
+							if(member->node == event::node_t::CLIENT){
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Буфер ALPS-протоколов
+								vector <uint8_t> buffer;
+								/**
+								 * Выполняем перебор всего списка поддерживаемых ALPS-протоколов
+								 */
+								for(const auto & item : alps){
+									// Добавляем в буфер длину названия протокола
+									buffer.push_back(static_cast <uint8_t> (item.protocol.size()));
+									// Добавляем в буфер название протокола
+									buffer.insert(buffer.end(), item.protocol.begin(), item.protocol.end());
+								}
+								/**
+								 * В зависимости от стандарта, который поддерживает клиент, используем соответствующий codepoint для регистрации ALPS-протоколов
+								 */
+								switch(static_cast <uint8_t> (std)){
+									// Если стандарт соответствует новому
+									case static_cast <uint8_t> (standard_t::NEW):
+										// Используем новый codepoint (application_settings = 0x44CD = 17613)
+										::SSL_set_alps_use_new_codepoint(member->ssl, 1);
+									break;
+									// Если стандарт соответствует старому
+									case static_cast <uint8_t> (standard_t::OLD):
+										// Используем старый codepoint (application_settings_old = 0x4469 = 17513)
+										::SSL_set_alps_use_new_codepoint(member->ssl, 0);
+									break;
+								}
+								// Итерируем по буферу ALPN (формат: len + bytes)
+								if(!buffer.empty()){
+									// Смещение для итерации по буферу ALPN
+									size_t offset = 0;
+									// Длина названия протокола
+									uint8_t length = 0;
+									/**
+									 * Итерируем по буферу ALPN, регистрируя ALPS для каждого протокола с пустыми настройками
+									 */
+									while(offset < buffer.size()){
+										// Получаем длину названия протокола
+										length = buffer[offset];
+										// Проверяем, что смещение и длина названия протокола не выходят за пределы буфера ALPN
+										if(static_cast <size_t> (offset + 1 + length) > buffer.size())
+											// Выходим из цикла, если данные некорректные
+											break;
+										// Регистрируем ALPS для протокола с пустыми настройками
+										::SSL_add_application_settings(member->ssl, &buffer[0] + (offset + 1), length, nullptr, 0);
+										// Увеличиваем смещение на длину названия протокола и байт длины
+										offset += static_cast <size_t> (length + 1);
+									}
+								}
+							// Если узел является сервером
+							} else {
+								// Если функция обратного вызова состояния установлена
+								if(member->callback.state != nullptr)
+									// Вызываем функцию обратного вызова состояния
+									member->callback.state(id, tls_t::state_t::FAILED);
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "ALPS protocols are only allowed to be added for the client");
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, error_t::ALPS_FAILED, error);
+								// Если функция обратного вызова ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						#endif // OPENSSL_IS_BORINGSSL
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alps.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки поддерживаемых алгоритмов подписи
+ *
+ * @param id         идентификатор события
+ * @param signatures список поддерживаемых алгоритмов подписи
+ */
+void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::signature_t> & signatures) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если список поддерживаемых алгоритмов подписи не пустой
+		if(!signatures.empty()){
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+				/**
+				 * Если используется OpenSSL (не BoringSSL), строим пары (NID_hash, EVP_PKEY_type)
+				 * для передачи в SSL_CTX_set1_sigalgs / SSL_set1_sigalgs
+				 */
+				#ifndef OPENSSL_IS_BORINGSSL
+					// Список поддерживаемых алгоритмов подписи для установки
+					vector <int32_t> sigalgs;
+					/**
+					 * Перебираем все группы алгоритмов подписи для установки
+					 */
+					for(auto & item : signatures){
+						/**
+						 * Определяем код алгоритма поддерживаемой подписи
+						 */
+						switch(static_cast <uint8_t> (item)){
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA1
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA1): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha1);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_RSA);
+							} break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA256
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA256): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha256);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_RSA);
+							} break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA384
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA384): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha384);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_RSA);
+							} break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA512
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA512): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha512);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_RSA);
+							} break;
+							// Если группа алгоритма подписи соответствует ECDSA_SHA1
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SHA1): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha1);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_EC);
+							} break;
+							// Если группа алгоритма подписи соответствует ECDSA_SECP256R1_SHA256
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP256R1_SHA256): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha256);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_EC);
+							} break;
+							// Если группа алгоритма подписи соответствует ECDSA_SECP384R1_SHA384
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP384R1_SHA384): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha384);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_EC);
+							} break;
+							// Если группа алгоритма подписи соответствует ECDSA_SECP521R1_SHA512
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP521R1_SHA512): {
+								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+								sigalgs.push_back(NID_sha512);
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(EVP_PKEY_EC);
+							} break;
+							/**
+							 * Если версия OpenSSL соответствует или выше версии 1.1.1, добавляем алгоритмы RSA-PSS с хешами SHA-256, SHA-384 и SHA-512
+							 * (требуется OpenSSL 1.1.1 для поддержки TLS 1.3, который использует эти алгоритмы подписи по умолчанию)
+							 * В OpenSSL 3.0 и выше поддержка RSA-PSS расширена, и эти алгоритмы подписи могут использоваться не только в TLS 1.3, но и в TLS 1.2 и ниже
+							 * В BoringSSL поддержка RSA-PSS с этими хешами также присутствует, но код для их добавления отличается, поэтому он находится в отдельном блоке для BoringSSL
+							 */
+							#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+								// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA256
+								case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA256): {
+									// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+									sigalgs.push_back(NID_sha256);
+									// Добавляем код алгоритма подписи в список поддерживаемых подписей
+									sigalgs.push_back(EVP_PKEY_RSA_PSS);
+								} break;
+								// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA384
+								case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA384): {
+									// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+									sigalgs.push_back(NID_sha384);
+									// Добавляем код алгоритма подписи в список поддерживаемых подписей
+									sigalgs.push_back(EVP_PKEY_RSA_PSS);
+								} break;
+								// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA512
+								case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA512): {
+									// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
+									sigalgs.push_back(NID_sha512);
+									// Добавляем код алгоритма подписи в список поддерживаемых подписей
+									sigalgs.push_back(EVP_PKEY_RSA_PSS);
+								} break;
+							#endif
+						}
+					}
+					// Если список поддерживаемых алгоритмов подписи не пустой
+					if(!sigalgs.empty()){
+						/**
+						 * Определяем уровень транспортной безопасности
+						 */
+						switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+							// Если уровень является шаблонным контекстом безопасности
+							case static_cast <uint8_t> (layer_t::CTS): {
+								// Выполняем извлечение объекта шаблона контекста безопасности
+								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
+								if(::SSL_CTX_set1_sigalgs(member->ctx, &sigalgs[0], sigalgs.size()) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set signature algorithms is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SIGNATURE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если уровень является транспортной передачей данных
+							case static_cast <uint8_t> (layer_t::CTL): {
+								// Выполняем извлечение объекта транспортного уровня передачи
+								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
+								if(::SSL_set1_sigalgs(member->ctx, &sigalgs[0], sigalgs.size()) != 1){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set signature algorithms is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SIGNATURE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+						}
+					}
+				/**
+				 * Если используется BoringSSL, строим список кодов алгоритмов подписи для передачи в
+				 * SSL_CTX_set_signing_algorithm_prefs / SSL_set_signing_algorithm_prefs и SSL_CTX_set_verify_algorithm_prefs / SSL_set_verify_algorithm_prefs
+				 */
+				#else
+					// Список поддерживаемых алгоритмов подписи для установки
+					vector <uint16_t> sigalgs;
+					/**
+					 * Перебираем все группы алгоритмов подписи для установки
+					 */
+					for(auto & item : signatures){
+						/**
+						 * Определяем код алгоритма поддерживаемой подписи
+						 */
+						switch(static_cast <uint8_t> (item)){
+							// Если группа алгоритма подписи соответствует ED25519
+							case static_cast <uint8_t> (tls::signature_t::ED25519):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_ED25519);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA1
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA1):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA1);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA256
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA256):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA256);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA384
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA384):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA384);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA512
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA512):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA512);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA256
+							case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA256):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PSS_RSAE_SHA256);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA384
+							case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA384):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PSS_RSAE_SHA384);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA512
+							case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA512):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PSS_RSAE_SHA512);
+							break;
+							// Если группа алгоритма подписи соответствует ECDSA_SHA1
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SHA1):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_ECDSA_SHA1);
+							break;
+							// Если группа алгоритма подписи соответствует ECDSA_SECP256R1_SHA256
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP256R1_SHA256):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_ECDSA_SECP256R1_SHA256);
+							break;
+							// Если группа алгоритма подписи соответствует ECDSA_SECP384R1_SHA384
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP384R1_SHA384):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_ECDSA_SECP384R1_SHA384);
+							break;
+							// Если группа алгоритма подписи соответствует ECDSA_SECP521R1_SHA512
+							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP521R1_SHA512):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_ECDSA_SECP521R1_SHA512);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_MD5_SHA1
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_MD5_SHA1):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_MD5_SHA1);
+							break;
+							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA256_LEGACY
+							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA256_LEGACY):
+								// Добавляем код алгоритма подписи в список поддерживаемых подписей
+								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA256_LEGACY);
+							break;
+						}
+					}
+					// Если список поддерживаемых алгоритмов подписи не пустой
+					if(!sigalgs.empty()){
+						/**
+						 * Определяем уровень транспортной безопасности
+						 */
+						switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+							// Если уровень является шаблонным контекстом безопасности
+							case static_cast <uint8_t> (layer_t::CTS): {
+								// Выполняем извлечение объекта шаблона контекста безопасности
+								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
+								if(
+									(::SSL_CTX_set_signing_algorithm_prefs(member->ctx, &sigalgs[0], sigalgs.size()) != 1) ||
+									(::SSL_CTX_set_verify_algorithm_prefs(member->ctx, &sigalgs[0], sigalgs.size()) != 1)
+								){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set signature algorithms is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SIGNATURE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+							// Если уровень является транспортной передачей данных
+							case static_cast <uint8_t> (layer_t::CTL): {
+								// Выполняем извлечение объекта транспортного уровня передачи
+								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+								// Создаём охранника участника обмена защищёнными данными
+								::local::guard_t guard(member);
+								// Выполняем блокировку потоков
+								const locker_t <recursive_mutex> lock(member->mtx);
+								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
+								if(
+									(::SSL_set_signing_algorithm_prefs(member->ssl, &sigalgs[0], sigalgs.size()) != 1) ||
+									(::SSL_set_verify_algorithm_prefs(member->ssl, &sigalgs[0], sigalgs.size()) != 1)
+								){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, tls_t::state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Set signature algorithms is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SIGNATURE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							} break;
+						}
+					}
+				#endif // !OPENSSL_IS_BORINGSSL
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых
+ *
+ * @param id     идентификатор события
+ * @param groups список поддерживаемых групп эллиптических кривых для ключевого обмена
+ * @param grease флаг активации/деактивации ложного ключа EncryptedClientHello (ECH)
+ */
+void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::group_t> & groups, const event::mode_t grease) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если список поддерживаемых групп эллиптических кривых не пустой
+		if(!groups.empty()){
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+				/**
+				 * Определяем уровень транспортной безопасности
+				 */
+				switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+					// Если уровень является шаблонным контекстом безопасности
+					case static_cast <uint8_t> (layer_t::CTS): {
+						// Выполняем извлечение объекта шаблона контекста безопасности
+						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						// Если функция обратного вызова состояния установлена
+						if(member->callback.state != nullptr)
+							// Вызываем функцию обратного вызова состояния
+							member->callback.state(id, tls_t::state_t::FAILED);
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Groups elliptic curves are only allowed to be added for the transport data layer");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::CURVE_FAILED, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					} break;
+					// Если уровень является транспортной передачей данных
+					case static_cast <uint8_t> (layer_t::CTL): {
+						/**
+						 * Если BoringSSL используется в качестве криптографической библиотеки
+						 */
+						#ifdef OPENSSL_IS_BORINGSSL
+							// Выполняем извлечение объекта транспортного уровня передачи
+							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+							// Если узел является клиентом
+							if(member->node == event::node_t::CLIENT){
+								// Список поддерживаемых групп эллиптических кривых для установки
+								vector <uint16_t> support;
+								/**
+								 * Перебираем все группы эллиптических кривых для установки
+								 */
+								for(auto & item : groups){
+									/**
+									 * Определяем код группы эллиптической кривой для алгоритма обмена ключами
+									 */
+									switch(static_cast <uint8_t> (item)){
+										// Если группа эллиптической кривой соответствует X25519
+										case static_cast <uint8_t> (tls::group_t::X25519):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_X25519);
+										break;
+										// Если группа эллиптической кривой соответствует P-256
+										case static_cast <uint8_t> (tls::group_t::P_256):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_SECP256R1);
+										break;
+										// Если группа эллиптической кривой соответствует P-384
+										case static_cast <uint8_t> (tls::group_t::P_384):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_SECP384R1);
+										break;
+										// Если группа эллиптической кривой соответствует P-521
+										case static_cast <uint8_t> (tls::group_t::P_521):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_SECP521R1);
+										break;
+										// Если группа эллиптической кривой соответствует постквантовому алгоритму ML-KEM (Kyber)
+										case static_cast <uint8_t> (tls::group_t::MLKEM1024):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_MLKEM1024);
+										break;
+										// Если группа эллиптической кривой соответствует X25519_MLKEM768
+										case static_cast <uint8_t> (tls::group_t::X25519_MLKEM768):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_X25519_MLKEM768);
+										break;
+										// Если группа эллиптической кривой соответствует X25519_KYBER768_DRAFT00
+										case static_cast <uint8_t> (tls::group_t::X25519_KYBER768_DRAFT00):
+											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
+											support.push_back(SSL_GROUP_X25519_KYBER768_DRAFT00);
+										break;
+									}
+								}
+								// Если список поддерживаемых групп эллиптических кривых не пустой
+								if(!support.empty()){
+									/**
+									 * Определяем режим активации/деактивации генерации ложного ключа EncryptedClientHello (ECH)
+									 */
+									switch(static_cast <uint8_t> (grease)){
+										// Если передан режим активации
+										case static_cast <uint8_t> (event::mode_t::ENABLED):
+											// Активируем генерацию ложного ключа EncryptedClientHello (ECH)
+											::SSL_set_enable_ech_grease(member->ssl, 1);
+										break;
+										// Если передан режим деактивации
+										case static_cast <uint8_t> (event::mode_t::DISABLED):
+											// Деактивируем генерацию ложного ключа EncryptedClientHello (ECH)
+											::SSL_set_enable_ech_grease(member->ssl, 0);
+										break;
+									}
+									// Создаём охранника участника обмена защищёнными данными
+									::local::guard_t guard(member);
+									// Выполняем блокировку потоков
+									const locker_t <recursive_mutex> lock(member->mtx);
+									// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
+									if(::SSL_set1_client_key_shares(member->ssl, &support[0], support.size()) != 1){
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова состояния
+											member->callback.state(id, tls_t::state_t::FAILED);
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Set groups is failed");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::CURVE_FAILED, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								}
+							// Если узел является сервером
+							} else {
+								// Если функция обратного вызова состояния установлена
+								if(member->callback.state != nullptr)
+									// Вызываем функцию обратного вызова состояния
+									member->callback.state(id, tls_t::state_t::FAILED);
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "Groups elliptic curves are only allowed to be added for the client");
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, error_t::CURVE_FAILED, error);
+								// Если функция обратного вызова ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						#endif // OPENSSL_IS_BORINGSSL
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -7671,7 +9283,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							return;
 						}
 						// Выполняем чтение CRL-файла сертификата
-						if(BIO_read_filename(bio, filename.data()) <= 0){
+						if(::BIO_read_filename(bio, filename.data()) <= 0){
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -8649,97 +10261,6 @@ awh::Transport_Layer_Security::Transport_Layer_Security(const fmk_t * fmk, const
 				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
 			#endif
 		}
-		// Выполняем установку алгоритмов шифрования
-		::__awh_ssl_ciphers__ = ""
-			"ECDHE+AESGCM"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE+CHACHA20"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-RSA-AES128-GCM-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-ECDSA-AES128-GCM-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-RSA-AES256-GCM-SHA384"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-ECDSA-AES256-GCM-SHA384"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-RSA-AES128-GCM-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-DSS-AES128-GCM-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"kEDH+AESGCM"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-RSA-AES128-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-ECDSA-AES128-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-RSA-AES128-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-ECDSA-AES128-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-RSA-AES256-SHA384"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-ECDSA-AES256-SHA384"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-RSA-AES256-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"ECDHE-ECDSA-AES256-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-RSA-AES128-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-RSA-AES128-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-DSS-AES128-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-RSA-AES256-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-DSS-AES256-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE-RSA-AES256-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE+AESGCM"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DHE+CHACHA20"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES128-GCM-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES256-GCM-SHA384"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES128-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES256-SHA256"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES128-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES256-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"AES"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"CAMELLIA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"DES-CBC3-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!aNULL"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!eNULL"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!EXPORT"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!DES"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!RC4"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!MD5"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!PSK"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!aECDH"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!EDH-DSS-DES-CBC3-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!EDH-RSA-DES-CBC3-SHA"
-			__AWH_TLS_CIPHER_SEPARATOR__
-			"!KRB5-DES-CBC3-SHA";
 		/**
 		 * Если версия OPENSSL ниже версии 1.1.0
 		 */
