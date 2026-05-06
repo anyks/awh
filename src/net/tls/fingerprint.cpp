@@ -33,6 +33,81 @@
 using namespace std;
 
 
+/**
+ * Инкапсулируем статические объекты в пространство имён временных переменных
+ */
+namespace fingerprint {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Вспомогательная функция для чтения 16-битного значения из буфера в формате big-endian
+	 *
+	 * @param buffer бинарный буфер с данными handshake-сообщения
+	 * @return       значение в формате big-endian
+	 */
+	static inline uint16_t u16(const uint8_t * buffer) noexcept {
+		// Читаем 16-битное значение из буфера в формате big-endian
+		return ((static_cast <uint16_t> (buffer[0]) << 8) | buffer[1]);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения Server Name Indication (SNI) из ClientHello
+	 *
+	 * @param buffer  бинарный буфер с данными handshake-сообщения
+	 * @param size    размер данных в буфере
+	 * @param browser объект структуры цифрового отпечатка устройства для сохранения информации о поддерживаемых расширениях
+	 */
+	static void parseServerName(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Минимум: list_length(2) + name_type(1) + name_length(2) + name(1) = 6 байт
+		if(size < 6)
+			// Выходим из функции
+			return;
+		// Читаем байтовую длину всего списка (не количество имён!)
+		const uint16_t length = u16(buffer);
+		// Проверяем что список помещается в буфер
+		if(size < static_cast <size_t> (2 + length))
+			// Выходим из функции
+			return;
+		// Инициализируем смещение: пропускаем list_length (2 байта)
+		size_t offset = 2;
+		// Конец списка
+		const size_t end = (2 + length);
+		/**
+		 * Итерируем по байтам списка (на практике всегда один элемент)
+		 */
+		while((offset + 3) <= end){
+			// Читаем тип имени (1 байт): 0x00 = host_name
+			const uint8_t type = buffer[offset++];
+			// Читаем длину имени (2 байта)
+			const uint16_t length = u16(buffer + offset);
+			// Сдвигаем смещение на 2 байта (длина имени)
+			offset += 2;
+			// Проверяем что имя помещается в буфер
+			if((offset + length) > end)
+				// Если данных недостаточно, прекращаем парсинг
+				break;
+			// Если тип имени — host_name и длина имени больше 0
+			if((type == 0x00) && (length > 0)){
+				// Добавляем расширение SNI в список расширений браузера
+				browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_server_name_t> ());
+				// Устанавливаем имя сервера в расширение SNI
+				awh_cast <awh::tls::fgp_t::extension_server_name_t *> (browser.extensions.back().get())->names.push_back(string(reinterpret_cast <const char *> (buffer + offset), length));
+			}
+			// Сдвигаем смещение на длину имени
+			offset += static_cast <size_t> (length);
+		}
+	}
+};
+
+
+
+
+
+
+
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 // Вспомогательная: вывод байт-массива
@@ -738,15 +813,7 @@ void parse_extensions_chrome_style(const uint8_t* data, size_t data_len, size_t 
 }
 
 
-/**
- * @brief Метод парсинга данных цифрового отпечатка
- *
- * @param buffer бинарный буфер данных цифрового отпечатка
- * @param size   размер бинарного буфера данных цифрового отпечатка
- * @return       результат парсинга данных цифрового отпечатка
- */
-bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size) noexcept {
-
+bool parse(const uint8_t * buffer, const size_t size) noexcept {
 	// Данные для вычисления отпечатков (заполняются по ходу парсинга)
 	std::vector<uint16_t> fp_ciphers;
 	std::vector<uint16_t> fp_ext_types;
@@ -1180,6 +1247,898 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size) noe
 	printf("  session_id             = \"%s\"\n", fp_session_id_hex.c_str());
 
 	return true;
+}
+
+
+/**
+ * @brief Метод парсинга данных цифрового отпечатка
+ *
+ * @param buffer  бинарный буфер данных цифрового отпечатка
+ * @param size    размер бинарного буфера данных цифрового отпечатка
+ * @param browser объект для хранения распарсенных данных цифрового отпечатка
+ * @return        результат парсинга данных цифрового отпечатка
+ */
+bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, browser_t & browser) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Сбрасываем данные браузера в дефолтное состояние (все поля UNKNOWN или false)
+		browser = browser_t{};
+		// Если размер данных меньше 11 байт, то это не может быть валидным TLS/DTLS ClientHello
+		if(size < 11){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Fingerprint buffer too short: %zu bytes (need >= 11)", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, size);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Fingerprint buffer too short: %zu bytes (need >= 11)", log_t::flag_t::WARNING, size);
+			#endif
+			// Выводим результат по умолчанию
+			return result;
+		}
+		// Проверяем, что первый байт — это 0x16 (handshake record)
+		if(buffer[0] == 0x16){
+			/**
+			 * Определяем версию из заголовка record (offset 1 для TLS, offset 11 для DTLS)
+			 */
+			switch(::fingerprint::u16(buffer + 1)){
+				// Если версия записи соответствует DTLSv1.0
+				case 0xFEFF:
+					// Устанавливаем версию записи в объекте browser как DTLS 1.0
+					browser.record.version = version_t::DTLS_1_0;
+				break;
+				// Если версия записи соответствует DTLSv1.2
+				case 0xFEFD:
+					// Устанавливаем версию записи в объекте browser как DTLS 1.2
+					browser.record.version = version_t::DTLS_1_2;
+				break;
+				// Если версия записи соответствует SSLv3
+				case 0x0300:
+					// Устанавливаем версию записи в объекте browser как SSL 3.0
+					browser.record.version = version_t::SSL_V3;
+				break;
+				// Если версия записи соответствует TLSv1.0
+				case 0x0301:
+					// Устанавливаем версию записи в объекте browser как TLS 1.0
+					browser.record.version = version_t::TLS_1_0;
+				break;
+				// Если версия записи соответствует TLSv1.1
+				case 0x0302:
+					// Устанавливаем версию записи в объекте browser как TLS 1.1
+					browser.record.version = version_t::TLS_1_1;
+				break;
+				// Если версия записи соответствует TLSv1.2
+				case 0x0303:
+					// Устанавливаем версию записи в объекте browser как TLS 1.2
+					browser.record.version = version_t::TLS_1_2;
+				break;
+				// Если версия записи соответствует TLSv1.3
+				case 0x0304:
+					// Устанавливаем версию записи в объекте browser как TLS 1.3
+					browser.record.version = version_t::TLS_1_3;
+				break;
+			}
+			/**
+			 * Если версия записи не распознана, то она остаётся UNKNOWN, и мы выводим предупреждение, что версия записи не поддерживается.
+			 * В этом случае мы не можем продолжать парсинг, так как многие смещения зависят от протокола (TLS vs DTLS), и возвращаем результат по умолчанию.
+			 */
+			if(browser.record.version == version_t::UNKNOWN){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Unsupported record version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Unsupported record version: 0x%04X", log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Определяем, является ли это DTLS (версии 0xFEFF для DTLS 1.0 и 0xFEFD для DTLS 1.2)
+			const bool isDTLS = ((browser.record.version == version_t::DTLS_1_0) || (browser.record.version == version_t::DTLS_1_2));
+			/**
+			 * Размеры заголовков зависят от протокола:
+			 * - TLS:  record header  =  5 байт (type:1 + version:2 + length:2)
+			 * - DTLS: record header  = 13 байт (type:1 + version:2 + epoch:2 + seq:6 + length:2)
+			 * - TLS:  handshake hdr  =  4 байта (type:1 + length:3)
+			 * - DTLS: handshake hdr  = 12 байт  (type:1 + length:3 + msg_seq:2 + frag_off:3 + frag_len:3)
+			 */
+			// Получаем размер заголовка record в зависимости от протокола
+			const size_t recordSize = (isDTLS ? 13u : 5u);
+			// Получаем размер заголовка handshake в зависимости от протокола
+			const size_t handshakeSize = (isDTLS ? 12u : 4u);
+			// Если размер данных меньше суммы заголовков record и handshake, а также 2 байт для версии и 32 байт для random
+			if(size < (recordSize + handshakeSize + 2u + 32u)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Fingerprint buffer too short for %s headers: %zu bytes", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Fingerprint buffer too short for %s headers: %zu bytes", log_t::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Длина полезной нагрузки record: в TLS — offset 3, в DTLS — offset 11
+			browser.record.length = (isDTLS ? ::fingerprint::u16(buffer + 11) : ::fingerprint::u16(buffer + 3));
+			// Если это DTLS, то извлекаем epoch и sequence number из соответствующих полей заголовка record
+			if(isDTLS){
+				// Устанавливаем эпоху записи рукопожатия
+				browser.record.epoch = ::fingerprint::u16(buffer + 3);
+				// Устанавливаем sequence number записи рукопожатия, объединяя 6 байт в 48-битное число
+				browser.record.sequence = (
+					(static_cast <uint64_t> (buffer[5]) << 40) |
+					(static_cast <uint64_t> (buffer[6]) << 32) |
+					(static_cast <uint64_t> (buffer[7]) << 24) |
+					(static_cast <uint64_t> (buffer[8]) << 16) |
+					(static_cast <uint64_t> (buffer[9]) << 8) |
+					static_cast <uint64_t> (buffer[10])
+				);
+			}
+			// Если запись рукопожатия не соответствует ClientHello
+			if(buffer[recordSize] != 0x01){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Handshake entry does not match the ClientHello", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Handshake entry does not match the ClientHello", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			/**
+			 * Определяем версию из заголовка handshake
+			 */
+			switch(::fingerprint::u16(buffer + (recordSize + handshakeSize))){
+				// Если версия записи соответствует DTLSv1.0
+				case 0xFEFF:
+					// Устанавливаем версию записи в объекте browser как DTLS 1.0
+					browser.clientHello.version = version_t::DTLS_1_0;
+				break;
+				// Если версия записи соответствует DTLSv1.2
+				case 0xFEFD:
+					// Устанавливаем версию записи в объекте browser как DTLS 1.2
+					browser.clientHello.version = version_t::DTLS_1_2;
+				break;
+				// Если версия записи соответствует SSLv3
+				case 0x0300:
+					// Устанавливаем версию записи в объекте browser как SSL 3.0
+					browser.clientHello.version = version_t::SSL_V3;
+				break;
+				// Если версия записи соответствует TLSv1.0
+				case 0x0301:
+					// Устанавливаем версию записи в объекте browser как TLS 1.0
+					browser.clientHello.version = version_t::TLS_1_0;
+				break;
+				// Если версия записи соответствует TLSv1.1
+				case 0x0302:
+					// Устанавливаем версию записи в объекте browser как TLS 1.1
+					browser.clientHello.version = version_t::TLS_1_1;
+				break;
+				// Если версия записи соответствует TLSv1.2
+				case 0x0303:
+					// Устанавливаем версию записи в объекте browser как TLS 1.2
+					browser.clientHello.version = version_t::TLS_1_2;
+				break;
+				// Если версия записи соответствует TLSv1.3
+				case 0x0304:
+					// Устанавливаем версию записи в объекте browser как TLS 1.3
+					browser.clientHello.version = version_t::TLS_1_3;
+				break;
+			}
+			/**
+			 * Если версия рукопожатия не распознана, то она остаётся UNKNOWN, и мы выводим предупреждение, что версия рукопожатия не поддерживается.
+			 * В этом случае мы не можем продолжать парсинг, так как многие смещения зависят от протокола (TLS vs DTLS), и возвращаем результат по умолчанию.
+			 */
+			if(browser.clientHello.version == version_t::UNKNOWN){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Устанавливаем размер записи рукопожатия
+			browser.handshake.length = (
+				(static_cast <uint32_t> (buffer[recordSize + 1]) << 16) |
+				(static_cast <uint32_t> (buffer[recordSize + 2]) << 8)  |
+				static_cast <uint32_t> (buffer[recordSize + 3])
+			);
+			// Если это DTLS, то извлекаем sequence number и фрагментацию из соответствующих полей заголовка handshake
+			if(isDTLS){
+				// Устанавливаем sequence number рукопожатия
+				browser.handshake.sequence = ::fingerprint::u16(buffer + (recordSize + 4));
+				// Устанавливаем смещение фрагмента рукопожатия, объединяя 3 байта в 24-битное число
+				browser.handshake.fragment.offset = (
+					(static_cast <uint32_t> (buffer[recordSize + 6]) << 16) |
+					(static_cast <uint32_t> (buffer[recordSize + 7]) << 8)  |
+					static_cast <uint32_t> (buffer[recordSize + 8])
+				);
+				// Устанавливаем длину фрагмента рукопожатия, объединяя 3 байта в 24-битное число
+				browser.handshake.fragment.length = (
+					(static_cast <uint32_t> (buffer[recordSize + 9]) << 16) |
+					(static_cast <uint32_t> (buffer[recordSize + 10]) << 8)  |
+					static_cast <uint32_t> (buffer[recordSize + 11])
+				);
+			}
+			// Random: 32 байта после client_version
+			size_t offset = ((recordSize + handshakeSize) + 2);
+			/**
+			 * Перебираем все 32 байта random записи рукопожатия
+			 */
+			for(size_t i = 0; i < 32; ++i)
+				// Устанавливаем все байты в буфер random объекта clientHello
+				browser.clientHello.random[i] = buffer[offset + i];
+			/**
+			 * offset = начало переменных полей (session_id_len)
+			 * TLS:  rec(5)  + hs(4)  + version(2) + random(32) = 43
+			 * DTLS: rec(13) + hs(12) + version(2) + random(32) = 59
+			 */
+			offset += 32;
+			// Если размер данных меньше указанного смещения
+			if(size < (offset + 1)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated at session_id_len", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated at session_id_len", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Получаем длину session_id
+			size_t length = static_cast <size_t> (buffer[offset++]);
+			// Если длина session_id больше 32 байт, то это не соответствует стандарту TLS
+			if(length > 32){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello session_id_len > 32 (%zu)", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, length);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello session_id_len > 32 (%zu)", log_t::flag_t::WARNING, length);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Если размер данных меньше смещения + длины session_id, то это означает, что данные обрезаны
+			if((offset + length) > size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, offset, length, size);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", log_t::flag_t::WARNING, offset, length, size);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Выделяем память для идентификатора сессии
+			browser.session.resize(length, 1);
+			// Копируем данные идентификатора сессии из буфера
+			::memcpy(&browser.session[0], buffer + offset, length);
+			// Увеличиваем смещение на длину session_id
+			offset += length;
+			// Если DTLS: cookie (только для DTLS ClientHello, RFC 6347 §4.2.1)
+			if(isDTLS){
+				// Если размер данных меньше смещения + 1 байт для cookie_len, то это означает, что данные обрезаны
+				if(offset >= size){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("ClientHello truncated at cookie_len", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("ClientHello truncated at cookie_len", log_t::flag_t::WARNING);
+					#endif
+					// Выводим результат по умолчанию
+					return result;
+				}
+				// Получаем длину cookie
+				length = static_cast <size_t> (buffer[offset++]);
+				// Если размер данных меньше смещения + длины cookie, то это означает, что данные обрезаны
+				if((offset + length) > size){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, offset, length, size);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", log_t::flag_t::WARNING, offset, length, size);
+					#endif
+					// Выводим результат по умолчанию
+					return result;
+				}
+				// Выделяем память для cookie
+				browser.cookie.resize(length, 1);
+				// Копируем данные cookie из буфера
+				::memcpy(&browser.cookie[0], buffer + offset, length);
+				// Увеличиваем смещение на длину cookie
+				offset += length;
+			}
+			// Если размер данных меньше смещения + 2 байт для cipher_suites_len, то это означает, что данные обрезаны
+			if((offset + 2) > size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated at cipher_suites_len", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated at cipher_suites_len", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Получаем длину списка cipher_suites
+			length = static_cast <size_t> (::fingerprint::u16(buffer + offset));
+			// Увеличиваем смещение на 2 байта для длины cipher_suites
+			offset += 2;
+			// Если длина cipher_suites не кратна 2 или если размер данных меньше смещения + длины cipher_suites, то это означает, что данные обрезаны или некорректны
+			if(((offset + length) > size) || ((length % 2) != 0)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello invalid cipher_suites length (%zu)", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, length);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello invalid cipher_suites length (%zu)", log_t::flag_t::WARNING, length);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			/**
+			 * Перебираем весь список доступных шифров
+			 */
+			for(size_t i = 0; i < length; i += 2){
+				/**
+				 * Определяем код шифра
+				 */
+				switch(::fingerprint::u16(buffer + (offset + i))){
+					// Если код шифра соответствует AES128-SHA
+					case 0x002F:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::AES128_SHA);
+					break;
+					// Если код шифра соответствует AES256-SHA
+					case 0x0035:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::AES256_SHA);
+					break;
+					// Если код шифра соответствует AES128-GCM-SHA256
+					case 0x009C:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::AES128_GCM_SHA256);
+					break;
+					// Если код шифра соответствует AES256-GCM-SHA384
+					case 0x009D:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::AES256_GCM_SHA384);
+					break;
+					// Если код шифра соответствует PSK-AES128-CBC-SHA
+					case 0x008C:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::PSK_AES128_CBC_SHA);
+					break;
+					// Если код шифра соответствует PSK-AES256-CBC-SHA
+					case 0x008D:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::PSK_AES256_CBC_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+					case 0xC013:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+					case 0xC014:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+					case 0xC009:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+					case 0xC00A:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+					case 0xC027:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA256);
+					break;
+					// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+					case 0xC035:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES128_CBC_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+					case 0xC036:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES256_CBC_SHA);
+					break;
+					// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+					case 0xC023:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA256);
+					break;
+					// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+					case 0xC02F:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_GCM_SHA256);
+					break;
+					// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+					case 0xC030:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_GCM_SHA384);
+					break;
+					// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+					case 0xCCA8:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_RSA_CHACHA20_POLY1305);
+					break;
+					// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+					case 0xCCAC:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_PSK_CHACHA20_POLY1305);
+					break;
+					// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+					case 0xC02B:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256);
+					break;
+					// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+					case 0xC02C:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384);
+					break;
+					// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+					case 0xCCA9:
+						// Получаем код шифра
+						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305);
+					break;
+					// Если код шифра соответствует TLS_AES_128_GCM_SHA256
+					case 0x1301:
+						// Получаем код шифра
+						browser.ciphers.push_back(tls::cipher_t::TLS_AES_128_GCM_SHA256);
+					break;
+					// Если код шифра соответствует TLS_AES_256_GCM_SHA384
+					case 0x1302:
+						// Получаем код шифра
+						browser.ciphers.push_back(tls::cipher_t::TLS_AES_256_GCM_SHA384);
+					break;
+					// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
+					case 0x1303:
+						// Получаем код шифра
+						browser.ciphers.push_back(tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256);
+					break;
+					// Если код шифра не соответствует ни одному из известных
+					default: browser.ciphers.push_back(cipher_t::UNKNOWN);
+				}
+			}
+			// Увеличиваем смещение на длину cipher_suites
+			offset += length;
+			// Если размер данных меньше смещения + 1 байт для compression_methods_len, то это означает, что данные обрезаны
+			if((offset + 1) > size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated at compression_methods_len", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated at compression_methods_len", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Получаем длину списка compression_methods
+			length = static_cast <size_t> (buffer[offset++]);
+			// Если размер данных меньше смещения + длины compression_methods, то это означает, что данные обрезаны
+			if((offset + length) > size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated at compression_methods", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated at compression_methods", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Если длина compression_methods не равна 1 или если первый байт compression_methods не равен 0x00 (null), то это не соответствует стандарту TLS
+			if((length != 1) || (buffer[offset] != 0x00)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, length, buffer[offset]);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", log_t::flag_t::WARNING, length, buffer[offset]);
+				#endif
+			}
+			/**
+			 * Перебираем весь список доступных методов компрессии.
+			 * legacy_compression_methods: каждый элемент занимает 1 байт (uint8).
+			 * Допустимые значения: 0x00 (null) и 0x01 (DEFLATE/zlib, устарело).
+			 * Brotli/zstd здесь не существуют — они принадлежат расширению compress_certificate (0x001B).
+			 */
+			for(size_t i = 0; i < length; i += 1){
+				/**
+				 * Определяем код метода компрессии
+				 */
+				switch(buffer[offset + i]){
+					// Если метод компрессии не задан (null)
+					case 0x00:
+						// Добавляем установленный метод компрессии в список поддерживаемых методов
+						browser.compressors.push_back(compressor_t::NONE);
+					break;
+					// Если метод компрессии соответствует DEFLATE/zlib (RFC 3749, устарело, запрещено в TLS 1.3)
+					case 0x01:
+						// Добавляем установленный метод компрессии в список поддерживаемых методов
+						browser.compressors.push_back(compressor_t::ZLIB);
+					break;
+					// Если метод компрессии не соответствует ни одному из известных
+					default: browser.compressors.push_back(compressor_t::UNKNOWN);
+				}
+			}
+			// Увеличиваем смещение на длину cipher_suites
+			offset += length;
+			// Если размер данных не хватает для извлечения списка расширений
+			if((offset + 2) > size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated at extensions_length", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated at extensions_length", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Получаем длину списка расширений
+			length = static_cast <size_t> (::fingerprint::u16(buffer + offset));
+			// Увеличиваем смещение на 2 байта для длины расширений
+			offset += 2;
+			// Если размер данных меньше смещения + длины расширений, то это означает, что данные обрезаны
+			if((offset + length) > size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("ClientHello truncated inside extensions", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("ClientHello truncated inside extensions", log_t::flag_t::WARNING);
+				#endif
+				// Выводим результат по умолчанию
+				return result;
+			}
+			// Определяем конечное смещение для расширений, чтобы не выходить за пределы данных
+			const size_t end = (offset + length);
+			/**
+			 * Перебираем все расширения, пока не достигнем конца данных расширений
+			 * Каждое расширение состоит из 4 байт заголовка (2 байта для типа и 2 байта для длины) и данных указанной длины.
+			 * Мы будем извлекать тип и длину каждого расширения, а затем обрабатывать данные в зависимости от типа расширения.
+			 * Если мы обнаружим, что данные обрезаны внутри расширений, то мы выведем предупреждение и вернем результат по умолчанию.
+			 * Для GREASE и неизвестных расширений мы просто пропустим данные и закроем объект без обработки.
+			 * Для известных расширений мы вызовем соответствующую функцию парсинга, которая будет извлекать и отображать информацию о расширении.
+			 * После обработки каждого расширения мы будем увеличивать смещение на длину данных расширения, чтобы перейти к следующему расширению.
+			 * Этот процесс будет продолжаться до тех пор, пока мы не достигнем конечного смещения для расширений.
+			 */
+			while(offset < end){
+				// Если размер данных меньше смещения + 4 байт для заголовка расширения, то это означает, что данные обрезаны внутри расширений
+				if((offset + 4) > end)
+					// Выходим из цикла обработки расширений
+					break;
+				// Извлекаем тип расширения из первых 2 байт заголовка расширения
+				const uint16_t type = ::fingerprint::u16(buffer + offset);
+				// Извлекаем размер данных расширения из следующих 2 байт заголовка расширения
+				const uint16_t size = ::fingerprint::u16(buffer + (offset + 2));
+				// Увеличиваем смещение на 4 байта для заголовка расширения
+				offset += 4;
+				// Если размер данных меньше смещения + размера данных расширения, то это означает, что данные обрезаны внутри расширений
+				if((offset + size) > end)
+					// Выходим из цикла обработки расширений
+					break;
+				/**
+				 * Диспетчер по типам расширений:
+				 * для каждого известного типа расширения мы вызываем соответствующую функцию парсинга,
+				 * которая будет извлекать и отображать информацию о расширении.
+				 * Для GREASE и неизвестных типов расширений мы просто пропускаем данные и закрываем объект без обработки.
+				 */
+				switch(type){
+					// Если тип расширения соответствует server_name (RFC 6066 §3)
+					case 0x0000:
+						// Выполняем парсинг расширения server_name
+						::fingerprint::parseServerName(buffer + offset, size - offset, browser);
+					break;
+					// Если тип расширения соответствует max_fragment_length (RFC 6066 §4)
+					case 0x0001:
+						// parse_max_fragment_length(data + off, len);
+					break;
+					// Если тип расширения соответствует status_request (OCSP, RFC 6066 §8)
+					case 0x0005:
+						// parse_status_request(data + off, len);
+					break;
+					// Если тип расширения соответствует supported_groups (RFC 8422, RFC 7919)
+					case 0x000A:
+						// parse_supported_groups(data + off, len);
+					break;
+					// Если тип расширения соответствует ec_point_formats (RFC 8422 §5.1)
+					case 0x000B:
+						// parse_ec_point_formats(data + off, len);
+					break;
+					// Если тип расширения соответствует signature_algorithms (RFC 8446 §4.2.3)
+					case 0x000D:
+						// parse_signature_algorithms(data + off, len);
+					break;
+					// Если тип расширения соответствует use_srtp (RFC 5764 §4.2, DTLS)
+					case 0x000E:
+						// parse_use_srtp(data + off, len);
+					break;
+					// Если тип расширения соответствует heartbeat (RFC 6520)
+					case 0x000F:
+						// parse_heartbeat(data + off, len);
+					break;
+					// Если тип расширения соответствует application_layer_protocol_negotiation / ALPN (RFC 7301)
+					case 0x0010:
+						// parse_alpn(data + off, len);
+					break;
+					// Если тип расширения соответствует signed_certificate_timestamp / SCT (RFC 6962)
+					case 0x0012:
+						// parse_sct(data + off, len);
+					break;
+					// Если тип расширения соответствует padding (RFC 7685)
+					case 0x0015:
+						// parse_padding(data + off, len);
+					break;
+					// Если тип расширения соответствует encrypt_then_mac (RFC 7366)
+					case 0x0016:
+						// printf("\n");
+					break;
+					// Если тип расширения соответствует extended_master_secret (RFC 7627)
+					case 0x0017:
+						// parse_extended_master_secret(data + off, len);
+					break;
+					// Если тип расширения соответствует compress_certificate (RFC 8879)
+					case 0x001B:
+						// parse_compress_certificate(data + off, len);
+					break;
+					// Если тип расширения соответствует record_size_limit (RFC 8449)
+					case 0x001C:
+						// parse_record_size_limit(data + off, len);
+					break;
+					// Если тип расширения соответствует delegated_credential (RFC 9345)
+					case 0x0022:
+						// parse_delegated_credential(data + off, len);
+					break;
+					// Если тип расширения соответствует session_ticket (RFC 5077)
+					case 0x0023:
+						// parse_session_ticket(data + off, len);
+					break;
+					// Если тип расширения соответствует pre_shared_key (RFC 8446 §4.2.11)
+					case 0x0029:
+						// parse_pre_shared_key(data + off, len);
+					break;
+					// Если тип расширения соответствует early_data (RFC 8446 §4.2.10)
+					case 0x002A:
+						// parse_early_data(data + off, len);
+					break;
+					// Если тип расширения соответствует supported_versions (RFC 8446 §4.2.1)
+					case 0x002B:
+						// parse_supported_versions(data + off, len);
+					break;
+					// Если тип расширения соответствует cookie (RFC 8446 §4.2.2)
+					case 0x002C:
+						// parse_cookie(data + off, len);
+					break;
+					// Если тип расширения соответствует psk_key_exchange_modes (RFC 8446 §4.2.8)
+					case 0x002D:
+						// parse_psk_key_exchange_modes(data + off, len);
+					break;
+					// Если тип расширения соответствует certificate_authorities (RFC 8446 §4.2.4)
+					case 0x002F:
+						// parse_certificate_authorities(data + off, len);
+					break;
+					// Если тип расширения соответствует post_handshake_auth (RFC 8446 §4.2.9, пустое)
+					case 0x0031:
+						// printf("\n");
+					break;
+					// Если тип расширения соответствует signature_algorithms_cert (RFC 8446 §4.2.3)
+					case 0x0032:
+						// parse_signature_algorithms(data + off, len);
+					break;
+					// Если тип расширения соответствует key_share (RFC 8446 §4.2.8)
+					case 0x0033:
+						// parse_key_share(data + off, len);
+					break;
+					// Если тип расширения соответствует quic_transport_parameters (RFC 9001)
+					case 0x0039:
+						// parse_quic_transport_params(data + off, len);
+					break;
+					// Если тип расширения соответствует tls_flags (draft-ietf-tls-tlsflags)
+					case 0x003E:
+						// parse_tls_flags(data + off, len);
+					break;
+					// Если тип расширения соответствует next_proto_neg / NPN (Google, устарело, заменено на ALPN)
+					case 0x3374:
+						// parse_npn(data + off, len);
+					break;
+					// Если тип расширения соответствует application_settings_old (Chrome legacy ALPS, 0x4469)
+					case 0x4469:
+						// parse_alps_old(data + off, len);
+					break;
+					// Если тип расширения соответствует application_settings / ALPS новый стандарт (0x44CD)
+					case 0x44CD:
+						// parse_alps_old(data + off, len);
+					break;
+					// Если тип расширения соответствует channel_id (BoringSSL/Chrome, устарело, пустое в ClientHello)
+					case 0x7550:
+						// printf("\n");
+					break;
+					// Если тип расширения соответствует trust_anchors (BoringSSL draft)
+					case 0xCA34:
+						// printf("\n");
+					break;
+					// Если тип расширения соответствует ech_outer_extensions (ECH draft, RFC 9001)
+					case 0xFD00:
+						// parse_ech_outer_extensions(data + off, len);
+					break;
+					// Если тип расширения соответствует extensionEncryptedClientHello / ECH (draft-ietf-tls-esni)
+					case 0xFE0D:
+						// parse_ech(data + off, len);
+					break;
+					// Если тип расширения соответствует extensionRenegotiationInfo (RFC 5746)
+					case 0xFF01:
+						// parse_renegotiation_info(data + off, len);
+					break;
+					// Если тип расширения соответствует quic_transport_parameters_legacy (BoringSSL legacy QUIC)
+					case 0xFFA5:
+						// parse_quic_transport_params(data + off, len);
+					break;
+				}
+				// Увеличиваем смещение на размер данных расширения, чтобы перейти к следующему расширению
+				offset += static_cast <size_t> (size);
+			}
+
+
+			/*
+
+			// 8. Extensions
+			printf("\n[Next] extensions_length begins at offset %zu\n", off);
+			fp_ext_start = off;
+			parse_extensions_chrome_style(buffer, size, off);
+			*/
+
+
+
+
+	
+			return ::parse(buffer, size);
+		
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Конструктор

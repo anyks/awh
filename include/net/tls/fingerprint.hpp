@@ -21,6 +21,7 @@
 /**
  * Стандартные модули
  */
+#include <array>
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -259,14 +260,14 @@ namespace awh {
 				 *
 				 */
 				typedef struct Extension_Server_Name : public extension_t {
-					// Имя сервера
-					string name;
+					// Список имён серверов
+					vector <string> names;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Extension_Server_Name() noexcept :
-					 extension_t(extension_type_t::SERVER_NAME), name{""} {}
+					 extension_t(extension_type_t::SERVER_NAME) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -917,26 +918,101 @@ namespace awh {
 				} extension_ech_outer_extensions_t;
 			public:
 				/**
+				 * @brief Структура записи TLS
+				 *
+				 */
+				typedef struct Record {
+					// Эпоха записи DTLS
+					uint16_t epoch;
+					// Длина записи TLS
+					uint16_t length;
+					// Порядковый номер записи
+					uint64_t sequence;
+					// Версия протокола TLS, поддерживаемая браузером
+					version_t version;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Record() noexcept :
+					 epoch(0), length(0), sequence(0),
+					 version(version_t::UNKNOWN) {}
+				} record_t;
+				/**
+				 * @brief Структура фрагмента TLS
+				 *
+				 */
+				typedef struct Fragment {
+					// Смещение фрагмента в рамках записи TLS
+					uint32_t offset;
+					// Длина фрагмента TLS
+					uint32_t length;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Fragment() noexcept : offset(0), length(0) {}
+				} fragment_t;
+				/**
+				 * @brief Структура рукопожатия TLS
+				 *
+				 */
+				typedef struct Handshake {
+					// Длина рукопожатия блока рукопожатия TLS
+					uint32_t length;
+					// Порядковый номер рукопожатия TLS
+					uint16_t sequence;
+					// Фрагмент рукопожатия TLS
+					fragment_t fragment;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Handshake() noexcept : length(0), sequence(0) {}
+				} handshake_t;
+				/**
+				 * @brief Структура ClientHello TLS
+				 *
+				 */
+				typedef struct ClientHello {
+					// Версия протокола TLS, поддерживаемая браузером в рукопожатии
+					version_t version;
+					// 32 байта случайных байта в ClientHello
+					array <uint8_t, 32> random;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit ClientHello() noexcept : version(version_t::UNKNOWN) {}
+				} client_hello_t;
+				/**
 				 * @brief Структура цифрового отпечатка браузера
 				 *
 				 */
 				typedef struct Browser {
-					// Идентификатор браузера (например, Chrome, Firefox, Safari)
-					uint8_t id;
 					// Флаг, указывающий на использование GREASE (Generate Random Extensions And Sustain Extensibility)
 					bool grease;
-					// Название браузера
-					string name;
+					// Запись TLS рукопожатия
+					record_t record;
+					// Рукопожатие TLS
+					handshake_t handshake;
+					// ClientHello TLS
+					client_hello_t clientHello;
+					// Куки DTLS, если используется протокол DTLS
+					vector <uint8_t> cookie;
+					// Идентификатор сессии TLS
+					vector <uint8_t> session;
 					// Список поддерживаемых шифров
 					vector <cipher_t> ciphers;
+					// Список компрессоров, поддерживаемых браузером
+					vector <compressor_t> compressors;
 					// Список расширений, поддерживаемых браузером
 					vector <unique_ptr <extension_t>> extensions;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Browser() noexcept :
-					 id(0), grease(false), name{""} {}
+					explicit Browser() noexcept : grease(false) {}
 				} browser_t;
 			private:
 				// Список поддерживаемых цифровых отпечатков браузеров
@@ -950,11 +1026,12 @@ namespace awh {
 				/**
 				 * @brief Метод парсинга данных цифрового отпечатка
 				 *
-				 * @param buffer бинарный буфер данных цифрового отпечатка
-				 * @param size   размер бинарного буфера данных цифрового отпечатка
-				 * @return       результат парсинга данных цифрового отпечатка
+				 * @param buffer  бинарный буфер данных цифрового отпечатка
+				 * @param size    размер бинарного буфера данных цифрового отпечатка
+				 * @param browser объект для хранения распарсенных данных цифрового отпечатка
+				 * @return        результат парсинга данных цифрового отпечатка
 				 */
-				bool parse(const uint8_t * buffer, const size_t size) noexcept;
+				bool parse(const uint8_t * buffer, const size_t size, browser_t & browser) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

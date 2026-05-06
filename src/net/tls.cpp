@@ -5058,9 +5058,11 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 											// Если рукопожатие ещё не выполнено
 											if(!(member->state & state::HANDSHAKE_MODE)){
 
+												tls::fgp_t::browser_t browser;
+
 												tls::fgp_t fingerprint(this->_fmk, this->_log);
 
-												fingerprint.parse(::local::buffer, static_cast <size_t> (bytes));
+												fingerprint.parse(::local::buffer, static_cast <size_t> (bytes), browser);
 											}
 										}
 										// Вызываем функцию обратного вызова чтения данных

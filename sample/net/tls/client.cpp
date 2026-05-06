@@ -74,10 +74,10 @@ int32_t main(int32_t argc, char * argv[]){
 		tls.certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
 		tls.privateKey(cts, "../sh/certificates/client/key.pem");
+		// Активируем GREASE-значения (мусорные коды) для транспортного уровня TLS
+		tls.grease(cts, event::mode_t::ENABLED);
 		// Создаём идентификатор транспортного уровня DTLS
 		tls_t::id_t ctl = tls.transport(cts);
-		// Активируем GREASE-значения (мусорные коды) для транспортного уровня TLS
-		tls.grease(ctl, event::mode_t::ENABLED);
 		// Выполняем перемешивание поддерживаемых расширений TLS для имитации поведения различных браузеров
 		tls.permuteExtensions(ctl, event::mode_t::ENABLED);
 		// Устанавливаем список доступных шифров TLS
