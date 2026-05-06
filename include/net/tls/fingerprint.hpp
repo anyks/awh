@@ -465,14 +465,14 @@ namespace awh {
 				 *
 				 */
 				typedef struct Extension_Padding : public extension_t {
-					// Длина данных заполнения
-					size_t length;
+					// Размер данных заполнения
+					size_t size;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Extension_Padding() noexcept :
-					 extension_t(extension_type_t::PADDING), length(0) {}
+					 extension_t(extension_type_t::PADDING), size(0) {}
 					/**
 					 * @brief Деструктор
 					 *

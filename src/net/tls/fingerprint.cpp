@@ -68,6 +68,264 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения encrypt_then_mac (RFC 7366)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения encrypt_then_mac
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseEncryptThenMAC(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение encrypt_then_mac в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_encrypt_then_mac_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения signed_certificate_timestamp (RFC 6962)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения signed_certificate_timestamp
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseCertificateTimestamp(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение signed_certificate_timestamp в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signed_certificate_timestamp_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения extended_master_secret (RFC 7627)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения extended_master_secret
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseExtendedMasterSecret(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение extended_master_secret в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_extended_master_secret_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения record_size_limit (RFC 8449)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения record_size_limit
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseRecordSizeLimit(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Добавляем расширение record_size_limit в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_record_size_limit_t> ());
+		// Устанавливаем значение ограничения размера TLS-записи в структуре расширения record_size_limit в списке расширений браузера
+		awh_cast <awh::tls::fgp_t::extension_record_size_limit_t *> (browser.extensions.back().get())->data = u16(buffer);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения padding (RFC 7685)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения padding
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parsePadding(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение padding в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_padding_t> ());
+		// Устанавливаем размер данных расширения padding в структуре расширения padding в списке расширений браузера
+		awh_cast <awh::tls::fgp_t::extension_padding_t *> (browser.extensions.back().get())->size = size;
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения delegated_credential (RFC 9345)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения delegated_credential
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseDelegatedCredential(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
+		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых алгоритмов подписи больше 0
+		if(count > 0){
+			// Добавляем расширение delegated_credential в список расширений браузера
+			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_delegated_credential_t> ());
+			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
+				// Получаем код алгоритма подписи из буфера
+				const uint16_t alg = u16(buffer + i);
+				// Если код алгоритма подписи является GREASE
+				if(isGrease(alg))
+					// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
+					awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
+				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
+				else {
+					/**
+					 * Определяем код алгоритма подписи
+					 */
+					switch(alg){
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-1 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0201:
+							// Добавляем код алгоритма RSA-PKCS1-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0401:
+							// Добавляем код алгоритма RSA-PKCS1-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-384 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0501:
+							// Добавляем код алгоритма RSA-PKCS1-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-512 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0601:
+							// Добавляем код алгоритма RSA-PKCS1-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA512);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-1.
+						case 0x0203:
+							// Добавляем код алгоритма ECDSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SHA1);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-256 и кривой secp256r1.
+						case 0x0403:
+							// Добавляем код алгоритма ECDSA-SECP256R1-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP256R1_SHA256);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-384 и кривой secp384r1.
+						case 0x0503:
+							// Добавляем код алгоритма ECDSA-SECP384R1-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP384R1_SHA384);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-512 и кривой secp521r1.
+						case 0x0603:
+							// Добавляем код алгоритма ECDSA-SECP521R1-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP521R1_SHA512);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-256.
+						case 0x0804:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-384.
+						case 0x0805:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-512.
+						case 0x0806:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA512);
+						break;
+						// Если алгоритм подписи использует ED25519
+						case 0x0807:
+							// Добавляем код алгоритма ED25519 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED25519);
+						break;
+						// Если алгоритм подписи использует ED448
+						case 0x0808:
+							// Добавляем код алгоритма ED448 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED448);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA256 (выделенный PSS-сертификат, RFC 8446)
+						case 0x0809:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA384 (выделенный PSS-сертификат, RFC 8446)
+						case 0x080A:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA512 (выделенный PSS-сертификат, RFC 8446)
+						case 0x080B:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA512);
+						break;
+						// Если алгоритм подписи использует DSA в сочетании с хеш-функцией SHA-1.
+						case 0x0202:
+							// Добавляем код алгоритма DSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::DSA_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией MD5 и схемой заполнения PKCS#1 версии 1.5 (не рекомендуется к использованию из-за слабой криптографической стойкости).
+						case 0xFF01:
+							// Добавляем код алгоритма RSA-PKCS1-MD5-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_MD5_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5, но является устаревшим и не рекомендуется к использованию (не входит в RFC 8446, но может быть поддержан некоторыми реализациями TLS для обратной совместимости).
+						case 0x0420:
+							// Добавляем код алгоритма RSA-PKCS1-SHA256-LEGACY в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256_LEGACY);
+						break;
+						// Если алгоритм подписи не распознан, добавляем код UNKNOWN в список поддерживаемых алгоритмов подписи браузера
+						default: awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::UNKNOWN);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения compress_certificate (RFC 8879)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения compress_certificate
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseCompressCertificate(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
+		if(size < 1)
+			// Выходим из функции
+			return;
+		// Получаем количество байт в списке алгоритмов сжатия из первого байта данных расширения
+		const uint8_t count = buffer[0];
+		// Если количество байт в списке алгоритмов сжатия больше 0
+		if(count > 0){
+			// Добавляем расширение compress_certificate в список расширений браузера
+			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_compress_certificate_t> ());
+			// Перебираем алгоритмы сжатия в данных расширения
+			for(size_t i = 0; (((i + 2) <= static_cast <size_t> (count)) && ((1 + i + 2) <= size)); i += 2){
+				// Извлекаем идентификатор алгоритма сжатия из текущей позиции в буфере данных расширения
+				const uint16_t id = u16(buffer + (i + 1));
+				/**
+				 * Определяем название алгоритма сжатия на основе его идентификатора и выводим его в лог
+				 * Известные идентификаторы алгоритмов сжатия:
+				 * 1 - zlib
+				 * 2 - brotli
+				 * 3 - zstd
+				 * Другие значения считаются неизвестными алгоритмами сжатия
+				 */
+				switch(id){
+					// Если идентификатор алгоритма сжатия соответствует zlib
+					case 0x01:
+						// Устанавливаем флаг алгоритма сжатия zlib для расширения compress_certificate в списке расширений браузера
+						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::ZLIB);
+					break;
+					// Если идентификатор алгоритма сжатия соответствует brotli
+					case 0x02:
+						// Устанавливаем флаг алгоритма сжатия brotli для расширения compress_certificate в списке расширений браузера
+						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::BROTLI);
+					break;
+					// Если идентификатор алгоритма сжатия соответствует zstd
+					case 0x03:
+						// Устанавливаем флаг алгоритма сжатия zstd для расширения compress_certificate в списке расширений браузера
+						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::ZSTD);
+					break;
+					// Если идентификатор алгоритма сжатия не соответствует известным алгоритмам сжатия
+					default:
+						// Устанавливаем флаг неизвестного алгоритма сжатия для расширения compress_certificate в списке расширений браузера
+						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::UNKNOWN);
+				}
+			}
+		}
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения application_layer_protocol_negotiation / ALPN (RFC 7301)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения ALPN
@@ -93,6 +351,10 @@ namespace fingerprint {
 			while((pos < static_cast <size_t> (2 + count)) && (pos < size)){
 				// Получаем длину названия ALPN-протокола из текущей позиции в буфере
 				const uint8_t length = buffer[pos++];
+				// Если данных недостаточно для чтения названия протокола, прекращаем парсинг
+				if((pos + static_cast <size_t> (length)) > size)
+					// Прерываем перебор протоколов
+					break;
 				// Добавляем название ALPN-протокола в список поддерживаемых ALPN-протоколов браузера
 				awh_cast <awh::tls::fgp_t::extension_alpn_t *> (browser.extensions.back().get())->protocols.push_back(string(reinterpret_cast <const char *> (buffer + pos), length));
 				// Смещаем позицию в буфере на длину названия ALPN-протокола
@@ -238,7 +500,7 @@ namespace fingerprint {
 			// Добавляем расширение signature_algorithms в список расширений браузера
 			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signature_t> ());
 			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
-			for(size_t i = 2; ((i < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
+			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Получаем код алгоритма подписи из буфера
 				const uint16_t alg = u16(buffer + i);
 				// Если код алгоритма подписи является GREASE
@@ -430,7 +692,7 @@ namespace fingerprint {
 			/**
 			 * Перебираем поддерживаемые группы эллиптических кривых в данных расширения
 			 */
-			for(size_t i = 2; i < static_cast <size_t> (2 + count) && ((i + 1) < size); i += 2){
+			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Извлекаем код группы эллиптической кривой из буфера
 				const uint16_t gid = u16(buffer + i);
 				// Если код группы является GREASE
@@ -2546,31 +2808,38 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					break;
 					// Если тип расширения соответствует signed_certificate_timestamp / SCT (RFC 6962)
 					case 0x0012:
-						// parse_sct(data + off, len);
+						// Выполняем парсинг расширения signed_certificate_timestamp / SCT
+						::fingerprint::parseCertificateTimestamp(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует padding (RFC 7685)
 					case 0x0015:
-						// parse_padding(data + off, len);
+						// Выполняем парсинг расширения padding
+						::fingerprint::parsePadding(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует encrypt_then_mac (RFC 7366)
 					case 0x0016:
-						// printf("\n");
+						// Выполняем парсинг расширения encrypt_then_mac
+						::fingerprint::parseEncryptThenMAC(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует extended_master_secret (RFC 7627)
 					case 0x0017:
-						// parse_extended_master_secret(data + off, len);
+						// Выполняем парсинг расширения extended_master_secret
+						::fingerprint::parseExtendedMasterSecret(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует compress_certificate (RFC 8879)
 					case 0x001B:
-						// parse_compress_certificate(data + off, len);
+						// Выполняем парсинг расширения compress_certificate
+						::fingerprint::parseCompressCertificate(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует record_size_limit (RFC 8449)
 					case 0x001C:
-						// parse_record_size_limit(data + off, len);
+						// Выполняем парсинг расширения record_size_limit
+						::fingerprint::parseRecordSizeLimit(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует delegated_credential (RFC 9345)
 					case 0x0022:
-						// parse_delegated_credential(data + off, len);
+						// Выполняем парсинг расширения delegated_credential
+						::fingerprint::parseDelegatedCredential(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует session_ticket (RFC 5077)
 					case 0x0023:
