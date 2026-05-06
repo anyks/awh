@@ -43,6 +43,19 @@ namespace fingerprint {
 	using namespace awh;
 
 	/**
+	 * @brief Вспомогательная функция для проверки GREASE-значений
+	 *
+	 * @param value 16-битное значение для проверки
+	 * @return      true, если значение является GREASE-значением, иначе false
+	 */
+	static inline bool isGrease(const uint16_t value) noexcept {
+		// Получаем старший и младший байт значения
+		const uint8_t hi = (value >> 8), lo = (value & 0xFF);
+		// GREASE-значения имеют вид 0xXYXY, где X = Y и Y & 0x0F == 0x0A
+		return ((hi == lo) && ((lo & 0x0F) == 0x0A));
+	}
+
+	/**
 	 * @brief Вспомогательная функция для чтения 16-битного значения из буфера в формате big-endian
 	 *
 	 * @param buffer бинарный буфер с данными handshake-сообщения
@@ -1660,136 +1673,149 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				// Выводим результат по умолчанию
 				return result;
 			}
+			// Значение шифра из ClientHello
+			uint16_t cipher = 0;
 			/**
 			 * Перебираем весь список доступных шифров
 			 */
 			for(size_t i = 0; i < length; i += 2){
-				/**
-				 * Определяем код шифра
-				 */
-				switch(::fingerprint::u16(buffer + (offset + i))){
-					// Если код шифра соответствует AES128-SHA
-					case 0x002F:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::AES128_SHA);
-					break;
-					// Если код шифра соответствует AES256-SHA
-					case 0x0035:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::AES256_SHA);
-					break;
-					// Если код шифра соответствует AES128-GCM-SHA256
-					case 0x009C:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::AES128_GCM_SHA256);
-					break;
-					// Если код шифра соответствует AES256-GCM-SHA384
-					case 0x009D:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::AES256_GCM_SHA384);
-					break;
-					// Если код шифра соответствует PSK-AES128-CBC-SHA
-					case 0x008C:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::PSK_AES128_CBC_SHA);
-					break;
-					// Если код шифра соответствует PSK-AES256-CBC-SHA
-					case 0x008D:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::PSK_AES256_CBC_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-RSA-AES128-SHA
-					case 0xC013:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-RSA-AES256-SHA
-					case 0xC014:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
-					case 0xC009:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
-					case 0xC00A:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
-					case 0xC027:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA256);
-					break;
-					// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
-					case 0xC035:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES128_CBC_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
-					case 0xC036:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES256_CBC_SHA);
-					break;
-					// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
-					case 0xC023:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA256);
-					break;
-					// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
-					case 0xC02F:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_GCM_SHA256);
-					break;
-					// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
-					case 0xC030:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_GCM_SHA384);
-					break;
-					// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
-					case 0xCCA8:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_RSA_CHACHA20_POLY1305);
-					break;
-					// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
-					case 0xCCAC:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_PSK_CHACHA20_POLY1305);
-					break;
-					// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
-					case 0xC02B:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256);
-					break;
-					// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
-					case 0xC02C:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384);
-					break;
-					// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
-					case 0xCCA9:
-						// Получаем код шифра
-						browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305);
-					break;
-					// Если код шифра соответствует TLS_AES_128_GCM_SHA256
-					case 0x1301:
-						// Получаем код шифра
-						browser.ciphers.push_back(tls::cipher_t::TLS_AES_128_GCM_SHA256);
-					break;
-					// Если код шифра соответствует TLS_AES_256_GCM_SHA384
-					case 0x1302:
-						// Получаем код шифра
-						browser.ciphers.push_back(tls::cipher_t::TLS_AES_256_GCM_SHA384);
-					break;
-					// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
-					case 0x1303:
-						// Получаем код шифра
-						browser.ciphers.push_back(tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256);
-					break;
-					// Если код шифра не соответствует ни одному из известных
-					default: browser.ciphers.push_back(cipher_t::UNKNOWN);
+				// Извлекаем код шифра из буфера
+				cipher = ::fingerprint::u16(buffer + (offset + i));
+				// Если код шифра является GREASE
+				if(::fingerprint::isGrease(cipher)){
+					// Устанавливаем флаг grease в объекте browser
+					browser.grease = true;
+					// Получаем код шифра
+					browser.ciphers.push_back(cipher_t::GREASE);
+				// Если код шифра является одним из стандартных кодов из RFC 8446
+				} else {
+					/**
+					 * Определяем код шифра
+					 */
+					switch(cipher){
+						// Если код шифра соответствует AES128-SHA
+						case 0x002F:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::AES128_SHA);
+						break;
+						// Если код шифра соответствует AES256-SHA
+						case 0x0035:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::AES256_SHA);
+						break;
+						// Если код шифра соответствует AES128-GCM-SHA256
+						case 0x009C:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::AES128_GCM_SHA256);
+						break;
+						// Если код шифра соответствует AES256-GCM-SHA384
+						case 0x009D:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::AES256_GCM_SHA384);
+						break;
+						// Если код шифра соответствует PSK-AES128-CBC-SHA
+						case 0x008C:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::PSK_AES128_CBC_SHA);
+						break;
+						// Если код шифра соответствует PSK-AES256-CBC-SHA
+						case 0x008D:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::PSK_AES256_CBC_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+						case 0xC013:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+						case 0xC014:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+						case 0xC009:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+						case 0xC00A:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+						case 0xC027:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA256);
+						break;
+						// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+						case 0xC035:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES128_CBC_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+						case 0xC036:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES256_CBC_SHA);
+						break;
+						// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+						case 0xC023:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA256);
+						break;
+						// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+						case 0xC02F:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_GCM_SHA256);
+						break;
+						// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+						case 0xC030:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_GCM_SHA384);
+						break;
+						// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+						case 0xCCA8:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_RSA_CHACHA20_POLY1305);
+						break;
+						// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+						case 0xCCAC:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_PSK_CHACHA20_POLY1305);
+						break;
+						// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+						case 0xC02B:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256);
+						break;
+						// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+						case 0xC02C:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384);
+						break;
+						// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+						case 0xCCA9:
+							// Получаем код шифра
+							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305);
+						break;
+						// Если код шифра соответствует TLS_AES_128_GCM_SHA256
+						case 0x1301:
+							// Получаем код шифра
+							browser.ciphers.push_back(tls::cipher_t::TLS_AES_128_GCM_SHA256);
+						break;
+						// Если код шифра соответствует TLS_AES_256_GCM_SHA384
+						case 0x1302:
+							// Получаем код шифра
+							browser.ciphers.push_back(tls::cipher_t::TLS_AES_256_GCM_SHA384);
+						break;
+						// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
+						case 0x1303:
+							// Получаем код шифра
+							browser.ciphers.push_back(tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256);
+						break;
+						// Если код шифра не соответствует ни одному из известных
+						default: browser.ciphers.push_back(cipher_t::UNKNOWN);
+					}
 				}
 			}
 			// Увеличиваем смещение на длину cipher_suites
