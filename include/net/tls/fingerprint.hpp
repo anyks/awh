@@ -328,7 +328,7 @@ namespace awh {
 				 */
 				typedef struct Extension_EC_Point : public extension_t {
 					// Список поддерживаемых форматов точек эллиптической кривой
-					vector <ec_point_format_t> supportedFormats;
+					vector <ec_point_format_t> formats;
 					/**
 					 * @brief Конструктор
 					 *
@@ -937,7 +937,7 @@ namespace awh {
 					explicit Record() noexcept :
 					 epoch(0), length(0), sequence(0),
 					 version(version_t::UNKNOWN) {}
-				} record_t;
+				} __attribute__((packed)) record_t;
 				/**
 				 * @brief Структура фрагмента TLS
 				 *
@@ -952,7 +952,7 @@ namespace awh {
 					 *
 					 */
 					explicit Fragment() noexcept : offset(0), length(0) {}
-				} fragment_t;
+				} __attribute__((packed)) fragment_t;
 				/**
 				 * @brief Структура рукопожатия TLS
 				 *
@@ -969,7 +969,7 @@ namespace awh {
 					 *
 					 */
 					explicit Handshake() noexcept : length(0), sequence(0) {}
-				} handshake_t;
+				} __attribute__((packed)) handshake_t;
 				/**
 				 * @brief Структура ClientHello TLS
 				 *
