@@ -68,6 +68,158 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения application_layer_protocol_negotiation / ALPN (RFC 7301)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения ALPN
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseALPN(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Получаем количество поддерживаемых ALPN-протоколов из первых 2 байт данных расширения
+		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых ALPN-протоколов больше 0
+		if(count > 0){
+			// Текущая позиция в буфере данных расширения
+			size_t pos = 2;
+			// Добавляем расширение ALPN в список расширений браузера
+			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_alpn_t> ());
+			/**
+			 * Перебираем поддерживаемые ALPN-протоколы в данных расширения
+			 */
+			while((pos < static_cast <size_t> (2 + count)) && (pos < size)){
+				// Получаем длину названия ALPN-протокола из текущей позиции в буфере
+				const uint8_t length = buffer[pos++];
+				// Добавляем название ALPN-протокола в список поддерживаемых ALPN-протоколов браузера
+				awh_cast <awh::tls::fgp_t::extension_alpn_t *> (browser.extensions.back().get())->protocols.push_back(string(reinterpret_cast <const char *> (buffer + pos), length));
+				// Смещаем позицию в буфере на длину названия ALPN-протокола
+				pos += static_cast <size_t> (length);
+			}
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения heartbeat (RFC 6520)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения heartbeat
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseHeartbeat(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
+		if(size < 1)
+			// Выходим из функции
+			return;
+		// Добавляем расширение heartbeat в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_heartbeat_t> ());
+		/**
+		 * Определяем режим работы расширения heartbeat на основе значения в первом байте данных расширения
+		 */
+		switch(buffer[0]){
+			// Если значение соответствует режиму peer_allowed_to_send
+			case 0x01:
+				// Устанавливаем флаг режима peer_allowed_to_send для расширения heartbeat в списке расширений браузера
+				awh_cast <awh::tls::fgp_t::extension_heartbeat_t *> (browser.extensions.back().get())->mode = awh::tls::heartbeat_t::PEER_ALLOWED_TO_SEND;
+			break;
+			// Если значение соответствует режиму peer_not_allowed_to_send
+			case 0x02:
+				// Устанавливаем флаг режима peer_not_allowed_to_send для расширения heartbeat в списке расширений браузера
+				awh_cast <awh::tls::fgp_t::extension_heartbeat_t *> (browser.extensions.back().get())->mode = awh::tls::heartbeat_t::PEER_NOT_ALLOWED_TO_SEND;
+			break;
+			// Если значение не соответствует известным режимам, то устанавливаем режим UNKNOWN для расширения heartbeat в списке расширений браузера
+			default:
+				// Устанавливаем режим UNKNOWN для расширения heartbeat в списке расширений браузера
+				awh_cast <awh::tls::fgp_t::extension_heartbeat_t *> (browser.extensions.back().get())->mode = awh::tls::heartbeat_t::UNKNOWN;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения use_srtp (RFC 5764)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения use_srtp
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseUseSRTP(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Получаем количество поддерживаемых профилей SRTP из первых 2 байт данных расширения
+		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых профилей SRTP больше 0
+		if(count > 0){
+			// Добавляем расширение use_srtp в список расширений браузера
+			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_use_srtp_t> ());
+			// Перебираем поддерживаемые профили SRTP в данных расширения
+			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
+				// Извлекаем код профиля SRTP из буфера
+				const uint16_t profile = u16(buffer + i);
+				// Если код профиля SRTP является GREASE
+				if(isGrease(profile))
+					// Добавляем код GREASE в список поддерживаемых профилей SRTP браузера
+					awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::GREASE);
+				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
+				else {
+					/**
+					 * Определяем код профиля SRTP
+					 */
+					switch(profile){
+						// Если код профиля SRTP соответствует SRTP_AES128_CM_HMAC_SHA1_80 из RFC 5764
+						case 0x0001:
+							// Добавляем код профиля SRTP SRTP_AES128_CM_HMAC_SHA1_80 в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::AES128_CM_HMAC_SHA1_80);
+						break;
+						// Если код профиля SRTP соответствует SRTP_AES128_CM_HMAC_SHA1_32 из RFC 5764
+						case 0x0002:
+							// Добавляем код профиля SRTP SRTP_AES128_CM_HMAC_SHA1_32 в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::AES128_CM_HMAC_SHA1_32);
+						break;
+						// Если код профиля SRTP соответствует SRTP_AES128_F8_HMAC_SHA1_80 из RFC 5764
+						case 0x0005:
+							// Добавляем код профиля SRTP SRTP_AES128_F8_HMAC_SHA1_80 в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::AES128_F8_HMAC_SHA1_80);
+						break;
+						// Если код профиля SRTP соответствует SRTP_NULL_HMAC_SHA1_80 из RFC 5764
+						case 0x0007:
+							// Добавляем код профиля SRTP SRTP_NULL_HMAC_SHA1_80 в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::NULL_HMAC_SHA1_80);
+						break;
+						// Если код профиля SRTP соответствует SRTP_NULL_HMAC_SHA1_32 из RFC 5764
+						case 0x0008:
+							// Добавляем код профиля SRTP SRTP_NULL_HMAC_SHA1_32 в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::NULL_HMAC_SHA1_32);
+						break;
+						// Если код профиля SRTP соответствует SRTP_AEAD_AES_128_GCM из RFC 5764
+						case 0x0009:
+							// Добавляем код профиля SRTP SRTP_AEAD_AES_128_GCM в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::AEAD_AES_128_GCM);
+						break;
+						// Если код профиля SRTP соответствует SRTP_AEAD_AES_256_GCM из RFC 5764
+						case 0x000A:
+							// Добавляем код профиля SRTP SRTP_AEAD_AES_256_GCM в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::AEAD_AES_256_GCM);
+						break;
+						// Если код профиля SRTP не соответствует ни одному из известных кодов профилей SRTP
+						default:
+							// Добавляем код профиля SRTP UNKNOWN в список поддерживаемых профилей SRTP браузера
+							awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::UNKNOWN);
+					}
+				}
+			}
+			// Получаем смещение для чтения Master Key Identifier (MKI) из данных расширения
+			const size_t offset = static_cast <size_t> (2 + count);
+			// Если смещение для чтения MKI меньше размера данных расширения
+			if(offset < size)
+				// Устанавливаем длину MKI в структуре расширения use_srtp браузера
+				awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->mkiLength = buffer[offset];
+		}
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения signature_algorithms TLS (RFC 8446 §4.2.3)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения signature_algorithms
@@ -81,119 +233,122 @@ namespace fingerprint {
 			return;
 		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
-		// Перебираем поддерживаемые алгоритмы подписи в данных расширения
-		for(size_t i = 2; ((i < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
+		// Если количество поддерживаемых алгоритмов подписи больше 0
+		if(count > 0){
 			// Добавляем расширение signature_algorithms в список расширений браузера
 			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signature_t> ());
-			// Получаем код алгоритма подписи из буфера
-			const uint16_t alg = u16(buffer + i);
-			// Если код алгоритма подписи является GREASE
-			if(isGrease(alg))
-				// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
-				awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
-			// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
-			else {
-				/**
-				 * Определяем код алгоритма подписи
-				 */
-				switch(alg){
-					// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-1 и схемой заполнения PKCS#1 версии 1.5.
-					case 0x0201:
-						// Добавляем код алгоритма RSA-PKCS1-SHA1 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA1);
-					break;
-					// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5.
-					case 0x0401:
-						// Добавляем код алгоритма RSA-PKCS1-SHA256 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256);
-					break;
-					// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-384 и схемой заполнения PKCS#1 версии 1.5.
-					case 0x0501:
-						// Добавляем код алгоритма RSA-PKCS1-SHA384 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA384);
-					break;
-					// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-512 и схемой заполнения PKCS#1 версии 1.5.
-					case 0x0601:
-						// Добавляем код алгоритма RSA-PKCS1-SHA512 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA512);
-					break;
-					// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-1.
-					case 0x0203:
-						// Добавляем код алгоритма ECDSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SHA1);
-					break;
-					// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-256 и кривой secp256r1.
-					case 0x0403:
-						// Добавляем код алгоритма ECDSA-SECP256R1-SHA256 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP256R1_SHA256);
-					break;
-					// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-384 и кривой secp384r1.
-					case 0x0503:
-						// Добавляем код алгоритма ECDSA-SECP384R1-SHA384 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP384R1_SHA384);
-					break;
-					// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-512 и кривой secp521r1.
-					case 0x0603:
-						// Добавляем код алгоритма ECDSA-SECP521R1-SHA512 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP521R1_SHA512);
-					break;
-					// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-256.
-					case 0x0804:
-						// Добавляем код алгоритма RSA-PSS-RSAE-SHA256 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA256);
-					break;
-					// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-384.
-					case 0x0805:
-						// Добавляем код алгоритма RSA-PSS-RSAE-SHA384 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA384);
-					break;
-					// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-512.
-					case 0x0806:
-						// Добавляем код алгоритма RSA-PSS-RSAE-SHA512 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA512);
-					break;
-					// Если алгоритм подписи использует ED25519
-					case 0x0807:
-						// Добавляем код алгоритма ED25519 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED25519);
-					break;
-					// Если алгоритм подписи использует ED448
-					case 0x0808:
-						// Добавляем код алгоритма ED448 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED448);
-					break;
-					// Если алгоритм подписи использует RSA-PSS-PSS-SHA256 (выделенный PSS-сертификат, RFC 8446)
-					case 0x0809:
-						// Добавляем код алгоритма RSA-PSS-PSS-SHA256 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA256);
-					break;
-					// Если алгоритм подписи использует RSA-PSS-PSS-SHA384 (выделенный PSS-сертификат, RFC 8446)
-					case 0x080A:
-						// Добавляем код алгоритма RSA-PSS-PSS-SHA384 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA384);
-					break;
-					// Если алгоритм подписи использует RSA-PSS-PSS-SHA512 (выделенный PSS-сертификат, RFC 8446)
-					case 0x080B:
-						// Добавляем код алгоритма RSA-PSS-PSS-SHA512 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA512);
-					break;
-					// Если алгоритм подписи использует DSA в сочетании с хеш-функцией SHA-1.
-					case 0x0202:
-						// Добавляем код алгоритма DSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::DSA_SHA1);
-					break;
-					// Если алгоритм подписи использует RSA в сочетании с хеш-функцией MD5 и схемой заполнения PKCS#1 версии 1.5 (не рекомендуется к использованию из-за слабой криптографической стойкости).
-					case 0xFF01:
-						// Добавляем код алгоритма RSA-PKCS1-MD5-SHA1 в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_MD5_SHA1);
-					break;
-					// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5, но является устаревшим и не рекомендуется к использованию (не входит в RFC 8446, но может быть поддержан некоторыми реализациями TLS для обратной совместимости).
-					case 0x0420:
-						// Добавляем код алгоритма RSA-PKCS1-SHA256-LEGACY в список поддерживаемых алгоритмов подписи браузера
-						awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256_LEGACY);
-					break;
-					// Если алгоритм подписи не распознан, добавляем код UNKNOWN в список поддерживаемых алгоритмов подписи браузера
-					default: awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::UNKNOWN);
+			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			for(size_t i = 2; ((i < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
+				// Получаем код алгоритма подписи из буфера
+				const uint16_t alg = u16(buffer + i);
+				// Если код алгоритма подписи является GREASE
+				if(isGrease(alg))
+					// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
+					awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
+				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
+				else {
+					/**
+					 * Определяем код алгоритма подписи
+					 */
+					switch(alg){
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-1 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0201:
+							// Добавляем код алгоритма RSA-PKCS1-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0401:
+							// Добавляем код алгоритма RSA-PKCS1-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-384 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0501:
+							// Добавляем код алгоритма RSA-PKCS1-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-512 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0601:
+							// Добавляем код алгоритма RSA-PKCS1-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA512);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-1.
+						case 0x0203:
+							// Добавляем код алгоритма ECDSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SHA1);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-256 и кривой secp256r1.
+						case 0x0403:
+							// Добавляем код алгоритма ECDSA-SECP256R1-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP256R1_SHA256);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-384 и кривой secp384r1.
+						case 0x0503:
+							// Добавляем код алгоритма ECDSA-SECP384R1-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP384R1_SHA384);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-512 и кривой secp521r1.
+						case 0x0603:
+							// Добавляем код алгоритма ECDSA-SECP521R1-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP521R1_SHA512);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-256.
+						case 0x0804:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-384.
+						case 0x0805:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-512.
+						case 0x0806:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA512);
+						break;
+						// Если алгоритм подписи использует ED25519
+						case 0x0807:
+							// Добавляем код алгоритма ED25519 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED25519);
+						break;
+						// Если алгоритм подписи использует ED448
+						case 0x0808:
+							// Добавляем код алгоритма ED448 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED448);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA256 (выделенный PSS-сертификат, RFC 8446)
+						case 0x0809:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA384 (выделенный PSS-сертификат, RFC 8446)
+						case 0x080A:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA512 (выделенный PSS-сертификат, RFC 8446)
+						case 0x080B:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA512);
+						break;
+						// Если алгоритм подписи использует DSA в сочетании с хеш-функцией SHA-1.
+						case 0x0202:
+							// Добавляем код алгоритма DSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::DSA_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией MD5 и схемой заполнения PKCS#1 версии 1.5 (не рекомендуется к использованию из-за слабой криптографической стойкости).
+						case 0xFF01:
+							// Добавляем код алгоритма RSA-PKCS1-MD5-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_MD5_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5, но является устаревшим и не рекомендуется к использованию (не входит в RFC 8446, но может быть поддержан некоторыми реализациями TLS для обратной совместимости).
+						case 0x0420:
+							// Добавляем код алгоритма RSA-PKCS1-SHA256-LEGACY в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256_LEGACY);
+						break;
+						// Если алгоритм подписи не распознан, добавляем код UNKNOWN в список поддерживаемых алгоритмов подписи браузера
+						default: awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::UNKNOWN);
+					}
 				}
 			}
 		}
@@ -213,39 +368,42 @@ namespace fingerprint {
 			return;
 		// Получаем количество поддерживаемых форматов точек эллиптической кривой из первого байта данных расширения
 		const uint8_t count = buffer[0];
-		// Перебираем поддерживаемые форматы точек эллиптической кривой в данных расширения
-		for(uint8_t i = 0; ((i < count) && (static_cast <size_t> (i + 1) < size)); ++i){
+		// Если количество поддерживаемых форматов точек эллиптической кривой больше 0
+		if(count > 0){
 			// Добавляем расширение ec_point_formats в список расширений браузера
 			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_ec_point_t> ());
-			// Извлекаем код формата точек из буфера
-			const uint8_t format = buffer[1 + i];
-			/**
-			 * Определяем код формата точек
-			 */
-			switch(format){
-				// Если формат точек соответствует uncompressed
-				case 0x00:
-					// Добавляем код формата точек uncompressed в список поддерживаемых форматов точек эллиптической кривой браузера
-					awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::UNCOMPRESSED);
-				break;
-				// Если формат точек соответствует ANSI X9.62
-				case 0x01:
-					// Добавляем код формата точек ANSI X9.62 в список поддерживаемых форматов точек эллиптической кривой браузера
-					awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::ANSIX962);
-				break;
-				// Если формат точек соответствует ANSI X9.62 с использованием битовой маски
-				case 0x02:
-					// Добавляем код формата точек ANSI X9.62 с использованием битовой маски в список поддерживаемых форматов точек эллиптической кривой браузера
-					awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::ANSIX962_2);
-				break;
-				// Если формат точек является GREASE-значением
-				default: {
-					// Если код формата точек является GREASE-значением
-					if(isGrease(format))
-						// Добавляем код GREASE в список поддерживаемых форматов точек эллиптической кривой браузера
-						awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::GREASE);
-					// Если код формата точек не распознан, добавляем код UNKNOWN в список поддерживаемых форматов точек эллиптической кривой браузера
-					else awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::UNKNOWN);
+			// Перебираем поддерживаемые форматы точек эллиптической кривой в данных расширения
+			for(uint8_t i = 0; ((i < count) && (static_cast <size_t> (i + 1) < size)); ++i){
+				// Извлекаем код формата точек из буфера
+				const uint8_t format = buffer[1 + i];
+				/**
+				 * Определяем код формата точек
+				 */
+				switch(format){
+					// Если формат точек соответствует uncompressed
+					case 0x00:
+						// Добавляем код формата точек uncompressed в список поддерживаемых форматов точек эллиптической кривой браузера
+						awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::UNCOMPRESSED);
+					break;
+					// Если формат точек соответствует ANSI X9.62
+					case 0x01:
+						// Добавляем код формата точек ANSI X9.62 в список поддерживаемых форматов точек эллиптической кривой браузера
+						awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::ANSIX962);
+					break;
+					// Если формат точек соответствует ANSI X9.62 с использованием битовой маски
+					case 0x02:
+						// Добавляем код формата точек ANSI X9.62 с использованием битовой маски в список поддерживаемых форматов точек эллиптической кривой браузера
+						awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::ANSIX962_2);
+					break;
+					// Если формат точек является GREASE-значением
+					default: {
+						// Если код формата точек является GREASE-значением
+						if(isGrease(format))
+							// Добавляем код GREASE в список поддерживаемых форматов точек эллиптической кривой браузера
+							awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::GREASE);
+						// Если код формата точек не распознан, добавляем код UNKNOWN в список поддерживаемых форматов точек эллиптической кривой браузера
+						else awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::UNKNOWN);
+					}
 				}
 			}
 		}
@@ -265,96 +423,99 @@ namespace fingerprint {
 			return;
 		// Получаем количество поддерживаемых групп эллиптических кривых из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
-		/**
-		 * Перебираем поддерживаемые группы эллиптических кривых в данных расширения
-		 */
-		for(size_t i = 2; i < static_cast <size_t> (2 + count) && ((i + 1) < size); i += 2){
-			// Извлекаем код группы эллиптической кривой из буфера
-			const uint16_t gid = u16(buffer + i);
+		// Если количество поддерживаемых групп эллиптических кривых больше 0
+		if(count > 0){
 			// Добавляем расширение supported_groups в список расширений браузера
 			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_supported_groups_t> ());
-			// Если код группы является GREASE
-			if(isGrease(gid))
-				// Добавляем код GREASE в список поддерживаемых групп эллиптических кривых браузера
-				awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::GREASE);
-			// Если код шифра является одним из стандартных кодов из RFC 8446
-			else {
-				/**
-				 * Определяем код шифра
-				 */
-				switch(gid){
-					// Если элиптическая кривая соответствует P-256 (secp256r1)
-					case 0x0017:
-						// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_256);
-					break;
-					// Если элиптическая кривая соответствует P-384 (secp384r1)
-					case 0x0018:
-						// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_384);
-					break;
-					// Если элиптическая кривая соответствует P-521 (secp521r1)
-					case 0x0019:
-						// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_521);
-					break;
-					// Если элиптическая кривая соответствует X25519
-					case 0x001D:
-						// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519);
-					break;
-					// Если элиптическая кривая соответствует X448
-					case 0x001E:
-						// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X448);
-					break;
-					// Если элиптическая кривая соответствует secp256k1
-					case 0x001C:
-						// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::SECP256K1);
-					break;
-					// Если элиптическая кривая соответствует FFDHE 2048
-					case 0x0100:
-						// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE2048);
-					break;
-					// Если элиптическая кривая соответствует FFDHE 3072
-					case 0x0101:
-						// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE3072);
-					break;
-					// Если элиптическая кривая соответствует FFDHE 4096
-					case 0x0102:
-						// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE4096);
-					break;
-					// Если элиптическая кривая соответствует FFDHE 6144
-					case 0x0103:
-						// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE6144);
-					break;
-					// Если элиптическая кривая соответствует FFDHE 8192
-					case 0x0104:
-						// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE8192);
-					break;
-					// Если элиптическая кривая соответствует MLKEM 1024
-					case 0x0202:
-						// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::MLKEM1024);
-					break;
-					// Если элиптическая кривая соответствует X25519Kyber768Draft00
-					case 0x6399:
-						// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519_KYBER768_DRAFT00);
-					break;
-					// Если элиптическая кривая соответствует X25519MLKEM768
-					case 0x11EC:
-						// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519_MLKEM768);
-					break;
-					// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
-					default: awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::UNKNOWN);
+			/**
+			 * Перебираем поддерживаемые группы эллиптических кривых в данных расширения
+			 */
+			for(size_t i = 2; i < static_cast <size_t> (2 + count) && ((i + 1) < size); i += 2){
+				// Извлекаем код группы эллиптической кривой из буфера
+				const uint16_t gid = u16(buffer + i);
+				// Если код группы является GREASE
+				if(isGrease(gid))
+					// Добавляем код GREASE в список поддерживаемых групп эллиптических кривых браузера
+					awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::GREASE);
+				// Если код шифра является одним из стандартных кодов из RFC 8446
+				else {
+					/**
+					 * Определяем код шифра
+					 */
+					switch(gid){
+						// Если элиптическая кривая соответствует P-256 (secp256r1)
+						case 0x0017:
+							// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_256);
+						break;
+						// Если элиптическая кривая соответствует P-384 (secp384r1)
+						case 0x0018:
+							// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_384);
+						break;
+						// Если элиптическая кривая соответствует P-521 (secp521r1)
+						case 0x0019:
+							// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_521);
+						break;
+						// Если элиптическая кривая соответствует X25519
+						case 0x001D:
+							// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519);
+						break;
+						// Если элиптическая кривая соответствует X448
+						case 0x001E:
+							// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X448);
+						break;
+						// Если элиптическая кривая соответствует secp256k1
+						case 0x001C:
+							// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::SECP256K1);
+						break;
+						// Если элиптическая кривая соответствует FFDHE 2048
+						case 0x0100:
+							// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE2048);
+						break;
+						// Если элиптическая кривая соответствует FFDHE 3072
+						case 0x0101:
+							// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE3072);
+						break;
+						// Если элиптическая кривая соответствует FFDHE 4096
+						case 0x0102:
+							// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE4096);
+						break;
+						// Если элиптическая кривая соответствует FFDHE 6144
+						case 0x0103:
+							// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE6144);
+						break;
+						// Если элиптическая кривая соответствует FFDHE 8192
+						case 0x0104:
+							// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE8192);
+						break;
+						// Если элиптическая кривая соответствует MLKEM 1024
+						case 0x0202:
+							// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::MLKEM1024);
+						break;
+						// Если элиптическая кривая соответствует X25519Kyber768Draft00
+						case 0x6399:
+							// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519_KYBER768_DRAFT00);
+						break;
+						// Если элиптическая кривая соответствует X25519MLKEM768
+						case 0x11EC:
+							// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
+							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519_MLKEM768);
+						break;
+						// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
+						default: awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::UNKNOWN);
+					}
 				}
 			}
 		}
@@ -403,7 +564,7 @@ namespace fingerprint {
 		/**
 		 * Определяем максимальную длину фрагмента TLS на основе значения в первом байте данных расширения
 		 */
-		switch(buffer[0]) {
+		switch(buffer[0]){
 			// Если значение соответствует размеру 512 байт
 			case 0x01:
 				// Устанавливаем длину фрагмента TLS на 512 байт
@@ -2370,15 +2531,18 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					break;
 					// Если тип расширения соответствует use_srtp (RFC 5764 §4.2, DTLS)
 					case 0x000E:
-						// parse_use_srtp(data + off, len);
+						// Выполняем парсинг расширения use_srtp
+						::fingerprint::parseUseSRTP(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует heartbeat (RFC 6520)
 					case 0x000F:
-						// parse_heartbeat(data + off, len);
+						// Выполняем парсинг расширения heartbeat
+						::fingerprint::parseHeartbeat(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует application_layer_protocol_negotiation / ALPN (RFC 7301)
 					case 0x0010:
-						// parse_alpn(data + off, len);
+						// Выполняем парсинг расширения application_layer_protocol_negotiation / ALPN
+						::fingerprint::parseALPN(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует signed_certificate_timestamp / SCT (RFC 6962)
 					case 0x0012:

@@ -92,14 +92,15 @@ namespace awh {
 		 *
 		 */
 		enum class srtp_t : uint8_t {
-			UNKNOWN                = 0x00,
-			AEAD_AES_128_GCM       = 0x01,
-			AEAD_AES_256_GCM       = 0x02,
-			NULL_HMAC_SHA1_80      = 0x03,
-			NULL_HMAC_SHA1_32      = 0x04,
-			AES128_CM_HMAC_SHA1_80 = 0x05,
-			AES128_CM_HMAC_SHA1_32 = 0x06,
-			AES128_F8_HMAC_SHA1_80 = 0x07
+			UNKNOWN                = 0x00, // Неизвестный или нераспознанный профиль SRTP.
+			GREASE                 = 0x01, // Специальный код для обозначения GREASE-значений, которые не являются реальными профилями SRTP, а используются для тестирования устойчивости TLS-стека к неизвестным значениям.
+			AEAD_AES_128_GCM       = 0x02, // Шифр SRTP, использующий AES-128 в режиме GCM.
+			AEAD_AES_256_GCM       = 0x03, // Шифр SRTP, использующий AES-256 в режиме GCM.
+			NULL_HMAC_SHA1_80      = 0x04, // Шифр SRTP, не использующий шифрование (NULL), но использующий HMAC-SHA1 с 80-битной аутентификацией.
+			NULL_HMAC_SHA1_32      = 0x05, // Шифр SRTP, не использующий шифрование (NULL), но использующий HMAC-SHA1 с 32-битной аутентификацией.
+			AES128_CM_HMAC_SHA1_80 = 0x06, // Шифр SRTP, использующий AES-128 в режиме CTR (Counter Mode) и HMAC-SHA1 с 80-битной аутентификацией.
+			AES128_CM_HMAC_SHA1_32 = 0x07, // Шифр SRTP, использующий AES-128 в режиме CTR (Counter Mode) и HMAC-SHA1 с 32-битной аутентификацией.
+			AES128_F8_HMAC_SHA1_80 = 0x08  // Шифр SRTP, использующий AES-128 в режиме F8 и HMAC-SHA1 с 80-битной аутентификацией.
 		};
 
 		/**
