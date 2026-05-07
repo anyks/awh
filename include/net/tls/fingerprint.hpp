@@ -935,6 +935,56 @@ namespace awh {
 				} extension_ech_outer_extensions_t;
 			public:
 				/**
+				 * @brief Структура версии TLS
+				 *
+				 */
+				typedef struct VersionTLS {
+					// Версия TLS на уровне записи (wire-код в десятичном виде, например "769")
+					string record;
+					// Согласованная версия TLS (наибольшая не-GREASE версия из supported_versions, десятично)
+					string negotiated;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit VersionTLS() noexcept :
+					 record{""}, negotiated{""} {}
+				} version_tls_t;
+				/**
+				 * @brief Структура вычисленных цифровых отпечатков TLS-соединения (JA3, JA4, PeetPrint и пр.)
+				 *
+				 */
+				typedef struct Imprint {
+					// JA3 строка: "{sslVersion},{ciphers},{extensions},{groups},{ec_point_formats}"
+					string ja3;
+					// JA4 строка: "{prefix}_{md5_ciphers[:12]}_{md5_sigalgs[:12]}"
+					string ja4;
+					// JA4_r — расширенная форма JA4 с раскрытыми компонентами
+					string ja4r;
+					// MD5 хеш JA3 строки (lowercase hex, 32 символа)
+					string ja3Hash;
+					// Session ID — hex lowercase (пустая строка если отсутствует)
+					string sessionId;
+					// PeetPrint строка (8 секций, разделённых '|')
+					string peetprint;
+					// MD5 хеш PeetPrint строки (lowercase hex, 32 символа)
+					string peetprintHash;
+					// ClientHello.random — 32 байта, hex lowercase
+					string clientRandom;
+					// Версия TLS в расширении supported_versions (наибольшая не-GREASE версия, десятично)
+					version_tls_t tls;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Imprint() noexcept :
+					 ja3{""}, ja4{""}, ja4r{""},
+					 ja3Hash{""}, sessionId{""},
+					 peetprint{""}, peetprintHash{""},
+					 clientRandom{""} {}
+				} imprint_t;
+			public:
+				/**
 				 * @brief Структура записи TLS
 				 *
 				 */
@@ -1040,6 +1090,14 @@ namespace awh {
 				// Объект работы с логами
 				const log_t * _log;
 			public:
+				/**
+				 * @brief Метод вычисления цифровых отпечатков на основе распарсенного ClientHello
+				 *
+				 * @param browser объект с распарсенными данными ClientHello
+				 * @param result  объект для хранения всех вычисленных отпечатков
+				 * @return        результат вычисления цифровых отпечатков
+				 */
+				bool imprint(const browser_t & browser, imprint_t & result) const noexcept;
 				/**
 				 * @brief Метод парсинга данных цифрового отпечатка
 				 *

@@ -20,6 +20,10 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+
+/**
+ * Модули OpenSSL для вычисления хешей
+ */
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
@@ -33,18 +37,17 @@
  */
 using namespace std;
 
-
 /**
- * Инкапсулируем статические объекты в пространство имён временных переменных
+ * Инкапсулируем статические объекты в пространство имён локальных вспомогательных функций
  */
-namespace fingerprint {
+namespace local {
 	/**
 	 * Подписываемся на пространство имён AWH
 	 */
 	using namespace awh;
 
 	/**
-	 * @brief Вспомогательная функция для проверки GREASE-значений
+	 * @brief Вспомогательная функция проверки GREASE-значений
 	 *
 	 * @param value 16-битное значение для проверки
 	 * @return      true, если значение является GREASE-значением, иначе false
@@ -57,7 +60,7 @@ namespace fingerprint {
 	}
 
 	/**
-	 * @brief Вспомогательная функция для чтения 16-битного значения из буфера в формате big-endian
+	 * @brief Вспомогательная функция чтения 16-битного значения из буфера в формате big-endian
 	 *
 	 * @param buffer бинарный буфер с данными handshake-сообщения
 	 * @return       значение в формате big-endian
@@ -66,6 +69,595 @@ namespace fingerprint {
 		// Читаем 16-битное значение из буфера в формате big-endian
 		return ((static_cast <uint16_t> (buffer[0]) << 8) | buffer[1]);
 	}
+
+	/**
+	 * @brief Вспомогательная функция вычисления MD5 строки
+	 *
+	 * @param input входная строка
+	 * @return      MD5 hex lowercase
+	 */
+	static string md5(const string & input) noexcept {
+		// Результат работы функции
+		char result[33] = {'\0'};
+		// Буфер для хранения MD5 хеша
+		uint8_t digest[MD5_DIGEST_LENGTH];
+		// Вычисляем MD5 хеш строки
+		::MD5(reinterpret_cast <const uint8_t *> (input.data()), input.size(), digest);
+		/**
+		 * Преобразуем бинарный MD5 хеш в lowercase hex-строку из 32 символов
+		 */
+		for(uint32_t i = 0; i < MD5_DIGEST_LENGTH; i++)
+			// Преобразуем каждый байт MD5 хеша в 2 символа hex и записываем в результат
+			::snprintf(result + 2 * i, 3, "%02x", digest[i]);
+		// Возвращаем итоговый результат
+		return result;
+	}
+
+	/**
+	 * @brief Вспомогательная функция преобразования бинарного буфера в lowercase hex-строку
+	 *
+	 * @param buffer бинарный буфер данных
+	 * @param size   размер бинарного буфера
+	 * @return       hex-строка
+	 */
+	static string tohex(const uint8_t * buffer, const size_t size) noexcept {
+		// Результат работы функции
+		string result(2 * size, '0');
+		/**
+		 * Преобразуем каждый байт бинарного буфера в 2 символа hex
+		 */
+		for(size_t i = 0; i < size; i++)
+			// Преобразуем каждый байт в 2 символа hex и записываем в результат
+			::snprintf(&result[2 * i], 3, "%02x", buffer[i]);
+		// Возвращаем итоговый результат
+		return result;
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения TLS wire-кода для код шифра
+	 *
+	 * @param cipher тип шифра
+	 * @return       wire-код (0 = неизвестный)
+	 */
+	static inline uint16_t cipherWire(const awh::tls::cipher_t cipher) noexcept {
+		/**
+		 * Возвращаем TLS wire-код для типа шифра
+		 */
+		switch(static_cast <uint8_t> (cipher)){
+			// Если алгоритм шифрования соответствует AES128-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::AES128_SHA):
+				// Возвращаем TLS wire-код для AES128-SHA
+				return 0x002F;
+			// Если алгоритм шифрования соответствует AES256-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::AES256_SHA):
+				// Возвращаем TLS wire-код для AES256-SHA
+				return 0x0035;
+			// Если алгоритм шифрования соответствует AES128-GCM-SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::AES128_GCM_SHA256):
+				// Возвращаем TLS wire-код для AES128-GCM-SHA256
+				return 0x009C;
+			// Если алгоритм шифрования соответствует AES256-GCM-SHA384
+			case static_cast <uint8_t> (awh::tls::cipher_t::AES256_GCM_SHA384):
+				// Возвращаем TLS wire-код для AES256-GCM-SHA384
+				return 0x009D;
+			// Если алгоритм шифрования соответствует PSK-AES128-CBC-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::PSK_AES128_CBC_SHA):
+				// Возвращаем TLS wire-код для PSK-AES128-CBC-SHA
+				return 0x008C;
+			// Если алгоритм шифрования соответствует PSK-AES256-CBC-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::PSK_AES256_CBC_SHA):
+				// Возвращаем TLS wire-код для PSK-AES256-CBC-SHA
+				return 0x008D;
+			// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_RSA_AES128_SHA):
+				// Возвращаем TLS wire-код для ECDHE-RSA-AES128-SHA
+				return 0xC013;
+			// Если алгоритм шифрования соответствует ECDHE-RSA-AES256-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_RSA_AES256_SHA):
+				// Возвращаем TLS wire-код для ECDHE-RSA-AES256-SHA
+				return 0xC014;
+			// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_ECDSA_AES128_SHA):
+				// Возвращаем TLS wire-код для ECDHE-ECDSA-AES128-SHA
+				return 0xC009;
+			// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES256-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_ECDSA_AES256_SHA):
+				// Возвращаем TLS wire-код для ECDHE-ECDSA-AES256-SHA
+				return 0xC00A;
+			// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_RSA_AES128_SHA256):
+				// Возвращаем TLS wire-код для ECDHE-RSA-AES128-SHA256
+				return 0xC027;
+			// Если алгоритм шифрования соответствует ECDHE-PSK-AES128-CBC-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA):
+				// Возвращаем TLS wire-код для ECDHE-PSK-AES128-CBC-SHA
+				return 0xC035;
+			// Если алгоритм шифрования соответствует ECDHE-PSK-AES256-CBC-SHA
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA):
+				// Возвращаем TLS wire-код для ECDHE-PSK-AES256-CBC-SHA
+				return 0xC036;
+			// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_ECDSA_AES128_SHA256):
+				// Возвращаем TLS wire-код для ECDHE-ECDSA-AES128-SHA256
+				return 0xC023;
+			// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-GCM-SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256):
+				// Возвращаем TLS wire-код для ECDHE-RSA-AES128-GCM-SHA256
+				return 0xC02F;
+			// Если алгоритм шифрования соответствует ECDHE-RSA-AES256-GCM-SHA384
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384):
+				// Возвращаем TLS wire-код для ECDHE-RSA-AES256-GCM-SHA384
+				return 0xC030;
+			// Если алгоритм шифрования соответствует ECDHE-RSA-CHACHA20-POLY1305
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305):
+				// Возвращаем TLS wire-код для ECDHE-RSA-CHACHA20-POLY1305
+				return 0xCCA8;
+			// Если алгоритм шифрования соответствует ECDHE-PSK-CHACHA20-POLY1305
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305):
+				// Возвращаем TLS wire-код для ECDHE-PSK-CHACHA20-POLY1305
+				return 0xCCAC;
+			// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256):
+				// Возвращаем TLS wire-код для ECDHE-ECDSA-AES128-GCM-SHA256
+				return 0xC02B;
+			// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384):
+				// Возвращаем TLS wire-код для ECDHE-ECDSA-AES256-GCM-SHA384
+				return 0xC02C;
+			// Если алгоритм шифрования соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+			case static_cast <uint8_t> (awh::tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305):
+				// Возвращаем TLS wire-код для ECDHE-ECDSA-CHACHA20-POLY1305
+				return 0xCCA9;
+			// Если алгоритм шифрования соответствует TLS_AES_256_GCM_SHA384
+			case static_cast <uint8_t> (awh::tls::cipher_t::TLS_AES_256_GCM_SHA384):
+				// Возвращаем TLS wire-код для TLS_AES_256_GCM_SHA384
+				return 0x1302;
+			// Если алгоритм шифрования соответствует TLS_AES_128_GCM_SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::TLS_AES_128_GCM_SHA256):
+				// Возвращаем TLS wire-код для TLS_AES_128_GCM_SHA256
+				return 0x1301;
+			// Если алгоритм шифрования соответствует TLS_CHACHA20_POLY1305_SHA256
+			case static_cast <uint8_t> (awh::tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256):
+				// Возвращаем TLS wire-код для TLS_CHACHA20_POLY1305_SHA256
+				return 0x1303;
+			// Если алгоритм шифрования неопределён, возвращаем 0
+			default: return 0;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения TLS wire-кода для кода версии TLS
+	 *
+	 * @param version тип версии
+	 * @return        wire-код (0 = неизвестный)
+	 */
+	static inline uint16_t versionWire(const awh::tls::version_t version) noexcept {
+		/**
+		 * Возвращаем TLS wire-код для типа версии
+		 */
+		switch(static_cast <uint8_t> (version)){
+			// Если версия соответствует SSL 3.0
+			case static_cast <uint8_t> (awh::tls::version_t::SSL_V3):
+				// Возвращаем TLS wire-код для SSL 3.0
+				return 0x0300;
+			// Если версия соответствует TLS 1.0
+			case static_cast <uint8_t> (awh::tls::version_t::TLS_1_0):
+				// Возвращаем TLS wire-код для TLS 1.0
+				return 0x0301;
+			// Если версия соответствует TLS 1.1
+			case static_cast <uint8_t> (awh::tls::version_t::TLS_1_1):
+				// Возвращаем TLS wire-код для TLS 1.1
+				return 0x0302;
+			// Если версия соответствует TLS 1.2
+			case static_cast <uint8_t> (awh::tls::version_t::TLS_1_2):
+				// Возвращаем TLS wire-код для TLS 1.2
+				return 0x0303;
+			// Если версия соответствует TLS 1.3
+			case static_cast <uint8_t> (awh::tls::version_t::TLS_1_3):
+				// Возвращаем TLS wire-код для TLS 1.3
+				return 0x0304;
+			// Если версия соответствует DTLS 1.0
+			case static_cast <uint8_t> (awh::tls::version_t::DTLS_1_0):
+				// Возвращаем TLS wire-код для DTLS 1.0
+				return 0xFEFF;
+			// Если версия соответствует DTLS 1.2
+			case static_cast <uint8_t> (awh::tls::version_t::DTLS_1_2):
+				// Возвращаем TLS wire-код для DTLS 1.2
+				return 0xFEFD;
+			// Если версия не определена, возвращаем 0
+			default: return 0;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения TLS wire-кода для кода группы эллиптических кривых
+	 *
+	 * @param gid тип группы
+	 * @return    wire-код (0 = неизвестный)
+	 */
+	static inline uint16_t groupWire(const awh::tls::group_t gid) noexcept {
+		/**
+		 * Возвращаем TLS wire-код для типа группы эллиптических кривых
+		 */
+		switch(static_cast <uint8_t> (gid)){
+			// Если группа соответствует secp256r1 (NIST P-256)
+			case static_cast <uint8_t> (awh::tls::group_t::P_256):
+				// Возвращаем TLS wire-код для secp256r1 (NIST P-256)
+				return 0x0017;
+			// Если группа соответствует secp384r1 (NIST P-384)
+			case static_cast <uint8_t> (awh::tls::group_t::P_384):
+				// Возвращаем TLS wire-код для secp384r1 (NIST P-384)
+				return 0x0018;
+			// Если группа соответствует secp521r1 (NIST P-521)
+			case static_cast <uint8_t> (awh::tls::group_t::P_521):
+				// Возвращаем TLS wire-код для secp521r1 (NIST P-521)
+				return 0x0019;
+			// Если группа соответствует X448
+			case static_cast <uint8_t> (awh::tls::group_t::X448):
+				// Возвращаем TLS wire-код для X448
+				return 0x001E;
+			// Если группа соответствует X25519
+			case static_cast <uint8_t> (awh::tls::group_t::X25519):
+				// Возвращаем TLS wire-код для X25519
+				return 0x001D;
+			// Если группа соответствует SECP256K1
+			case static_cast <uint8_t> (awh::tls::group_t::SECP256K1):
+				// Возвращаем TLS wire-код для SECP256K1
+				return 0x001C;
+			// Если группа соответствует FFDHE2048
+			case static_cast <uint8_t> (awh::tls::group_t::FFDHE2048):
+				// Возвращаем TLS wire-код для FFDHE2048
+				return 0x0100;
+			// Если группа соответствует FFDHE3072
+			case static_cast <uint8_t> (awh::tls::group_t::FFDHE3072):
+				// Возвращаем TLS wire-код для FFDHE3072
+				return 0x0101;
+			// Если группа соответствует FFDHE4096
+			case static_cast <uint8_t> (awh::tls::group_t::FFDHE4096):
+				// Возвращаем TLS wire-код для FFDHE4096
+				return 0x0102;
+			// Если группа соответствует FFDHE6144
+			case static_cast <uint8_t> (awh::tls::group_t::FFDHE6144):
+				// Возвращаем TLS wire-код для FFDHE6144
+				return 0x0103;
+			// Если группа соответствует FFDHE8192
+			case static_cast <uint8_t> (awh::tls::group_t::FFDHE8192):
+				// Возвращаем TLS wire-код для FFDHE8192
+				return 0x0104;
+			// Если группа соответствует MLKEM1024
+			case static_cast <uint8_t> (awh::tls::group_t::MLKEM1024):
+				// Возвращаем TLS wire-код для MLKEM1024
+				return 0x0202;
+			// Если группа соответствует x25519_mlkem768
+			case static_cast <uint8_t> (awh::tls::group_t::X25519_MLKEM768):
+				// Возвращаем TLS wire-код для x25519_mlkem768
+				return 0x11EC;
+			// Если группа соответствует x25519_kyber768_draft00
+			case static_cast <uint8_t> (awh::tls::group_t::X25519_KYBER768_DRAFT00):
+				// Возвращаем TLS wire-код для x25519_kyber768_draft00
+				return 0x6399;
+			// Если группа не определена, возвращаем 0
+			default: return 0;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения TLS wire-кода для алгоритма подписи
+	 *
+	 * @param sign тип алгоритма
+	 * @return     wire-код (0 = неизвестный)
+	 */
+	static inline uint16_t signatureWire(const awh::tls::signature_t sign) noexcept {
+		/**
+		 * Возвращаем TLS wire-код для типа алгоритма подписи
+		 */
+		switch(static_cast <uint8_t> (sign)){
+			// Если алгоритм подписи соответствует ED448
+			case static_cast <uint8_t> (awh::tls::signature_t::ED448):
+				// Возвращаем TLS wire-код для ED448
+				return 0x0808;
+			// Если алгоритм подписи соответствует ED25519
+			case static_cast <uint8_t> (awh::tls::signature_t::ED25519):
+				// Возвращаем TLS wire-код для ED25519
+				return 0x0807;
+			// Если алгоритм подписи соответствует DSA_SHA1
+			case static_cast <uint8_t> (awh::tls::signature_t::DSA_SHA1):
+				// Возвращаем TLS wire-код для DSA_SHA1
+				return 0x0202;
+			// Если алгоритм подписи соответствует RSA_PKCS1_SHA1
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PKCS1_SHA1):
+				// Возвращаем TLS wire-код для RSA_PKCS1_SHA1
+				return 0x0201;
+			// Если алгоритм подписи соответствует RSA_PKCS1_SHA256
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PKCS1_SHA256):
+				// Возвращаем TLS wire-код для RSA_PKCS1_SHA256
+				return 0x0401;
+			// Если алгоритм подписи соответствует RSA_PKCS1_SHA384
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PKCS1_SHA384):
+				// Возвращаем TLS wire-код для RSA_PKCS1_SHA384
+				return 0x0501;
+			// Если алгоритм подписи соответствует RSA_PKCS1_SHA512
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PKCS1_SHA512):
+				// Возвращаем TLS wire-код для RSA_PKCS1_SHA512
+				return 0x0601;
+			// Если алгоритм подписи соответствует RSA_PSS_PSS_SHA256
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PSS_PSS_SHA256):
+				// Возвращаем TLS wire-код для RSA_PSS_PSS_SHA256
+				return 0x0809;
+			// Если алгоритм подписи соответствует RSA_PSS_PSS_SHA384
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PSS_PSS_SHA384):
+				// Возвращаем TLS wire-код для RSA_PSS_PSS_SHA384
+				return 0x080A;
+			// Если алгоритм подписи соответствует RSA_PSS_PSS_SHA512
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PSS_PSS_SHA512):
+				// Возвращаем TLS wire-код для RSA_PSS_PSS_SHA512
+				return 0x080B;
+			// Если алгоритм подписи соответствует RSA_PSS_RSAE_SHA256
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PSS_RSAE_SHA256):
+				// Возвращаем TLS wire-код для RSA_PSS_RSAE_SHA256
+				return 0x0804;
+			// Если алгоритм подписи соответствует RSA_PSS_RSAE_SHA384
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PSS_RSAE_SHA384):
+				// Возвращаем TLS wire-код для RSA_PSS_RSAE_SHA384
+				return 0x0805;
+			// Если алгоритм подписи соответствует RSA_PSS_RSAE_SHA512
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PSS_RSAE_SHA512):
+				// Возвращаем TLS wire-код для RSA_PSS_RSAE_SHA512
+				return 0x0806;
+			// Если алгоритм подписи соответствует ECDSA_SHA1
+			case static_cast <uint8_t> (awh::tls::signature_t::ECDSA_SHA1):
+				// Возвращаем TLS wire-код для ECDSA_SHA1
+				return 0x0203;
+			// Если алгоритм подписи соответствует ECDSA_SECP256R1_SHA256
+			case static_cast <uint8_t> (awh::tls::signature_t::ECDSA_SECP256R1_SHA256):
+				// Возвращаем TLS wire-код для ECDSA_SECP256R1_SHA256
+				return 0x0403;
+			// Если алгоритм подписи соответствует ECDSA_SECP384R1_SHA384
+			case static_cast <uint8_t> (awh::tls::signature_t::ECDSA_SECP384R1_SHA384):
+				// Возвращаем TLS wire-код для ECDSA_SECP384R1_SHA384
+				return 0x0503;
+			// Если алгоритм подписи соответствует ECDSA_SECP521R1_SHA512
+			case static_cast <uint8_t> (awh::tls::signature_t::ECDSA_SECP521R1_SHA512):
+				// Возвращаем TLS wire-код для ECDSA_SECP521R1_SHA512
+				return 0x0603;
+			// Если алгоритм подписи соответствует RSA_PKCS1_MD5_SHA1
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PKCS1_MD5_SHA1):
+				// Возвращаем TLS wire-код для RSA_PKCS1_MD5_SHA1
+				return 0xFF01;
+			// Если алгоритм подписи соответствует RSA_PKCS1_SHA256_LEGACY
+			case static_cast <uint8_t> (awh::tls::signature_t::RSA_PKCS1_SHA256_LEGACY):
+				// Возвращаем TLS wire-код для RSA_PKCS1_SHA256_LEGACY
+				return 0x0420;
+			// Если алгоритм подписи не определён, возвращаем 0
+			default: return 0;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения TLS wire-кода для типа расширения
+	 *
+	 * @param ext тип расширения
+	 * @return    wire-код (0xFFFF = неизвестный/непривязанный)
+	 */
+	static inline uint16_t extensionWire(const awh::tls::extension_type_t ext) noexcept {
+		/**
+		 * Возвращаем TLS wire-код для типа расширения
+		 */
+		switch(static_cast <uint8_t> (ext)){
+			// Если тип расширения соответствует server_name
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME):
+				// Возвращаем TLS wire-код для server_name
+				return 0x0000;
+			// Если тип расширения соответствует max_fragment_length
+			case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH):
+				// Возвращаем TLS wire-код для max_fragment_length
+				return 0x0001;
+			// Если тип расширения соответствует status_request
+			case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST):
+				// Возвращаем TLS wire-код для status_request
+				return 0x0005;
+			// Если тип расширения соответствует supported_groups
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS):
+				// Возвращаем TLS wire-код для supported_groups
+				return 0x000A;
+			// Если тип расширения соответствует ec_point_formats
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS):
+				// Возвращаем TLS wire-код для ec_point_formats
+				return 0x000B;
+			// Если тип расширения соответствует signature_algorithms
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
+				// Возвращаем TLS wire-код для signature_algorithms
+				return 0x000D;
+			// Если тип расширения соответствует use_srtp
+			case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP):
+				// Возвращаем TLS wire-код для use_srtp
+				return 0x000E;
+			// Если тип расширения соответствует heartbeat
+			case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT):
+				// Возвращаем TLS wire-код для heartbeat
+				return 0x000F;
+			// Если тип расширения соответствует alpn
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN):
+				// Возвращаем TLS wire-код для alpn
+				return 0x0010;
+			// Если тип расширения соответствует signed_certificate_timestamp
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
+				// Возвращаем TLS wire-код для signed_certificate_timestamp
+				return 0x0012;
+			// Если тип расширения соответствует padding
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING):
+				// Возвращаем TLS wire-код для padding
+				return 0x0015;
+			// Если тип расширения соответствует encrypt_then_mac
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPT_THEN_MAC):
+				// Возвращаем TLS wire-код для encrypt_then_mac
+				return 0x0016;
+			// Если тип расширения соответствует extended_master_secret
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET):
+				// Возвращаем TLS wire-код для extended_master_secret
+				return 0x0017;
+			// Если тип расширения соответствует compress_certificate
+			case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE):
+				// Возвращаем TLS wire-код для compress_certificate
+				return 0x001B;
+			// Если тип расширения соответствует record_size_limit
+			case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT):
+				// Возвращаем TLS wire-код для record_size_limit
+				return 0x001C;
+			// Если тип расширения соответствует delegated_credential
+			case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL):
+				// Возвращаем TLS wire-код для delegated_credential
+				return 0x0022;
+			// Если тип расширения соответствует session_ticket
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET):
+				// Возвращаем TLS wire-код для session_ticket
+				return 0x0023;
+			// Если тип расширения соответствует pre_shared_key
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY):
+				// Возвращаем TLS wire-код для pre_shared_key
+				return 0x0029;
+			// Если тип расширения соответствует early_data
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA):
+				// Возвращаем TLS wire-код для early_data
+				return 0x002A;
+			// Если тип расширения соответствует supported_versions
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS):
+				// Возвращаем TLS wire-код для supported_versions
+				return 0x002B;
+			// Если тип расширения соответствует cookie
+			case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE):
+				// Возвращаем TLS wire-код для cookie
+				return 0x002C;
+			// Если тип расширения соответствует psk_key_exchange_modes
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES):
+				// Возвращаем TLS wire-код для psk_key_exchange_modes
+				return 0x002D;
+			// Если тип расширения соответствует certificate_authorities
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES):
+				// Возвращаем TLS wire-код для certificate_authorities
+				return 0x002F;
+			// Если тип расширения соответствует post_handshake_auth
+			case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
+				// Возвращаем TLS wire-код для post_handshake_auth
+				return 0x0031;
+			// Если тип расширения соответствует signature_algorithms_cert
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT):
+				// Возвращаем TLS wire-код для signature_algorithms_cert
+				return 0x0032;
+			// Если тип расширения соответствует key_share
+			case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE):
+				// Возвращаем TLS wire-код для key_share
+				return 0x0033;
+			// Если тип расширения соответствует quic_transport_parameters
+			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS):
+				// Возвращаем TLS wire-код для quic_transport_parameters
+				return 0x0039;
+			// Если тип расширения соответствует tls_flags
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS):
+				// Возвращаем TLS wire-код для tls_flags
+				return 0x003E;
+			// Если тип расширения соответствует next_protocol_negotiation
+			case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG):
+				// Возвращаем TLS wire-код для next_protocol_negotiation
+				return 0x3374;
+			// Если тип расширения соответствует application_settings_old (устаревшее)
+			case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD):
+				// Возвращаем TLS wire-код для application_settings_old (устаревшее)
+				return 0x4469;
+			// Если тип расширения соответствует application_settings
+			case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS):
+				// Возвращаем TLS wire-код для application_settings
+				return 0x44CD;
+			// Если тип расширения соответствует channel_id
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CHANNEL_ID):
+				// Возвращаем TLS wire-код для channel_id
+				return 0x7550;
+			// Если тип расширения соответствует trust_anchors
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TRUST_ANCHORS):
+				// Возвращаем TLS wire-код для trust_anchors
+				return 0xCA34;
+			// Если тип расширения соответствует ech_outer_extensions
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS):
+				// Возвращаем TLS wire-код для ech_outer_extensions
+				return 0xFD00;
+			// Если тип расширения соответствует encrypted_client_hello
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO):
+				// Возвращаем TLS wire-код для encrypted_client_hello
+				return 0xFE0D;
+			// Если тип расширения соответствует renegotiation_info
+			case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO):
+				// Возвращаем TLS wire-код для renegotiation_info
+				return 0xFF01;
+			// Если тип расширения соответствует quic_transport_parameters_legacy
+			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY):
+				// Возвращаем TLS wire-код для quic_transport_parameters_legacy
+				return 0xFFA5;
+			// Если тип расширения не определён, возвращаем неизвестный код
+			default: return 0xFFFF;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения wire-кода для формата точки эллиптической кривой
+	 *
+	 * @param format формат точки
+	 * @return       wire-код (0xFF = неизвестный)
+	 */
+	static inline uint8_t ecPointWire(const awh::tls::ec_point_format_t format) noexcept {
+		/**
+		 * Возвращаем wire-код для формата точки эллиптической кривой
+		 */
+		switch(static_cast <uint8_t> (format)){
+			// Если формат соответствует uncompressed
+			case static_cast <uint8_t> (awh::tls::ec_point_format_t::UNCOMPRESSED):
+				// Возвращаем wire-код для uncompressed
+				return 0x00;
+			// Если формат соответствует ANSIX962
+			case static_cast <uint8_t> (awh::tls::ec_point_format_t::ANSIX962):
+				// Возвращаем wire-код для ANSIX962
+				return 0x01;
+			// Если формат соответствует ANSIX962_2
+			case static_cast <uint8_t> (awh::tls::ec_point_format_t::ANSIX962_2):
+				// Возвращаем wire-код для ANSIX962_2
+				return 0x02;
+			// Если формат не определён, возвращаем неизвестный код
+			default: return 0xFF;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения wire-кода для метода компрессии (legacy_compression_methods)
+	 *
+	 * @param compressor метод компрессии
+	 * @return           wire-код (0xFF = нестандартный)
+	 */
+	static inline uint8_t compressorWire(const awh::tls::compressor_t compressor) noexcept {
+		/**
+		 * Возвращаем wire-код для метода компрессии (legacy_compression_methods)
+		 */
+		switch(static_cast <uint8_t> (compressor)){
+			// Если метод компрессии соответствует NONE
+			case static_cast <uint8_t> (awh::tls::compressor_t::NONE):
+				// Возвращаем wire-код для NONE
+				return 0x00;
+			// Если метод компрессии соответствует ZLIB
+			case static_cast <uint8_t> (awh::tls::compressor_t::ZLIB):
+				// Возвращаем wire-код для ZLIB
+				return 0x01;
+			// Если метод компрессии не определён, возвращаем неизвестный код
+			default: return 0xFF;
+		}
+	}
+};
+
+/**
+ * Инкапсулируем статические объекты в пространство имён основных функций парсинга
+ */
+namespace fingerprint {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
 
 	/**
 	 * @brief Вспомогательная функция чтения QUIC variable-length integer (RFC 9000 §16)
@@ -272,7 +864,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Устанавливаем значение ограничения размера TLS-записи в объект расширения record_size_limit
-		awh_cast <awh::tls::fgp_t::extension_record_size_limit_t *> (browser.extensions.back().get())->data = u16(buffer);
+		awh_cast <awh::tls::fgp_t::extension_record_size_limit_t *> (browser.extensions.back().get())->data = ::local::u16(buffer);
 	}
 
 	/**
@@ -344,7 +936,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Определяем размер данных расширения cookie
-		const uint16_t length = u16(buffer);
+		const uint16_t length = ::local::u16(buffer);
 		// Если количество данных расширения cookie достаточно для парсинга
 		if((length > 0) && (size >= (2 + length))){
 			// Устанавливаем размер данных расширения cookie в объект расширения cookie
@@ -369,7 +961,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Читаем байтовую длину всего списка DistinguishedName
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Проверяем, что список помещается в буфер
 		if(size < static_cast <size_t> (2 + count))
 			// Выходим из функции
@@ -384,7 +976,7 @@ namespace fingerprint {
 		 */
 		while((offset + 2) <= end){
 			// Читаем длину текущего DER-кодированного DistinguishedName
-			const uint16_t length = u16(buffer + offset);
+			const uint16_t length = ::local::u16(buffer + offset);
 			// Сдвигаем смещение за поле длины
 			offset += 2;
 			// Проверяем, что DN помещается в буфер
@@ -416,7 +1008,7 @@ namespace fingerprint {
 		 * RFC 8446 §4.2.8: поле client_shares_length — это байтовая длина всего списка KeyShareEntry, 
 		 * а не количество записей. Каждая запись: group(2) + key_exchange_length(2) + key_exchange_data.
 		 */
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если список пуст или данных в буфере недостаточно для его размещения — выходим
 		if((count == 0) || (size < static_cast <size_t> (2 + count)))
 			// Выходим из функции
@@ -431,9 +1023,9 @@ namespace fingerprint {
 		 */
 		while((offset + 4) <= end){
 			// Получаем идентификатор группы обмена ключами (NamedGroup) из первых 2 байт текущей записи
-			const uint16_t gid = u16(buffer + offset);
+			const uint16_t gid = ::local::u16(buffer + offset);
 			// Получаем байтовую длину данных ключа для текущей записи
-			const uint16_t length = u16(buffer + (offset + 2));
+			const uint16_t length = ::local::u16(buffer + (offset + 2));
 			// Увеличиваем смещение на 4 байта (group:2 + key_exchange_length:2)
 			offset += 4;
 			// Проверяем, что данные ключа помещаются в список
@@ -441,7 +1033,7 @@ namespace fingerprint {
 				// Если данных недостаточно — прекращаем разбор
 				break;
 			// Если код группы является GREASE
-			if(isGrease(gid))
+			if(::local::isGrease(gid))
 				// Добавляем код GREASE в список поддерживаемых версий браузера
 				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::GREASE, vector <uint8_t> {});
 			// Если код группы является одной из стандартных версий из RFC 8446 §4.2.7
@@ -598,9 +1190,9 @@ namespace fingerprint {
 		// Выполняем парсинг поддерживаемых версий из данных расширения
 		for(size_t i = 1; ((i < static_cast <size_t> (1 + count)) && ((i + 1) < size)); i += 2){
 			// Получаем 16-битное значение версии из данных расширения
-			const uint16_t ver = u16(buffer + i);
+			const uint16_t ver = ::local::u16(buffer + i);
 			// Если код версии является GREASE
-			if(isGrease(ver))
+			if(::local::isGrease(ver))
 				// Добавляем код GREASE в список поддерживаемых версий браузера
 				awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::GREASE);
 			// Если код версии является одной из стандартных версий из RFC 8446
@@ -668,7 +1260,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество данных расширения pre_shared_key из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество данных расширения pre_shared_key больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -682,7 +1274,7 @@ namespace fingerprint {
 			 */
 			while(((offset + 2) <= static_cast <size_t> (2 + count)) && ((offset + 2) <= size)){
 				// Получаем размер идентификатора предварительно совместного ключа из буфера
-				const uint16_t length = u16(buffer + offset);
+				const uint16_t length = ::local::u16(buffer + offset);
 				// Увеличиваем смещение на размер поля с размером идентификатора предварительно совместного ключа (2 байта)
 				offset += 2;
 				// Если смещение с учетом размера идентификатора предварительно совместного ключа и поля с размером идентификатора превышает размер данных в буфере, то данных недостаточно для парсинга
@@ -723,7 +1315,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество поддерживаемых алгоритмов подписи больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -733,9 +1325,9 @@ namespace fingerprint {
 			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
 			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Получаем код алгоритма подписи из буфера
-				const uint16_t alg = u16(buffer + i);
+				const uint16_t alg = ::local::u16(buffer + i);
 				// Если код алгоритма подписи является GREASE
-				if(isGrease(alg))
+				if(::local::isGrease(alg))
 					// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
 					awh_cast <awh::tls::fgp_t::extension_delegated_credential_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
 				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
@@ -872,7 +1464,7 @@ namespace fingerprint {
 			// Перебираем алгоритмы сжатия в данных расширения
 			for(size_t i = 0; (((i + 2) <= static_cast <size_t> (count)) && ((1 + i + 2) <= size)); i += 2){
 				// Извлекаем идентификатор алгоритма сжатия из текущей позиции в буфере данных расширения
-				const uint16_t id = u16(buffer + (i + 1));
+				const uint16_t id = ::local::u16(buffer + (i + 1));
 				/**
 				 * Определяем название алгоритма сжатия на основе его идентификатора и выводим его в лог
 				 * Известные идентификаторы алгоритмов сжатия:
@@ -921,7 +1513,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых ALPN-протоколов из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество поддерживаемых ALPN-протоколов больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -998,7 +1590,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых профилей SRTP из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество поддерживаемых профилей SRTP больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -1008,9 +1600,9 @@ namespace fingerprint {
 			// Перебираем поддерживаемые профили SRTP в данных расширения
 			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Извлекаем код профиля SRTP из буфера
-				const uint16_t profile = u16(buffer + i);
+				const uint16_t profile = ::local::u16(buffer + i);
 				// Если код профиля SRTP является GREASE
-				if(isGrease(profile))
+				if(::local::isGrease(profile))
 					// Добавляем код GREASE в список поддерживаемых профилей SRTP браузера
 					awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::GREASE);
 				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
@@ -1085,7 +1677,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество поддерживаемых алгоритмов подписи больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -1095,9 +1687,9 @@ namespace fingerprint {
 			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
 			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Получаем код алгоритма подписи из буфера
-				const uint16_t alg = u16(buffer + i);
+				const uint16_t alg = ::local::u16(buffer + i);
 				// Если код алгоритма подписи является GREASE
-				if(isGrease(alg))
+				if(::local::isGrease(alg))
 					// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
 					awh_cast <awh::tls::fgp_t::extension_signature_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
 				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
@@ -1224,7 +1816,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество поддерживаемых алгоритмов подписи больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -1234,9 +1826,9 @@ namespace fingerprint {
 			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
 			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Получаем код алгоритма подписи из буфера
-				const uint16_t alg = u16(buffer + i);
+				const uint16_t alg = ::local::u16(buffer + i);
 				// Если код алгоритма подписи является GREASE
-				if(isGrease(alg))
+				if(::local::isGrease(alg))
 					// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
 					awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
 				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
@@ -1417,7 +2009,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых групп эллиптических кривых из первых 2 байт данных расширения
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Если количество поддерживаемых групп эллиптических кривых больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
@@ -1429,9 +2021,9 @@ namespace fingerprint {
 			 */
 			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Извлекаем код группы эллиптической кривой из буфера
-				const uint16_t gid = u16(buffer + i);
+				const uint16_t gid = ::local::u16(buffer + i);
 				// Если код группы является GREASE
-				if(isGrease(gid))
+				if(::local::isGrease(gid))
 					// Добавляем код GREASE в список поддерживаемых групп эллиптических кривых браузера
 					awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::GREASE);
 				// Если код шифра является одним из стандартных кодов из RFC 8446
@@ -1535,7 +2127,7 @@ namespace fingerprint {
 			// Если данных в буфере достаточно для чтения responder_id_list_length
 			if(size >= 3){
 				// Читаем байтовую длину списка идентификаторов ответчиков OCSP
-				const uint16_t length = u16(buffer + 1);
+				const uint16_t length = ::local::u16(buffer + 1);
 				// Устанавливаем длину списка идентификаторов ответчиков OCSP
 				awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->responderIdListLength = length;
 				/**
@@ -1546,7 +2138,7 @@ namespace fingerprint {
 				// Если данных в буфере достаточно для чтения request_extensions_length
 				if(size >= (offset + 2))
 					// Устанавливаем длину списка расширений запроса OCSP
-					awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->requestExtensionsLength = u16(buffer + offset);
+					awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->requestExtensionsLength = ::local::u16(buffer + offset);
 			}
 		}
 	}
@@ -1609,7 +2201,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Читаем байтовую длину всего списка (не количество имён!)
-		const uint16_t length = u16(buffer);
+		const uint16_t length = ::local::u16(buffer);
 		// Проверяем что список помещается в буфер
 		if(size < static_cast <size_t> (2 + length))
 			// Выходим из функции
@@ -1625,7 +2217,7 @@ namespace fingerprint {
 			// Читаем тип имени (1 байт): 0x00 = host_name
 			const uint8_t type = buffer[offset++];
 			// Читаем длину имени (2 байта)
-			const uint16_t length = u16(buffer + offset);
+			const uint16_t length = ::local::u16(buffer + offset);
 			// Сдвигаем смещение на 2 байта (длина имени)
 			offset += 2;
 			// Проверяем что имя помещается в буфер
@@ -1749,7 +2341,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Читаем байтовую длину списка протоколов
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Проверяем, что список помещается в буфер
 		if(count > (size - 2))
 			// Выходим из функции
@@ -1791,7 +2383,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		// Читаем байтовую длину списка протоколов
-		const uint16_t count = u16(buffer);
+		const uint16_t count = ::local::u16(buffer);
 		// Проверяем, что список помещается в буфер
 		if(count > (size - 2))
 			// Выходим из функции
@@ -1915,6 +2507,10 @@ namespace fingerprint {
 		// Копируем renegotiated_connection bytes
 		awh_cast <awh::tls::fgp_t::extension_renegotiation_info_t *> (browser.extensions.back().get())->data.assign(buffer + 1, buffer + (1 + length));
 	}
+
+	
+
+	
 };
 
 
@@ -2805,7 +3401,7 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 	// 4. legacy_session_id
 	const uint8_t sess_len = buffer[off++];
 	if(sess_len > 32){ printf("[ERR] session_id_len > 32 (%d)\n", sess_len); return false; }
-	if(off + sess_len > size){ printf("[ERR] Truncated at session_id\n"); return false; }
+	if(off + sess_len > size){ printf("[ERR] Truncated at sessionId\n"); return false; }
 
 	printf("Session ID:\n");
 	printf("  length    = %d\n", sess_len);
@@ -2974,8 +3570,8 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 	}
 
 	printf("\nFingerprints:\n");
-	printf("  tls_version_record     = \"%u\"\n",  static_cast<unsigned>(record_version));
-	printf("  tls_version_negotiated = \"%u\"\n",  static_cast<unsigned>(neg_ver));
+	printf("  tlsVersionRecord     = \"%u\"\n",  static_cast<unsigned>(record_version));
+	printf("  tlsVersionNegotiated = \"%u\"\n",  static_cast<unsigned>(neg_ver));
 
 	// --- JA3 ---
 	{
@@ -2988,7 +3584,7 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 		for (auto p : fp_point_fmts) { if (!pts.empty()) pts += '-'; pts += std::to_string(p); }
 		ja3 += pts;
 		printf("  ja3                    = \"%s\"\n", ja3.c_str());
-		printf("  ja3_hash               = \"%s\"\n", md5_hex(ja3).c_str());
+		printf("  ja3Hash               = \"%s\"\n", md5_hex(ja3).c_str());
 	}
 
 	// --- JA4 / JA4_r ---
@@ -3041,7 +3637,7 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 		char ja4r_pref[32];
 		snprintf(ja4r_pref, sizeof(ja4r_pref), "%c%s%c%02d%02d%s",
 		         proto, ver_str, sni_flag, cipher_cnt, ext_cnt, alpn_part.c_str());
-		printf("  ja4_r                  = \"%s_%s_%s_%s\"\n",
+		printf("  ja4r                  = \"%s_%s_%s_%s\"\n",
 		       ja4r_pref, sc_hex4.c_str(), se_hex4.c_str(), sig_hex4.c_str());
 	}
 
@@ -3078,17 +3674,616 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 
 		const std::string peet = f1+"|"+f2+"|"+f3+"|"+f4+"|"+f5+"|"+f6+"|"+f7+"|"+f8;
 		printf("  peetprint              = \"%s\"\n", peet.c_str());
-		printf("  peetprint_hash         = \"%s\"\n", md5_hex(peet).c_str());
+		printf("  peetprintHash         = \"%s\"\n", md5_hex(peet).c_str());
 	}
 
-	// --- client_random / session_id ---
-	printf("  client_random          = \"%s\"\n", fp_random_hex.c_str());
-	printf("  session_id             = \"%s\"\n", fp_session_id_hex.c_str());
+	// --- clientRandom / sessionId ---
+	printf("  clientRandom          = \"%s\"\n", fp_random_hex.c_str());
+	printf("  sessionId             = \"%s\"\n", fp_session_id_hex.c_str());
 
 	return true;
 }
 
-
+/**
+ * @brief Метод вычисления цифровых отпечатков на основе распарсенного ClientHello
+ *
+ * @param browser объект с распарсенными данными ClientHello
+ * @param result  объект для хранения всех вычисленных отпечатков
+ * @return        результат вычисления цифровых отпечатков
+ */
+bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & result) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Сбрасываем результат на всякий случай
+		result = imprint_t{};
+		// --- tlsVersionRecord: wire-код версии record layer ---
+		result.tls.record = ::to_string(::local::versionWire(browser.record.version));
+		// --- sessionId: произвольная длина в hex ---
+		result.sessionId = ::local::tohex(browser.session.data(), browser.session.size());
+		// --- clientRandom: 32 байта в hex ---
+		result.clientRandom = ::local::tohex(browser.clientHello.random.data(), browser.clientHello.random.size());
+		// --- tlsVersionNegotiated ---
+		/**
+		 * Берём наибольшую не-GREASE версию из расширения supported_versions.
+		 * Если расширение отсутствует, используем clientHello.legacy_version.
+		 */
+		{
+			// Получаем wire-код версии из clientHello.legacy_version в качестве начального значения
+			uint16_t best = ::local::versionWire(browser.clientHello.version);
+			/**
+			 * Проходим по расширениям в порядке их объявления и ищем supported_versions.
+			 */
+			for(const auto & ext : browser.extensions){
+				// Если это расширение supported_versions, проходим по его версиям и ищем наибольшую не-GREASE
+				if(ext->type == awh::tls::extension_type_t::SUPPORTED_VERSIONS){
+					// Приводим объект нужного нам расширения
+					const auto * sv = awh_cast <const awh::tls::fgp_t::extension_supported_versions_t *> (ext.get());
+					// Проходим по версиям в расширении и ищем наибольшую не-GREASE
+					for(const auto v : sv->versions){
+						// Если версия — GREASE, пропускаем её
+						if(v == awh::tls::version_t::GREASE)
+							// (хотя GREASE в supported_versions — это странно, но кто знает, может быть и такое)
+							continue;
+						// Получаем wire-код версии и сравниваем с лучшей найденной
+						const uint16_t wire = ::local::versionWire(v);
+						// Если wire-код версии больше текущего лучшего, обновляем лучший
+						if(wire > best)
+							// Устанавливаем эту версию как лучшую
+							best = wire;
+					}
+					// Завершаем поиск, так как supported_versions — единственное расширение, влияющее на tlsVersionNegotiated
+					break;
+				}
+			}
+			// Записываем результат в строковом виде (десятичный) в результат
+			result.tls.negotiated = ::to_string(best);
+		}
+		// --- Собираем объекты нужных нам расширений (однократный проход) ---
+		const awh::tls::fgp_t::extension_supported_groups_t   * extensionGroups  = nullptr;
+		const awh::tls::fgp_t::extension_ec_point_t           * extensionEcPoint = nullptr;
+		const awh::tls::fgp_t::extension_signature_t          * extensionSigAlgs = nullptr;
+		const awh::tls::fgp_t::extension_alpn_t               * extensionAlpn    = nullptr;
+		const awh::tls::fgp_t::extension_server_name_t        * extensionSni     = nullptr;
+		const awh::tls::fgp_t::extension_supported_versions_t * extensionSv      = nullptr;
+		const awh::tls::fgp_t::extension_psk_key_exchange_t   * extensionPsk     = nullptr;
+		/**
+		 * Проходим по расширениям в порядке их объявления и сохраняем объекты нужных нам расширений
+		 */
+		for(const auto & ext : browser.extensions){
+			/**
+			 * Определяем тип расширения
+			 */
+			switch(static_cast <uint8_t> (ext->type)){
+				// Если мы получили расширение supported_groups, сохраняем его объект в extensionGroups
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionGroups
+					extensionGroups = awh_cast <const awh::tls::fgp_t::extension_supported_groups_t *> (ext.get());
+				break;
+				// Если мы получили расширение ec_point_formats, сохраняем его объект в extensionEcPoint
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionEcPoint
+					extensionEcPoint = awh_cast <const awh::tls::fgp_t::extension_ec_point_t *> (ext.get());
+				break;
+				// Если мы получили расширение signature_algorithms, сохраняем его объект в extensionSigAlgs
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionSigAlgs
+					extensionSigAlgs = awh_cast <const awh::tls::fgp_t::extension_signature_t *> (ext.get());
+				break;
+				// Если мы получили расширение ALPN, сохраняем его объект в extensionAlpn
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionAlpn
+					extensionAlpn = awh_cast <const awh::tls::fgp_t::extension_alpn_t *> (ext.get());
+				break;
+				// Если мы получили расширение server_name, сохраняем его объект в extensionSni
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionSni
+					extensionSni = awh_cast <const awh::tls::fgp_t::extension_server_name_t *> (ext.get());
+				break;
+				// Если мы получили расширение supported_versions, сохраняем его объект в extensionSv
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionSv
+					extensionSv = awh_cast <const awh::tls::fgp_t::extension_supported_versions_t *> (ext.get());
+				break;
+				// Если мы получили расширение psk_key_exchange_modes, сохраняем его объект в extensionPsk
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES):
+					// Приводим объект расширения к нужному типу и сохраняем в extensionPsk
+					extensionPsk = awh_cast <const awh::tls::fgp_t::extension_psk_key_exchange_t *> (ext.get());
+				break;
+			}
+		}
+		// ======================== JA3 ========================
+		/**
+		 * Формат: "{sslVersion},{ciphers},{extensions},{groups},{ec_points}"
+		 * sslVersion = ClientHello.legacy_version wire-код (десятично)
+		 * Списки: оригинальный порядок, без GREASE, разделитель '-'
+		 */
+		{
+			// Список временных переменных для формирования JA3
+			string ciphers = "", exts = "", groups = "", ecpts = "";
+			/**
+			 * Проходим по шифрам в порядке их объявления и формируем строку для JA3, пропуская GREASE и шифры без wire-кода
+			 */
+			for(const auto cipher : browser.ciphers){
+				// Если шифр — GREASE, пропускаем его
+				if(cipher == awh::tls::cipher_t::GREASE)
+					// Просто пропускаем этот шифр и не включаем его в строку JA3
+					continue;
+				// Получаем wire-код шифра
+				const uint16_t wire = ::local::cipherWire(cipher);
+				// Если wire-код шифра равен 0, пропускаем его (неизвестный шифр без wire-кода)
+				if(wire == 0)
+					// Просто пропускаем этот шифр и не включаем его в строку JA3
+					continue;
+				// Если это не первый шифр, добавляем разделитель '-'
+				if(!ciphers.empty())
+					// Добавляем разделитель '-' перед добавлением следующего шифра
+					ciphers.append(1, '-');
+				// Добавляем wire-код шифра в строку ciphers для JA3
+				ciphers.append(::to_string(wire));
+			}
+			/**
+			 * Проходим по расширениям в порядке их объявления и формируем строку для JA3, пропуская GREASE и расширения без wire-кода
+			 */
+			for(const auto & ext : browser.extensions){
+				// Если расширение — GREASE, пропускаем его
+				if(ext->type == awh::tls::extension_type_t::GREASE)
+					// Просто пропускаем это расширение и не включаем его в строку JA3
+					continue;
+				// Получаем wire-код расширения
+				const uint16_t wire = ::local::extensionWire(ext->type);
+				// Если wire-код расширения равен 0xFFFF, пропускаем его (неизвестное расширение без wire-кода)
+				if(wire == 0xFFFF)
+					// Просто пропускаем это расширение и не включаем его в строку JA3
+					continue;
+				// Если это не первое расширение, добавляем разделитель '-'
+				if(!exts.empty())
+					// Добавляем разделитель '-' перед добавлением следующего расширения
+					exts.append(1, '-');
+				// Добавляем wire-код расширения в строку exts для JA3
+				exts.append(::to_string(wire));
+			}
+			// Если расширение supported_groups присутствует
+			if(extensionGroups != nullptr){
+				/**
+				 * Проходим по группам в порядке их объявления и формируем строку для JA3, пропуская GREASE и группы без wire-кода
+				 */
+				for(const auto gid : extensionGroups->supportedGroups){
+					// Если группа — GREASE, пропускаем её
+					if(gid == awh::tls::group_t::GREASE)
+						// Просто пропускаем эту группу и не включаем её в строку JA3
+						continue;
+					// Получаем wire-код группы
+					if(!groups.empty())
+						// Если это не первая группа, добавляем разделитель '-'
+						groups.append(1, '-');
+					// Добавляем wire-код группы в строку groups для JA3
+					groups.append(::to_string(::local::groupWire(gid)));
+				}
+			}
+			// Если расширение ec_point_formats присутствует
+			if(extensionEcPoint != nullptr){
+				/**
+				 * Проходим по форматам точек в порядке их объявления и формируем строку для JA3, пропуская форматы без wire-кода
+				 */
+				for(const auto format : extensionEcPoint->formats){
+					// Получаем wire-код формата точки
+					const uint8_t wire = ::local::ecPointWire(format);
+					// Если wire-код формата точки равен 0, пропускаем его (неизвестный формат без wire-кода)
+					if(wire == 0xFF)
+						// Просто пропускаем этот формат точки и не включаем его в строку JA3
+						continue;
+					// Если это не первый формат точки, добавляем разделитель '-'
+					if(!ecpts.empty())
+						// Добавляем разделитель '-' перед добавлением следующего формата точки
+						ecpts.append(1, '-');
+					// Добавляем wire-код формата точки в строку ecpts для JA3
+					ecpts.append(::to_string(wire));
+				}
+			}
+			// Формируем строку JA3 в формате "{sslVersion},{ciphers},{extensions},{groups},{ec_points}"
+			result.ja3 = (
+				::to_string(::local::versionWire(browser.clientHello.version)) + ',' +
+				(ciphers + ',' + exts + ',' + groups + ',' + ecpts)
+			);
+			// Вычисляем ja3Hash как MD5 от строки ja3
+			result.ja3Hash = ::local::md5(result.ja3);
+		}
+		// ======================== JA4 ========================
+		/**
+		 * Спецификация: https://github.com/FoxIO-LLC/ja4
+		 * Формат: {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{md5(ciphers)[:12]}_{md5(sigalgs)[:12]}
+		 * JA4_r: то же, но с раскрытыми hex-списками
+		 */
+		{
+			// Протокол: 'q' при наличии QUIC transport params, иначе 't'
+			bool hasQUIC = false;
+			/**
+			 * Проходим по расширениям в порядке их объявления и проверяем наличие расширения QUIC transport parameters (обычно 0x0039 или 0xFFFE)
+			 */
+			for(const auto & ext : browser.extensions){
+				// Если расширение — QUIC transport parameters (обычно 0x0039 или 0xFFFE), устанавливаем флаг hasQUIC в true и завершаем поиск
+				if((hasQUIC = ((ext->type == awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS) ||
+				   (ext->type == awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY))))
+				    // Завершаем поиск, так как наличие расширения QUIC transport parameters определяет протокол в JA4
+					break;
+			}
+			// Согласованная версия → 2-символьная строка
+			string ver2 = "";
+			{
+				// Получаем согласованную версию так же, как для tlsVersionNegotiated
+				const uint16_t wire = static_cast <uint16_t> (::stoul(result.tls.negotiated));
+				/**
+				 * Преобразуем wire-код согласованной версии в 2-символьную строку по формату JA4:
+				 */
+				switch(wire){
+					// Если версия — 0x0300, это может означать SSL 3.0 (s3)
+					case 0x0300: ver2 = "s3"; break;
+					// Если версия — 0x0301, это может означать TLS 1.0 (10)
+					case 0x0301: ver2 = "10"; break;
+					// Если версия — 0x0302, это может означать TLS 1.1 (11)
+					case 0x0302: ver2 = "11"; break;
+					// Если версия — 0x0303, это может означать TLS 1.2 (12)
+					case 0x0303: ver2 = "12"; break;
+					// Если версия — 0x0304, это может означать TLS 1.3 (13)
+					case 0x0304: ver2 = "13"; break;
+					// Если версия — 0xFEFF, это может означать DTLS 1.0 (d1)
+					case 0xFEFF: ver2 = "d1"; break;
+					// Если версия — 0xFEFD, это может означать DTLS 1.2 (d2)
+					case 0xFEFD: ver2 = "d2"; break;
+					// Иначе — неизвестная версия, используем "00"
+					default: ver2 = "00";
+				}
+			}
+			// Флаг SNI: 'd' если SNI присутствует, иначе 'i'
+			const char sniFlag = (((extensionSni != nullptr) && !extensionSni->names.empty()) ? 'd' : 'i');
+			// Шифры: все без GREASE и без SCSV(0x00FF), отсортированные
+			vector <uint16_t> ciphersSorted;
+			/**
+			 * Проходим по шифрам в порядке их объявления и формируем список для JA4, пропуская GREASE и шифры без wire-кода или SCSV(0x00FF)
+			 */
+			for(const auto cipher : browser.ciphers){
+				// Если шифр — GREASE, пропускаем его
+				if(cipher == awh::tls::cipher_t::GREASE)
+					// Просто пропускаем этот шифр и не включаем его в список для JA4
+					continue;
+				// Получаем wire-код шифра
+				const uint16_t wire = ::local::cipherWire(cipher);
+				// Если wire-код шифра равен 0 или 0x00FF (SCSV), пропускаем его (неизвестный шифр без wire-кода или SCSV)
+				if((wire == 0) || (wire == 0x00FF))
+					// Просто пропускаем этот шифр и не включаем его в список для JA4
+					continue;
+				// Добавляем wire-код шифра в список для JA4
+				ciphersSorted.push_back(wire);
+			}
+			// Сортируем список шифров для JA4
+			::sort(ciphersSorted.begin(), ciphersSorted.end());
+			// Счётчик расширений: все кроме GREASE (включая SNI и ALPN)
+			size_t extCount = 0;
+			/**
+			 * Проходим по расширениям в порядке их объявления и считаем количество расширений для JA4, пропуская GREASE
+			 */
+			for(const auto & ext : browser.extensions)
+				// Если расширение соответствует стандартному расширению
+				if(ext->type != awh::tls::extension_type_t::GREASE)
+					// Увеличиваем счётчик расширений для JA4 на 1
+					++extCount;
+			// Расширения для hash/raw: без GREASE, SNI(0x0000) и ALPN(0x0010), отсортированные
+			vector <uint16_t> extsSorted;
+			/**
+			 * Проходим по расширениям в порядке их объявления и формируем список для JA4, пропуская GREASE, SNI(0x0000) и ALPN(0x0010), а также расширения без wire-кода
+			 */
+			for(const auto & ext : browser.extensions){
+				// Если расширение — GREASE, пропускаем его
+				if(ext->type == awh::tls::extension_type_t::GREASE)
+					// Просто пропускаем это расширение и не включаем его в список для JA4
+					continue;
+				// Если расширение — SNI(0x0000), пропускаем его
+				if(ext->type == awh::tls::extension_type_t::SERVER_NAME)
+					// Просто пропускаем это расширение и не включаем его в список для JA4
+					continue;
+				// Если расширение — ALPN(0x0010), пропускаем его
+				if(ext->type == awh::tls::extension_type_t::ALPN)
+					// Просто пропускаем это расширение и не включаем его в список для JA4
+					continue;
+				// Получаем wire-код расширения
+				const uint16_t wire = ::local::extensionWire(ext->type);
+				// Если wire-код расширения равен 0xFFFF, пропускаем его (неизвестное расширение без wire-кода)
+				if(wire == 0xFFFF)
+					// Просто пропускаем это расширение и не включаем его в список для JA4
+					continue;
+				// Добавляем wire-код расширения в список для JA4
+				extsSorted.push_back(wire);
+			}
+			// Сортируем список расширений для JA4
+			::sort(extsSorted.begin(), extsSorted.end());
+			// Алгоритмы подписи: без GREASE, отсортированные
+			vector <uint16_t> sigalgsSorted;
+			// Если расширение signature_algorithms присутствует
+			if(extensionSigAlgs != nullptr){
+				/**
+				 * Проходим по алгоритмам подписи в порядке их объявления и формируем список для JA4, пропуская GREASE и алгоритмы без wire-кода
+				 */
+				for(const auto sig : extensionSigAlgs->algorithms){
+					// Если алгоритм подписи — GREASE, пропускаем его
+					if(sig == awh::tls::signature_t::GREASE)
+						// Просто пропускаем этот алгоритм подписи и не включаем его в список для JA4
+						continue;
+					// Получаем wire-код алгоритма подписи
+					const uint16_t wire = ::local::signatureWire(sig);
+					// Если wire-код алгоритма подписи равен 0, пропускаем его (неизвестный алгоритм подписи без wire-кода)
+					if(wire == 0)
+						// Просто пропускаем этот алгоритм подписи и не включаем его в список для JA4
+						continue;
+					// Добавляем wire-код алгоритма подписи в список для JA4
+					sigalgsSorted.push_back(wire);
+				}
+				// Сортируем список алгоритмов подписи для JA4
+				::sort(sigalgsSorted.begin(), sigalgsSorted.end());
+			}
+			// Первые 2 символа первого ALPN-протокола
+			string alpn2 = "00";
+			// Если расширение ALPN присутствует и содержит хотя бы один протокол
+			if((extensionAlpn != nullptr) && !extensionAlpn->protocols.empty()){
+				// Берём первый протокол из расширения ALPN
+				const string & p0 = extensionAlpn->protocols[0];
+				// Если длина первого протокола ALPN больше или равна 2, используем первые 2 символа, иначе дополняем до 2 символов нулями
+				if(p0.size() >= 2)
+					// Используем первые 2 символа первого протокола ALPN для alpn2 в JA4
+					alpn2 = ::move(p0.substr(0, 2));
+				// Если длина первого протокола ALPN равна 1, используем этот символ и дополняем до 2 символов нулями
+				else if(p0.size() == 1)
+					// Используем первый символ первого протокола ALPN и дополняем до 2 символов нулями для alpn2 в JA4
+					alpn2 = (p0 + '0');
+			}
+			// Формируем префикс
+			char prefixBuf[16];
+			// Формат префикса: {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}
+			::snprintf(prefixBuf, sizeof(prefixBuf), "%c%s%c%02d%02d%s",
+				(hasQUIC ? 'q' : 't'),
+				ver2.c_str(),
+				sniFlag,
+				static_cast <int> (ciphersSorted.size()),
+				static_cast <int> (extCount),
+				alpn2.c_str()
+			);
+			// Сохраняем префикс в строке
+			const string prefix(prefixBuf);
+			/**
+			 * @brief Функция для конвертации списка uint16_t в строку hex формата "xxxx,xxxx,..."
+			 * 
+			 * @param v вектор uint16_t для конвертации
+			 * @return  строка hex формата "xxxx,xxxx,..."
+			 */
+			const auto makeHexList = [](const vector <uint16_t> & v) -> string {
+				// Результат работы функции
+				string result = "";
+				// Буфер для конвертации одного uint16 в 4-символьный hex
+				char buffer[5] = {0}; // 4 символа + null-терминатор
+				/**
+				 * Проходим по каждому элементу вектора и конвертируем его в 4-символьный hex
+				 */
+				for(const uint16_t w : v){
+					// Если это не первый элемент, добавляем разделитель ','
+					if(!result.empty())
+						// Добавляем разделитель ',' перед добавлением следующего элемента
+						result.append(1, ',');
+					// Конвертируем uint16_t в 4-символьный hex и добавляем к результату
+					::snprintf(buffer, sizeof(buffer), "%04x", w);
+					// Добавляем конвертированный элемент к результату
+					result.append(buffer);
+				}
+				// Выводим результат
+				return result;
+			};
+			// Формируем строку расширений в hex формате для JA4_r
+			const string extsHex = makeHexList(extsSorted);
+			// Формируем строку шифров в hex формате для JA4_r
+			const string ciphersHex = makeHexList(ciphersSorted);
+			// Формируем строку алгоритмов подписи в hex формате для JA4_r
+			const string sigalgsHex = makeHexList(sigalgsSorted);
+			// Формируем строку JA4_r в формате {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{ciphersHex}_{extsHex}_{sigalgsHex}
+			result.ja4r = (prefix + '_' + ciphersHex + '_' + extsHex + '_' + sigalgsHex);
+			// Формируем строку JA4 в формате {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{md5(ciphers)[:12]}_{md5(sigalgs)[:12]}
+			result.ja4 = (
+				prefix + '_' +
+				::local::md5(ciphersHex).substr(0, 12) + '_' +
+				::local::md5(sigalgsHex).substr(0, 12)
+			);
+		}
+		// ======================== PeetPrint ========================
+		/**
+		 * Формат: 8 секций, разделённых '|'
+		 * 1: supported_versions (с GREASE, decimal)
+		 * 2: legacy_compression_methods raw bytes: "{total}-{len}.{m1}.{m2}..."
+		 * 3: supported_groups (с GREASE, decimal)
+		 * 4: signature_algorithms (с GREASE, decimal)
+		 * 5: кол-во EC point formats
+		 * 6: кол-во PSK key exchange modes
+		 * 7: cipher suites (с GREASE, decimal, исходный порядок)
+		 * 8: extensions (с GREASE-маркерами, decimal, исходный порядок)
+		 */
+		{
+			string peet = "";
+			// Секция 1: supported_versions
+			{
+				// Формируем временную строку для секции supported_versions
+				string sec = "";
+				// Если расширение supported_versions присутствует
+				if(extensionSv != nullptr){
+					/**
+					 * Проходим по версиям в порядке их объявления и формируем строку для секции supported_versions, включая GREASE
+					 */
+					for(const auto v : extensionSv->versions){
+						// Если это не первая версия, добавляем разделитель '-'
+						if(!sec.empty())
+							// Добавляем разделитель '-' перед добавлением следующей версии
+							sec.append(1, '-');
+						// Добавляем версию в строку секции supported_versions, используя "GREASE" для GREASE-версий и десятичный код для остальных
+						sec.append(
+							(v == awh::tls::version_t::GREASE)
+						    ? string("GREASE")
+						    : ::to_string(::local::versionWire(v))
+						);
+					}
+				}
+				// Добавляем сформированную строку для секции supported_versions к общему peetprint, добавляя разделитель '|'
+				peet.append(sec + '|');
+			}
+			/**
+			 * Секция 2: legacy_compression_methods raw bytes
+			 * Поле в TLS: <1-байтовая длина><байты методов>
+			 * Формат: "{1+n}-{n}.{m1}.{m2}..."
+			 */
+			{
+				// Кол-во методов с учётом 1-байтовой длины
+				const size_t count = browser.compressors.size();
+				// Формируем строку для секции legacy_compression_methods, начиная с "{1+n}-{n}"
+				string sec = (::to_string(1 + count) + '-' + ::to_string(count));
+				/**
+				 * Проходим по методам сжатия в порядке их объявления и добавляем их к строке секции legacy_compression_methods, включая GREASE
+				 */
+				for(const auto compressor : browser.compressors){
+					// Добавляем разделитель '.' перед добавлением следующего метода сжатия
+					sec.append(1, '.');
+					// Добавляем метод сжатия в строку секции legacy_compression_methods, используя "GREASE" для GREASE-методов и десятичный код для остальных
+					sec.append(::to_string(::local::compressorWire(compressor)));
+				}
+				// Добавляем сформированную строку для секции legacy_compression_methods к общему peetprint, добавляя разделитель '|'
+				peet.append(sec + '|');
+			}
+			// Секция 3: supported_groups
+			{
+				// Формируем временную строку для секции supported_groups
+				string sec = "";
+				// Если расширение supported_groups присутствует
+				if(extensionGroups != nullptr){
+					/**
+					 * Проходим по группам в порядке их объявления и формируем строку для секции supported_groups, включая GREASE
+					 */
+					for(const auto gid : extensionGroups->supportedGroups){
+						// Если это не первая группа, добавляем разделитель '-'
+						if(!sec.empty())
+							// Добавляем разделитель '-' перед добавлением следующей группы
+							sec.append(1, '-');
+						// Добавляем группу в строку секции supported_groups, используя "GREASE" для GREASE-групп и десятичный код для остальных
+						sec.append(
+							(gid == awh::tls::group_t::GREASE)
+							? string("GREASE")
+							: ::to_string(::local::groupWire(gid))
+						);
+					}
+				}
+				// Добавляем сформированную строку для секции supported_groups к общему peetprint, добавляя разделитель '|'
+				peet.append(sec + '|');
+			}
+			// Секция 4: signature_algorithms
+			{
+				// Формируем временную строку для секции signature_algorithms
+				string sec = "";
+				// Если расширение signature_algorithms присутствует
+				if(extensionSigAlgs != nullptr){
+					/**
+					 * Проходим по алгоритмам подписи в порядке их объявления и формируем строку для секции signature_algorithms, включая GREASE
+					 */
+					for(const auto sig : extensionSigAlgs->algorithms){
+						// Если это не первый алгоритм подписи, добавляем разделитель '-'
+						if(!sec.empty())
+							// Добавляем разделитель '-' перед добавлением следующего алгоритма подписи
+							sec.append(1, '-');
+						// Добавляем алгоритм подписи в строку секции signature_algorithms, используя "GREASE" для GREASE-алгоритмов и десятичный код для остальных
+						sec.append(
+							(sig == awh::tls::signature_t::GREASE)
+							? string("GREASE")
+							: ::to_string(::local::signatureWire(sig))
+						);
+					}
+				}
+				// Добавляем сформированную строку для секции signature_algorithms к общему peetprint, добавляя разделитель '|'
+				peet.append(sec + '|');
+			}
+			// Секция 5: кол-во EC point formats
+			peet.append(::to_string(extensionEcPoint ? extensionEcPoint->formats.size() : static_cast <size_t> (0)) + '|');
+			// Секция 6: кол-во PSK key exchange modes
+			peet.append(::to_string(extensionPsk ? extensionPsk->modes.size() : static_cast <size_t> (0)) + '|');
+			// Секция 7: cipher suites (с GREASE)
+			{
+				// Формируем временную строку для секции cipher suites
+				string sec = "";
+				/**
+				 * Проходим по шифрам в порядке их объявления и формируем строку для секции cipher suites, включая GREASE и шифры без wire-кода
+				 */
+				for(const auto cipher : browser.ciphers){
+					// Если это не первый шифр, добавляем разделитель '-'
+					if(!sec.empty())
+						// Добавляем разделитель '-' перед добавлением следующего шифра
+						sec.append(1, '-');
+					// Добавляем шифр в строку секции cipher suites, используя "GREASE" для GREASE-шифров и десятичный код для остальных, включая шифры без wire-кода (которые будут отображаться как 0)
+					sec.append(
+						(cipher == awh::tls::cipher_t::GREASE)
+						? string("GREASE")
+						: ::to_string(::local::cipherWire(cipher))
+					);
+				}
+				// Добавляем сформированную строку для секции cipher suites к общему peetprint, добавляя разделитель '|'
+				peet.append(sec + '|');
+			}
+			// Секция 8: extensions (с GREASE-маркерами)
+			{
+				// Формируем временную строку для секции extensions
+				string sec = "";
+				/**
+				 * Проходим по расширениям в порядке их объявления и формируем строку для секции extensions, включая GREASE и расширения без wire-кода
+				 */
+				for(const auto & ext : browser.extensions){
+					// Если это не первое расширение, добавляем разделитель '-'
+					if(!sec.empty())
+						// Добавляем разделитель '-' перед добавлением следующего расширения
+						sec.append(1, '-');
+					// Если расширение — GREASE, добавляем "GREASE"
+					if(ext->type == awh::tls::extension_type_t::GREASE)
+						// Добавляем "GREASE" для GREASE-расширений в строку секции extensions
+						sec.append("GREASE");
+					// Если расширение не GREASE, добавляем его в строку секции extensions, используя десятичный код для расширений с wire-кодом и 0 для расширений без wire-кода
+					else {
+						// Извлекаем wire-код расширения, используя десятичный код для расширений с wire-кодом и 0 для расширений без wire-кода
+						const uint16_t wire = ::local::extensionWire(ext->type);
+						// Добавляем расширение в строку секции extensions, используя десятичный код для расширений с wire-кодом и 0 для расширений без wire-кода (которые будут отображаться как 0)
+						sec.append((wire == 0xFFFF) ? ::to_string(0u) : ::to_string(wire));
+					}
+				}
+				// Добавляем сформированную строку для секции extensions к общему peetprint, без добавления разделителя '|' в конце, так как это последняя секция
+				peet.append(sec);
+			}
+			// Вычисляем peetprintHash как MD5 от сформированного peetprint
+			result.peetprintHash = ::local::md5(peet);
+			// Устанавливаем сформированный peetprint
+			result.peetprint = ::move(peet);
+			// Выводим результат парсинга PeetPrint
+			return !result.peetprintHash.empty();
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
 /**
  * @brief Метод парсинга данных цифрового отпечатка
  *
@@ -3129,7 +4324,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 			/**
 			 * Определяем версию из заголовка record (offset 1 для TLS, offset 11 для DTLS)
 			 */
-			switch(::fingerprint::u16(buffer + 1)){
+			switch(::local::u16(buffer + 1)){
 				// Если версия записи соответствует DTLSv1.0
 				case 0xFEFF:
 					// Устанавливаем версию записи в объекте browser как DTLS 1.0
@@ -3176,13 +4371,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Unsupported record version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+					this->_log->debug("Unsupported record version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + 1));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("Unsupported record version: 0x%04X", log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+					this->_log->print("Unsupported record version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + 1));
 				#endif
 				// Выводим результат по умолчанию
 				return result;
@@ -3219,11 +4414,11 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				return result;
 			}
 			// Длина полезной нагрузки record: в TLS — offset 3, в DTLS — offset 11
-			browser.record.length = (isDTLS ? ::fingerprint::u16(buffer + 11) : ::fingerprint::u16(buffer + 3));
+			browser.record.length = (isDTLS ? ::local::u16(buffer + 11) : ::local::u16(buffer + 3));
 			// Если это DTLS, то извлекаем epoch и sequence number из соответствующих полей заголовка record
 			if(isDTLS){
 				// Устанавливаем эпоху записи рукопожатия
-				browser.record.epoch = ::fingerprint::u16(buffer + 3);
+				browser.record.epoch = ::local::u16(buffer + 3);
 				// Устанавливаем sequence number записи рукопожатия, объединяя 6 байт в 48-битное число
 				browser.record.sequence = (
 					(static_cast <uint64_t> (buffer[5]) << 40) |
@@ -3255,7 +4450,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 			/**
 			 * Определяем версию из заголовка handshake
 			 */
-			switch(::fingerprint::u16(buffer + (recordSize + handshakeSize))){
+			switch(::local::u16(buffer + (recordSize + handshakeSize))){
 				// Если версия записи соответствует DTLSv1.0
 				case 0xFEFF:
 					// Устанавливаем версию записи в объекте browser как DTLS 1.0
@@ -3302,13 +4497,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + 1));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::fingerprint::u16(buffer + 1));
+					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + 1));
 				#endif
 				// Выводим результат по умолчанию
 				return result;
@@ -3322,7 +4517,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 			// Если это DTLS, то извлекаем sequence number и фрагментацию из соответствующих полей заголовка handshake
 			if(isDTLS){
 				// Устанавливаем sequence number рукопожатия
-				browser.handshake.sequence = ::fingerprint::u16(buffer + (recordSize + 4));
+				browser.handshake.sequence = ::local::u16(buffer + (recordSize + 4));
 				// Устанавливаем смещение фрагмента рукопожатия, объединяя 3 байта в 24-битное число
 				browser.handshake.fragment.offset = (
 					(static_cast <uint32_t> (buffer[recordSize + 6]) << 16) |
@@ -3478,7 +4673,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				return result;
 			}
 			// Получаем длину списка cipher_suites
-			length = static_cast <size_t> (::fingerprint::u16(buffer + offset));
+			length = static_cast <size_t> (::local::u16(buffer + offset));
 			// Увеличиваем смещение на 2 байта для длины cipher_suites
 			offset += 2;
 			// Если длина cipher_suites не кратна 2 или если размер данных меньше смещения + длины cipher_suites, то это означает, что данные обрезаны или некорректны
@@ -3506,9 +4701,9 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 			 */
 			for(size_t i = 0; i < length; i += 2){
 				// Извлекаем код шифра из буфера
-				cipher = ::fingerprint::u16(buffer + (offset + i));
+				cipher = ::local::u16(buffer + (offset + i));
 				// Если код шифра является GREASE
-				if(::fingerprint::isGrease(cipher)){
+				if(::local::isGrease(cipher)){
 					// Устанавливаем флаг grease в объекте browser
 					browser.grease = true;
 					// Получаем код шифра
@@ -3746,7 +4941,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				return result;
 			}
 			// Получаем длину списка расширений
-			length = static_cast <size_t> (::fingerprint::u16(buffer + offset));
+			length = static_cast <size_t> (::local::u16(buffer + offset));
 			// Увеличиваем смещение на 2 байта для длины расширений
 			offset += 2;
 			// Если размер данных меньше смещения + длины расширений, то это означает, что данные обрезаны
@@ -3785,9 +4980,9 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					// Выходим из цикла обработки расширений
 					break;
 				// Извлекаем тип расширения из первых 2 байт заголовка расширения
-				const uint16_t type = ::fingerprint::u16(buffer + offset);
+				const uint16_t type = ::local::u16(buffer + offset);
 				// Извлекаем размер данных расширения из следующих 2 байт заголовка расширения
-				const uint16_t size = ::fingerprint::u16(buffer + (offset + 2));
+				const uint16_t size = ::local::u16(buffer + (offset + 2));
 				// Увеличиваем смещение на 4 байта для заголовка расширения
 				offset += 4;
 				// Если размер данных меньше смещения + размера данных расширения, то это означает, что данные обрезаны внутри расширений
@@ -3795,7 +4990,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					// Выходим из цикла обработки расширений
 					break;
 				// Если код алгоритма подписи является GREASE
-				if(::fingerprint::isGrease(type))
+				if(::local::isGrease(type))
 					// Выполняем парсинг расширения GREASE, который просто пропускает данные и закрывает объект без обработки
 					::fingerprint::parseGrease(buffer + offset, size, browser);
 				/**
