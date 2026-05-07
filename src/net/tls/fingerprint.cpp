@@ -54,6 +54,7 @@
 #include <cstdint>
 #include <vector>
 #include <cstring>
+#include <sstream>
 #include <iostream>
 #include <algorithm>
 
@@ -1070,8 +1071,8 @@ namespace fingerprint {
 				break;
 			// Если код группы является GREASE
 			if(::local::isGrease(gid))
-				// Добавляем код GREASE в список поддерживаемых версий браузера
-				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::GREASE, vector <uint8_t> {});
+				// Добавляем GREASE-запись в список обмена ключами браузера (порядок сохраняется)
+				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::GREASE, vector <uint8_t> {});
 			// Если код группы является одной из стандартных версий из RFC 8446 §4.2.7
 			else {
 				/**
@@ -1081,75 +1082,75 @@ namespace fingerprint {
 					// Если элиптическая кривая соответствует P-256 (secp256r1)
 					case 0x0017:
 						// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::P_256, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_256, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует P-384 (secp384r1)
 					case 0x0018:
 						// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::P_384, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_384, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует P-521 (secp521r1)
 					case 0x0019:
 						// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::P_521, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_521, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует X25519
 					case 0x001D:
 						// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X25519, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует X448
 					case 0x001E:
 						// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X448, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X448, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует secp256k1
 					case 0x001C:
 						// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::SECP256K1, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::SECP256K1, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует FFDHE 2048
 					case 0x0100:
 						// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE2048, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE2048, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует FFDHE 3072
 					case 0x0101:
 						// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE3072, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE3072, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует FFDHE 4096
 					case 0x0102:
 						// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE4096, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE4096, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует FFDHE 6144
 					case 0x0103:
 						// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE6144, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE6144, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует FFDHE 8192
 					case 0x0104:
 						// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE8192, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE8192, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует MLKEM 1024
 					case 0x0202:
 						// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::MLKEM1024, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::MLKEM1024, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует X25519Kyber768Draft00
 					case 0x6399:
 						// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X25519_KYBER768_DRAFT00, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519_KYBER768_DRAFT00, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая соответствует X25519MLKEM768
 					case 0x11EC:
 						// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X25519_MLKEM768, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519_MLKEM768, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
-					default: awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::UNKNOWN, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					default: awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::UNKNOWN, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 				}
 			}
 			// Увеличиваем смещение на длину ключа для текущей группы обмена ключами
@@ -3721,11 +3722,425 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 }
 
 /**
- * @brief Метод проверки, соответствует ли цифровой отпечаток шаблону, характерному для браузера
+ * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
  *
- * @param imp объект цифрового отпечатка для проверки
- * @return     результат проверки, принадлежит ли цифровой отпечаток реальныму браузеру
+ * @param browser объект с распарсенными данными ClientHello
+ * @return        форматированная строка с полным описанием отпечатка
  */
+string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Строковый поток для сборки результата
+		ostringstream out;
+		// Горизонтальная линия-разделитель (80 символов)
+		const string LINE(80, '=');
+		// Вспомогательная лямбда: форматирование uint16_t как "0x%04X"
+		const auto hex16 = [](const uint16_t v) -> string {
+			char buf[8];
+			::snprintf(buf, sizeof(buf), "0x%04X", v);
+			return buf;
+		};
+		// Вспомогательная лямбда: форматирование uint8_t как "0x%02X"
+		const auto hex8 = [](const uint8_t v) -> string {
+			char buf[6];
+			::snprintf(buf, sizeof(buf), "0x%02X", v);
+			return buf;
+		};
+		// Вспомогательная лямбда: секционный заголовок с количеством элементов
+		const auto section = [&out](const string & title) -> void {
+			out << '\n' << "  [ " << title << " ]\n";
+		};
+		// ================================================================
+		// Заголовок
+		// ================================================================
+		out << '\n' << LINE << '\n';
+		out << "                  TLS ClientHello  -  Browser Fingerprint\n";
+		out << LINE << '\n';
+		// ================================================================
+		// Record Layer
+		// ================================================================
+		section("Record Layer");
+		{
+			// Получаем wire-код версии record layer
+			const uint16_t w = ::local::versionWire(browser.record.version);
+			out << "    Version  : " << ::tls_version_name(w) << "  (" << hex16(w) << ")\n";
+			out << "    Length   : " << browser.record.length << '\n';
+			// Поля DTLS выводим только если они ненулевые
+			if((browser.record.epoch != 0) || (browser.record.sequence != 0)){
+				out << "    Epoch    : " << browser.record.epoch    << "  [DTLS]\n";
+				out << "    Sequence : " << browser.record.sequence << "  [DTLS]\n";
+			}
+		}
+		// ================================================================
+		// Handshake Header
+		// ================================================================
+		section("Handshake Header");
+		out << "    Length       : " << browser.handshake.length            << '\n';
+		out << "    Sequence     : " << browser.handshake.sequence           << '\n';
+		out << "    Frag. Offset : " << browser.handshake.fragment.offset   << '\n';
+		out << "    Frag. Length : " << browser.handshake.fragment.length   << '\n';
+		// ================================================================
+		// ClientHello
+		// ================================================================
+		section("ClientHello");
+		{
+			// Получаем wire-код версии legacy_version из ClientHello
+			const uint16_t w = ::local::versionWire(browser.clientHello.version);
+			out << "    Legacy Version : " << ::tls_version_name(w) << "  (" << hex16(w) << ")\n";
+			out << "    Random         : " << ::local::tohex(browser.clientHello.random.data(), browser.clientHello.random.size()) << '\n';
+			// Session ID: выводим hex или пометку "(empty)" если отсутствует
+			if(!browser.session.empty())
+				out << "    Session ID     : " << ::local::tohex(browser.session.data(), browser.session.size()) << '\n';
+			else
+				out << "    Session ID     : (empty)\n";
+			// Cookie DTLS: выводим только если присутствует
+			if(!browser.cookie.empty())
+				out << "    DTLS Cookie    : " << ::local::tohex(browser.cookie.data(), browser.cookie.size()) << '\n';
+			out << "    GREASE Used    : " << (browser.grease ? "yes" : "no") << '\n';
+		}
+		// ================================================================
+		// Cipher Suites
+		// ================================================================
+		{
+			char title[64];
+			::snprintf(title, sizeof(title), "Cipher Suites (%zu)", browser.ciphers.size());
+			section(title);
+		}
+		for(size_t i = 0; i < browser.ciphers.size(); ++i){
+			// Получаем wire-код шифра
+			const uint16_t w = ::local::cipherWire(browser.ciphers[i]);
+			// Имя шифра: GREASE или реальное название
+			const char * name = (browser.ciphers[i] == cipher_t::GREASE) ? "[GREASE]" : ::cipher_name(w);
+			// Выравниваем имена по столбцу 40
+			char idx[8];
+			::snprintf(idx, sizeof(idx), "[%2zu]", i);
+			out << "    " << idx << "  ";
+			out << name;
+			const int pad = 36 - static_cast <int> (::strlen(name));
+			for(int k = 0; k < pad; ++k) out << ' ';
+			out << "(" << hex16(w) << ")\n";
+		}
+		// ================================================================
+		// Compression Methods
+		// ================================================================
+		{
+			char title[64];
+			::snprintf(title, sizeof(title), "Compression Methods (%zu)", browser.compressors.size());
+			section(title);
+		}
+		for(size_t i = 0; i < browser.compressors.size(); ++i){
+			// Получаем wire-код метода сжатия
+			const uint8_t w = ::local::compressorWire(browser.compressors[i]);
+			char idx[8];
+			::snprintf(idx, sizeof(idx), "[%2zu]", i);
+			out << "    " << idx << "  " << ::compress_alg_name(w) << "  (" << hex8(w) << ")\n";
+		}
+		// ================================================================
+		// Extensions
+		// ================================================================
+		{
+			char title[64];
+			::snprintf(title, sizeof(title), "Extensions (%zu)", browser.extensions.size());
+			section(title);
+		}
+		for(size_t i = 0; i < browser.extensions.size(); ++i){
+			const auto & ext = browser.extensions[i];
+			// Получаем wire-код расширения (0xFFFF — неизвестное)
+			const uint16_t w = ::local::extensionWire(ext->type);
+			char idx[8];
+			::snprintf(idx, sizeof(idx), "[%2zu]", i);
+			// GREASE расширение: выводим специальный маркер и переходим к следующему
+			if(ext->type == extension_type_t::GREASE){
+				out << "    " << idx << "  [GREASE]\n";
+				continue;
+			}
+			// Имя расширения с выравниванием по столбцу 50
+			const char * ename = ::ext_name(w);
+			out << "    " << idx << "  ";
+			out << ename;
+			const int pad = 46 - static_cast <int> (::strlen(ename));
+			for(int k = 0; k < pad; ++k) out << ' ';
+			out << "(" << hex16(w) << ")";
+			// Детали расширения в зависимости от его типа
+			switch(ext->type){
+				// server_name: выводим имена серверов
+				case extension_type_t::SERVER_NAME: {
+					const auto * p = awh_cast <const extension_server_name_t *> (ext.get());
+					if(!p->names.empty()){
+						out << "  ->  \"" << p->names[0] << '"';
+						for(size_t j = 1; j < p->names.size(); ++j)
+							out << ", \"" << p->names[j] << '"';
+					}
+				break; }
+				// supported_versions: выводим список версий с GREASE-маркерами
+				case extension_type_t::SUPPORTED_VERSIONS: {
+					const auto * p = awh_cast <const extension_supported_versions_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->versions.size(); ++j){
+						if(j) out << ", ";
+						if(p->versions[j] == version_t::GREASE) out << "[GREASE]";
+						else out << ::tls_version_name(::local::versionWire(p->versions[j]));
+					}
+				break; }
+				// supported_groups: выводим список кривых и групп с GREASE-маркерами
+				case extension_type_t::SUPPORTED_GROUPS: {
+					const auto * p = awh_cast <const extension_supported_groups_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->supportedGroups.size(); ++j){
+						if(j) out << ", ";
+						if(p->supportedGroups[j] == group_t::GREASE) out << "[GREASE]";
+						else out << ::group_name(::local::groupWire(p->supportedGroups[j]));
+					}
+				break; }
+				// ec_point_formats: выводим форматы точек эллиптической кривой
+				case extension_type_t::EC_POINT_FORMATS: {
+					const auto * p = awh_cast <const extension_ec_point_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->formats.size(); ++j){
+						if(j) out << ", ";
+						const uint8_t fw = ::local::ecPointWire(p->formats[j]);
+						if(p->formats[j] == ec_point_format_t::GREASE) out << "[GREASE]";
+						else if(fw == 0x00) out << "uncompressed";
+						else if(fw == 0x01) out << "ansiX962_compressed_prime";
+						else if(fw == 0x02) out << "ansiX962_compressed_char2";
+						else out << hex8(fw);
+					}
+				break; }
+				// signature_algorithms: каждый алгоритм на отдельной строке
+				case extension_type_t::SIGNATURE_ALGORITHMS: {
+					const auto * p = awh_cast <const extension_signature_t *> (ext.get());
+					out << '\n';
+					for(const auto sig : p->algorithms){
+						const uint16_t sw = ::local::signatureWire(sig);
+						out << "              ";
+						if(sig == signature_t::GREASE) out << "[GREASE]";
+						else out << ::sig_alg_name(sw) << "  (" << hex16(sw) << ")";
+						out << '\n';
+					}
+					// Переходим к следующему расширению без добавления финальной \n
+					continue;
+				}
+				// alpn: выводим список согласованных протоколов
+				case extension_type_t::ALPN: {
+					const auto * p = awh_cast <const extension_alpn_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->protocols.size(); ++j){
+						if(j) out << ", ";
+						out << '"' << p->protocols[j] << '"';
+					}
+				break; }
+				// next_proto_neg (NPN): выводим список протоколов
+				case extension_type_t::NEXT_PROTO_NEG: {
+					const auto * p = awh_cast <const extension_next_proto_neg_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->protocols.size(); ++j){
+						if(j) out << ", ";
+						out << '"' << p->protocols[j] << '"';
+					}
+				break; }
+				// application_settings (ALPS новый): выводим список протоколов
+				case extension_type_t::APPLICATION_SETTINGS: {
+					const auto * p = awh_cast <const extension_application_settings_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->protocols.size(); ++j){
+						if(j) out << ", ";
+						out << '"' << p->protocols[j] << '"';
+					}
+				break; }
+				// application_settings_old (Chrome legacy ALPS): выводим список протоколов
+				case extension_type_t::APPLICATION_SETTINGS_OLD: {
+					const auto * p = awh_cast <const extension_application_settings_old_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->protocols.size(); ++j){
+						if(j) out << ", ";
+						out << '"' << p->protocols[j] << '"';
+					}
+				break; }
+				// key_share: выводим пары группа→размер ключа
+				case extension_type_t::KEY_SHARE: {
+					const auto * p = awh_cast <const extension_key_share_t *> (ext.get());
+					out << "  ->  ";
+					bool first = true;
+					for(const auto & [grp, data] : p->keyShares){
+						if(!first) out << ", ";
+						first = false;
+						if(grp == group_t::GREASE) out << "[GREASE](" << data.size() << "B)";
+						else out << ::group_name(::local::groupWire(grp)) << "(" << data.size() << "B)";
+					}
+				break; }
+				// psk_key_exchange_modes: выводим режимы обмена ключами PSK
+				case extension_type_t::PSK_KEY_EXCHANGE_MODES: {
+					const auto * p = awh_cast <const extension_psk_key_exchange_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->modes.size(); ++j){
+						if(j) out << ", ";
+						switch(p->modes[j]){
+							case psk_key_t::PSK_ONLY: out << "psk_ke(0x00)";     break;
+							case psk_key_t::PSK_DHE:  out << "psk_dhe_ke(0x01)"; break;
+							default:                  out << "UNKNOWN";           break;
+						}
+					}
+				break; }
+				// pre_shared_key: выводим количество идентификаторов PSK
+				case extension_type_t::PRE_SHARED_KEY: {
+					const auto * p = awh_cast <const extension_pre_shared_key_t *> (ext.get());
+					out << "  ->  " << p->identities.size()
+					    << (p->identities.size() == 1 ? " identity" : " identities");
+				break; }
+				// session_ticket: выводим размер данных или пометку о запросе
+				case extension_type_t::SESSION_TICKET: {
+					const auto * p = awh_cast <const extension_session_ticket_t *> (ext.get());
+					if(p->data.empty()) out << "  ->  (empty / request for new ticket)";
+					else out << "  ->  " << p->data.size() << " bytes";
+				break; }
+				// status_request (OCSP): выводим тип статуса
+				case extension_type_t::STATUS_REQUEST: {
+					const auto * p = awh_cast <const extension_status_request_t *> (ext.get());
+					if(!p->certificateStatusType.empty())
+						out << "  ->  type=" << p->certificateStatusType;
+				break; }
+				// padding: выводим размер блока заполнения
+				case extension_type_t::PADDING: {
+					const auto * p = awh_cast <const extension_padding_t *> (ext.get());
+					out << "  ->  " << p->size << " bytes";
+				break; }
+				// record_size_limit: выводим максимальный размер записи
+				case extension_type_t::RECORD_SIZE_LIMIT: {
+					const auto * p = awh_cast <const extension_record_size_limit_t *> (ext.get());
+					out << "  ->  " << p->data << " bytes";
+				break; }
+				// early_data: выводим максимальный размер ранних данных
+				case extension_type_t::EARLY_DATA: {
+					const auto * p = awh_cast <const extension_early_data_t *> (ext.get());
+					if(p->maxSize > 0) out << "  ->  max=" << p->maxSize << " bytes";
+				break; }
+				// compress_certificate: выводим поддерживаемые алгоритмы сжатия сертификатов
+				case extension_type_t::COMPRESS_CERTIFICATE: {
+					const auto * p = awh_cast <const extension_compress_certificate_t *> (ext.get());
+					out << "  ->  ";
+					for(size_t j = 0; j < p->algorithms.size(); ++j){
+						if(j) out << ", ";
+						out << ::compress_alg_name(::local::compressorWire(p->algorithms[j]));
+					}
+				break; }
+				// heartbeat: выводим режим (allowed/not_allowed)
+				case extension_type_t::HEARTBEAT: {
+					const auto * p = awh_cast <const extension_heartbeat_t *> (ext.get());
+					switch(p->mode){
+						case heartbeat_t::PEER_ALLOWED_TO_SEND:     out << "  ->  peer_allowed_to_send";     break;
+						case heartbeat_t::PEER_NOT_ALLOWED_TO_SEND: out << "  ->  peer_not_allowed_to_send"; break;
+						default: break;
+					}
+				break; }
+				// renegotiation_info: выводим размер данных переговоров
+				case extension_type_t::RENEGOTIATION_INFO: {
+					const auto * p = awh_cast <const extension_renegotiation_info_t *> (ext.get());
+					out << "  ->  " << p->data.size() << " bytes";
+				break; }
+				// encrypted_client_hello (ECH): выводим размер зашифрованных данных
+				case extension_type_t::ENCRYPTED_CLIENT_HELLO: {
+					const auto * p = awh_cast <const extension_encryption_client_hello_t *> (ext.get());
+					out << "  ->  " << p->data.size() << " bytes";
+				break; }
+				// ech_outer_extensions: выводим количество вложенных расширений
+				case extension_type_t::ECH_OUTER_EXTENSIONS: {
+					const auto * p = awh_cast <const extension_ech_outer_extensions_t *> (ext.get());
+					out << "  ->  " << p->extensions.size() << " extension(s)";
+				break; }
+				// certificate_authorities: выводим количество доверенных CA
+				case extension_type_t::CERTIFICATE_AUTHORITIES: {
+					const auto * p = awh_cast <const extension_certificate_authorities_t *> (ext.get());
+					out << "  ->  " << p->authorities.size() << " CA(s)";
+				break; }
+				// max_fragment_length: выводим максимальную длину фрагмента
+				case extension_type_t::MAX_FRAGMENT_LENGTH: {
+					const auto * p = awh_cast <const extension_max_fragment_length_t *> (ext.get());
+					out << "  ->  " << p->length;
+				break; }
+				// tls_flags: выводим количество флагов
+				case extension_type_t::TLS_FLAGS: {
+					const auto * p = awh_cast <const extension_tls_flags_t *> (ext.get());
+					out << "  ->  " << p->flags.size() << " flag(s)";
+				break; }
+				// quic_transport_parameters: выводим количество параметров QUIC
+				case extension_type_t::QUIC_TRANSPORT_PARAMETERS: {
+					const auto * p = awh_cast <const extension_quic_transport_params_t *> (ext.get());
+					out << "  ->  " << p->params.size() << " param(s)";
+				break; }
+				// quic_transport_parameters_legacy: выводим количество параметров QUIC (устаревший)
+				case extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY: {
+					const auto * p = awh_cast <const extension_quic_transport_params_legacy_t *> (ext.get());
+					out << "  ->  " << p->params.size() << " param(s)";
+				break; }
+				// Для остальных расширений без значимых данных ничего не выводим
+				default: break;
+			}
+			out << '\n';
+		}
+		// ================================================================
+		// Вычисленные отпечатки
+		// ================================================================
+		imprint_t imp;
+		// Вычисляем отпечатки из переданного browser_t
+		const bool hasImp = this->imprint(browser, imp);
+		out << '\n';
+		if(!hasImp){
+			// Вычисление отпечатков не удалось — сообщаем об ошибке
+			out << "  [ Computed Fingerprints  (ERROR - computation failed) ]\n";
+		} else {
+			out << "  [ Computed Fingerprints ]\n";
+			// Wire-коды версий для получения их текстовых названий
+			const uint16_t recV = static_cast <uint16_t> (::stoul(imp.tls.record));
+			const uint16_t negV = static_cast <uint16_t> (::stoul(imp.tls.negotiated));
+			// TLS-версии
+			out << "    TLS Record Version     : " << imp.tls.record     << "  (" << hex16(recV) << ")  =  " << ::tls_version_name(recV) << '\n';
+			out << "    TLS Negotiated Version : " << imp.tls.negotiated << "  (" << hex16(negV) << ")  =  " << ::tls_version_name(negV) << '\n';
+			// Идентификаторы соединения
+			out << "    Client Random          : " << imp.clientRandom << '\n';
+			out << "    Session ID             : " << (imp.sessionId.empty() ? "(empty)" : imp.sessionId) << '\n';
+			// JA3
+			out << '\n';
+			out << "    JA3        : " << imp.ja3 << '\n';
+			out << "    JA3 Hash   : " << imp.ja3Hash << '\n';
+			// JA4
+			out << '\n';
+			out << "    JA4        : " << imp.ja4 << '\n';
+			out << "    JA4_r      : " << imp.ja4r << '\n';
+			// PeetPrint
+			out << '\n';
+			out << "    PeetPrint  : " << imp.peetprint << '\n';
+			out << "    PeetHash   : " << imp.peetprintHash << '\n';
+			// Итоговый вывод: похож ли отпечаток на реальный браузер
+			out << '\n';
+			out << "    Browser?   : " << (this->looksLikeBrowser(imp) ? "YES (looks like a real browser)" : "NO  (does not look like a real browser)") << '\n';
+		}
+		// Финальная строка-разделитель
+		out << '\n' << LINE << '\n';
+		// Возвращаем сформированную строку
+		return out.str();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// В случае ошибки возвращаем пустую строку
+	return "";
+}
 bool awh::tls::Fingerprint::looksLikeBrowser(const imprint_t & imp) const noexcept {
 	// Если TLS 1.3 не согласован
 	if(!this->_fmk->compare("772", imp.tls.negotiated))

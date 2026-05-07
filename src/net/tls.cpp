@@ -5060,9 +5060,12 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 
 												tls::fgp_t::browser_t browser;
 
-												tls::fgp_t fingerprint(this->_fmk, this->_log);
+												tls::fgp_t fgp(this->_fmk, this->_log);
 
-												fingerprint.parse(::local::buffer, static_cast <size_t> (bytes), browser);
+												fgp.parse(::local::buffer, static_cast <size_t> (bytes), browser);
+
+												cout << " Browser: " << fgp.print(browser) << endl;
+
 											}
 										}
 										// Вызываем функцию обратного вызова чтения данных

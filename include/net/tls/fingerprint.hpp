@@ -570,8 +570,8 @@ namespace awh {
 				 *
 				 */
 				typedef struct Extension_Key_Share : public extension_t {
-					// Список поддерживаемых групп обмена ключами и соответствующих данных ключей
-					unordered_map <group_t, vector <uint8_t>> keyShares;
+					// Список групп обмена ключами в порядке появления в ClientHello (порядок важен — отражает предпочтение клиента)
+					vector <pair <group_t, vector <uint8_t>>> keyShares;
 					/**
 					 * @brief Конструктор
 					 *
@@ -1089,6 +1089,18 @@ namespace awh {
 				const fmk_t * _fmk;
 				// Объект работы с логами
 				const log_t * _log;
+			public:
+				/**
+				 * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
+				 *
+				 * Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
+				 * Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
+				 * вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
+				 *
+				 * @param browser объект с распарсенными данными ClientHello
+				 * @return        форматированная строка с полным описанием отпечатка
+				 */
+				string print(const browser_t & browser) const noexcept;
 			public:
 				/**
 				 * @brief Метод проверки, соответствует ли цифровой отпечаток шаблону, характерному для браузера
