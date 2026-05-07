@@ -3184,7 +3184,7 @@ void parse_extensions_chrome_style(const uint8_t* data, size_t data_len, size_t 
     
     printf("  \"extensions\": [\n");
     
-    int idx = 0;
+    int32_t idx = 0;
     while (off < ext_end) {
         if (off + 4 > ext_end) break;
         
@@ -3408,7 +3408,7 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 	printf("  value     = "); print_hex(buffer + off, sess_len); printf("\n");
 	{
 		char _sid[65] = {};
-		for (int _i = 0; _i < sess_len; _i++) snprintf(_sid + 2*_i, 3, "%02x", buffer[off + _i]);
+		for (int32_t _i = 0; _i < sess_len; _i++) snprintf(_sid + 2*_i, 3, "%02x", buffer[off + _i]);
 		fp_session_id_hex = _sid;
 	}
 	off += sess_len;
@@ -3552,14 +3552,14 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 		uint8_t d[16];
 		MD5(reinterpret_cast<const uint8_t*>(s.data()), s.size(), d);
 		char out[33] = {};
-		for (int i = 0; i < 16; ++i) snprintf(out + 2*i, 3, "%02x", d[i]);
+		for (int32_t i = 0; i < 16; ++i) snprintf(out + 2*i, 3, "%02x", d[i]);
 		return std::string(out, 32);
 	};
 	auto sha256_12 = [](const std::string& s) -> std::string {
 		uint8_t d[32];
 		SHA256(reinterpret_cast<const uint8_t*>(s.data()), s.size(), d);
 		char out[13] = {};
-		for (int i = 0; i < 6; ++i) snprintf(out + 2*i, 3, "%02x", d[i]);
+		for (int32_t i = 0; i < 6; ++i) snprintf(out + 2*i, 3, "%02x", d[i]);
 		return std::string(out, 12);
 	};
 
@@ -3602,9 +3602,9 @@ bool parse(const uint8_t * buffer, const size_t size) noexcept {
 		}
 		const char sni_flag = fp_has_sni ? 'd' : 'i';
 
-		int cipher_cnt = 0;
+		int32_t cipher_cnt = 0;
 		for (auto c : fp_ciphers)   if (!is_grease(c)) cipher_cnt++;
-		int ext_cnt = 0;
+		int32_t ext_cnt = 0;
 		for (auto e : fp_ext_types) if (!is_grease(e)) ext_cnt++;
 
 		// ALPN: первые 2 символа (или "00")
@@ -4042,8 +4042,8 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 				(hasQUIC ? 'q' : 't'),
 				ver2.c_str(),
 				sniFlag,
-				static_cast <int> (ciphersSorted.size()),
-				static_cast <int> (extCount),
+				static_cast <int32_t> (ciphersSorted.size()),
+				static_cast <int32_t> (extCount),
 				alpn2.c_str()
 			);
 			// Сохраняем префикс в строке
@@ -5193,18 +5193,10 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				// Увеличиваем смещение на размер данных расширения, чтобы перейти к следующему расширению
 				offset += static_cast <size_t> (size);
 			}
+			// Выводим результат
+			// return !browser.extensions.size();
 
-
-			cout << " =================== COUNT EXTENSIONS: " << browser.extensions.size() << " ===================" << endl;
-
-
-			/*
-
-			// 8. Extensions
-			printf("\n[Next] extensions_length begins at offset %zu\n", off);
-			fp_ext_start = off;
-			parse_extensions_chrome_style(buffer, size, off);
-			*/
+			
 
 
 
