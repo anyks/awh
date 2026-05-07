@@ -68,6 +68,148 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция чтения QUIC variable-length integer (RFC 9000 §16)
+	 *
+	 * @param buffer бинарный буфер данных
+	 * @param size   размер буфера
+	 * @param offset текущее смещение (увеличивается на количество прочитанных байт)
+	 * @return       прочитанное значение, или 0 если данных недостаточно
+	 */
+	static inline uint64_t readQUICVarint(const uint8_t * buffer, const size_t size, size_t & offset) noexcept {
+		// Если смещение за пределами буфера — возвращаем 0
+		if(offset >= size)
+			// Данных недостаточно для чтения
+			return 0;
+		// Первый байт определяет тип длины (2 старших бита)
+		const uint8_t first = buffer[offset];
+		// Получаем тип длины из старших 2 битов первого байта
+		const uint8_t type = (first >> 6);
+		// 1 байт: биты 00xxxxxx → значение 0..63
+		if(type == 0)
+			// Читаем 6 бит из первого байта и возвращаем значение
+			return (buffer[offset++] & 0x3F);
+		// 2 байта: биты 01xxxxxx xxxxxxxx → значение 0..16383
+		else if(type == 1) {
+			// Если данных недостаточно для чтения 2 байт, возвращаем 0
+			if((offset + 2) > size){
+				// Смещаемся в конец буфера, так как данных недостаточно для чтения 2 байт
+				offset = size;
+				// Данных недостаточно для чтения 2 байт
+				return 0;
+			}
+			// Читаем 14 бит из 2 байт и возвращаем значение
+			const uint64_t val = ((static_cast <uint64_t> (buffer[offset] & 0x3F) << 8) | buffer[offset + 1]);
+			// Увеличиваем смещение на 2 байта
+			offset += 2;
+			// Возвращаем прочитанное значение
+			return val;
+		// 4 байта: биты 10xxxxxx × 3 → значение 0..1073741823
+		} else if(type == 2) {
+			// Если данных недостаточно для чтения 4 байт, возвращаем 0
+			if((offset + 4) > size){
+				// Смещаемся в конец буфера, так как данных недостаточно для чтения 4 байт
+				offset = size;
+				// Данных недостаточно для чтения 4 байт
+				return 0;
+			}
+			// Читаем 30 бит из 4 байт и возвращаем значение
+			const uint64_t val = (
+				(static_cast <uint64_t> (buffer[offset]     & 0x3F) << 24) |
+				(static_cast <uint64_t> (buffer[offset + 1])        << 16) |
+				(static_cast <uint64_t> (buffer[offset + 2])        <<  8) |
+				 static_cast <uint64_t> (buffer[offset + 3])
+			);
+			// Увеличиваем смещение на 4 байта
+			offset += 4;
+			// Возвращаем прочитанное значение
+			return val;
+		// 8 байт: биты 11xxxxxx × 7 → значение 0..4611686018427387903
+		} else {
+			// Если данных недостаточно для чтения 8 байт, возвращаем 0
+			if((offset + 8) > size){
+				// Смещаемся в конец буфера, так как данных недостаточно для чтения 8 байт
+				offset = size;
+				// Данных недостаточно для чтения 8 байт
+				return 0;
+			}
+			// Читаем 62 бит из 8 байт и возвращаем значение
+			const uint64_t val = (
+				(static_cast <uint64_t> (buffer[offset]     & 0x3F) << 56) |
+				(static_cast <uint64_t> (buffer[offset + 1])        << 48) |
+				(static_cast <uint64_t> (buffer[offset + 2])        << 40) |
+				(static_cast <uint64_t> (buffer[offset + 3])        << 32) |
+				(static_cast <uint64_t> (buffer[offset + 4])        << 24) |
+				(static_cast <uint64_t> (buffer[offset + 5])        << 16) |
+				(static_cast <uint64_t> (buffer[offset + 6])        <<  8) |
+				 static_cast <uint64_t> (buffer[offset + 7])
+			);
+			// Увеличиваем смещение на 8 байт
+			offset += 8;
+			// Возвращаем прочитанное значение
+			return val;
+		}
+	}
+
+	/**
+	 * @brief Внутренняя функция парсинга QUIC Transport Parameters (RFC 9000 §19, RFC 9001)
+	 * Заполняет map<type_id, value>. Значение читается как QUIC varint если помещается (≤8 байт), иначе 0.
+	 *
+	 * @param buffer бинарный буфер данных расширения
+	 * @param size   размер буфера
+	 * @param params карта для сохранения результатов
+	 */
+	static void parseQUICTransportParamsInternal(const uint8_t * buffer, const size_t size, unordered_map <uint64_t, uint64_t> & params) noexcept {
+		// Инициализируем смещение
+		size_t offset = 0;
+		/**
+		 * Каждый параметр: type(varint) + length(varint) + value(length байт)
+		 */
+		while(offset < size){
+			// Сохраняем начальное смещение для проверки прогресса
+			const size_t saved = offset;
+			// Читаем идентификатор типа параметра
+			const uint64_t type = readQUICVarint(buffer, size, offset);
+			// Если смещение не изменилось — данные повреждены
+			if(offset == saved || offset > size)
+				// Прерываем разбор
+				break;
+			// Читаем длину назначения параметра
+			const size_t lenStart = offset;
+			// Читаем длину значения параметра
+			const uint64_t lenValue = readQUICVarint(buffer, size, offset);
+			// Проверяем прогресс и границы
+			if((offset == lenStart) || ((offset + static_cast <size_t> (lenValue)) > size))
+				// Прерываем разбор
+				break;
+			// Пытаемся прочитать значение как varint (только если помещается в 8 байт)
+			uint64_t value = 0;
+			// Если длина значения параметра больше 0 и не превышает 8 байт
+			if((lenValue > 0) && (lenValue <= 8)){
+				// Сохраняем текущее смещение для чтения значения
+				size_t valOffset = offset;
+				// Читаем значение параметра как QUIC varint
+				value = readQUICVarint(buffer, size, valOffset);
+			}
+			// Сохраняем параметр в карту
+			params.emplace(type, value);
+			// Переходим к следующему параметру
+			offset += static_cast <size_t> (lenValue);
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения GREASE (RFC 8701)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения GREASE
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseGrease(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение GREASE в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_grease_t> ());
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения encrypt_then_mac (RFC 7366)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения encrypt_then_mac
@@ -1497,6 +1639,281 @@ namespace fingerprint {
 			// Сдвигаем смещение на длину имени
 			offset += static_cast <size_t> (length);
 		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения quic_transport_parameters (RFC 9001, 0x0039)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseQUICTransportParams(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение quic_transport_parameters в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_quic_transport_params_t> ());
+		// Если данных нет — пустое расширение
+		if(size == 0)
+			// Выходим из функции
+			return;
+		// Разбираем параметры QUIC
+		parseQUICTransportParamsInternal(
+			buffer, size,
+			awh_cast <awh::tls::fgp_t::extension_quic_transport_params_t *> (browser.extensions.back().get())->params
+		);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения quic_transport_parameters_legacy (BoringSSL, 0xFFA5)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseQUICTransportParamsLegacy(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение quic_transport_parameters_legacy в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_quic_transport_params_legacy_t> ());
+		// Если данных нет — пустое расширение
+		if(size == 0)
+			// Выходим из функции
+			return;
+		// Разбираем параметры QUIC (формат идентичен стандартному)
+		parseQUICTransportParamsInternal(
+			buffer, size,
+			awh_cast <awh::tls::fgp_t::extension_quic_transport_params_legacy_t *> (browser.extensions.back().get())->params
+		);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения tls_flags (draft-ietf-tls-tlsflags, 0x003E)
+	 * Данные — битовое поле флагов: байт i содержит флаги с номерами i*8 .. i*8+7.
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseTLSFlags(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение tls_flags в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_tls_flags_t> ());
+		// Если данных нет — пустое расширение (все флаги = 0)
+		if(size == 0)
+			// Выходим из функции
+			return;
+		// Копируем байты флагов
+		awh_cast <awh::tls::fgp_t::extension_tls_flags_t *> (browser.extensions.back().get())->flags.assign(buffer, buffer + size);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения next_proto_neg / NPN (0x3374)
+	 * В ClientHello NPN обычно пустое (сигнализирует поддержку). Если данные присутствуют,
+	 * разбираем как список протоколов: 1-байтовая длина + имя (без внешнего поля длины).
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseNPN(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение NPN в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_next_proto_neg_t> ());
+		// Разбираем список протоколов
+		size_t offset = 0;
+		/**
+		 * Итерируем по данным расширения, читая 1-байтовую длину имени протокола и само имя, пока не достигнем конца данных.
+		 */
+		while(offset < size){
+			// Читаем 1-байтовую длину имени протокола
+			const uint8_t length = buffer[offset++];
+			// Проверяем границы
+			if((length == 0) || ((offset + length) > size))
+				// Если данных недостаточно для чтения имени протокола, прекращаем парсинг
+				break;
+			// Добавляем имя протокола
+			awh_cast <awh::tls::fgp_t::extension_next_proto_neg_t *> (browser.extensions.back().get())->protocols.push_back(string(reinterpret_cast <const char *> (buffer + offset), length));
+			// Сдвигаем смещение на длину имени протокола
+			offset += static_cast <size_t> (length);
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения application_settings / ALPS new (0x44CD)
+	 * Формат (draft-vvv-tls-alps): 2-байтовая длина списка + записи (1-байтовая длина + имя).
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseApplicationSettings(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение application_settings в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_application_settings_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Читаем байтовую длину списка протоколов
+		const uint16_t count = u16(buffer);
+		// Проверяем, что список помещается в буфер
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
+		// Смещение для чтения записей: пропускаем 2 байта длины списка
+		size_t offset = 2;
+		// Конец списка
+		const size_t end = static_cast <size_t> (2 + count);
+		/**
+		 * Перебираем протоколы: каждый — 1-байтовая длина + имя
+		 */
+		while(offset < end){
+			// Извлекаем размер имени протокола из текущей позиции в буфере
+			const uint8_t length = buffer[offset++];
+			// Если длина имени протокола равна 0 или если имя протокола не помещается в оставшихся данных расширения
+			if((length == 0) || ((offset + length) > end))
+				// Прекращаем парсинг, так как данных недостаточно для чтения имени протокола
+				break;
+			// Добавляем имя протокола в список поддерживаемых протоколов расширения application_settings браузера
+			awh_cast <awh::tls::fgp_t::extension_application_settings_t *> (browser.extensions.back().get())->protocols.push_back(string(reinterpret_cast <const char *> (buffer + offset), length));
+			// Сдвигаем смещение на длину имени протокола
+			offset += static_cast <size_t> (length);
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения application_settings_old / ALPS legacy (0x4469)
+	 * Формат идентичен application_settings (0x44CD).
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseApplicationSettingsOld(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение application_settings_old в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_application_settings_old_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Читаем байтовую длину списка протоколов
+		const uint16_t count = u16(buffer);
+		// Проверяем, что список помещается в буфер
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
+		// Смещение для чтения записей: пропускаем 2 байта длины списка
+		size_t offset = 2;
+		// Конец списка
+		const size_t end = static_cast <size_t> (2 + count);
+		/**
+		 * Перебираем протоколы: каждый — 1-байтовая длина + имя
+		 */
+		while(offset < end){
+			// Извлекаем размер имени протокола из текущей позиции в буфере
+			const uint8_t length = buffer[offset++];
+			// Если длина имени протокола равна 0 или если имя протокола не помещается в оставшихся данных расширения
+			if((length == 0) || ((offset + length) > end))
+				// Прекращаем парсинг, так как данных недостаточно для чтения имени протокола
+				break;
+			// Добавляем имя протокола в список поддерживаемых протоколов расширения application_settings_old браузера
+			awh_cast <awh::tls::fgp_t::extension_application_settings_old_t *> (browser.extensions.back().get())->protocols.push_back(string(reinterpret_cast <const char *> (buffer + offset), length));
+			// Сдвигаем смещение на длину имени протокола
+			offset += static_cast <size_t> (length);
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения channel_id (BoringSSL/Chrome, 0x7550)
+	 * В ClientHello всегда пустое — сигнализирует поддержку Channel ID.
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseChannelID(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение channel_id в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_channel_id_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения trust_anchors (BoringSSL draft, 0xCA34)
+	 * В ClientHello присутствие расширения сигнализирует поддержку.
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseTrustAnchors(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение trust_anchors в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_trust_anchors_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения ech_outer_extensions (ECH draft, 0xFD00)
+	 * Формат: 1-байтовый счётчик байт + список 2-байтовых ExtensionType (счётчик должен быть чётным).
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseECHOuterExtensions(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение ech_outer_extensions в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_ech_outer_extensions_t> ());
+		// Минимум: 1 байт длины + 2 байта типа
+		if(size < 3)
+			// Выходим из функции, так как данных недостаточно для парсинга
+			return;
+		// Читаем байтовую длину списка
+		const uint8_t count = buffer[0];
+		// Длина должна быть чётной (каждый тип = 2 байта) и помещаться в буфер
+		if(((count % 2) != 0) || (size < static_cast <size_t> (1 + count)))
+			// Выходим из функции, так как данные некорректные для парсинга
+			return;
+		// Получаем ссылку на список расширений
+		auto * ext = awh_cast <awh::tls::fgp_t::extension_ech_outer_extensions_t *> (browser.extensions.back().get());
+		// Перебираем 2-байтовые коды типов расширений
+		for(size_t i = 1; (i + 1) <= static_cast <size_t> (1 + count); i += 2)
+			// Сохраняем как UNKNOWN (маппинг wire-кодов → extension_type_t не требуется для отпечатка)
+			ext->extensions.push_back(awh::tls::extension_type_t::UNKNOWN);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения Encrypted Client Hello / ECH (0xFE0D)
+	 * Данные — непрозрачный двоичный blob (opaque).
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseEncryptedClientHello(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение ECH в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_encryption_client_hello_t> ());
+		// Если данных нет — пустое расширение
+		if(size == 0)
+			// Выходим из функции, так как данных недостаточно для парсинга
+			return;
+		// Копируем весь blob целиком
+		awh_cast <awh::tls::fgp_t::extension_encryption_client_hello_t *> (browser.extensions.back().get())->data.assign(buffer, buffer + size);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения renegotiation_info (RFC 5746, 0xFF01)
+	 * Формат: 1-байтовая длина + renegotiated_connection. В начальном ClientHello длина = 0.
+	 *
+	 * @param buffer  бинарный буфер с данными расширения
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseRenegotiationInfo(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение renegotiation_info в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_renegotiation_info_t> ());
+		// Если данных нет — пустое расширение
+		if(size < 1)
+			// Выходим из функции, так как данных недостаточно для парсинга
+			return;
+		// Читаем 1-байтовую длину renegotiated_connection
+		const uint8_t length = buffer[0];
+		// В начальном ClientHello length = 0 (нет предыдущего verify_data)
+		if((length == 0) || (size < static_cast <size_t> (1 + length)))
+			// Выходим из функции, так как данных недостаточно для чтения renegotiated_connection
+			return;
+		// Копируем renegotiated_connection bytes
+		awh_cast <awh::tls::fgp_t::extension_renegotiation_info_t *> (browser.extensions.back().get())->data.assign(buffer + 1, buffer + (1 + length));
 	}
 };
 
@@ -3377,187 +3794,208 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				if((offset + size) > end)
 					// Выходим из цикла обработки расширений
 					break;
+				// Если код алгоритма подписи является GREASE
+				if(::fingerprint::isGrease(type))
+					// Выполняем парсинг расширения GREASE, который просто пропускает данные и закрывает объект без обработки
+					::fingerprint::parseGrease(buffer + offset, size, browser);
 				/**
-				 * Диспетчер по типам расширений:
-				 * для каждого известного типа расширения мы вызываем соответствующую функцию парсинга,
-				 * которая будет извлекать и отображать информацию о расширении.
-				 * Для GREASE и неизвестных типов расширений мы просто пропускаем данные и закрываем объект без обработки.
+				 * Если код алгоритма подписи не является GREASE, то мы проверяем,
+				 * соответствует ли он одному из известных типов расширений и вызываем соответствующую функцию парсинга для извлечения и отображения информации о расширении.
 				 */
-				switch(type){
-					// Если тип расширения соответствует server_name (RFC 6066 §3)
-					case 0x0000:
-						// Выполняем парсинг расширения server_name
-						::fingerprint::parseServerName(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует max_fragment_length (RFC 6066 §4)
-					case 0x0001:
-						// Выполняем парсинг расширения max_fragment_length
-						::fingerprint::parseMaxFragmentLength(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует status_request (OCSP, RFC 6066 §8)
-					case 0x0005:
-						// Выполняем парсинг расширения status_request
-						::fingerprint::parseStatusRequest(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует supported_groups (RFC 8422, RFC 7919)
-					case 0x000A:
-						// Выполняем парсинг расширения supported_groups
-						::fingerprint::parseSupportedGroups(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует ec_point_formats (RFC 8422 §5.1)
-					case 0x000B:
-						// Выполняем парсинг расширения ec_point_formats
-						::fingerprint::parseECPointFormats(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует signature_algorithms (RFC 8446 §4.2.3)
-					case 0x000D:
-						// Выполняем парсинг расширения signature_algorithms
-						::fingerprint::parseSignatureAlgorithms(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует use_srtp (RFC 5764 §4.2, DTLS)
-					case 0x000E:
-						// Выполняем парсинг расширения use_srtp
-						::fingerprint::parseUseSRTP(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует heartbeat (RFC 6520)
-					case 0x000F:
-						// Выполняем парсинг расширения heartbeat
-						::fingerprint::parseHeartbeat(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует application_layer_protocol_negotiation / ALPN (RFC 7301)
-					case 0x0010:
-						// Выполняем парсинг расширения application_layer_protocol_negotiation / ALPN
-						::fingerprint::parseALPN(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует signed_certificate_timestamp / SCT (RFC 6962)
-					case 0x0012:
-						// Выполняем парсинг расширения signed_certificate_timestamp / SCT
-						::fingerprint::parseCertificateTimestamp(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует padding (RFC 7685)
-					case 0x0015:
-						// Выполняем парсинг расширения padding
-						::fingerprint::parsePadding(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует encrypt_then_mac (RFC 7366)
-					case 0x0016:
-						// Выполняем парсинг расширения encrypt_then_mac
-						::fingerprint::parseEncryptThenMAC(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует extended_master_secret (RFC 7627)
-					case 0x0017:
-						// Выполняем парсинг расширения extended_master_secret
-						::fingerprint::parseExtendedMasterSecret(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует compress_certificate (RFC 8879)
-					case 0x001B:
-						// Выполняем парсинг расширения compress_certificate
-						::fingerprint::parseCompressCertificate(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует record_size_limit (RFC 8449)
-					case 0x001C:
-						// Выполняем парсинг расширения record_size_limit
-						::fingerprint::parseRecordSizeLimit(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует delegated_credential (RFC 9345)
-					case 0x0022:
-						// Выполняем парсинг расширения delegated_credential
-						::fingerprint::parseDelegatedCredential(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует session_ticket (RFC 5077)
-					case 0x0023:
-						// Выполняем парсинг расширения session_ticket
-						::fingerprint::parseSessionTicket(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует pre_shared_key (RFC 8446 §4.2.11)
-					case 0x0029:
-						// Выполняем парсинг расширения pre_shared_key
-						::fingerprint::parsePreSharedKey(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует early_data (RFC 8446 §4.2.10)
-					case 0x002A:
-						// Выполняем парсинг расширения early_data
-						::fingerprint::parseEarlyData(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует supported_versions (RFC 8446 §4.2.1)
-					case 0x002B:
-						// Выполняем парсинг расширения supported_versions
-						::fingerprint::parseSupportedVersions(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует cookie (RFC 8446 §4.2.2)
-					case 0x002C:
-						// Выполняем парсинг расширения cookie
-						::fingerprint::parseCookie(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует psk_key_exchange_modes (RFC 8446 §4.2.8)
-					case 0x002D:
-						// Выполняем парсинг расширения psk_key_exchange_modes
-						::fingerprint::parsePSKKeyExchangeModes(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует certificate_authorities (RFC 8446 §4.2.4)
-					case 0x002F:
-						// Выполняем парсинг расширения certificate_authorities
-						::fingerprint::parseCertificateAuthorities(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует post_handshake_auth (RFC 8446 §4.2.9, пустое)
-					case 0x0031:
-						// Выполняем парсинг расширения post_handshake_auth
-						::fingerprint::postHandshakeAuth(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует signature_algorithms_cert (RFC 8446 §4.2.3)
-					case 0x0032:
-						// Выполняем парсинг расширения signature_algorithms_cert
-						::fingerprint::parseSignatureAlgorithmsCert(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует key_share (RFC 8446 §4.2.8)
-					case 0x0033:
-						// Выполняем парсинг расширения key_share
-						::fingerprint::parseKeyShare(buffer + offset, size, browser);
-					break;
-					// Если тип расширения соответствует quic_transport_parameters (RFC 9001)
-					case 0x0039:
-						// parse_quic_transport_params(data + off, len);
-					break;
-					// Если тип расширения соответствует tls_flags (draft-ietf-tls-tlsflags)
-					case 0x003E:
-						// parse_tls_flags(data + off, len);
-					break;
-					// Если тип расширения соответствует next_proto_neg / NPN (Google, устарело, заменено на ALPN)
-					case 0x3374:
-						// parse_npn(data + off, len);
-					break;
-					// Если тип расширения соответствует application_settings_old (Chrome legacy ALPS, 0x4469)
-					case 0x4469:
-						// parse_alps_old(data + off, len);
-					break;
-					// Если тип расширения соответствует application_settings / ALPS новый стандарт (0x44CD)
-					case 0x44CD:
-						// parse_alps_old(data + off, len);
-					break;
-					// Если тип расширения соответствует channel_id (BoringSSL/Chrome, устарело, пустое в ClientHello)
-					case 0x7550:
-						// printf("\n");
-					break;
-					// Если тип расширения соответствует trust_anchors (BoringSSL draft)
-					case 0xCA34:
-						// printf("\n");
-					break;
-					// Если тип расширения соответствует ech_outer_extensions (ECH draft, RFC 9001)
-					case 0xFD00:
-						// parse_ech_outer_extensions(data + off, len);
-					break;
-					// Если тип расширения соответствует extensionEncryptedClientHello / ECH (draft-ietf-tls-esni)
-					case 0xFE0D:
-						// parse_ech(data + off, len);
-					break;
-					// Если тип расширения соответствует extensionRenegotiationInfo (RFC 5746)
-					case 0xFF01:
-						// parse_renegotiation_info(data + off, len);
-					break;
-					// Если тип расширения соответствует quic_transport_parameters_legacy (BoringSSL legacy QUIC)
-					case 0xFFA5:
-						// parse_quic_transport_params(data + off, len);
-					break;
+				else {
+					/**
+					 * Диспетчер по типам расширений:
+					 * для каждого известного типа расширения мы вызываем соответствующую функцию парсинга,
+					 * которая будет извлекать и отображать информацию о расширении.
+					 * Для GREASE и неизвестных типов расширений мы просто пропускаем данные и закрываем объект без обработки.
+					 */
+					switch(type){
+						// Если тип расширения соответствует server_name (RFC 6066 §3)
+						case 0x0000:
+							// Выполняем парсинг расширения server_name
+							::fingerprint::parseServerName(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует max_fragment_length (RFC 6066 §4)
+						case 0x0001:
+							// Выполняем парсинг расширения max_fragment_length
+							::fingerprint::parseMaxFragmentLength(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует status_request (OCSP, RFC 6066 §8)
+						case 0x0005:
+							// Выполняем парсинг расширения status_request
+							::fingerprint::parseStatusRequest(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует supported_groups (RFC 8422, RFC 7919)
+						case 0x000A:
+							// Выполняем парсинг расширения supported_groups
+							::fingerprint::parseSupportedGroups(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует ec_point_formats (RFC 8422 §5.1)
+						case 0x000B:
+							// Выполняем парсинг расширения ec_point_formats
+							::fingerprint::parseECPointFormats(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует signature_algorithms (RFC 8446 §4.2.3)
+						case 0x000D:
+							// Выполняем парсинг расширения signature_algorithms
+							::fingerprint::parseSignatureAlgorithms(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует use_srtp (RFC 5764 §4.2, DTLS)
+						case 0x000E:
+							// Выполняем парсинг расширения use_srtp
+							::fingerprint::parseUseSRTP(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует heartbeat (RFC 6520)
+						case 0x000F:
+							// Выполняем парсинг расширения heartbeat
+							::fingerprint::parseHeartbeat(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует application_layer_protocol_negotiation / ALPN (RFC 7301)
+						case 0x0010:
+							// Выполняем парсинг расширения application_layer_protocol_negotiation / ALPN
+							::fingerprint::parseALPN(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует signed_certificate_timestamp / SCT (RFC 6962)
+						case 0x0012:
+							// Выполняем парсинг расширения signed_certificate_timestamp / SCT
+							::fingerprint::parseCertificateTimestamp(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует padding (RFC 7685)
+						case 0x0015:
+							// Выполняем парсинг расширения padding
+							::fingerprint::parsePadding(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует encrypt_then_mac (RFC 7366)
+						case 0x0016:
+							// Выполняем парсинг расширения encrypt_then_mac
+							::fingerprint::parseEncryptThenMAC(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует extended_master_secret (RFC 7627)
+						case 0x0017:
+							// Выполняем парсинг расширения extended_master_secret
+							::fingerprint::parseExtendedMasterSecret(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует compress_certificate (RFC 8879)
+						case 0x001B:
+							// Выполняем парсинг расширения compress_certificate
+							::fingerprint::parseCompressCertificate(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует record_size_limit (RFC 8449)
+						case 0x001C:
+							// Выполняем парсинг расширения record_size_limit
+							::fingerprint::parseRecordSizeLimit(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует delegated_credential (RFC 9345)
+						case 0x0022:
+							// Выполняем парсинг расширения delegated_credential
+							::fingerprint::parseDelegatedCredential(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует session_ticket (RFC 5077)
+						case 0x0023:
+							// Выполняем парсинг расширения session_ticket
+							::fingerprint::parseSessionTicket(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует pre_shared_key (RFC 8446 §4.2.11)
+						case 0x0029:
+							// Выполняем парсинг расширения pre_shared_key
+							::fingerprint::parsePreSharedKey(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует early_data (RFC 8446 §4.2.10)
+						case 0x002A:
+							// Выполняем парсинг расширения early_data
+							::fingerprint::parseEarlyData(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует supported_versions (RFC 8446 §4.2.1)
+						case 0x002B:
+							// Выполняем парсинг расширения supported_versions
+							::fingerprint::parseSupportedVersions(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует cookie (RFC 8446 §4.2.2)
+						case 0x002C:
+							// Выполняем парсинг расширения cookie
+							::fingerprint::parseCookie(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует psk_key_exchange_modes (RFC 8446 §4.2.8)
+						case 0x002D:
+							// Выполняем парсинг расширения psk_key_exchange_modes
+							::fingerprint::parsePSKKeyExchangeModes(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует certificate_authorities (RFC 8446 §4.2.4)
+						case 0x002F:
+							// Выполняем парсинг расширения certificate_authorities
+							::fingerprint::parseCertificateAuthorities(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует post_handshake_auth (RFC 8446 §4.2.9, пустое)
+						case 0x0031:
+							// Выполняем парсинг расширения post_handshake_auth
+							::fingerprint::postHandshakeAuth(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует signature_algorithms_cert (RFC 8446 §4.2.3)
+						case 0x0032:
+							// Выполняем парсинг расширения signature_algorithms_cert
+							::fingerprint::parseSignatureAlgorithmsCert(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует key_share (RFC 8446 §4.2.8)
+						case 0x0033:
+							// Выполняем парсинг расширения key_share
+							::fingerprint::parseKeyShare(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует quic_transport_parameters (RFC 9001)
+						case 0x0039:
+							// Выполняем парсинг расширения quic_transport_parameters
+							::fingerprint::parseQUICTransportParams(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует tls_flags (draft-ietf-tls-tlsflags)
+						case 0x003E:
+							// Выполняем парсинг расширения tls_flags
+							::fingerprint::parseTLSFlags(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует next_proto_neg / NPN (Google, устарело, заменено на ALPN)
+						case 0x3374:
+							// Выполняем парсинг расширения next_proto_neg / NPN
+							::fingerprint::parseNPN(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует application_settings_old (Chrome legacy ALPS, 0x4469)
+						case 0x4469:
+							// Выполняем парсинг расширения application_settings_old (ALPS legacy)
+							::fingerprint::parseApplicationSettingsOld(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует application_settings / ALPS новый стандарт (0x44CD)
+						case 0x44CD:
+							// Выполняем парсинг расширения application_settings (ALPS)
+							::fingerprint::parseApplicationSettings(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует channel_id (BoringSSL/Chrome, устарело, пустое в ClientHello)
+						case 0x7550:
+							// Выполняем парсинг расширения channel_id
+							::fingerprint::parseChannelID(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует trust_anchors (BoringSSL draft)
+						case 0xCA34:
+							// Выполняем парсинг расширения trust_anchors
+							::fingerprint::parseTrustAnchors(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует ech_outer_extensions (ECH draft)
+						case 0xFD00:
+							// Выполняем парсинг расширения ech_outer_extensions
+							::fingerprint::parseECHOuterExtensions(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует extensionEncryptedClientHello / ECH (draft-ietf-tls-esni)
+						case 0xFE0D:
+							// Выполняем парсинг расширения Encrypted Client Hello / ECH
+							::fingerprint::parseEncryptedClientHello(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует extensionRenegotiationInfo (RFC 5746)
+						case 0xFF01:
+							// Выполняем парсинг расширения renegotiation_info
+							::fingerprint::parseRenegotiationInfo(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует quic_transport_parameters_legacy (BoringSSL legacy QUIC)
+						case 0xFFA5:
+							// Выполняем парсинг расширения quic_transport_parameters_legacy
+							::fingerprint::parseQUICTransportParamsLegacy(buffer + offset, size, browser);
+						break;
+					}
 				}
 				// Увеличиваем смещение на размер данных расширения, чтобы перейти к следующему расширению
 				offset += static_cast <size_t> (size);
