@@ -950,6 +950,7 @@ namespace awh {
 					explicit VersionTLS() noexcept :
 					 record{""}, negotiated{""} {}
 				} version_tls_t;
+
 				/**
 				 * @brief Структура вычисленных цифровых отпечатков TLS-соединения (JA3, JA4, PeetPrint и пр.)
 				 *
@@ -971,6 +972,8 @@ namespace awh {
 					string peetprintHash;
 					// ClientHello.random — 32 байта, hex lowercase
 					string clientRandom;
+					// Akamai HTTP/2 fingerprint: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}" (пусто если HTTP/2 данные не предоставлены)
+					string akamai;
 					// Версия TLS в расширении supported_versions (наибольшая не-GREASE версия, десятично)
 					version_tls_t tls;
 					/**
@@ -981,7 +984,7 @@ namespace awh {
 					 ja3{""}, ja4{""}, ja4r{""},
 					 ja3Hash{""}, sessionId{""},
 					 peetprint{""}, peetprintHash{""},
-					 clientRandom{""} {}
+					 clientRandom{""}, akamai{""} {}
 				} imprint_t;
 			public:
 				/**
@@ -1005,6 +1008,7 @@ namespace awh {
 					 epoch(0), length(0), sequence(0),
 					 version(version_t::UNKNOWN) {}
 				} __attribute__((packed)) record_t;
+
 				/**
 				 * @brief Структура фрагмента TLS
 				 *
@@ -1020,6 +1024,7 @@ namespace awh {
 					 */
 					explicit Fragment() noexcept : offset(0), length(0) {}
 				} __attribute__((packed)) fragment_t;
+
 				/**
 				 * @brief Структура рукопожатия TLS
 				 *
@@ -1037,6 +1042,7 @@ namespace awh {
 					 */
 					explicit Handshake() noexcept : length(0), sequence(0) {}
 				} __attribute__((packed)) handshake_t;
+
 				/**
 				 * @brief Структура ClientHello TLS
 				 *
@@ -1052,6 +1058,7 @@ namespace awh {
 					 */
 					explicit ClientHello() noexcept : version(version_t::UNKNOWN) {}
 				} client_hello_t;
+
 				/**
 				 * @brief Структура цифрового отпечатка браузера
 				 *
@@ -1081,6 +1088,70 @@ namespace awh {
 					 */
 					explicit Browser() noexcept : grease(false) {}
 				} browser_t;
+			public:
+				/**
+				 * @brief Одна запись параметра SETTINGS из HTTP/2-соединения (RFC 7540 §6.5)
+				 *
+				 */
+				typedef struct H2Setting {
+					/**
+					 * Идентификатор параметра (1=HEADER_TABLE_SIZE, 2=ENABLE_PUSH, 3=MAX_CONCURRENT_STREAMS, 
+					 * 4=INITIAL_WINDOW_SIZE, 5=MAX_FRAME_SIZE, 6=MAX_HEADER_LIST_SIZE)
+					 */
+					uint16_t id;
+					// Значение параметра
+					uint32_t value;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit H2Setting(const uint16_t i = 0, const uint32_t v = 0) noexcept : id(i), value(v) {}
+				} __attribute__((packed)) h2_setting_t;
+
+				/**
+				 * @brief Данные PRIORITY-фрейма HTTP/2 (RFC 7540 §6.3)
+				 *
+				 */
+				typedef struct H2Priority {
+					// Флаг эксклюзивной зависимости (E-бит)
+					bool exclusive;
+					// Вес приоритета: raw 0-255 (фактический вес = weight + 1, диапазон 1-256)
+					uint8_t weight;
+					// Идентификатор потока, которому задаётся приоритет (из заголовка фрейма)
+					uint32_t streamId;
+					// Идентификатор потока-зависимости (31-битный stream dependency)
+					uint32_t dependency;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit H2Priority() noexcept :
+					 exclusive(false), weight(0),
+					 streamId(0),  dependency(0) {}
+				} __attribute__((packed)) h2_priority_t;
+
+				/**
+				 * @brief Данные HTTP/2-соединения клиента, собранные из connection preface
+				 *
+				 * Содержит параметры, необходимые для вычисления Akamai HTTP/2 fingerprint:
+				 * SETTINGS-фрейм, WINDOW_UPDATE уровня соединения, PRIORITY-фреймы
+				 * и порядок псевдо-заголовков из первого HEADERS-фрейма.
+				 */
+				typedef struct H2Browser {
+					// Инкремент от фрейма WINDOW_UPDATE уровня соединения (stream 0); 0 если фрейм не отправлялся
+					uint32_t windowUpdate;
+					// Псевдо-заголовки из первого HEADERS-фрейма: "m"=:method, "p"=:path, "s"=:scheme, "a"=:authority
+					vector <string> pseudoHeaders;
+					// Параметры SETTINGS в порядке получения из wire (порядок важен — входит в fingerprint)
+					vector <h2_setting_t> settings;
+					// Standalone PRIORITY-фреймы в порядке получения из wire
+					vector <h2_priority_t> priorities;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit H2Browser() noexcept : windowUpdate(0) {}
+				} h2_browser_t;
 			private:
 				// Список поддерживаемых цифровых отпечатков браузеров
 				unordered_map <uint8_t, browser_t> _browsers;
@@ -1103,10 +1174,24 @@ namespace awh {
 				string print(const browser_t & browser) const noexcept;
 			public:
 				/**
+				 * @brief Метод вычисления Akamai HTTP/2 fingerprint
+				 *
+				 * Формат: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}"
+				 *   - settings:      id:value пары через ';' в порядке wire
+				 *   - windowUpdate:  десятичный инкремент WINDOW_UPDATE (stream 0)
+				 *   - priorities:    streamId:exclusive:dependency:weight через ',' (weight = raw+1)
+				 *   - pseudoHeaders: m/p/s/a через ','
+				 *
+				 * @param h2 объект с распарсенными данными HTTP/2-соединения (из parseH2())
+				 * @return   строка Akamai fingerprint, пустая строка если h2.settings пуст
+				 */
+				string akamai(const h2_browser_t & h2) const noexcept;
+			public:
+				/**
 				 * @brief Метод проверки, соответствует ли цифровой отпечаток шаблону, характерному для браузера
 				 *
 				 * @param imp объект цифрового отпечатка для проверки
-				 * @return     результат проверки, принадлежит ли цифровой отпечаток реальныму браузеру
+				 * @return     результат проверки, принадлежит ли цифровой отпечаток реальному браузеру
 				 */
 				bool looksLikeBrowser(const imprint_t & imp) const noexcept;
 			public:
@@ -1127,6 +1212,19 @@ namespace awh {
 				 * @return        результат парсинга данных цифрового отпечатка
 				 */
 				bool parse(const uint8_t * buffer, const size_t size, browser_t & browser) noexcept;
+				/**
+				 * @brief Метод парсинга connection preface и начальных фреймов HTTP/2-соединения
+				 *
+				 * Разбирает бинарный буфер, содержащий HTTP/2 client connection preface (magic + начальные фреймы).
+				 * Извлекает SETTINGS, WINDOW_UPDATE (stream 0), PRIORITY-фреймы и порядок псевдо-заголовков
+				 * из первого HEADERS-фрейма для построения Akamai HTTP/2 fingerprint.
+				 *
+				 * @param buffer бинарный буфер с данными HTTP/2-соединения
+				 * @param size   размер буфера в байтах
+				 * @param h2     объект для хранения распарсенных данных
+				 * @return       true если SETTINGS-фрейм был успешно разобран, иначе false
+				 */
+				bool parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) noexcept;
 			public:
 				/**
 				 * @brief Конструктор
