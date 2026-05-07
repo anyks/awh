@@ -257,6 +257,137 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения key_share (RFC 8446 §4.2.7)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения key_share
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseKeyShare(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение key_share в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_key_share_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		/**
+		 * RFC 8446 §4.2.8: поле client_shares_length — это байтовая длина всего списка KeyShareEntry, 
+		 * а не количество записей. Каждая запись: group(2) + key_exchange_length(2) + key_exchange_data.
+		 */
+		const uint16_t count = u16(buffer);
+		// Если список пуст или данных в буфере недостаточно для его размещения — выходим
+		if((count == 0) || (size < static_cast <size_t> (2 + count)))
+			// Выходим из функции
+			return;
+		// Конец списка client_shares в буфере
+		const size_t end = static_cast <size_t> (2 + count);
+		// Инициализируем смещение: пропускаем поле байтовой длины списка (2 байта)
+		size_t offset = 2;
+		/**
+		 * Перебираем все записи KeyShareEntry в списке client_shares.
+		 * Каждая запись: group(2 байта) + key_exchange_length(2 байта) + key_exchange_data(key_exchange_length байт).
+		 */
+		while((offset + 4) <= end){
+			// Получаем идентификатор группы обмена ключами (NamedGroup) из первых 2 байт текущей записи
+			const uint16_t gid = u16(buffer + offset);
+			// Получаем байтовую длину данных ключа для текущей записи
+			const uint16_t length = u16(buffer + (offset + 2));
+			// Увеличиваем смещение на 4 байта (group:2 + key_exchange_length:2)
+			offset += 4;
+			// Проверяем, что данные ключа помещаются в список
+			if((offset + static_cast <size_t> (length)) > end)
+				// Если данных недостаточно — прекращаем разбор
+				break;
+			// Если код группы является GREASE
+			if(isGrease(gid))
+				// Добавляем код GREASE в список поддерживаемых версий браузера
+				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::GREASE, vector <uint8_t> {});
+			// Если код группы является одной из стандартных версий из RFC 8446 §4.2.7
+			else {
+				/**
+				 * Определяем код шифра
+				 */
+				switch(gid){
+					// Если элиптическая кривая соответствует P-256 (secp256r1)
+					case 0x0017:
+						// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::P_256, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует P-384 (secp384r1)
+					case 0x0018:
+						// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::P_384, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует P-521 (secp521r1)
+					case 0x0019:
+						// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::P_521, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует X25519
+					case 0x001D:
+						// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X25519, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует X448
+					case 0x001E:
+						// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X448, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует secp256k1
+					case 0x001C:
+						// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::SECP256K1, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует FFDHE 2048
+					case 0x0100:
+						// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE2048, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует FFDHE 3072
+					case 0x0101:
+						// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE3072, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует FFDHE 4096
+					case 0x0102:
+						// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE4096, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует FFDHE 6144
+					case 0x0103:
+						// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE6144, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует FFDHE 8192
+					case 0x0104:
+						// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::FFDHE8192, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует MLKEM 1024
+					case 0x0202:
+						// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::MLKEM1024, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует X25519Kyber768Draft00
+					case 0x6399:
+						// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X25519_KYBER768_DRAFT00, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая соответствует X25519MLKEM768
+					case 0x11EC:
+						// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::X25519_MLKEM768, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					break;
+					// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
+					default: awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace(awh::tls::group_t::UNKNOWN, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+				}
+			}
+			// Увеличиваем смещение на длину ключа для текущей группы обмена ключами
+			offset += static_cast <size_t> (length);
+		}
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения psk_key_exchange_modes (RFC 8446 §4.2.9)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения psk_key_exchange_modes
@@ -3380,7 +3511,8 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					break;
 					// Если тип расширения соответствует key_share (RFC 8446 §4.2.8)
 					case 0x0033:
-						// parse_key_share(data + off, len);
+						// Выполняем парсинг расширения key_share
+						::fingerprint::parseKeyShare(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует quic_transport_parameters (RFC 9001)
 					case 0x0039:
