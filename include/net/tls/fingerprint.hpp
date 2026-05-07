@@ -1091,6 +1091,14 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * @brief Метод проверки, соответствует ли цифровой отпечаток шаблону, характерному для браузера
+				 *
+				 * @param imp объект цифрового отпечатка для проверки
+				 * @return     результат проверки, принадлежит ли цифровой отпечаток реальныму браузеру
+				 */
+				bool looksLikeBrowser(const imprint_t & imp) const noexcept;
+			public:
+				/**
 				 * @brief Метод вычисления цифровых отпечатков на основе распарсенного ClientHello
 				 *
 				 * @param browser объект с распарсенными данными ClientHello
