@@ -3717,17 +3717,17 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			for(const auto & ext : browser.extensions){
 				// Если это расширение supported_versions, проходим по его версиям и ищем наибольшую не-GREASE
-				if(ext->type == awh::tls::extension_type_t::SUPPORTED_VERSIONS){
+				if(ext->type == extension_type_t::SUPPORTED_VERSIONS){
 					// Приводим объект нужного нам расширения
-					const auto * sv = awh_cast <const awh::tls::fgp_t::extension_supported_versions_t *> (ext.get());
+					const auto * sv = awh_cast <const extension_supported_versions_t *> (ext.get());
 					// Проходим по версиям в расширении и ищем наибольшую не-GREASE
-					for(const auto v : sv->versions){
+					for(const auto version : sv->versions){
 						// Если версия — GREASE, пропускаем её
-						if(v == awh::tls::version_t::GREASE)
+						if(version == version_t::GREASE)
 							// (хотя GREASE в supported_versions — это странно, но кто знает, может быть и такое)
 							continue;
 						// Получаем wire-код версии и сравниваем с лучшей найденной
-						const uint16_t wire = ::local::versionWire(v);
+						const uint16_t wire = ::local::versionWire(version);
 						// Если wire-код версии больше текущего лучшего, обновляем лучший
 						if(wire > best)
 							// Устанавливаем эту версию как лучшую
@@ -3741,13 +3741,13 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			result.tls.negotiated = ::to_string(best);
 		}
 		// --- Собираем объекты нужных нам расширений (однократный проход) ---
-		const awh::tls::fgp_t::extension_supported_groups_t   * extensionGroups  = nullptr;
-		const awh::tls::fgp_t::extension_ec_point_t           * extensionEcPoint = nullptr;
-		const awh::tls::fgp_t::extension_signature_t          * extensionSigAlgs = nullptr;
-		const awh::tls::fgp_t::extension_alpn_t               * extensionAlpn    = nullptr;
-		const awh::tls::fgp_t::extension_server_name_t        * extensionSni     = nullptr;
-		const awh::tls::fgp_t::extension_supported_versions_t * extensionSv      = nullptr;
-		const awh::tls::fgp_t::extension_psk_key_exchange_t   * extensionPsk     = nullptr;
+		const extension_supported_groups_t   * extensionGroups  = nullptr;
+		const extension_ec_point_t           * extensionEcPoint = nullptr;
+		const extension_signature_t          * extensionSigAlgs = nullptr;
+		const extension_alpn_t               * extensionAlpn    = nullptr;
+		const extension_server_name_t        * extensionSni     = nullptr;
+		const extension_supported_versions_t * extensionSv      = nullptr;
+		const extension_psk_key_exchange_t   * extensionPsk     = nullptr;
 		/**
 		 * Проходим по расширениям в порядке их объявления и сохраняем объекты нужных нам расширений
 		 */
@@ -3757,39 +3757,39 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			switch(static_cast <uint8_t> (ext->type)){
 				// Если мы получили расширение supported_groups, сохраняем его объект в extensionGroups
-				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS):
+				case static_cast <uint8_t> (extension_type_t::SUPPORTED_GROUPS):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionGroups
-					extensionGroups = awh_cast <const awh::tls::fgp_t::extension_supported_groups_t *> (ext.get());
+					extensionGroups = awh_cast <const extension_supported_groups_t *> (ext.get());
 				break;
 				// Если мы получили расширение ec_point_formats, сохраняем его объект в extensionEcPoint
-				case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS):
+				case static_cast <uint8_t> (extension_type_t::EC_POINT_FORMATS):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionEcPoint
-					extensionEcPoint = awh_cast <const awh::tls::fgp_t::extension_ec_point_t *> (ext.get());
+					extensionEcPoint = awh_cast <const extension_ec_point_t *> (ext.get());
 				break;
 				// Если мы получили расширение signature_algorithms, сохраняем его объект в extensionSigAlgs
-				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
+				case static_cast <uint8_t> (extension_type_t::SIGNATURE_ALGORITHMS):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionSigAlgs
-					extensionSigAlgs = awh_cast <const awh::tls::fgp_t::extension_signature_t *> (ext.get());
+					extensionSigAlgs = awh_cast <const extension_signature_t *> (ext.get());
 				break;
 				// Если мы получили расширение ALPN, сохраняем его объект в extensionAlpn
-				case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN):
+				case static_cast <uint8_t> (extension_type_t::ALPN):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionAlpn
-					extensionAlpn = awh_cast <const awh::tls::fgp_t::extension_alpn_t *> (ext.get());
+					extensionAlpn = awh_cast <const extension_alpn_t *> (ext.get());
 				break;
 				// Если мы получили расширение server_name, сохраняем его объект в extensionSni
-				case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME):
+				case static_cast <uint8_t> (extension_type_t::SERVER_NAME):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionSni
-					extensionSni = awh_cast <const awh::tls::fgp_t::extension_server_name_t *> (ext.get());
+					extensionSni = awh_cast <const extension_server_name_t *> (ext.get());
 				break;
 				// Если мы получили расширение supported_versions, сохраняем его объект в extensionSv
-				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS):
+				case static_cast <uint8_t> (extension_type_t::SUPPORTED_VERSIONS):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionSv
-					extensionSv = awh_cast <const awh::tls::fgp_t::extension_supported_versions_t *> (ext.get());
+					extensionSv = awh_cast <const extension_supported_versions_t *> (ext.get());
 				break;
 				// Если мы получили расширение psk_key_exchange_modes, сохраняем его объект в extensionPsk
-				case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES):
+				case static_cast <uint8_t> (extension_type_t::PSK_KEY_EXCHANGE_MODES):
 					// Приводим объект расширения к нужному типу и сохраняем в extensionPsk
-					extensionPsk = awh_cast <const awh::tls::fgp_t::extension_psk_key_exchange_t *> (ext.get());
+					extensionPsk = awh_cast <const extension_psk_key_exchange_t *> (ext.get());
 				break;
 			}
 		}
@@ -3807,7 +3807,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			for(const auto cipher : browser.ciphers){
 				// Если шифр — GREASE, пропускаем его
-				if(cipher == awh::tls::cipher_t::GREASE)
+				if(cipher == cipher_t::GREASE)
 					// Просто пропускаем этот шифр и не включаем его в строку JA3
 					continue;
 				// Получаем wire-код шифра
@@ -3828,7 +3828,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			for(const auto & ext : browser.extensions){
 				// Если расширение — GREASE, пропускаем его
-				if(ext->type == awh::tls::extension_type_t::GREASE)
+				if(ext->type == extension_type_t::GREASE)
 					// Просто пропускаем это расширение и не включаем его в строку JA3
 					continue;
 				// Получаем wire-код расширения
@@ -3851,7 +3851,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 				 */
 				for(const auto gid : extensionGroups->supportedGroups){
 					// Если группа — GREASE, пропускаем её
-					if(gid == awh::tls::group_t::GREASE)
+					if(gid == group_t::GREASE)
 						// Просто пропускаем эту группу и не включаем её в строку JA3
 						continue;
 					// Получаем wire-код группы
@@ -3870,7 +3870,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 				for(const auto format : extensionEcPoint->formats){
 					// Получаем wire-код формата точки
 					const uint8_t wire = ::local::ecPointWire(format);
-					// Если wire-код формата точки равен 0, пропускаем его (неизвестный формат без wire-кода)
+					// Если wire-код формата точки равен 0xFF, пропускаем его (неизвестный формат без wire-кода)
 					if(wire == 0xFF)
 						// Просто пропускаем этот формат точки и не включаем его в строку JA3
 						continue;
@@ -3893,19 +3893,19 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 		// ======================== JA4 ========================
 		/**
 		 * Спецификация: https://github.com/FoxIO-LLC/ja4
-		 * Формат: {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{md5(ciphers)[:12]}_{md5(sigalgs)[:12]}
-		 * JA4_r: то же, но с раскрытыми hex-списками
+		 * Формат JA4:   {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{md5(sorted_ciphers)[:12]}_{md5(sorted_exts+"_"+sigalgs)[:12]}
+		 * Формат JA4_r: {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{sorted_ciphers_hex}_{sorted_exts_hex}_{sigalgs_hex_original_order}
 		 */
 		{
 			// Протокол: 'q' при наличии QUIC transport params, иначе 't'
 			bool hasQUIC = false;
 			/**
-			 * Проходим по расширениям в порядке их объявления и проверяем наличие расширения QUIC transport parameters (обычно 0x0039 или 0xFFFE)
+			 * Проходим по расширениям в порядке их объявления и проверяем наличие расширения QUIC transport parameters (0x0039) или его устаревшего аналога (0xFFA5)
 			 */
 			for(const auto & ext : browser.extensions){
-				// Если расширение — QUIC transport parameters (обычно 0x0039 или 0xFFFE), устанавливаем флаг hasQUIC в true и завершаем поиск
-				if((hasQUIC = ((ext->type == awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS) ||
-				   (ext->type == awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY))))
+				// Если расширение — QUIC transport parameters (0x0039) или его устаревший аналог (0xFFA5), устанавливаем флаг hasQUIC в true и завершаем поиск
+				if((hasQUIC = ((ext->type == extension_type_t::QUIC_TRANSPORT_PARAMETERS) ||
+				   (ext->type == extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY))))
 				    // Завершаем поиск, так как наличие расширения QUIC transport parameters определяет протокол в JA4
 					break;
 			}
@@ -3945,7 +3945,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			for(const auto cipher : browser.ciphers){
 				// Если шифр — GREASE, пропускаем его
-				if(cipher == awh::tls::cipher_t::GREASE)
+				if(cipher == cipher_t::GREASE)
 					// Просто пропускаем этот шифр и не включаем его в список для JA4
 					continue;
 				// Получаем wire-код шифра
@@ -3966,7 +3966,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			for(const auto & ext : browser.extensions)
 				// Если расширение соответствует стандартному расширению
-				if(ext->type != awh::tls::extension_type_t::GREASE)
+				if(ext->type != extension_type_t::GREASE)
 					// Увеличиваем счётчик расширений для JA4 на 1
 					++extCount;
 			// Расширения для hash/raw: без GREASE, SNI(0x0000) и ALPN(0x0010), отсортированные
@@ -3976,15 +3976,15 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 */
 			for(const auto & ext : browser.extensions){
 				// Если расширение — GREASE, пропускаем его
-				if(ext->type == awh::tls::extension_type_t::GREASE)
+				if(ext->type == extension_type_t::GREASE)
 					// Просто пропускаем это расширение и не включаем его в список для JA4
 					continue;
 				// Если расширение — SNI(0x0000), пропускаем его
-				if(ext->type == awh::tls::extension_type_t::SERVER_NAME)
+				if(ext->type == extension_type_t::SERVER_NAME)
 					// Просто пропускаем это расширение и не включаем его в список для JA4
 					continue;
 				// Если расширение — ALPN(0x0010), пропускаем его
-				if(ext->type == awh::tls::extension_type_t::ALPN)
+				if(ext->type == extension_type_t::ALPN)
 					// Просто пропускаем это расширение и не включаем его в список для JA4
 					continue;
 				// Получаем wire-код расширения
@@ -3998,8 +3998,8 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			}
 			// Сортируем список расширений для JA4
 			::sort(extsSorted.begin(), extsSorted.end());
-			// Алгоритмы подписи: без GREASE, отсортированные
-			vector <uint16_t> sigalgsSorted;
+			// Алгоритмы подписи: без GREASE, в исходном порядке ClientHello (не сортируются — требование спецификации JA4)
+			vector <uint16_t> sigalgsOrdered;
 			// Если расширение signature_algorithms присутствует
 			if(extensionSigAlgs != nullptr){
 				/**
@@ -4007,7 +4007,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 				 */
 				for(const auto sig : extensionSigAlgs->algorithms){
 					// Если алгоритм подписи — GREASE, пропускаем его
-					if(sig == awh::tls::signature_t::GREASE)
+					if(sig == signature_t::GREASE)
 						// Просто пропускаем этот алгоритм подписи и не включаем его в список для JA4
 						continue;
 					// Получаем wire-код алгоритма подписи
@@ -4016,11 +4016,9 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 					if(wire == 0)
 						// Просто пропускаем этот алгоритм подписи и не включаем его в список для JA4
 						continue;
-					// Добавляем wire-код алгоритма подписи в список для JA4
-					sigalgsSorted.push_back(wire);
+					// Добавляем wire-код алгоритма подписи в список для JA4 (порядок сохраняется)
+					sigalgsOrdered.push_back(wire);
 				}
-				// Сортируем список алгоритмов подписи для JA4
-				::sort(sigalgsSorted.begin(), sigalgsSorted.end());
 			}
 			// Первые 2 символа первого ALPN-протокола
 			string alpn2 = "00";
@@ -4074,22 +4072,22 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 					// Добавляем конвертированный элемент к результату
 					result.append(buffer);
 				}
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			};
-			// Формируем строку расширений в hex формате для JA4_r
+			// Формируем строку расширений в hex формате (используется в JA4 и JA4_r)
 			const string extsHex = makeHexList(extsSorted);
-			// Формируем строку шифров в hex формате для JA4_r
+			// Формируем строку шифров в hex формате (используется в JA4 и JA4_r)
 			const string ciphersHex = makeHexList(ciphersSorted);
-			// Формируем строку алгоритмов подписи в hex формате для JA4_r
-			const string sigalgsHex = makeHexList(sigalgsSorted);
+			// Формируем строку алгоритмов подписи в hex формате в исходном порядке ClientHello (используется в JA4 и JA4_r)
+			const string sigalgsHex = makeHexList(sigalgsOrdered);
 			// Формируем строку JA4_r в формате {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{ciphersHex}_{extsHex}_{sigalgsHex}
 			result.ja4r = (prefix + '_' + ciphersHex + '_' + extsHex + '_' + sigalgsHex);
-			// Формируем строку JA4 в формате {t|q}{ver2}{d|i}{cc:02d}{ec:02d}{alpn2}_{md5(ciphers)[:12]}_{md5(sigalgs)[:12]}
+			// Формируем строку JA4: компонент b = md5(sorted_ciphers)[:12], компонент c = md5(sorted_exts+"_"+sigalgs)[:12]
 			result.ja4 = (
 				prefix + '_' +
 				::local::md5(ciphersHex).substr(0, 12) + '_' +
-				::local::md5(sigalgsHex).substr(0, 12)
+				::local::md5(extsHex + '_' + sigalgsHex).substr(0, 12)
 			);
 		}
 		// ======================== PeetPrint ========================
@@ -4122,7 +4120,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 							sec.append(1, '-');
 						// Добавляем версию в строку секции supported_versions, используя "GREASE" для GREASE-версий и десятичный код для остальных
 						sec.append(
-							(v == awh::tls::version_t::GREASE)
+							(v == version_t::GREASE)
 						    ? string("GREASE")
 						    : ::to_string(::local::versionWire(v))
 						);
@@ -4137,7 +4135,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 * Формат: "{1+n}-{n}.{m1}.{m2}..."
 			 */
 			{
-				// Кол-во методов с учётом 1-байтовой длины
+				// Количество методов компрессии (1-байтовое поле длины не входит в count)
 				const size_t count = browser.compressors.size();
 				// Формируем строку для секции legacy_compression_methods, начиная с "{1+n}-{n}"
 				string sec = (::to_string(1 + count) + '-' + ::to_string(count));
@@ -4169,7 +4167,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 							sec.append(1, '-');
 						// Добавляем группу в строку секции supported_groups, используя "GREASE" для GREASE-групп и десятичный код для остальных
 						sec.append(
-							(gid == awh::tls::group_t::GREASE)
+							(gid == group_t::GREASE)
 							? string("GREASE")
 							: ::to_string(::local::groupWire(gid))
 						);
@@ -4194,7 +4192,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 							sec.append(1, '-');
 						// Добавляем алгоритм подписи в строку секции signature_algorithms, используя "GREASE" для GREASE-алгоритмов и десятичный код для остальных
 						sec.append(
-							(sig == awh::tls::signature_t::GREASE)
+							(sig == signature_t::GREASE)
 							? string("GREASE")
 							: ::to_string(::local::signatureWire(sig))
 						);
@@ -4221,7 +4219,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 						sec.append(1, '-');
 					// Добавляем шифр в строку секции cipher suites, используя "GREASE" для GREASE-шифров и десятичный код для остальных, включая шифры без wire-кода (которые будут отображаться как 0)
 					sec.append(
-						(cipher == awh::tls::cipher_t::GREASE)
+						(cipher == cipher_t::GREASE)
 						? string("GREASE")
 						: ::to_string(::local::cipherWire(cipher))
 					);
@@ -4242,7 +4240,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 						// Добавляем разделитель '-' перед добавлением следующего расширения
 						sec.append(1, '-');
 					// Если расширение — GREASE, добавляем "GREASE"
-					if(ext->type == awh::tls::extension_type_t::GREASE)
+					if(ext->type == extension_type_t::GREASE)
 						// Добавляем "GREASE" для GREASE-расширений в строку секции extensions
 						sec.append("GREASE");
 					// Если расширение не GREASE, добавляем его в строку секции extensions, используя десятичный код для расширений с wire-кодом и 0 для расширений без wire-кода
