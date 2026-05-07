@@ -236,24 +236,6 @@ namespace awh {
 					 */
 					virtual ~Extension_Server_Certificate_Type() = default;
 				} extension_server_certificate_type_t;
-				
-				/**
-				 * @brief Структура расширения TLS для указания поддерживаемых алгоритмов подписи для сертификатов (Signature Algorithms for Certificates)
-				 *
-				 */
-				typedef struct Extension_Signature_Algorithms_Cert : public extension_t {
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Extension_Signature_Algorithms_Cert() noexcept :
-					 extension_t(extension_type_t::SIGNATURE_ALGORITHMS_CERT) {}
-					/**
-					 * @brief Деструктор
-					 *
-					 */
-					virtual ~Extension_Signature_Algorithms_Cert() = default;
-				} extension_signature_algorithms_cert_t;
 
 				/**
 				 * @brief Структура расширения TLS для указания имени сервера (SNI)
@@ -341,26 +323,6 @@ namespace awh {
 					 */
 					virtual ~Extension_EC_Point() = default;
 				} extension_ec_point_t;
-			
-				/**
-				 * @brief Структура расширения TLS для указания поддерживаемых алгоритмов подписи (Signature Algorithms)
-				 *
-				 */
-				typedef struct Extension_Signature : public extension_t {
-					// Список поддерживаемых алгоритмов подписи
-					vector <signature_t> algorithms;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Extension_Signature() noexcept :
-					 extension_t(extension_type_t::SIGNATURE_ALGORITHMS) {}
-					/**
-					 * @brief Деструктор
-					 *
-					 */
-					virtual ~Extension_Signature() = default;
-				} extension_signature_t;
 
 				/**
 				 * @brief Структура расширения TLS для согласования протокола прикладного уровня (ALPN)
@@ -743,14 +705,14 @@ namespace awh {
 				 *
 				 */
 				typedef struct Extension_Certificate_Authorities : public extension_t {
-					// Количество идентификаторов авторитетов сертификатов
-					uint32_t count;
+					// Список DER-кодированных Distinguished Name (DistinguishedName) из RFC 8446 §4.2.4
+					std::vector <std::vector <uint8_t>> authorities;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Extension_Certificate_Authorities() noexcept :
-					 extension_t(extension_type_t::CERTIFICATE_AUTHORITIES), count(0) {}
+					 extension_t(extension_type_t::CERTIFICATE_AUTHORITIES) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -821,6 +783,26 @@ namespace awh {
 				} extension_heartbeat_t;
 
 				/**
+				 * @brief Структура расширения TLS для указания поддерживаемых алгоритмов подписи (Signature Algorithms)
+				 *
+				 */
+				typedef struct Extension_Signature : public extension_t {
+					// Список поддерживаемых алгоритмов подписи
+					vector <signature_t> algorithms;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Extension_Signature() noexcept :
+					 extension_t(extension_type_t::SIGNATURE_ALGORITHMS) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~Extension_Signature() = default;
+				} extension_signature_t;
+
+				/**
 				 * @brief Структура расширения TLS для использования делегированных учетных данных (Delegated Credential)
 				 *
 				 */
@@ -839,6 +821,26 @@ namespace awh {
 					 */
 					virtual ~Extension_Delegated_Credential() = default;
 				} extension_delegated_credential_t;
+
+				/**
+				 * @brief Структура расширения TLS для указания поддерживаемых алгоритмов подписи для сертификатов (Signature Algorithms for Certificates)
+				 *
+				 */
+				typedef struct Extension_Signature_Algorithms_Cert : public extension_t {
+					// Список поддерживаемых алгоритмов подписи для сертификатов
+					vector <signature_t> algorithms;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Extension_Signature_Algorithms_Cert() noexcept :
+					 extension_t(extension_type_t::SIGNATURE_ALGORITHMS_CERT) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~Extension_Signature_Algorithms_Cert() = default;
+				} extension_signature_algorithms_cert_t;
 				
 				/**
 				 * @brief Структура расширения TLS для передачи информации о прозрачности (Transparency Info)

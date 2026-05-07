@@ -104,6 +104,18 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения post_handshake_auth (RFC 8446 §4.2.9, пустое)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения post_handshake_auth
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void postHandshakeAuth(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение post_handshake_auth в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_post_handshake_auth_t> ());
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения record_size_limit (RFC 8449)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения record_size_limit
@@ -201,6 +213,92 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения certificate_authorities (RFC 8446 §4.2.4)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения certificate_authorities
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseCertificateAuthorities(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение certificate_authorities в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_certificate_authorities_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Читаем байтовую длину всего списка DistinguishedName
+		const uint16_t count = u16(buffer);
+		// Проверяем, что список помещается в буфер
+		if(size < static_cast <size_t> (2 + count))
+			// Выходим из функции
+			return;
+		// Инициализируем смещение: пропускаем поле длины списка (2 байта)
+		size_t offset = 2;
+		// Конец списка
+		const size_t end = static_cast <size_t> (2 + count);
+		/**
+		 * Перебираем все записи DistinguishedName в списке.
+		 * Каждая запись: dn_length(2 байта) + dn_data(dn_length байт)
+		 */
+		while((offset + 2) <= end){
+			// Читаем длину текущего DER-кодированного DistinguishedName
+			const uint16_t length = u16(buffer + offset);
+			// Сдвигаем смещение за поле длины
+			offset += 2;
+			// Проверяем, что DN помещается в буфер
+			if((offset + length) > end)
+				// Если данных недостаточно, прекращаем парсинг
+				break;
+			// Копируем DER-байты текущего DistinguishedName в вектор
+			awh_cast <awh::tls::fgp_t::extension_certificate_authorities_t *> (browser.extensions.back().get())->authorities.emplace_back(buffer + offset, buffer + offset + length);
+			// Сдвигаем смещение за данные DN
+			offset += length;
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения psk_key_exchange_modes (RFC 8446 §4.2.9)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения psk_key_exchange_modes
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parsePSKKeyExchangeModes(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение psk_key_exchange_modes в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_psk_key_exchange_t> ());
+		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
+		if(size < 1)
+			// Выходим из функции
+			return;
+		// Получаем количество поддерживаемых режимов обмена ключами PSK из первого байта данных расширения
+		const uint8_t count = buffer[0];
+		// Если количество поддерживаемых режимов обмена ключами PSK равно нулю или данных в буфере недостаточно для парсинга, то выходим из функции
+		if((count == 0) || (size < (1 + count)))
+			// Выходим из функции
+			return;
+		// Выполняем парсинг поддерживаемых режимов обмена ключами PSK из данных расширения
+		for(uint8_t i = 0; ((i < count) && (static_cast <size_t> (1 + i) < size)); ++i){
+			/**
+			 * Проверяем значение режима обмена ключами PSK
+			 */
+			switch(buffer[1 + i]){
+				// Если режим обмена ключами PSK является PSK-only
+				case 0x00:
+					// Добавляем значение PSK_ONLY в список поддерживаемых режимов обмена ключами PSK браузера
+					awh_cast <awh::tls::fgp_t::extension_psk_key_exchange_t *> (browser.extensions.back().get())->modes.push_back(awh::tls::psk_key_t::PSK_ONLY);
+				break;
+				// Если режим обмена ключами PSK является PSK with (EC)DHE
+				case 0x01:
+					// Добавляем значение PSK_DHE в список поддерживаемых режимов обмена ключами PSK браузера
+					awh_cast <awh::tls::fgp_t::extension_psk_key_exchange_t *> (browser.extensions.back().get())->modes.push_back(awh::tls::psk_key_t::PSK_DHE);
+				break;
+				// Если режим обмена ключами PSK является неизвестным или нераспознанным, то добавляем значение UNKNOWN в список поддерживаемых режимов обмена ключами PSK браузера
+				default: awh_cast <awh::tls::fgp_t::extension_psk_key_exchange_t *> (browser.extensions.back().get())->modes.push_back(awh::tls::psk_key_t::UNKNOWN);
+			}
+		}
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения supported_versions (RFC 8446 §4.2.1)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения supported_versions
@@ -216,8 +314,12 @@ namespace fingerprint {
 			return;
 		// Получаем количество поддерживаемых версий из первого байта данных расширения
 		const uint8_t count = buffer[0];
-		// Если количество поддерживаемых версий равно нулю или если данных недостаточно для парсинга всех версий, то данных недостаточно для парсинга
-		if((count == 0) || (size < (1 + (count * 2))))
+		/**
+		 * count — байтовая длина списка версий (RFC 8446 §4.2.1: versions<2..254> = 1-байт prefixed byte count).
+		 * Каждая ProtocolVersion = 2 байта, поэтому count должен быть чётным.
+		 * Необходимый размер буфера: 1 (length byte) + count (list bytes).
+		 */
+		if((count == 0) || (size < static_cast <size_t> (1 + count)) || ((count % 2) != 0))
 			// Выходим из функции
 			return;
 		// Выполняем парсинг поддерживаемых версий из данных расширения
@@ -327,6 +429,8 @@ namespace fingerprint {
 					(static_cast <uint32_t> (buffer[offset + length + 2]) <<  8) |
 					static_cast <uint32_t> (buffer[offset + length + 3])
 				);
+				// Продвигаем смещение за данные идентификатора (length байт) и поле ticketAge (4 байта)
+				offset += (static_cast <size_t> (length) + 4);
 			}
 		}
 	}
@@ -833,6 +937,145 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения signature_algorithms_cert (RFC 8446 §4.2.3)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения signature_algorithms_cert
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseSignatureAlgorithmsCert(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение signature_algorithms_cert в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signature_algorithms_cert_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
+		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых алгоритмов подписи больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
+		// Если количество поддерживаемых алгоритмов подписи больше 0
+		if(count > 0){
+			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
+				// Получаем код алгоритма подписи из буфера
+				const uint16_t alg = u16(buffer + i);
+				// Если код алгоритма подписи является GREASE
+				if(isGrease(alg))
+					// Добавляем код GREASE в список поддерживаемых алгоритмов подписи браузера
+					awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::GREASE);
+				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
+				else {
+					/**
+					 * Определяем код алгоритма подписи
+					 */
+					switch(alg){
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-1 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0201:
+							// Добавляем код алгоритма RSA-PKCS1-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0401:
+							// Добавляем код алгоритма RSA-PKCS1-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-384 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0501:
+							// Добавляем код алгоритма RSA-PKCS1-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-512 и схемой заполнения PKCS#1 версии 1.5.
+						case 0x0601:
+							// Добавляем код алгоритма RSA-PKCS1-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA512);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-1.
+						case 0x0203:
+							// Добавляем код алгоритма ECDSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SHA1);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-256 и кривой secp256r1.
+						case 0x0403:
+							// Добавляем код алгоритма ECDSA-SECP256R1-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP256R1_SHA256);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-384 и кривой secp384r1.
+						case 0x0503:
+							// Добавляем код алгоритма ECDSA-SECP384R1-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP384R1_SHA384);
+						break;
+						// Если алгоритм подписи использует ECDSA в сочетании с хеш-функцией SHA-512 и кривой secp521r1.
+						case 0x0603:
+							// Добавляем код алгоритма ECDSA-SECP521R1-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ECDSA_SECP521R1_SHA512);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-256.
+						case 0x0804:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-384.
+						case 0x0805:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA-PSS в сочетании с хеш-функцией SHA-512.
+						case 0x0806:
+							// Добавляем код алгоритма RSA-PSS-RSAE-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_RSAE_SHA512);
+						break;
+						// Если алгоритм подписи использует ED25519
+						case 0x0807:
+							// Добавляем код алгоритма ED25519 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED25519);
+						break;
+						// Если алгоритм подписи использует ED448
+						case 0x0808:
+							// Добавляем код алгоритма ED448 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::ED448);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA256 (выделенный PSS-сертификат, RFC 8446)
+						case 0x0809:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA256 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA256);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA384 (выделенный PSS-сертификат, RFC 8446)
+						case 0x080A:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA384 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA384);
+						break;
+						// Если алгоритм подписи использует RSA-PSS-PSS-SHA512 (выделенный PSS-сертификат, RFC 8446)
+						case 0x080B:
+							// Добавляем код алгоритма RSA-PSS-PSS-SHA512 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PSS_PSS_SHA512);
+						break;
+						// Если алгоритм подписи использует DSA в сочетании с хеш-функцией SHA-1.
+						case 0x0202:
+							// Добавляем код алгоритма DSA-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::DSA_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией MD5 и схемой заполнения PKCS#1 версии 1.5 (не рекомендуется к использованию из-за слабой криптографической стойкости).
+						case 0xFF01:
+							// Добавляем код алгоритма RSA-PKCS1-MD5-SHA1 в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_MD5_SHA1);
+						break;
+						// Если алгоритм подписи использует RSA в сочетании с хеш-функцией SHA-256 и схемой заполнения PKCS#1 версии 1.5, но является устаревшим и не рекомендуется к использованию (не входит в RFC 8446, но может быть поддержан некоторыми реализациями TLS для обратной совместимости).
+						case 0x0420:
+							// Добавляем код алгоритма RSA-PKCS1-SHA256-LEGACY в список поддерживаемых алгоритмов подписи браузера
+							awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::RSA_PKCS1_SHA256_LEGACY);
+						break;
+						// Если алгоритм подписи не распознан, добавляем код UNKNOWN в список поддерживаемых алгоритмов подписи браузера
+						default: awh_cast <awh::tls::fgp_t::extension_signature_algorithms_cert_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::signature_t::UNKNOWN);
+					}
+				}
+			}
+		}
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения ec_point_formats из данных ClientHello TLS (RFC 8422 §5.1)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
@@ -877,15 +1120,10 @@ namespace fingerprint {
 						// Добавляем код формата точек ANSI X9.62 с использованием битовой маски в список поддерживаемых форматов точек эллиптической кривой браузера
 						awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::ANSIX962_2);
 					break;
-					// Если формат точек является GREASE-значением
-					default: {
-						// Если код формата точек является GREASE-значением
-						if(isGrease(format))
-							// Добавляем код GREASE в список поддерживаемых форматов точек эллиптической кривой браузера
-							awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::GREASE);
-						// Если код формата точек не распознан, добавляем код UNKNOWN в список поддерживаемых форматов точек эллиптической кривой браузера
-						else awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::UNKNOWN);
-					}
+					// ec_point_format — 1-байтовое поле; GREASE — 16-битная концепция, здесь неприменима
+					default:
+						// Добавляем код UNKNOWN в список поддерживаемых форматов точек эллиптической кривой браузера
+						awh_cast <awh::tls::fgp_t::extension_ec_point_t *> (browser.extensions.back().get())->formats.push_back(awh::tls::ec_point_format_t::UNKNOWN);
 				}
 			}
 		}
@@ -1020,15 +1258,22 @@ namespace fingerprint {
 		// Если данных в буфере достаточно для парсинга
 		if(size >= 1){
 			// Устанавливаем тип статуса сертификата на основе значения в первом байте данных расширения
-			awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->certificateStatusType = ((buffer[0] == 0x01) ? "OSCP" : "UNKNOWN");
-			// Если данных в буфере достаточно для чтения responder_id_list_length и request_extensions_length
+			awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->certificateStatusType = ((buffer[0] == 0x01) ? "OCSP" : "UNKNOWN");
+			// Если данных в буфере достаточно для чтения responder_id_list_length
 			if(size >= 3){
+				// Читаем байтовую длину списка идентификаторов ответчиков OCSP
+				const uint16_t length = u16(buffer + 1);
 				// Устанавливаем длину списка идентификаторов ответчиков OCSP
-				awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->responderIdListLength = u16(buffer + 1);
+				awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->responderIdListLength = length;
+				/**
+				 * RFC 6066 §8: request_extensions_length следует за списком responder_id_list.
+				 * Смещение: status_type(1) + responder_id_list_length(2) + responder_id_list(length)
+				 */
+				const size_t offset = static_cast <size_t> (length + 3);
 				// Если данных в буфере достаточно для чтения request_extensions_length
-				if(size >= 5)
+				if(size >= (offset + 2))
 					// Устанавливаем длину списка расширений запроса OCSP
-					awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->requestExtensionsLength = u16(buffer + 3);
+					awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->requestExtensionsLength = u16(buffer + offset);
 			}
 		}
 	}
@@ -1611,18 +1856,28 @@ static void parse_pre_shared_key(const uint8_t* data, size_t len) {
     printf("]\n");
 }
 
-// 0x002F: certificate_authorities (RFC 8446)
+// 0x002F: certificate_authorities (RFC 8446 §4.2.4)
 static void parse_certificate_authorities(const uint8_t* data, size_t len) {
     if (len < 2) { printf("\n"); return; }
-    uint16_t list_len = read_u16(data);
-    int count = 0;
+    const uint16_t list_len = read_u16(data);
+    if (len < static_cast<size_t>(2 + list_len)) { printf("\n"); return; }
+    const size_t end = static_cast<size_t>(2 + list_len);
     size_t off = 2;
-    while (off + 2 <= static_cast<size_t>(2 + list_len) && off + 2 <= len) {
-        uint16_t dn_len = read_u16(data + off);
-        off += 2 + dn_len;
-        count++;
+    printf(", \"authorities\": [");
+    bool first = true;
+    while (off + 2 <= end) {
+        const uint16_t dn_len = read_u16(data + off);
+        off += 2;
+        if (off + dn_len > end) break;
+        if (!first) printf(", ");
+        first = false;
+        printf("\"");
+        for (uint16_t i = 0; i < dn_len; ++i)
+            printf("%02X", data[off + i]);
+        printf("\"");
+        off += dn_len;
     }
-    printf(", \"authorities_count\": %d\n", count);
+    printf("]\n");
 }
 
 // 0x3374: next_proto_neg (NPN) — в ClientHello обычно пустое (сигнализирует поддержку)
@@ -3105,19 +3360,23 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					break;
 					// Если тип расширения соответствует psk_key_exchange_modes (RFC 8446 §4.2.8)
 					case 0x002D:
-						// parse_psk_key_exchange_modes(data + off, len);
+						// Выполняем парсинг расширения psk_key_exchange_modes
+						::fingerprint::parsePSKKeyExchangeModes(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует certificate_authorities (RFC 8446 §4.2.4)
 					case 0x002F:
-						// parse_certificate_authorities(data + off, len);
+						// Выполняем парсинг расширения certificate_authorities
+						::fingerprint::parseCertificateAuthorities(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует post_handshake_auth (RFC 8446 §4.2.9, пустое)
 					case 0x0031:
-						// printf("\n");
+						// Выполняем парсинг расширения post_handshake_auth
+						::fingerprint::postHandshakeAuth(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует signature_algorithms_cert (RFC 8446 §4.2.3)
 					case 0x0032:
-						// parse_signature_algorithms(data + off, len);
+						// Выполняем парсинг расширения signature_algorithms_cert
+						::fingerprint::parseSignatureAlgorithmsCert(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует key_share (RFC 8446 §4.2.8)
 					case 0x0033:
