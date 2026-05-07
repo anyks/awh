@@ -111,13 +111,13 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseRecordSizeLimit(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение record_size_limit в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_record_size_limit_t> ());
 		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
 		if(size < 2)
 			// Выходим из функции
 			return;
-		// Добавляем расширение record_size_limit в список расширений браузера
-		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_record_size_limit_t> ());
-		// Устанавливаем значение ограничения размера TLS-записи в структуре расширения record_size_limit в списке расширений браузера
+		// Устанавливаем значение ограничения размера TLS-записи в объект расширения record_size_limit
 		awh_cast <awh::tls::fgp_t::extension_record_size_limit_t *> (browser.extensions.back().get())->data = u16(buffer);
 	}
 
@@ -131,28 +131,228 @@ namespace fingerprint {
 	static void parsePadding(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение padding в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_padding_t> ());
-		// Устанавливаем размер данных расширения padding в структуре расширения padding в списке расширений браузера
+		// Устанавливаем размер данных расширения padding в объект расширения padding
 		awh_cast <awh::tls::fgp_t::extension_padding_t *> (browser.extensions.back().get())->size = size;
 	}
 
 	/**
-	 * @brief Вспомогательная функция для парсинга расширения delegated_credential (RFC 9345)
+	 * @brief Вспомогательная функция для парсинга расширения session_ticket (RFC 5077)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения session_ticket
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseSessionTicket(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Определяем размер данных расширения session_ticket (не более 32 байта)
+		const size_t bytes = ::min <size_t> (32, size);
+		// Добавляем расширение session_ticket в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_session_ticket_t> ());
+		// Забиваем данные расширения нулями, чтобы гарантировать наличие данных в случае, если расширение session_ticket пустое
+		awh_cast <awh::tls::fgp_t::extension_session_ticket_t *> (browser.extensions.back().get())->data.resize(bytes, 0);
+		// Копируем данные расширения session_ticket из буфера в блок данных расширения session_ticket
+		::memcpy(&awh_cast <awh::tls::fgp_t::extension_session_ticket_t *> (browser.extensions.back().get())->data[0], buffer, bytes);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения early_data (RFC 8446 §4.2.10)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения early_data
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseEarlyData(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение early_data в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_early_data_t> ());
+		// Если размер данных в буфере меньше 4 байт, то данных недостаточно для парсинга
+		if(size < 4)
+			// Выходим из функции
+			return;
+		// Устанавливаем значение максимального размера данных для ранних данных (early data) в объект расширения early_data
+		awh_cast <awh::tls::fgp_t::extension_early_data_t *> (browser.extensions.back().get())->maxSize = (
+			(static_cast <uint32_t> (buffer[0]) << 24) |
+			(static_cast <uint32_t> (buffer[1]) << 16) |
+			(static_cast <uint32_t> (buffer[2]) << 8) | buffer[3]
+		);
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения cookie (RFC 8446 §4.2.2)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения cookie
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseCookie(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение cookie в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_cookie_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Определяем размер данных расширения cookie
+		const uint16_t length = u16(buffer);
+		// Если количество данных расширения cookie достаточно для парсинга
+		if((length > 0) && (size >= (2 + length))){
+			// Устанавливаем размер данных расширения cookie в объект расширения cookie
+			awh_cast <awh::tls::fgp_t::extension_cookie_t *> (browser.extensions.back().get())->data.resize(length);
+			// Копируем данные расширения cookie из буфера в блок данных расширения cookie
+			::memcpy(&awh_cast <awh::tls::fgp_t::extension_cookie_t *> (browser.extensions.back().get())->data[0], buffer + 2, length);
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения supported_versions (RFC 8446 §4.2.1)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения supported_versions
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseSupportedVersions(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение supported_versions в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_supported_versions_t> ());
+		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
+		if(size < 1)
+			// Выходим из функции
+			return;
+		// Получаем количество поддерживаемых версий из первого байта данных расширения
+		const uint8_t count = buffer[0];
+		// Если количество поддерживаемых версий равно нулю или если данных недостаточно для парсинга всех версий, то данных недостаточно для парсинга
+		if((count == 0) || (size < (1 + (count * 2))))
+			// Выходим из функции
+			return;
+		// Выполняем парсинг поддерживаемых версий из данных расширения
+		for(size_t i = 1; ((i < static_cast <size_t> (1 + count)) && ((i + 1) < size)); i += 2){
+			// Получаем 16-битное значение версии из данных расширения
+			const uint16_t ver = u16(buffer + i);
+			// Если код версии является GREASE
+			if(isGrease(ver))
+				// Добавляем код GREASE в список поддерживаемых версий браузера
+				awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::GREASE);
+			// Если код версии является одной из стандартных версий из RFC 8446
+			else {
+				/**
+				 * Определяем код версии
+				 */
+				switch(ver){
+					// Если версия является SSLv3
+					case 0x0300:
+						// Добавляем код версии SSLv3 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::SSL_V3);
+					break;
+					// Если версия является TLS 1.0
+					case 0x0301:
+						// Добавляем код версии TLS 1.0 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::TLS_1_0);
+					break;
+					// Если версия является TLS 1.1
+					case 0x0302:
+						// Добавляем код версии TLS 1.1 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::TLS_1_1);
+					break;
+					// Если версия является TLS 1.2
+					case 0x0303:
+						// Добавляем код версии TLS 1.2 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::TLS_1_2);
+					break;
+					// Если версия является TLS 1.3
+					case 0x0304:
+						// Добавляем код версии TLS 1.3 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::TLS_1_3);
+					break;
+					// Если версия является DTLS 1.0
+					case 0xFEFF:
+						// Добавляем код версии DTLS 1.0 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::DTLS_1_0);
+					break;
+					// Если версия является DTLS 1.2
+					case 0xFEFD:
+						// Добавляем код версии DTLS 1.2 в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::DTLS_1_2);
+					break;
+					// Если версия является неизвестной или нераспознанной
+					default:
+						// Добавляем код неизвестной версии в список поддерживаемых версий браузера
+						awh_cast <awh::tls::fgp_t::extension_supported_versions_t *> (browser.extensions.back().get())->versions.push_back(awh::tls::version_t::UNKNOWN);
+				}
+			}
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения pre_shared_key (RFC 8446 §4.2.11)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения pre_shared_key
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parsePreSharedKey(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение pre_shared_key в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_pre_shared_key_t> ());
+		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
+		if(size < 2)
+			// Выходим из функции
+			return;
+		// Получаем количество данных расширения pre_shared_key из первых 2 байт данных расширения
+		const uint16_t count = u16(buffer);
+		// Если количество данных расширения pre_shared_key больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
+		// Если количество данных расширения pre_shared_key больше 0, то выполняем парсинг идентификаторов предварительно совместных ключей
+		if(count > 0){
+			// Устанавливаем начальное значение смещения
+			size_t offset = 2;
+			/**
+			 * Перебираем идентификаторы предварительно совместных ключей в данных расширения
+			 */
+			while(((offset + 2) <= static_cast <size_t> (2 + count)) && ((offset + 2) <= size)){
+				// Получаем размер идентификатора предварительно совместного ключа из буфера
+				const uint16_t length = u16(buffer + offset);
+				// Увеличиваем смещение на размер поля с размером идентификатора предварительно совместного ключа (2 байта)
+				offset += 2;
+				// Если смещение с учетом размера идентификатора предварительно совместного ключа и поля с размером идентификатора превышает размер данных в буфере, то данных недостаточно для парсинга
+				if((offset + static_cast <size_t> (length + 4)) > size)
+					// Выходим из цикла
+					break;
+				// Добавляем новый идентификатор предварительно совместного ключа в список идентификаторов расширения pre_shared_key
+				awh_cast <awh::tls::fgp_t::extension_pre_shared_key_t *> (browser.extensions.back().get())->identities.push_back(awh::tls::fgp_t::extension_pre_shared_key_t::Identity{});
+				// Забиваем буфер идентификатора предварительно совместного ключа нулями, чтобы гарантировать наличие данных в случае, если идентификатор предварительно совместного ключа пустой
+				awh_cast <awh::tls::fgp_t::extension_pre_shared_key_t *> (browser.extensions.back().get())->identities.back().data.resize(length, 0);
+				// Копируем данные идентификатора предварительно совместного ключа из буфера в блок данных расширения pre_shared_key
+				::memcpy(&awh_cast <awh::tls::fgp_t::extension_pre_shared_key_t *> (browser.extensions.back().get())->identities.back().data[0], buffer + offset, length);
+				// Устанавливаем значение обфусцированного времени жизни билета (Obfuscated Ticket Age) для текущего идентификатора предварительно совместного ключа из буфера данных расширения pre_shared_key
+				awh_cast <awh::tls::fgp_t::extension_pre_shared_key_t *> (browser.extensions.back().get())->identities.back().ticketAge = (
+					(static_cast <uint32_t> (buffer[offset + length])     << 24) |
+					(static_cast <uint32_t> (buffer[offset + length + 1]) << 16) |
+					(static_cast <uint32_t> (buffer[offset + length + 2]) <<  8) |
+					static_cast <uint32_t> (buffer[offset + length + 3])
+				);
+			}
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения delegated_credential (RFC 9345 §4.2)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения delegated_credential
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseDelegatedCredential(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение delegated_credential в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_delegated_credential_t> ());
 		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
 		if(size < 2)
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых алгоритмов подписи больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
 		// Если количество поддерживаемых алгоритмов подписи больше 0
 		if(count > 0){
-			// Добавляем расширение delegated_credential в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_delegated_credential_t> ());
 			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
 			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Получаем код алгоритма подписи из буфера
@@ -278,16 +478,20 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseCompressCertificate(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение compress_certificate в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_compress_certificate_t> ());
 		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
 		if(size < 1)
 			// Выходим из функции
 			return;
 		// Получаем количество байт в списке алгоритмов сжатия из первого байта данных расширения
 		const uint8_t count = buffer[0];
+		// Если количество байт в списке алгоритмов сжатия больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 1))
+			// Выходим из функции
+			return;
 		// Если количество байт в списке алгоритмов сжатия больше 0
 		if(count > 0){
-			// Добавляем расширение compress_certificate в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_compress_certificate_t> ());
 			// Перебираем алгоритмы сжатия в данных расширения
 			for(size_t i = 0; (((i + 2) <= static_cast <size_t> (count)) && ((1 + i + 2) <= size)); i += 2){
 				// Извлекаем идентификатор алгоритма сжатия из текущей позиции в буфере данных расширения
@@ -333,18 +537,22 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseALPN(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение ALPN в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_alpn_t> ());
 		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
 		if(size < 2)
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых ALPN-протоколов из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых ALPN-протоколов больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
 		// Если количество поддерживаемых ALPN-протоколов больше 0
 		if(count > 0){
 			// Текущая позиция в буфере данных расширения
 			size_t pos = 2;
-			// Добавляем расширение ALPN в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_alpn_t> ());
 			/**
 			 * Перебираем поддерживаемые ALPN-протоколы в данных расширения
 			 */
@@ -371,12 +579,12 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseHeartbeat(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение heartbeat в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_heartbeat_t> ());
 		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
 		if(size < 1)
 			// Выходим из функции
 			return;
-		// Добавляем расширение heartbeat в список расширений браузера
-		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_heartbeat_t> ());
 		/**
 		 * Определяем режим работы расширения heartbeat на основе значения в первом байте данных расширения
 		 */
@@ -406,16 +614,20 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseUseSRTP(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение use_srtp в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_use_srtp_t> ());
 		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
 		if(size < 2)
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых профилей SRTP из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых профилей SRTP больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
 		// Если количество поддерживаемых профилей SRTP больше 0
 		if(count > 0){
-			// Добавляем расширение use_srtp в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_use_srtp_t> ());
 			// Перебираем поддерживаемые профили SRTP в данных расширения
 			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Извлекаем код профиля SRTP из буфера
@@ -476,7 +688,7 @@ namespace fingerprint {
 			const size_t offset = static_cast <size_t> (2 + count);
 			// Если смещение для чтения MKI меньше размера данных расширения
 			if(offset < size)
-				// Устанавливаем длину MKI в структуре расширения use_srtp браузера
+				// Устанавливаем длину MKI в объект расширения use_srtp браузера
 				awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->mkiLength = buffer[offset];
 		}
 	}
@@ -489,16 +701,20 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseSignatureAlgorithms(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение signature_algorithms в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signature_t> ());
 		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
 		if(size < 2)
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых алгоритмов подписи из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых алгоритмов подписи больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
 		// Если количество поддерживаемых алгоритмов подписи больше 0
 		if(count > 0){
-			// Добавляем расширение signature_algorithms в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signature_t> ());
 			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
 			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Получаем код алгоритма подписи из буфера
@@ -624,16 +840,20 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseECPointFormats(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение ec_point_formats в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_ec_point_t> ());
 		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
 		if(size < 1)
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых форматов точек эллиптической кривой из первого байта данных расширения
 		const uint8_t count = buffer[0];
+		// Если количество поддерживаемых форматов точек эллиптической кривой больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 1))
+			// Выходим из функции
+			return;
 		// Если количество поддерживаемых форматов точек эллиптической кривой больше 0
 		if(count > 0){
-			// Добавляем расширение ec_point_formats в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_ec_point_t> ());
 			// Перебираем поддерживаемые форматы точек эллиптической кривой в данных расширения
 			for(uint8_t i = 0; ((i < count) && (static_cast <size_t> (i + 1) < size)); ++i){
 				// Извлекаем код формата точек из буфера
@@ -679,16 +899,20 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseSupportedGroups(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение supported_groups в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_supported_groups_t> ());
 		// Если размер данных в буфере меньше 2 байт, то данных недостаточно для парсинга
 		if(size < 2)
 			// Выходим из функции
 			return;
 		// Получаем количество поддерживаемых групп эллиптических кривых из первых 2 байт данных расширения
 		const uint16_t count = u16(buffer);
+		// Если количество поддерживаемых групп эллиптических кривых больше размера данных в буфере, то данных недостаточно для парсинга
+		if(count > (size - 2))
+			// Выходим из функции
+			return;
 		// Если количество поддерживаемых групп эллиптических кривых больше 0
 		if(count > 0){
-			// Добавляем расширение supported_groups в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_supported_groups_t> ());
 			/**
 			 * Перебираем поддерживаемые группы эллиптических кривых в данных расширения
 			 */
@@ -791,10 +1015,10 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseStatusRequest(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение status_request в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_status_request_t> ());
 		// Если данных в буфере достаточно для парсинга
 		if(size >= 1){
-			// Добавляем расширение status_request в список расширений браузера
-			browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_status_request_t> ());
 			// Устанавливаем тип статуса сертификата на основе значения в первом байте данных расширения
 			awh_cast <awh::tls::fgp_t::extension_status_request_t *> (browser.extensions.back().get())->certificateStatusType = ((buffer[0] == 0x01) ? "OSCP" : "UNKNOWN");
 			// Если данных в буфере достаточно для чтения responder_id_list_length и request_extensions_length
@@ -817,12 +1041,12 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseMaxFragmentLength(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение max_fragment_length в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_max_fragment_length_t> ());
 		// Если размер данных в буфере меньше 1 байта, то данных недостаточно для парсинга
 		if(size < 1)
 			// Выходим из функции
 			return;
-		// Добавляем расширение max_fragment_length в список расширений браузера
-		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_max_fragment_length_t> ());
 		/**
 		 * Определяем максимальную длину фрагмента TLS на основе значения в первом байте данных расширения
 		 */
@@ -860,6 +1084,8 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseServerName(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение SNI в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_server_name_t> ());
 		// Минимум: list_length(2) + name_type(1) + name_length(2) + name(1) = 6 байт
 		if(size < 6)
 			// Выходим из функции
@@ -889,12 +1115,9 @@ namespace fingerprint {
 				// Если данных недостаточно, прекращаем парсинг
 				break;
 			// Если тип имени — host_name и длина имени больше 0
-			if((type == 0x00) && (length > 0)){
-				// Добавляем расширение SNI в список расширений браузера
-				browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_server_name_t> ());
+			if((type == 0x00) && (length > 0))
 				// Устанавливаем имя сервера в расширение SNI
 				awh_cast <awh::tls::fgp_t::extension_server_name_t *> (browser.extensions.back().get())->names.push_back(string(reinterpret_cast <const char *> (buffer + offset), length));
-			}
 			// Сдвигаем смещение на длину имени
 			offset += static_cast <size_t> (length);
 		}
@@ -1360,18 +1583,32 @@ static void parse_cookie(const uint8_t* data, size_t len) {
     printf("\"\n");
 }
 
-// 0x0029: pre_shared_key (RFC 8446) — TLS 1.3 resumption
 static void parse_pre_shared_key(const uint8_t* data, size_t len) {
     if (len < 2) { printf("\n"); return; }
     uint16_t ids_len = read_u16(data);
-    int count = 0;
+    printf(", \"identities\": [");
+    bool first = true;
     size_t off = 2;
     while (off + 2 <= static_cast<size_t>(2 + ids_len) && off + 2 <= len) {
         uint16_t id_len = read_u16(data + off);
-        off += 2 + id_len + 4; // identity + obfuscated_ticket_age (4 байта)
-        count++;
+        off += 2;
+        if (off + id_len + 4 > len) break;
+        if (!first) printf(", ");
+        first = false;
+        // identity в hex (первые 16 байт)
+        printf("{\"identity\": \"");
+        for (size_t i = 0; i < std::min<size_t>(16, id_len); ++i)
+            printf("%02X", data[off + i]);
+        if (id_len > 16) printf("...");
+        // obfuscated_ticket_age (4 байта после identity)
+        uint32_t age = (static_cast<uint32_t>(data[off + id_len])     << 24) |
+                       (static_cast<uint32_t>(data[off + id_len + 1]) << 16) |
+                       (static_cast<uint32_t>(data[off + id_len + 2]) <<  8) |
+                        static_cast<uint32_t>(data[off + id_len + 3]);
+        printf("\", \"obfuscated_ticket_age\": %u}", age);
+        off += id_len + 4;
     }
-    printf(", \"identities_count\": %d\n", count);
+    printf("]\n");
 }
 
 // 0x002F: certificate_authorities (RFC 8446)
@@ -2367,7 +2604,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				return result;
 			}
 			// Выделяем память для идентификатора сессии
-			browser.session.resize(length, 1);
+			browser.session.resize(length, 0);
 			// Копируем данные идентификатора сессии из буфера
 			::memcpy(&browser.session[0], buffer + offset, length);
 			// Увеличиваем смещение на длину session_id
@@ -2413,7 +2650,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					return result;
 				}
 				// Выделяем память для cookie
-				browser.cookie.resize(length, 1);
+				browser.cookie.resize(length, 0);
 				// Копируем данные cookie из буфера
 				::memcpy(&browser.cookie[0], buffer + offset, length);
 				// Увеличиваем смещение на длину cookie
@@ -2843,23 +3080,28 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					break;
 					// Если тип расширения соответствует session_ticket (RFC 5077)
 					case 0x0023:
-						// parse_session_ticket(data + off, len);
+						// Выполняем парсинг расширения session_ticket
+						::fingerprint::parseSessionTicket(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует pre_shared_key (RFC 8446 §4.2.11)
 					case 0x0029:
-						// parse_pre_shared_key(data + off, len);
+						// Выполняем парсинг расширения pre_shared_key
+						::fingerprint::parsePreSharedKey(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует early_data (RFC 8446 §4.2.10)
 					case 0x002A:
-						// parse_early_data(data + off, len);
+						// Выполняем парсинг расширения early_data
+						::fingerprint::parseEarlyData(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует supported_versions (RFC 8446 §4.2.1)
 					case 0x002B:
-						// parse_supported_versions(data + off, len);
+						// Выполняем парсинг расширения supported_versions
+						::fingerprint::parseSupportedVersions(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует cookie (RFC 8446 §4.2.2)
 					case 0x002C:
-						// parse_cookie(data + off, len);
+						// Выполняем парсинг расширения cookie
+						::fingerprint::parseCookie(buffer + offset, size, browser);
 					break;
 					// Если тип расширения соответствует psk_key_exchange_modes (RFC 8446 §4.2.8)
 					case 0x002D:

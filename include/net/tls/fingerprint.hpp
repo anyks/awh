@@ -708,14 +708,29 @@ namespace awh {
 				 *
 				 */
 				typedef struct Extension_Pre_Shared_Key : public extension_t {
-					// Количество идентификаторов предварительно совместных ключей
-					uint32_t count;
+					/**
+					 * @brief Структура идентификатора предварительно совместного ключа (PSK Identity)
+					 *
+					 */
+					struct Identity {
+						// Время жизни билета (Ticket Age)
+						uint32_t ticketAge;
+						// Идентификатор предварительно совместного ключа
+						vector <uint8_t> data;
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Identity() noexcept : ticketAge(0) {}
+					};
+					// Список идентификаторов предварительно совместных ключей
+					vector <Identity> identities;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Extension_Pre_Shared_Key() noexcept :
-					 extension_t(extension_type_t::PRE_SHARED_KEY), count(0) {}
+					 extension_t(extension_type_t::PRE_SHARED_KEY) {}
 					/**
 					 * @brief Деструктор
 					 *
