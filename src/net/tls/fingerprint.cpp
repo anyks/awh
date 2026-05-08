@@ -521,6 +521,14 @@ namespace local {
 			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
 				// Возвращаем TLS wire-код для signed_certificate_timestamp
 				return 0x0012;
+			// Если тип расширения соответствует client_certificate_type
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CLIENT_CERTIFICATE_TYPE):
+				// Возвращаем TLS wire-код для client_certificate_type
+				return 0x0013;
+			// Если тип расширения соответствует server_certificate_type
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_CERTIFICATE_TYPE):
+				// Возвращаем TLS wire-код для server_certificate_type
+				return 0x0014;
 			// Если тип расширения соответствует padding
 			case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING):
 				// Возвращаем TLS wire-код для padding
@@ -573,6 +581,10 @@ namespace local {
 			case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES):
 				// Возвращаем TLS wire-код для certificate_authorities
 				return 0x002F;
+			// Если тип расширения соответствует oid_filters
+			case static_cast <uint8_t> (awh::tls::extension_type_t::OID_FILTERS):
+				// Возвращаем TLS wire-код для oid_filters
+				return 0x0030;
 			// Если тип расширения соответствует post_handshake_auth
 			case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
 				// Возвращаем TLS wire-код для post_handshake_auth
@@ -585,6 +597,10 @@ namespace local {
 			case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE):
 				// Возвращаем TLS wire-код для key_share
 				return 0x0033;
+			// Если тип расширения соответствует transparency_info
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TRANSPARENCY_INFO):
+				// Возвращаем TLS wire-код для transparency_info
+				return 0x0035;
 			// Если тип расширения соответствует quic_transport_parameters
 			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS):
 				// Возвращаем TLS wire-код для quic_transport_parameters
@@ -6277,9 +6293,9 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 					continue;
 				// Получаем wire-тип расширения
 				wireType = ::local::extensionWire(etype);
-				// Если wire-тип неизвестен — пропускаем расширение
-				if(wireType == 0u)
-					// Пропускаем расширение
+				// Если wire-тип неизвестен (extensionWire возвращает 0xFFFF для неподдерживаемых типов) — пропускаем
+				if(wireType == 0xFFFFu)
+					// Пропускаем расширение с неизвестным wire-типом
 					continue;
 			}
 			// Флаг: является ли это "filter-list" расширением (пропустить если payload пуст после фильтрации)
