@@ -3285,388 +3285,682 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		ostringstream out;
 		// Горизонтальная линия-разделитель (80 символов)
 		const string LINE(80, '=');
-		// Вспомогательная лямбда: форматирование uint16_t как "0x%04X"
-		const auto hex16 = [](const uint16_t v) -> string {
-			char buf[8];
-			::snprintf(buf, sizeof(buf), "0x%04X", v);
-			return buf;
+		/**
+		 * @brief Вспомогательная лямбда: форматирование uint16_t как "0x%04X"
+		 *
+		 * @param num число для форматирования
+		 * @return    строка вида "0x%04X"
+		 */
+		const auto hex16 = [](const uint16_t num) -> string {
+			// Результат работы функции
+			char result[8];
+			// Форматируем число в виде "0x%04X"
+			::snprintf(result, sizeof(result), "0x%04X", num);
+			// Выводим результат
+			return result;
 		};
-		// Вспомогательная лямбда: форматирование uint8_t как "0x%02X"
-		const auto hex8 = [](const uint8_t v) -> string {
-			char buf[6];
-			::snprintf(buf, sizeof(buf), "0x%02X", v);
-			return buf;
+		/**
+		 * @brief Вспомогательная лямбда: форматирование uint8_t как "0x%02X"
+		 *
+		 * @param num число для форматирования
+		 * @return    строка вида "0x%02X"
+		 */
+		const auto hex8 = [](const uint8_t num) -> string {
+			// Результат работы функции
+			char result[6];
+			// Форматируем число в виде "0x%02X"
+			::snprintf(result, sizeof(result), "0x%02X", num);
+			// Выводим результат
+			return result;
 		};
-		// Вспомогательная лямбда: секционный заголовок с количеством элементов
+		/**
+		 * @brief Вспомогательная лямбда: секционный заголовок с количеством элементов
+		 * 
+		 * @param title название секции
+		 */
 		const auto section = [&out](const string & title) -> void {
-			out << '\n' << "  [ " << title << " ]\n";
+			// Выводим заголовок секции с отступами и линиями-разделителями
+			out << endl << "  [ " << title << " ]" << endl;
 		};
 		// ================================================================
 		// Заголовок
 		// ================================================================
-		out << '\n' << LINE << '\n';
-		out << "                  TLS ClientHello  -  Browser Fingerprint\n";
-		out << LINE << '\n';
+		out << endl << LINE << endl;
+		out << "                  TLS ClientHello  -  Browser Fingerprint" << endl;
+		out << LINE << endl;
 		// ================================================================
 		// Record Layer
 		// ================================================================
+		/**
+		 * Формируем секцию Record Layer
+		 */
 		section("Record Layer");
 		{
 			// Получаем wire-код версии record layer
-			const uint16_t w = ::local::versionWire(browser.record.version);
-			out << "    Version  : " << ::local::tlsVersionName(w) << "  (" << hex16(w) << ")\n";
-			out << "    Length   : " << browser.record.length << '\n';
+			const uint16_t wire = ::local::versionWire(browser.record.version);
+			// Выводим версию и её wire-код
+			out << "    Version  : " << ::local::tlsVersionName(wire) << "  (" << hex16(wire) << ")" << endl;
+			// Выводим длину записи Record Layer
+			out << "    Length   : " << browser.record.length << endl;
 			// Поля DTLS выводим только если они ненулевые
 			if((browser.record.epoch != 0) || (browser.record.sequence != 0)){
-				out << "    Epoch    : " << browser.record.epoch    << "  [DTLS]\n";
-				out << "    Sequence : " << browser.record.sequence << "  [DTLS]\n";
+				// Выводим поле эпохи для DTLS
+				out << "    Epoch    : " << browser.record.epoch    << "  [DTLS]" << endl;
+				// Выводим поле последовательности для DTLS, выводим как десятичное (можно было бы и hex, но десятичный формат привычнее для DTLS)
+				out << "    Sequence : " << browser.record.sequence << "  [DTLS]" << endl;
 			}
 		}
 		// ================================================================
 		// Handshake Header
 		// ================================================================
+		/**
+		 * Формируем секцию Handshake Header
+		 */
 		section("Handshake Header");
-		out << "    Length       : " << browser.handshake.length            << '\n';
-		out << "    Sequence     : " << browser.handshake.sequence           << '\n';
-		out << "    Frag. Offset : " << browser.handshake.fragment.offset   << '\n';
-		out << "    Frag. Length : " << browser.handshake.fragment.length   << '\n';
+		// Выводим длину Handshake, которая может отличаться от длины Record Layer при фрагментации (обычно в DTLS)
+		out << "    Length       : " << browser.handshake.length << endl;
+		// Выводим последовательность Handshake, которая может отличаться от 0 при фрагментации (обычно в DTLS)
+		out << "    Sequence     : " << browser.handshake.sequence << endl;
+		// Выводим смещение фрагмента Handshake, которое может отличаться от 0 при фрагментации (обычно в DTLS)
+		out << "    Frag. Offset : " << browser.handshake.fragment.offset << endl;
+		// Выводим длину фрагмента Handshake, которая может отличаться от общей длины Handshake при фрагментации (обычно в DTLS)
+		out << "    Frag. Length : " << browser.handshake.fragment.length << endl;
 		// ================================================================
 		// ClientHello
 		// ================================================================
+		/**
+		 * Формируем секцию ClientHello
+		 */
 		section("ClientHello");
 		{
 			// Получаем wire-код версии legacy_version из ClientHello
-			const uint16_t w = ::local::versionWire(browser.clientHello.version);
-			out << "    Legacy Version : " << ::local::tlsVersionName(w) << "  (" << hex16(w) << ")\n";
-			out << "    Random         : " << ::local::tohex(browser.clientHello.random.data(), browser.clientHello.random.size()) << '\n';
+			const uint16_t wire = ::local::versionWire(browser.clientHello.version);
+			// Выводим legacy_version и его wire-код
+			out << "    Legacy Version : " << ::local::tlsVersionName(wire) << "  (" << hex16(wire) << ")" << endl;
+			// Выводим произвольные байты в 16-ричном формате
+			out << "    Random         : " << ::local::tohex(browser.clientHello.random.data(), browser.clientHello.random.size()) << endl;
 			// Session ID: выводим hex или пометку "(empty)" если отсутствует
 			if(!browser.session.empty())
-				out << "    Session ID     : " << ::local::tohex(browser.session.data(), browser.session.size()) << '\n';
-			else
-				out << "    Session ID     : (empty)\n";
+				// Выводим Session ID в 16-ричном формате
+				out << "    Session ID     : " << ::local::tohex(browser.session.data(), browser.session.size()) << endl;
+			// Если Session ID отсутствует, выводим пометку "(empty)"
+			else out << "    Session ID     : (empty)" << endl;
 			// Cookie DTLS: выводим только если присутствует
 			if(!browser.cookie.empty())
-				out << "    DTLS Cookie    : " << ::local::tohex(browser.cookie.data(), browser.cookie.size()) << '\n';
-			out << "    GREASE Used    : " << (browser.grease ? "yes" : "no") << '\n';
+				// Выводим DTLS Cookie в 16-ричном формате
+				out << "    DTLS Cookie    : " << ::local::tohex(browser.cookie.data(), browser.cookie.size()) << endl;
+			// Выводим наличие GREASE в ClientHello (по наличию GREASE-значений в версиях, шифрах, группах и расширениях)
+			out << "    GREASE Used    : " << (browser.grease ? "yes" : "no") << endl;
 		}
 		// ================================================================
 		// Cipher Suites
 		// ================================================================
 		{
+			// Буфер для заголовка секции с количеством шифров
 			char title[64];
+			// Формируем заголовок секции Cipher Suites с количеством шифров в скобках
 			::snprintf(title, sizeof(title), "Cipher Suites (%zu)", browser.ciphers.size());
+			/**
+			 * Формируем секцию Cipher Suites с заголовком, включающим количество шифров
+			 */
 			section(title);
 		}
+		/**
+		 * Перебираем все шифры из ClientHello и выводим их имена с выравниванием, а также их wire-коды в виде "0x%04X"
+		 */
 		for(size_t i = 0; i < browser.ciphers.size(); ++i){
 			// Получаем wire-код шифра
-			const uint16_t w = ::local::cipherWire(browser.ciphers[i]);
+			const uint16_t wire = ::local::cipherWire(browser.ciphers[i]);
 			// Имя шифра: GREASE или реальное название
-			const char * name = (browser.ciphers[i] == cipher_t::GREASE) ? "[GREASE]" : ::local::cipherName(w);
+			const char * name = (browser.ciphers[i] == cipher_t::GREASE) ? "[GREASE]" : ::local::cipherName(wire);
 			// Выравниваем имена по столбцу 40
-			char idx[8];
-			::snprintf(idx, sizeof(idx), "[%2zu]", i);
-			out << "    " << idx << "  ";
+			char index[8];
+			// Формируем индекс шифра в виде "[ i ]"
+			::snprintf(index, sizeof(index), "[%2zu]", i);
+			// Выводим индекс, имя шифра с выравниванием и его wire-код в виде "0x%04X"
+			out << "    " << index << "  ";
+			// Выводим имя шифра с выравниванием по столбцу 40
 			out << name;
-			const int pad = 36 - static_cast <int> (::strlen(name));
-			for(int k = 0; k < pad; ++k) out << ' ';
-			out << "(" << hex16(w) << ")\n";
+			// Вычисляем количество пробелов для выравнивания по столбцу 40
+			const int32_t pad = (36 - static_cast <int32_t> (::strlen(name)));
+			/**
+			 * Выводим пробелы для выравнивания
+			 */
+			for(int32_t j = 0; j < pad; ++j)
+				// Выводим пробел для выравнивания
+				out << ' ';
+			// Выводим wire-код шифра в виде "0x%04X"
+			out << "(" << hex16(wire) << ")" << endl;
 		}
 		// ================================================================
 		// Compression Methods
 		// ================================================================
 		{
+			// Буфер для заголовка секции с количеством методов сжатия
 			char title[64];
+			// Формируем заголовок секции Compression Methods с количеством методов сжатия в скобках
 			::snprintf(title, sizeof(title), "Compression Methods (%zu)", browser.compressors.size());
+			/**
+			 * Формируем секцию Compression Methods с заголовком, включающим количество методов сжатия
+			 */
 			section(title);
 		}
+		/**
+		 * Перебираем все методы сжатия из ClientHello и выводим их имена с выравниванием, а также их wire-коды в виде "0x%02X"
+		 */
 		for(size_t i = 0; i < browser.compressors.size(); ++i){
 			// Получаем wire-код метода сжатия
-			const uint8_t w = ::local::compressorWire(browser.compressors[i]);
-			char idx[8];
-			::snprintf(idx, sizeof(idx), "[%2zu]", i);
-			out << "    " << idx << "  " << ::local::compressALGName(w) << "  (" << hex8(w) << ")\n";
+			const uint8_t wire = ::local::compressorWire(browser.compressors[i]);
+			// Буфер для индекса метода сжатия
+			char index[8];
+			// Формируем индекс метода сжатия в виде "[ i ]"
+			::snprintf(index, sizeof(index), "[%2zu]", i);
+			// Выводим индекс, имя метода сжатия и его wire-код в виде "0x%02X"
+			out << "    " << index << "  " << ::local::compressALGName(wire) << "  (" << hex8(wire) << ")" << endl;
 		}
 		// ================================================================
 		// Extensions
 		// ================================================================
 		{
+			// Буфер для заголовка секции с количеством расширений
 			char title[64];
+			// Формируем заголовок секции Extensions с количеством расширений в скобках
 			::snprintf(title, sizeof(title), "Extensions (%zu)", browser.extensions.size());
+			/**
+			 * Формируем секцию Extensions с заголовком, включающим количество расширений
+			 */
 			section(title);
 		}
+		/**
+		 * Перебираем все расширения из ClientHello и выводим их имена с выравниванием, а также их wire-коды в виде "0x%04X"
+		 */
 		for(size_t i = 0; i < browser.extensions.size(); ++i){
+			// Получаем объект расширения
 			const auto & ext = browser.extensions[i];
 			// Получаем wire-код расширения (0xFFFF — неизвестное)
-			const uint16_t w = ::local::extensionWire(ext->type);
-			char idx[8];
-			::snprintf(idx, sizeof(idx), "[%2zu]", i);
+			const uint16_t wire = ::local::extensionWire(ext->type);
+			// Буфер для индекса расширения
+			char index[8];
+			// Формируем индекс расширения в виде "[ i ]"
+			::snprintf(index, sizeof(index), "[%2zu]", i);
 			// GREASE расширение: выводим специальный маркер и переходим к следующему
 			if(ext->type == extension_type_t::GREASE){
-				out << "    " << idx << "  [GREASE]\n";
+				// Выводим индекс расширения и пометку "[GREASE]"
+				out << "    " << index << "  [GREASE]" << endl;
+				// Переходим к следующему расширению без добавления деталей
 				continue;
 			}
 			// Имя расширения с выравниванием по столбцу 50
-			const char * ename = ::local::extensionName(w);
-			out << "    " << idx << "  ";
+			const char * ename = ::local::extensionName(wire);
+			// Выводим индекс расширения
+			out << "    " << index << "  ";
+			// Выводим имя расширения с выравниванием по столбцу 50
 			out << ename;
-			const int pad = 46 - static_cast <int> (::strlen(ename));
-			for(int k = 0; k < pad; ++k) out << ' ';
-			out << "(" << hex16(w) << ")";
-			// Детали расширения в зависимости от его типа
-			switch(ext->type){
+			// Вычисляем количество пробелов для выравнивания по столбцу 50
+			const int32_t pad = (46 - static_cast <int32_t> (::strlen(ename)));
+			/**
+			 * Выводим пробелы для выравнивания
+			 */
+			for(int32_t j = 0; j < pad; ++j)
+				// Выводим пробел для выравнивания
+				out << ' ';
+			// Выводим wire-код расширения в виде "0x%04X"
+			out << "(" << hex16(wire) << ")";
+			/**
+			 * Детали расширения в зависимости от его типа
+			 */
+			switch(static_cast <uint8_t> (ext->type)){
 				// server_name: выводим имена серверов
-				case extension_type_t::SERVER_NAME: {
+				case static_cast <uint8_t> (extension_type_t::SERVER_NAME): {
+					// Получаем объект расширения server_name
 					const auto * p = awh_cast <const extension_server_name_t *> (ext.get());
+					// Если список имён серверов не пустой, выводим их
 					if(!p->names.empty()){
+						// Выводим первый сервер с маркером "->"
 						out << "  ->  \"" << p->names[0] << '"';
+						/**
+						 * Перебираем оставшиеся имена серверов (если есть)
+						 */
 						for(size_t j = 1; j < p->names.size(); ++j)
+							// Выводим последующие серверы, разделяя запятой
 							out << ", \"" << p->names[j] << '"';
 					}
-				break; }
+				} break;
 				// supported_versions: выводим список версий с GREASE-маркерами
-				case extension_type_t::SUPPORTED_VERSIONS: {
+				case static_cast <uint8_t> (extension_type_t::SUPPORTED_VERSIONS): {
+					// Получаем объект расширения supported_versions
 					const auto * p = awh_cast <const extension_supported_versions_t *> (ext.get());
+					// Выводим маркер "->" перед списком версий
 					out << "  ->  ";
+					/**
+					 * Перебираем версии и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->versions.size(); ++j){
-						if(j) out << ", ";
-						if(p->versions[j] == version_t::GREASE) out << "[GREASE]";
+						// Если это не первая версия
+						if(j > 0)
+							// Выводим запятую для разделения версий
+							out << ", ";
+						// Если версия представляет из себя GREASE
+						if(p->versions[j] == version_t::GREASE)
+							// Выводим специальный маркер для GREASE-версии
+							out << "[GREASE]";
+						// Выводим имя версии по её wire-коду
 						else out << ::local::tlsVersionName(::local::versionWire(p->versions[j]));
 					}
-				break; }
+				} break;
 				// supported_groups: выводим список кривых и групп с GREASE-маркерами
-				case extension_type_t::SUPPORTED_GROUPS: {
+				case static_cast <uint8_t> (extension_type_t::SUPPORTED_GROUPS): {
+					// Получаем объект расширения supported_groups
 					const auto * p = awh_cast <const extension_supported_groups_t *> (ext.get());
+					// Выводим маркер "->" перед списком групп
 					out << "  ->  ";
+					/**
+					 * Перебираем группы и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->supportedGroups.size(); ++j){
-						if(j) out << ", ";
-						if(p->supportedGroups[j] == group_t::GREASE) out << "[GREASE]";
+						// Если это не первая группа
+						if(j > 0)
+							// Выводим запятую для разделения групп
+							out << ", ";
+						// Если группа представляет из себя GREASE
+						if(p->supportedGroups[j] == group_t::GREASE)
+							// Выводим специальный маркер для GREASE-группы
+							out << "[GREASE]";
+						// Выводим имя группы по её wire-коду
 						else out << ::local::groupName(::local::groupWire(p->supportedGroups[j]));
 					}
-				break; }
+				} break;
 				// ec_point_formats: выводим форматы точек эллиптической кривой
-				case extension_type_t::EC_POINT_FORMATS: {
+				case static_cast <uint8_t> (extension_type_t::EC_POINT_FORMATS): {
+					// Получаем объект расширения ec_point_formats
 					const auto * p = awh_cast <const extension_ec_point_t *> (ext.get());
+					// Выводим маркер "->" перед списком форматов точек
 					out << "  ->  ";
+					/**
+					 * Перебираем форматы точек и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->formats.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый формат точки
+						if(j > 0)
+							// Выводим запятую для разделения форматов точек
+							out << ", ";
+						// Получаем wire-код формата точки
 						const uint8_t fw = ::local::ecPointWire(p->formats[j]);
-						if(p->formats[j] == ec_point_format_t::GREASE) out << "[GREASE]";
-						else if(fw == 0x00) out << "uncompressed";
-						else if(fw == 0x01) out << "ansiX962_compressed_prime";
-						else if(fw == 0x02) out << "ansiX962_compressed_char2";
+						// Если формат точки представляет из себя GREASE
+						if(p->formats[j] == ec_point_format_t::GREASE)
+							// Выводим специальный маркер для GREASE-формата точки
+							out << "[GREASE]";
+						// Если формат точки — uncompressed (0x00), выводим его имя
+						else if(fw == 0x00)
+							// Выводим имя формата точки "uncompressed" для wire-кода 0x00
+							out << "uncompressed";
+						// Если формат точки — ansiX962_compressed_prime (0x01), выводим его имя
+						else if(fw == 0x01)
+							// Выводим имя формата точки "ansiX962_compressed_prime" для wire-кода 0x01
+							out << "ansiX962_compressed_prime";
+						// Если формат точки — ansiX962_compressed_char2 (0x02), выводим его имя
+						else if(fw == 0x02)
+							// Выводим имя формата точки "ansiX962_compressed_char2" для wire-кода 0x02
+							out << "ansiX962_compressed_char2";
+						// Для остальных форматов точек выводим их wire-коды в виде "0x%02X"
 						else out << hex8(fw);
 					}
-				break; }
+				} break;
 				// signature_algorithms: каждый алгоритм на отдельной строке
-				case extension_type_t::SIGNATURE_ALGORITHMS: {
+				case static_cast <uint8_t> (extension_type_t::SIGNATURE_ALGORITHMS): {
+					// Получаем объект расширения signature_algorithms
 					const auto * p = awh_cast <const extension_signature_t *> (ext.get());
-					out << '\n';
+					// Выводим перенос строки
+					out << endl;
+					/**
+					 * Перебираем алгоритмы и выводим их на отдельных строках с отступами
+					 */
 					for(const auto sig : p->algorithms){
+						// Получаем wire-код алгоритма подписи
 						const uint16_t sw = ::local::signatureWire(sig);
+						// Выводим отступы для алгоритмов подписи
 						out << "              ";
-						if(sig == signature_t::GREASE) out << "[GREASE]";
+						// Если алгоритм подписи представляет из себя GREASE
+						if(sig == signature_t::GREASE)
+							// Выводим специальный маркер для GREASE-алгоритма подписи
+							out << "[GREASE]";
+						// Выводим имя алгоритма подписи по его wire-коду
 						else out << ::local::signatureName(sw) << "  (" << hex16(sw) << ")";
-						out << '\n';
+						// Выводим перенос строки после каждого алгоритма подписи
+						out << endl;
 					}
-					// Переходим к следующему расширению без добавления финальной \n
+					// Переходим к следующему расширению без добавления финального переноса строки
 					continue;
 				}
 				// alpn: выводим список согласованных протоколов
-				case extension_type_t::ALPN: {
+				case static_cast <uint8_t> (extension_type_t::ALPN): {
+					// Получаем объект расширения alpn
 					const auto * p = awh_cast <const extension_alpn_t *> (ext.get());
+					// Выводим маркер "->" перед списком протоколов
 					out << "  ->  ";
+					/**
+					 * Перебираем протоколы и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->protocols.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый протокол
+						if(j > 0)
+							// Выводим запятую для разделения протоколов
+							out << ", ";
+						// Выводим имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
-				break; }
+				} break;
 				// next_proto_neg (NPN): выводим список протоколов
-				case extension_type_t::NEXT_PROTO_NEG: {
+				case static_cast <uint8_t> (extension_type_t::NEXT_PROTO_NEG): {
+					// Получаем объект расширения next_proto_neg
 					const auto * p = awh_cast <const extension_next_proto_neg_t *> (ext.get());
+					// Выводим маркер "->" перед списком протоколов
 					out << "  ->  ";
+					/**
+					 * Перебираем протоколы и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->protocols.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый протокол
+						if(j > 0)
+							// Выводим запятую для разделения протоколов
+							out << ", ";
+						// Выводим имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
-				break; }
+				} break;
 				// application_settings (ALPS новый): выводим список протоколов
-				case extension_type_t::APPLICATION_SETTINGS: {
+				case static_cast <uint8_t> (extension_type_t::APPLICATION_SETTINGS): {
+					// Получаем объект расширения application_settings
 					const auto * p = awh_cast <const extension_application_settings_t *> (ext.get());
+					// Выводим маркер "->" перед списком протоколов
 					out << "  ->  ";
+					/**
+					 * Перебираем протоколы и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->protocols.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый протокол
+						if(j > 0)
+							// Выводим запятую для разделения протоколов
+							out << ", ";
+						// Выводим имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
-				break; }
+				} break;
 				// application_settings_old (Chrome legacy ALPS): выводим список протоколов
-				case extension_type_t::APPLICATION_SETTINGS_OLD: {
+				case static_cast <uint8_t> (extension_type_t::APPLICATION_SETTINGS_OLD): {
+					// Получаем объект расширения application_settings_old
 					const auto * p = awh_cast <const extension_application_settings_old_t *> (ext.get());
+					// Выводим маркер "->" перед списком протоколов
 					out << "  ->  ";
+					/**
+					 * Перебираем протоколы и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->protocols.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый протокол
+						if(j > 0)
+							// Выводим запятую для разделения протоколов
+							out << ", ";
+						// Выводим имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
-				break; }
+				} break;
 				// key_share: выводим пары группа→размер ключа
-				case extension_type_t::KEY_SHARE: {
+				case static_cast <uint8_t> (extension_type_t::KEY_SHARE): {
+					// Получаем объект расширения key_share
 					const auto * p = awh_cast <const extension_key_share_t *> (ext.get());
+					// Выводим маркер "->" перед списком групп и размеров ключей
 					out << "  ->  ";
+					// Флаг для определения первой пары группа→размер ключа (для правильного разделения запятой)
 					bool first = true;
+					/**
+					 * Перебираем пары группа→размер ключа и выводим их, разделяя запятой
+					 */
 					for(const auto & [grp, data] : p->keyShares){
-						if(!first) out << ", ";
+						// Если это не первая пара группа→размер ключа
+						if(!first)
+							// Выводим запятую для разделения пар группа→размер ключа
+							out << ", ";
+						// Убираем флаг первой пары группа→размер ключа после обработки первой пары
 						first = false;
-						if(grp == group_t::GREASE) out << "[GREASE](" << data.size() << "B)";
+						// Если группа представляет из себя GREASE
+						if(grp == group_t::GREASE)
+							// Выводим специальный маркер для GREASE-группы и размер данных в скобках
+							out << "[GREASE](" << data.size() << "B)";
+						// Выводим имя группы по её wire-коду и размер данных в скобках
 						else out << ::local::groupName(::local::groupWire(grp)) << "(" << data.size() << "B)";
 					}
-				break; }
+				} break;
 				// psk_key_exchange_modes: выводим режимы обмена ключами PSK
-				case extension_type_t::PSK_KEY_EXCHANGE_MODES: {
+				case static_cast <uint8_t> (extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+					// Получаем объект расширения psk_key_exchange_modes
 					const auto * p = awh_cast <const extension_psk_key_exchange_t *> (ext.get());
+					// Выводим маркер "->" перед списком режимов обмена ключами PSK
 					out << "  ->  ";
+					/**
+					 * Перебираем режимы обмена ключами PSK и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->modes.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый режим обмена ключами PSK
+						if(j > 0)
+							// Выводим запятую для разделения режимов обмена ключами PSK
+							out << ", ";
+						/**
+						 * Выводим имя режима обмена ключами PSK по его типу
+						 */
 						switch(p->modes[j]){
-							case psk_key_t::PSK_ONLY: out << "psk_ke(0x00)";     break;
-							case psk_key_t::PSK_DHE:  out << "psk_dhe_ke(0x01)"; break;
-							default:                  out << "UNKNOWN";           break;
+							// Если режим обмена ключами PSK — psk_ke (0x00)
+							case psk_key_t::PSK_ONLY:
+								// Выводим имя режима обмена ключами PSK "psk_ke" для типа 0x00
+								out << "psk_ke(0x00)";
+							break;
+							// Если режим обмена ключами PSK — psk_dhe_ke (0x01)
+							case psk_key_t::PSK_DHE:
+								// Выводим имя режима обмена ключами PSK "psk_dhe_ke" для типа 0x01
+								out << "psk_dhe_ke(0x01)";
+							break;
+							// Для остальных режимов обмена ключами
+							default:
+								// Выводим неизвестный режим обмена ключами
+								out << "UNKNOWN";
 						}
 					}
-				break; }
+				} break;
 				// pre_shared_key: выводим количество идентификаторов PSK
-				case extension_type_t::PRE_SHARED_KEY: {
+				case static_cast <uint8_t> (extension_type_t::PRE_SHARED_KEY): {
+					// Получаем объект расширения pre_shared_key
 					const auto * p = awh_cast <const extension_pre_shared_key_t *> (ext.get());
+					// Выводим маркер "->" перед количеством идентификаторов PSK и правильное склонение слова "identity"
 					out << "  ->  " << p->identities.size()
 					    << (p->identities.size() == 1 ? " identity" : " identities");
-				break; }
+				} break;
 				// session_ticket: выводим размер данных или пометку о запросе
-				case extension_type_t::SESSION_TICKET: {
+				case static_cast <uint8_t> (extension_type_t::SESSION_TICKET): {
+					// Получаем объект расширения session_ticket
 					const auto * p = awh_cast <const extension_session_ticket_t *> (ext.get());
-					if(p->data.empty()) out << "  ->  (empty / request for new ticket)";
+					// Если данные для session_ticket отсутствуют
+					if(p->data.empty())
+						// Выводим пометку о том, что данные отсутствуют и это может быть запросом на новый билет
+						out << "  ->  (empty / request for new ticket)";
+					// Если данные для session_ticket присутствуют, выводим их размер в байтах
 					else out << "  ->  " << p->data.size() << " bytes";
-				break; }
+				} break;
 				// status_request (OCSP): выводим тип статуса
-				case extension_type_t::STATUS_REQUEST: {
+				case static_cast <uint8_t> (extension_type_t::STATUS_REQUEST): {
+					// Получаем объект расширения status_request
 					const auto * p = awh_cast <const extension_status_request_t *> (ext.get());
+					// Если тип статуса для status_request не пустой, выводим его
 					if(!p->certificateStatusType.empty())
+						// Выводим тип статуса для status_request
 						out << "  ->  type=" << p->certificateStatusType;
-				break; }
+				} break;
 				// padding: выводим размер блока заполнения
-				case extension_type_t::PADDING: {
+				case static_cast <uint8_t> (extension_type_t::PADDING): {
+					// Получаем объект расширения padding
 					const auto * p = awh_cast <const extension_padding_t *> (ext.get());
+					// Выводим маркер "->" перед размером блока заполнения в байтах
 					out << "  ->  " << p->size << " bytes";
-				break; }
+				} break;
 				// record_size_limit: выводим максимальный размер записи
-				case extension_type_t::RECORD_SIZE_LIMIT: {
+				case static_cast <uint8_t> (extension_type_t::RECORD_SIZE_LIMIT): {
+					// Получаем объект расширения record_size_limit
 					const auto * p = awh_cast <const extension_record_size_limit_t *> (ext.get());
+					// Выводим маркер "->" перед максимальным размером записи в байтах
 					out << "  ->  " << p->data << " bytes";
-				break; }
+				} break;
 				// early_data: выводим максимальный размер ранних данных
-				case extension_type_t::EARLY_DATA: {
+				case static_cast <uint8_t> (extension_type_t::EARLY_DATA): {
+					// Получаем объект расширения early_data
 					const auto * p = awh_cast <const extension_early_data_t *> (ext.get());
-					if(p->maxSize > 0) out << "  ->  max=" << p->maxSize << " bytes";
-				break; }
+					// Если максимальный размер ранних данных больше 0
+					if(p->maxSize > 0)
+						// Выводим маркер "->" перед максимальным размером ранних данных в байтах
+						out << "  ->  max=" << p->maxSize << " bytes";
+				} break;
 				// compress_certificate: выводим поддерживаемые алгоритмы сжатия сертификатов
-				case extension_type_t::COMPRESS_CERTIFICATE: {
+				case static_cast <uint8_t> (extension_type_t::COMPRESS_CERTIFICATE): {
+					// Получаем объект расширения compress_certificate
 					const auto * p = awh_cast <const extension_compress_certificate_t *> (ext.get());
+					// Выводим маркер "->" перед списком поддерживаемых алгоритмов сжатия сертификатов
 					out << "  ->  ";
+					/**
+					 * Перебираем поддерживаемые алгоритмы сжатия сертификатов и выводим их, разделяя запятой
+					 */
 					for(size_t j = 0; j < p->algorithms.size(); ++j){
-						if(j) out << ", ";
+						// Если это не первый алгоритм сжатия сертификатов
+						if(j > 0)
+							// Выводим запятую для разделения алгоритмов сжатия сертификатов
+							out << ", ";
+						// Выводим имя алгоритма сжатия сертификатов по его wire-коду
 						out << ::local::compressALGName(::local::compressorWire(p->algorithms[j]));
 					}
-				break; }
+				} break;
 				// heartbeat: выводим режим (allowed/not_allowed)
-				case extension_type_t::HEARTBEAT: {
+				case static_cast <uint8_t> (extension_type_t::HEARTBEAT): {
+					// Получаем объект расширения heartbeat
 					const auto * p = awh_cast <const extension_heartbeat_t *> (ext.get());
-					switch(p->mode){
-						case heartbeat_t::PEER_ALLOWED_TO_SEND:     out << "  ->  peer_allowed_to_send";     break;
-						case heartbeat_t::PEER_NOT_ALLOWED_TO_SEND: out << "  ->  peer_not_allowed_to_send"; break;
-						default: break;
+					/**
+					 * Выводим маркер "->" перед режимом heartbeat и его текстовым представлением
+					 */
+					switch(static_cast <uint8_t> (p->mode)){
+						// Если режим heartbeat — peer_allowed_to_send
+						case static_cast <uint8_t> (heartbeat_t::PEER_ALLOWED_TO_SEND):
+							// Выводим имя режима heartbeat "peer_allowed_to_send"
+							out << "  ->  peer_allowed_to_send";
+						break;
+						// Если режим heartbeat — peer_not_allowed_to_send
+						case static_cast <uint8_t> (heartbeat_t::PEER_NOT_ALLOWED_TO_SEND):
+							// Выводим имя режима heartbeat "peer_not_allowed_to_send"
+							out << "  ->  peer_not_allowed_to_send";
+						break;
 					}
-				break; }
+				} break;
 				// renegotiation_info: выводим размер данных переговоров
-				case extension_type_t::RENEGOTIATION_INFO: {
+				case static_cast <uint8_t> (extension_type_t::RENEGOTIATION_INFO): {
+					// Получаем объект расширения renegotiation_info
 					const auto * p = awh_cast <const extension_renegotiation_info_t *> (ext.get());
+					// Выводим маркер "->" перед размером данных переговоров в байтах
 					out << "  ->  " << p->data.size() << " bytes";
-				break; }
+				} break;
 				// encrypted_client_hello (ECH): выводим размер зашифрованных данных
-				case extension_type_t::ENCRYPTED_CLIENT_HELLO: {
+				case static_cast <uint8_t> (extension_type_t::ENCRYPTED_CLIENT_HELLO): {
+					// Получаем объект расширения encrypted_client_hello
 					const auto * p = awh_cast <const extension_encryption_client_hello_t *> (ext.get());
+					// Выводим маркер "->" перед размером зашифрованных данных в байтах
 					out << "  ->  " << p->data.size() << " bytes";
-				break; }
+				} break;
 				// ech_outer_extensions: выводим количество вложенных расширений
-				case extension_type_t::ECH_OUTER_EXTENSIONS: {
+				case static_cast <uint8_t> (extension_type_t::ECH_OUTER_EXTENSIONS): {
+					// Получаем объект расширения ech_outer_extensions
 					const auto * p = awh_cast <const extension_ech_outer_extensions_t *> (ext.get());
+					// Выводим маркер "->" перед количеством вложенных расширений
 					out << "  ->  " << p->extensions.size() << " extension(s)";
-				break; }
+				} break;
 				// certificate_authorities: выводим количество доверенных CA
-				case extension_type_t::CERTIFICATE_AUTHORITIES: {
+				case static_cast <uint8_t> (extension_type_t::CERTIFICATE_AUTHORITIES): {
+					// Получаем объект расширения certificate_authorities
 					const auto * p = awh_cast <const extension_certificate_authorities_t *> (ext.get());
+					// Выводим маркер "->" перед количеством доверенных CA
 					out << "  ->  " << p->authorities.size() << " CA(s)";
-				break; }
+				} break;
 				// max_fragment_length: выводим максимальную длину фрагмента
-				case extension_type_t::MAX_FRAGMENT_LENGTH: {
+				case static_cast <uint8_t> (extension_type_t::MAX_FRAGMENT_LENGTH): {
+					// Получаем объект расширения max_fragment_length
 					const auto * p = awh_cast <const extension_max_fragment_length_t *> (ext.get());
+					// Выводим маркер "->" перед максимальной длиной фрагмента в байтах
 					out << "  ->  " << p->length;
-				break; }
+				} break;
 				// tls_flags: выводим количество флагов
-				case extension_type_t::TLS_FLAGS: {
+				case static_cast <uint8_t> (extension_type_t::TLS_FLAGS): {
+					// Получаем объект расширения tls_flags
 					const auto * p = awh_cast <const extension_tls_flags_t *> (ext.get());
+					// Выводим маркер "->" перед количеством флагов
 					out << "  ->  " << p->flags.size() << " flag(s)";
-				break; }
+				} break;
 				// quic_transport_parameters: выводим количество параметров QUIC
-				case extension_type_t::QUIC_TRANSPORT_PARAMETERS: {
+				case static_cast <uint8_t> (extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
+					// Получаем объект расширения quic_transport_parameters
 					const auto * p = awh_cast <const extension_quic_transport_params_t *> (ext.get());
+					// Выводим маркер "->" перед количеством параметров QUIC
 					out << "  ->  " << p->params.size() << " param(s)";
-				break; }
+				} break;
 				// quic_transport_parameters_legacy: выводим количество параметров QUIC (устаревший)
-				case extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY: {
+				case static_cast <uint8_t> (extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
+					// Получаем объект расширения quic_transport_parameters_legacy
 					const auto * p = awh_cast <const extension_quic_transport_params_legacy_t *> (ext.get());
+					// Выводим маркер "->" перед количеством параметров QUIC (устаревший)
 					out << "  ->  " << p->params.size() << " param(s)";
-				break; }
-				// Для остальных расширений без значимых данных ничего не выводим
-				default: break;
+				} break;
 			}
-			out << '\n';
+			// Выводим перенос строки после каждого расширения
+			out << endl;
 		}
 		// ================================================================
 		// Вычисленные отпечатки
 		// ================================================================
-		imprint_t imp;
+		/**
+		 * Объект для хранения вычисленных отпечатков браузера (JA3, JA4, PeetPrint и т.д.)
+		 */
+		imprint_t imp{};
 		// Вычисляем отпечатки из переданного browser_t
 		const bool hasImp = this->imprint(browser, imp);
-		out << '\n';
-		if(!hasImp){
+		// Выводим перенос строки перед секцией вычисленных отпечатков
+		out << endl;
+		// Если вычисление отпечатков не удалось (например, из-за отсутствия данных для JA3), выводим сообщение об ошибке в секции отпечатков
+		if(!hasImp)
 			// Вычисление отпечатков не удалось — сообщаем об ошибке
-			out << "  [ Computed Fingerprints  (ERROR - computation failed) ]\n";
-		} else {
-			out << "  [ Computed Fingerprints ]\n";
+			out << "  [ Computed Fingerprints  (ERROR - computation failed) ]" << endl;
+		// Если вычисление отпечатков прошло успешно, выводим их в секции Computed Fingerprints
+		else {
+			// Выводим заголовок секции Computed Fingerprints
+			out << "  [ Computed Fingerprints ]" << endl;
 			// Wire-коды версий для получения их текстовых названий
 			const uint16_t recV = static_cast <uint16_t> (::stoul(imp.tls.record));
 			const uint16_t negV = static_cast <uint16_t> (::stoul(imp.tls.negotiated));
 			// TLS-версии
-			out << "    TLS Record Version     : " << imp.tls.record     << "  (" << hex16(recV) << ")  =  " << ::local::tlsVersionName(recV) << '\n';
-			out << "    TLS Negotiated Version : " << imp.tls.negotiated << "  (" << hex16(negV) << ")  =  " << ::local::tlsVersionName(negV) << '\n';
+			out << "    TLS Record Version     : " << imp.tls.record     << "  (" << hex16(recV) << ")  =  " << ::local::tlsVersionName(recV) << endl;
+			out << "    TLS Negotiated Version : " << imp.tls.negotiated << "  (" << hex16(negV) << ")  =  " << ::local::tlsVersionName(negV) << endl;
 			// Идентификаторы соединения
-			out << "    Client Random          : " << imp.clientRandom << '\n';
-			out << "    Session ID             : " << (imp.sessionId.empty() ? "(empty)" : imp.sessionId) << '\n';
+			out << "    Client Random          : " << imp.clientRandom << endl;
+			out << "    Session ID             : " << (imp.sessionId.empty() ? "(empty)" : imp.sessionId) << endl;
 			// JA3
-			out << '\n';
-			out << "    JA3        : " << imp.ja3 << '\n';
-			out << "    JA3 Hash   : " << imp.ja3Hash << '\n';
+			out << endl;
+			out << "    JA3        : " << imp.ja3 << endl;
+			out << "    JA3 Hash   : " << imp.ja3Hash << endl;
 			// JA4
-			out << '\n';
-			out << "    JA4        : " << imp.ja4 << '\n';
-			out << "    JA4_r      : " << imp.ja4r << '\n';
+			out << endl;
+			out << "    JA4        : " << imp.ja4 << endl;
+			out << "    JA4_r      : " << imp.ja4r << endl;
 			// PeetPrint
-			out << '\n';
-			out << "    PeetPrint  : " << imp.peetprint << '\n';
-			out << "    PeetHash   : " << imp.peetprintHash << '\n';
+			out << endl;
+			out << "    PeetPrint  : " << imp.peetprint << endl;
+			out << "    PeetHash   : " << imp.peetprintHash << endl;
+			// Выводим перенос строки после секции отпечатков
+			out << endl;
 			// Итоговый вывод: похож ли отпечаток на реальный браузер
-			out << '\n';
-			out << "    Browser?   : " << (this->looksLikeBrowser(imp) ? "YES (looks like a real browser)" : "NO  (does not look like a real browser)") << '\n';
+			out << "    Browser?   : " << (this->looksLikeBrowser(imp) ? "YES (looks like a real browser)" : "NO  (does not look like a real browser)") << endl;
 		}
 		// Финальная строка-разделитель
-		out << '\n' << LINE << '\n';
+		out << endl << LINE << endl;
 		// Возвращаем сформированную строку
 		return out.str();
 	/**
